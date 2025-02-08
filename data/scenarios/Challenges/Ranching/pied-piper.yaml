@@ -89,7 +89,7 @@ objectives:
     condition: |
       as base {
         loc <- locateme;
-        return $ fst loc == "silo";
+        pure $ fst loc == "silo";
       }
   - teaser: Moldy
     prerequisite: silo
@@ -109,8 +109,8 @@ objectives:
     condition: |
       try {
         r <- robotNamed "rat";
-        return false;
-      } {return true}
+        pure false;
+      } {pure true}
   - teaser: Spelunker
     prerequisite: silo
     goal:
@@ -119,7 +119,7 @@ objectives:
     condition: |
       as base {
         loc <- locateme;
-        return $ fst loc == "tunnel";
+        pure $ fst loc == "tunnel";
       }
 solution: |
   run "scenarios/Challenges/Ranching/_pied-piper/solution.sw"
@@ -164,7 +164,7 @@ entities:
       char: 'k'
     description:
       - Used by an `unlocker`{=entity} to open a a `locked door`{=entity}
-    properties: [known]
+    properties: [known, pickable]
   - name: unlocker
     display:
       char: 'u'
@@ -190,7 +190,7 @@ entities:
       attr: wood
     description:
       - wall
-    properties: [known, unwalkable]
+    properties: [known, unwalkable, boundary]
   - name: oats
     display:
       attr: oats

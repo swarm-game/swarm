@@ -12,9 +12,8 @@ module Swarm.Game.State.Initialize (
 import Control.Arrow (Arrow ((&&&)))
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Effect.Lens (view)
-import Control.Effect.Lift (Has)
-import Control.Effect.State (State)
-import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
+import Control.Lens hiding (view)
+import Data.Hashable (Hashable)
 import Data.IntMap qualified as IM
 import Data.List (partition)
 import Data.List.NonEmpty (NonEmpty)
@@ -24,6 +23,7 @@ import Data.Map qualified as M
 import Data.Maybe (isNothing)
 import Data.Set qualified as S
 import Data.Text (Text)
+import Data.Tuple.Extra (dupe)
 import Swarm.Game.CESK (finalValue, initMachine)
 import Swarm.Game.Device (getCapabilitySet, getMap)
 import Swarm.Game.Entity
@@ -38,12 +38,10 @@ import Swarm.Game.Robot.Concrete
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Objective (initCompletion)
 import Swarm.Game.Scenario.Status
-import Swarm.Game.Scenario.Topography.Cell (Cell, cellToEntity)
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (emptyFoundStructures)
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
 import Swarm.Game.State.Landscape (mkLandscape)
@@ -78,14 +76,19 @@ pureScenarioToGameState ::
   GameState
 pureScenarioToGameState scenario theSeed now toRun gsc =
   preliminaryGameState
-    & discovery . structureRecognition .~ recognizer
+    & discovery . structureRecognition .~ recognition
  where
   sLandscape = scenario ^. scenarioLandscape
 
-  recognizer =
-    runIdentity $
-      Fused.evalState preliminaryGameState $
-        mkRecognizer (sLandscape ^. scenarioStructures)
+  -- It may be possible at some point for the game seed to affect whether
+  -- initially-placed structures remain intact, by way of random placements.
+  -- Therefore we run this at 'GameState' initialization time, rather than
+  -- 'Scenario' parse time.
+  recognition =
+    runIdentity
+      . Fused.evalState preliminaryGameState
+      . adaptGameState
+      $ initializeRecognition mtlEntityAt (sLandscape ^. scenarioStructures)
 
   gs = initGameState gsc
   preliminaryGameState =
@@ -177,31 +180,34 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
 
   addRecipesWith f = IM.unionWith (<>) (f $ scenario ^. scenarioOperation . scenarioRecipes)
 
-mkRecognizer ::
-  (Has (State GameState) sig m) =>
-  StaticStructureInfo Cell ->
-  m (StructureRecognizer (Maybe Cell) Entity)
-mkRecognizer structInfo@(StaticStructureInfo structDefs _) = do
+-- |
+-- As part of initializing the recognizer, we also pre-populate the
+-- list of "found" structures with those statically placed by the scenario definition.
+-- Note that this bypasses the regular "online" recognition machinery;
+-- we don't actually have to "search" for these structures since we are
+-- explicitly given their location; we only need to validate that each
+-- structure remains intact given other, potentially overlapping static placements.
+initializeRecognition ::
+  (Monad s, Hashable a, Eq b) =>
+  GenericEntLocator s a ->
+  StaticStructureInfo b a ->
+  s (RecognitionState b a)
+initializeRecognition entLoader structInfo = do
   foundIntact <- mapM checkIntactness allPlaced
 
   let fs = populateStaticFoundStructures . map fst . filter (null . snd) $ foundIntact
-  return
-    $ StructureRecognizer
-      (mkAutomatons cellToEntity structDefs)
-    $ RecognitionState
+  return $
+    RecognitionState
       fs
       [IntactStaticPlacement $ map mkLogEntry foundIntact]
  where
-  -- NOTE: We assume that all static scenario placements are carefully arranged
-  -- so that overlapping structures are not simultaneously recognized.
-  checkIntactness = sequenceA . (id &&& adaptGameState . ensureStructureIntact emptyFoundStructures mtlEntityAt)
+  checkIntactness = traverse (ensureStructureIntact emptyFoundStructures entLoader) . dupe
 
-  allPlaced = lookupStaticPlacements cellToEntity structInfo
+  allPlaced = lookupStaticPlacements structInfo
   mkLogEntry (x, intact) =
     IntactPlacementLog
       intact
-      ((getName . originalDefinition . structureWithGrid) x)
-      (upperLeftCorner x)
+      $ PositionedStructure (upperLeftCorner x) ((distillLabel . structureWithGrid) x)
 
 buildTagMap :: EntityMap -> Map Text (NonEmpty EntityName)
 buildTagMap em =

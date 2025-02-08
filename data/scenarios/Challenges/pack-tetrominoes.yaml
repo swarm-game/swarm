@@ -21,8 +21,8 @@ objectives:
         Place all five tetrominoes.
     condition: |
       def found = \s.
-        fs <- structure s 0;
-        return $ case fs (\_. false) (\_. true);
+        fs <- structures s;
+        pure $ case fs (\_. false) (\_. true);
         end;
 
       foundT <- found "tee";
@@ -30,7 +30,7 @@ objectives:
       foundI <- found "line";
       foundZ <- found "zee";
       foundQ <- found "square";
-      return $ foundT && foundJ && foundI && foundZ && foundQ;
+      pure $ foundT && foundJ && foundI && foundZ && foundQ;
 robots:
   - name: base
     dir: east

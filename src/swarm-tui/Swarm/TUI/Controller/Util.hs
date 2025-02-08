@@ -194,7 +194,7 @@ allHandlers eEmbed f = map handleEvent1 enumerate
   handleEvent1 e1 = let (n, a) = f e1 in onEvent (eEmbed e1) n a
 
 runBaseTerm :: (MonadState AppState m) => Maybe TSyntax -> m ()
-runBaseTerm = maybe (pure ()) startBaseProgram
+runBaseTerm = mapM_ startBaseProgram
  where
   -- The player typed something at the REPL and hit Enter; this
   -- function takes the resulting term (if the REPL

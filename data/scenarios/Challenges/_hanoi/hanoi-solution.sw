@@ -4,12 +4,12 @@ def rep = \n. \c. if (n == 0) {} {c; rep (n-1) c} end;
 def ifC = \p. \t. \e. res <- p; if res t e end;
 
 def orC = \c1. \c2.
-  b1 <- c1; b2 <- c2; return (b1 || b2)
+  b1 <- c1; b2 <- c2; pure (b1 || b2)
 end;
 
 def somethingHere =
   res <- scan down;
-  return (res != inl ())
+  pure (res != inl ())
 end;
 
 def fwdToThing = until blocked move end;
@@ -26,7 +26,7 @@ def getDisk =
   fwdToThing;
   d <- grab;
   goBack;
-  return d
+  pure d
 end;
 
 def placeDisk = \d.
@@ -49,7 +49,7 @@ def hanoi :
   Int -> // The offset to third column
   Cmd Int
   = \n. \o. \a. \b. \c.
-  if (n == 0) {return o}
+  if (n == 0) {pure o}
   {
     o_new <- hanoi (n-1) o a c b;
     moveToCol o_new a;

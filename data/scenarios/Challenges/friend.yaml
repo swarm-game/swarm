@@ -63,7 +63,7 @@ objectives:
       c <- robotNamed "cat";
       catLoc <- as c {whereami};
       baseLoc <- as base {whereami};
-      return (catLoc == baseLoc)
+      pure (catLoc == baseLoc)
 solution: |
   run "scenarios/Challenges/_friend/friend-solution.sw"
 entities:

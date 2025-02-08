@@ -11,10 +11,10 @@ module Swarm.TUI.Controller.SaveScenario (
 -- See Note [liftA2 re-export from Prelude]
 import Brick.Widgets.List qualified as BL
 import Control.Lens as Lens
-import Control.Monad (forM_, void, when)
+import Control.Monad (forM_, unless, when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Time (getZonedTime)
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Scenario.Status (updateScenarioInfoOnFinish)
@@ -28,7 +28,6 @@ import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
 import System.FilePath (splitDirectories)
-import Prelude hiding (Applicative (..))
 
 getNormalizedCurrentScenarioPath :: (MonadIO m, MonadState AppState m) => m (Maybe FilePath)
 getNormalizedCurrentScenarioPath =
@@ -48,6 +47,7 @@ saveScenarioInfoOnFinish p = do
         WinConditions (Won _ _) _ -> True
         _ -> False
   ts <- use $ gameState . temporal . ticks
+  saved <- use $ gameState . completionStatsSaved
 
   -- NOTE: This traversal is apparently not the same one as used by
   -- the scenario selection menu, so the menu needs to be updated separately.
@@ -57,19 +57,22 @@ saveScenarioInfoOnFinish p = do
 
   replHist <- use $ uiState . uiGameplay . uiREPL . replHistory
   let determinator = CodeSizeDeterminators initialRunCode $ replHist ^. replHasExecutedManualInput
-  currentScenarioInfo
-    %= updateScenarioInfoOnFinish determinator t ts won
+
+  -- Don't update scenario statistics if we have previously saved
+  -- statistics for the current scenario upon scenario completion.
+  unless saved $
+    currentScenarioInfo
+      %= updateScenarioInfoOnFinish determinator t ts won
   status <- preuse currentScenarioInfo
-  case status of
-    Nothing -> return ()
-    Just si -> do
-      let segments = splitDirectories p
-      case segments of
-        firstDir : _ -> do
-          when (won && firstDir == tutorialsDirname) $
-            attainAchievement' t (Just p) (GlobalAchievement CompletedSingleTutorial)
-        _ -> return ()
-      liftIO $ saveScenarioInfo p si
+  forM_ status $ \si -> do
+    forM_ (listToMaybe $ splitDirectories p) $ \firstDir -> do
+      when (won && firstDir == tutorialsDirname) $
+        attainAchievement' t (Just p) $
+          GlobalAchievement CompletedSingleTutorial
+    liftIO $ saveScenarioInfo p si
+
+  gameState . completionStatsSaved .= won
+
   return status
 
 -- | Don't save progress for developers and cheaters.
@@ -82,40 +85,47 @@ unlessCheating a = do
 -- | Write the @ScenarioInfo@ out to disk when finishing a game (i.e. on winning or exit).
 saveScenarioInfoOnFinishNocheat :: (MonadIO m, MonadState AppState m) => m ()
 saveScenarioInfoOnFinishNocheat =
-  unlessCheating $ do
+  unlessCheating $
     -- the path should be normalized and good to search in scenario collection
-    getNormalizedCurrentScenarioPath >>= \case
-      Nothing -> return ()
-      Just p -> void $ saveScenarioInfoOnFinish p
+    getNormalizedCurrentScenarioPath >>= mapM_ saveScenarioInfoOnFinish
 
 -- | Write the @ScenarioInfo@ out to disk when exiting a game.
 saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()
 saveScenarioInfoOnQuit =
-  unlessCheating $ do
-    getNormalizedCurrentScenarioPath >>= \case
-      Nothing -> return ()
-      Just p -> do
-        maybeSi <- saveScenarioInfoOnFinish p
-        -- Note [scenario menu update]
-        -- Ensures that the scenario selection menu gets updated
-        -- with the high score/completion status
-        forM_
-          maybeSi
-          ( uiState
-              . uiMenu
-              . _NewGameMenu
-              . ix 0
-              . BL.listSelectedElementL
-              . _SISingle
-              . _2
-              .=
-          )
+  unlessCheating $
+    getNormalizedCurrentScenarioPath >>= mapM_ go
+ where
+  go p = do
+    maybeSi <- saveScenarioInfoOnFinish p
+    -- Note [scenario menu update]
+    -- Ensures that the scenario selection menu gets updated
+    -- with the high score/completion status
+    forM_
+      maybeSi
+      ( uiState
+          . uiMenu
+          . _NewGameMenu
+          . ix 0
+          . BL.listSelectedElementL
+          . _SISingle
+          . _2
+          .=
+      )
 
-        -- See what scenario is currently focused in the menu.  Depending on how the
-        -- previous scenario ended (via quit vs. via win), it might be the same as
-        -- currentScenarioPath or it might be different.
-        curPath <- preuse $ uiState . uiMenu . _NewGameMenu . ix 0 . BL.listSelectedElementL . _SISingle . _2 . scenarioPath
-        -- Now rebuild the NewGameMenu so it gets the updated ScenarioInfo,
-        -- being sure to preserve the same focused scenario.
+    -- See what scenario is currently focused in the menu.  Depending on how the
+    -- previous scenario ended (via quit vs. via win), it might be the same as
+    -- currentScenarioPath or it might be different.
+    curPath <- preuse $ uiState . uiMenu . _NewGameMenu . ix 0 . BL.listSelectedElementL . _SISingle . _2 . scenarioPath
+
+    menu <- use $ uiState . uiMenu
+    case menu of
+      -- If the menu is NoMenu, it means we skipped showing the
+      -- menu at startup, so leave it alone; we simply want to
+      -- exit the entire app.
+      NoMenu -> pure ()
+      -- Otherwise, rebuild the NewGameMenu so it gets the updated
+      -- ScenarioInfo, being sure to preserve the same focused
+      -- scenario.
+      _ -> do
         sc <- use $ runtimeState . scenarios
         forM_ (mkNewGameMenu sc (fromMaybe p curPath)) (uiState . uiMenu .=)

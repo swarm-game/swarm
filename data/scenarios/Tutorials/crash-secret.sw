@@ -1,7 +1,7 @@
 // A for cycle from start to end (excluded) that carries a state.
 def foreachF = \s.\e.\com.\state.
   if (s >= e) {
-    return state
+    pure state
   } {
     n <- com state s;
     foreachF (s+1) e com n
@@ -23,7 +23,7 @@ myLoc <- whereami;
 
 def foldM : (rec l. Unit + a * l) -> b -> (b -> a -> Cmd b) -> Cmd b =
   \xs. \b. \f. case xs
-    (\_. return b)
+    (\_. pure b)
     (\cons. b' <- f b (fst cons); foldM (snd cons) b' f)
 end
 
@@ -34,22 +34,22 @@ def tryGive: Text -> (Actor -> Bool) -> Cmd (Actor -> Bool) = \msg. \ok.
   foldM rs ok $ \f.\rob.
     if (not $ f rob) {
       log $ "skipping the robot " ++ format rob ++ "because it already has a Win";
-      return f
+      pure f
     } {
       robLoc <- as rob {whereami};
       if (robLoc != myLoc) {
         log $ "the robot" ++ format rob ++ "is not in my cell";
-        return f;
+        pure f;
       } {
         try {
           reprogram rob { log msg; };
           log $ "successfully reprogrammed robot " ++ format rob;
           give rob "Win";
           log $ "successfully gave Win to robot " ++ format rob;
-          return (\r. (rob != r && f rob));
+          pure (\r. (rob != r && f rob));
         } {
           log $ "the robot " ++ format rob ++ "is missing a logger!";
-          return f;
+          pure f;
         };
       }
     }

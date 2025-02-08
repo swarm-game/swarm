@@ -10,7 +10,7 @@ end;
 
 repeat (
 me <- scan down;
-case me (\_. return ()) (\e.
+case me (\_. pure ()) (\e.
 // if
 //  0. I stand on unlocked X
 //  1. place north of me is NOT empty
@@ -25,13 +25,13 @@ if (isUnlocked e)
       case mn (\_.
         teleport self (0,-6);
         allPlaced <- ishere "three";
-        return (not allPlaced)
+        pure (not allPlaced)
       ) (\_.
-        return true
+        pure true
       );
     };
     if northFullOrAllPlaced {
-      swap ("blocked " ++ e); return ()
+      swap ("blocked " ++ e); pure ()
     } {}
 }
 // if
@@ -56,9 +56,9 @@ if (isUnlocked e)
         o2 <- ishere "OK";
         teleport self (2,-5);
         o3 <- ishere "OK";
-        return (o1 && o2 && o3)
+        pure (o1 && o2 && o3)
       };
-      if (allPlaced && allSorted) {swap (unlock e); return ()} {}
-    ) (\_. return ())
+      if (allPlaced && allSorted) {swap (unlock e); pure ()} {}
+    ) (\_. pure ())
 }
 ))

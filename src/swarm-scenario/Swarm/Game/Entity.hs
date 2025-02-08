@@ -102,17 +102,17 @@ import Control.Monad (forM_, unless, (<=<))
 import Data.Bifunctor (first)
 import Data.Char (toLower)
 import Data.Either.Extra (maybeToEither)
+import Data.Foldable (Foldable (elem, foldl', null))
 import Data.Function (on)
 import Data.Hashable
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
-import Data.List (foldl')
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (isJust, listToMaybe)
+import Data.Maybe (isJust, listToMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set (fromList, member)
 import Data.Text (Text)
@@ -136,7 +136,7 @@ import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
-import Prelude hiding (lookup)
+import Prelude hiding (Foldable (..), lookup)
 
 ------------------------------------------------------------
 -- Properties
@@ -170,6 +170,10 @@ data EntityProperty
     Liquid
   | -- | Robots automatically know what this is without having to scan it.
     Known
+  | -- | Text can be printed on this entity with the
+    --   'Swarm.Language.Syntax.Print' command (and erased with
+    --   'Swarm.Language.Syntax.Erase')
+    Printable
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable)
 
 instance ToJSON EntityProperty where
@@ -243,19 +247,30 @@ data Combustibility = Combustibility
   --   See <https://math.stackexchange.com/a/1243629>.
   , duration :: (Integer, Integer)
   -- ^ min and max tick counts for combustion to persist
+  , delay :: Integer
+  -- ^ Delay until this entity may start igniting its neighbors.
   , product :: Maybe EntityName
   -- ^ what entity, if any, is left over after combustion
   }
-  deriving (Eq, Ord, Show, Read, Generic, Hashable, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Read, Generic, Hashable, ToJSON)
+
+instance FromJSON Combustibility where
+  parseJSON = withObject "Combustibility" $ \v -> do
+    ignition <- v .: "ignition"
+    duration <- v .: "duration"
+    delay <- v .:? "delay" .!= 0
+    product <- v .: "product"
+    pure Combustibility {..}
 
 -- | The default combustion specification for a combustible entity
 --   with no combustion specification:
 --
 --   * ignition rate 0.5
 --   * duration (100, 200)
+--   * delay of 0
 --   * product @ash@
 defaultCombustibility :: Combustibility
-defaultCombustibility = Combustibility 0.5 (100, 200) (Just "ash")
+defaultCombustibility = Combustibility 0.5 (100, 200) 0 (Just "ash")
 
 ------------------------------------------------------------
 -- Entity
@@ -424,21 +439,31 @@ data EntityMap = EntityMap
   }
   deriving (Eq, Show, Generic, ToJSON)
 
--- |
--- Note that duplicates in a single 'EntityMap' are precluded by the
--- 'buildEntityMap' function.
--- But it is possible for the latter 'EntityMap' to override
--- members of the former with the same name.
--- This replacement happens automatically with 'Map', but needs
--- to be explicitly handled for the list concatenation
--- of 'entityDefinitionOrder' (overridden entries are removed
--- from the former 'EntityMap').
+-- | Right-biased union of 'EntityMap's.
+--
+--   Note that duplicates in a single 'EntityMap' are precluded by the
+--   'buildEntityMap' function.  But it is possible for the right-hand
+--   'EntityMap' to override members of the left-hand with the same name.
+--   For example, this is how custom entities defined in a scenario
+--   can override standard entities. This replacement happens
+--   automatically with 'Map' (as long as we keep in mind that Map
+--   union is *left*-biased), but needs to be explicitly handled for the
+--   list concatenation of 'entityDefinitionOrder' (overridden entries
+--   are removed from the former 'EntityMap'), and for 'entitiesByCap',
+--   which are organized by capability rather than by entity.
 instance Semigroup EntityMap where
   EntityMap n1 c1 d1 <> EntityMap n2 c2 d2 =
     EntityMap
-      (n1 <> n2)
-      (c1 <> c2)
-      (filter ((`M.notMember` n2) . view entityName) d1 <> d2)
+      (n2 <> n1)
+      (removeOverriddenDevices c1 <> c2)
+      (filter notOverridden d1 <> d2)
+   where
+    notOverridden :: Entity -> Bool
+    notOverridden = (`M.notMember` n2) . view entityName
+    removeOverriddenDevices (Capabilities m) =
+      Capabilities
+        . M.mapMaybe (NE.nonEmpty . NE.filter (notOverridden . device))
+        $ m
 
 instance Monoid EntityMap where
   mempty = EntityMap M.empty mempty []
@@ -481,9 +506,8 @@ validateEntityAttrRefs validAttrs es =
 --   from a file; see 'loadEntities'.
 buildEntityMap :: Has (Throw LoadingFailure) sig m => [Entity] -> m EntityMap
 buildEntityMap es = do
-  case findDup (map fst namedEntities) of
-    Nothing -> return ()
-    Just duped -> throwError $ Duplicate Entities duped
+  forM_ (findDup $ map fst namedEntities) $
+    throwError . Duplicate Entities
   case combineEntityCapsM entsByName es of
     Left x -> throwError $ CustomMessage x
     Right ebc ->
@@ -724,7 +748,7 @@ lookup e (Inventory cs _ _) = maybe 0 fst $ IM.lookup (e ^. entityHash) cs
 --   positive, or just use 'countByName' in the first place.
 lookupByName :: Text -> Inventory -> [Entity]
 lookupByName name (Inventory cs byN _) =
-  maybe [] (map (snd . (cs IM.!)) . IS.elems) (M.lookup (T.toLower name) byN)
+  maybe [] (mapMaybe (fmap snd . (cs IM.!?)) . IS.elems) (M.lookup (T.toLower name) byN)
 
 -- | Look up an entity by name and see how many there are in the
 --   inventory.  If there are multiple entities with the same name, it

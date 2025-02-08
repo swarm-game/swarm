@@ -57,7 +57,7 @@ data Antiquoting = AllowAntiquoting | DisallowAntiquoting
 -- | Which version of the Swarm language are we parsing?  As a general
 --   rule, we want to support one older version in addition to the
 --   current version, to allow for upgrading code via @swarm format@.
-data LanguageVersion = SwarmLang0_5 | SwarmLangLatest
+data LanguageVersion = SwarmLang0_6 | SwarmLangLatest
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 -- | Read-only parser configuration.

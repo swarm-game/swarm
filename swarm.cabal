@@ -38,7 +38,7 @@ maintainer: byorgey@gmail.com
 bug-reports: https://github.com/swarm-game/swarm/issues
 copyright: Brent Yorgey 2021
 category: Game
-tested-with: ghc ==9.2.8 || ==9.4.8 || ==9.6.5 || ==9.8.2
+tested-with: ghc ==9.4.8 || ==9.6.6 || ==9.8.2 || ==9.10.1
 extra-doc-files:
   CHANGELOG.md
 
@@ -120,7 +120,7 @@ common ghc2021-extensions
     TypeOperators
 
 common base
-  build-depends: base >=4.14 && <4.20
+  build-depends: base >=4.14 && <4.21
 
 common AhoCorasick
   build-depends: AhoCorasick >=0.0.4 && <0.0.5
@@ -198,7 +198,7 @@ common extra
   build-depends: extra >=1.7 && <1.8
 
 common filepath
-  build-depends: filepath >=1.4 && <1.5
+  build-depends: filepath >=1.4 && <1.6
 
 common free
   build-depends: free >=5.2 && <5.3
@@ -284,6 +284,9 @@ common parser-combinators
 common prettyprinter
   build-depends: prettyprinter >=1.7.0 && <1.8
 
+common quickcheck-instances
+  build-depends: quickcheck-instances >=0.3.17 && <0.4
+
 common random
   build-depends: random >=1.2.0 && <1.3
 
@@ -336,7 +339,7 @@ common tasty-quickcheck
   build-depends: tasty-quickcheck >=0.10 && <0.11
 
 common template-haskell
-  build-depends: template-haskell >=2.16 && <2.22
+  build-depends: template-haskell >=2.16 && <2.23
 
 common terminal-size
   build-depends: terminal-size >=0.3 && <1.0
@@ -457,6 +460,7 @@ library swarm-lang
     Swarm.Language.Parser.Term
     Swarm.Language.Parser.Type
     Swarm.Language.Parser.Util
+    Swarm.Language.Parser.Value
     Swarm.Language.Pipeline
     Swarm.Language.Pipeline.QQ
     Swarm.Language.Requirements
@@ -519,6 +523,7 @@ library swarm-topography
     Swarm.Game.Location
     Swarm.Game.Scenario.Topography.Area
     Swarm.Game.Scenario.Topography.Grid
+    Swarm.Game.Scenario.Topography.Modify
     Swarm.Game.Scenario.Topography.Navigation.Waypoint
     Swarm.Game.Scenario.Topography.Placement
     Swarm.Game.Scenario.Topography.ProtoCell
@@ -632,7 +637,6 @@ library swarm-scenario
     Swarm.Game.World.Gen
     Swarm.Game.World.Interpret
     Swarm.Game.World.Load
-    Swarm.Game.World.Modify
     Swarm.Game.World.Parse
     Swarm.Game.World.Render
     Swarm.Game.World.Syntax
@@ -682,6 +686,7 @@ library swarm-engine
     servant-docs,
     text,
     time,
+    hashable,
     transformers,
     unordered-containers,
     witch,
@@ -769,12 +774,14 @@ library swarm-web
     wai,
     wai-app-static,
     warp,
+    dotgen,
     witch,
 
   visibility: public
   -- cabal-gild: discover src/swarm-web
   exposed-modules:
     Swarm.Web
+    Swarm.Web.GraphRender
     Swarm.Web.Worldview
 
   other-modules: Paths_swarm
@@ -1213,6 +1220,7 @@ test-suite swarm-unit
     lens,
     megaparsec,
     mtl,
+    quickcheck-instances,
     tasty,
     tasty-hunit,
     tasty-quickcheck,
@@ -1220,12 +1228,14 @@ test-suite swarm-unit
     time,
     vty,
     witch,
+    yaml,
 
   main-is: Main.hs
   type: exitcode-stdio-1.0
   other-modules:
     TestBoolExpr
     TestCommand
+    TestContext
     TestEval
     TestInventory
     TestLSP

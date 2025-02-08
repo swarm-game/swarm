@@ -41,11 +41,12 @@ import System.Clock
 activateWorldEditorFunction :: WorldEditorFocusable -> EventM Name AppState ()
 activateWorldEditorFunction BrushSelector = openModal TerrainPaletteModal
 activateWorldEditorFunction EntitySelector = openModal EntityPaletteModal
-activateWorldEditorFunction AreaSelector = do
-  selectorStage <- use $ uiState . uiGameplay . uiWorldEditor . editingBounds . boundsSelectionStep
-  case selectorStage of
-    SelectionComplete -> uiState . uiGameplay . uiWorldEditor . editingBounds . boundsSelectionStep .= UpperLeftPending
-    _ -> return ()
+activateWorldEditorFunction AreaSelector =
+  Brick.zoom (uiState . uiGameplay . uiWorldEditor . editingBounds) $ do
+    selectorStage <- use boundsSelectionStep
+    case selectorStage of
+      SelectionComplete -> boundsSelectionStep .= UpperLeftPending
+      _ -> return ()
 activateWorldEditorFunction OutputPathSelector =
   -- TODO: #1371
   liftIO $ putStrLn "File selection"
@@ -67,7 +68,6 @@ handleCtrlLeftClick mouseLoc = do
       worldOverdraw . paintedTerrain %= M.insert (mouseCoords ^. planar) (terrain, maybeToErasable maybeEntityPaint)
       lastWorldEditorMessage .= Nothing
   immediatelyRedrawWorld
-  return ()
 
 handleRightClick :: B.Location -> EventM Name AppState ()
 handleRightClick mouseLoc = do
@@ -77,7 +77,6 @@ handleRightClick mouseLoc = do
     mouseCoords <- MaybeT $ Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
     uiState . uiGameplay . uiWorldEditor . worldOverdraw . paintedTerrain %= M.delete (mouseCoords ^. planar)
   immediatelyRedrawWorld
-  return ()
 
 -- | "Eye Dropper" tool:
 handleMiddleClick :: B.Location -> EventM Name AppState ()
@@ -143,16 +142,20 @@ updateAreaBounds = \case
 
 saveMapFile :: EventM Name AppState ()
 saveMapFile = do
-  worldEditor <- use $ uiState . uiGameplay . uiWorldEditor
-  maybeBounds <- use $ uiState . uiGameplay . uiWorldEditor . editingBounds . boundsRect
-  w <- use $ gameState . landscape . multiWorld
-  tm <- use $ gameState . landscape . terrainAndEntities . terrainMap
-  let mapCellGrid =
+  uig <- use $ uiState . uiGameplay
+  land <- use $ gameState . landscape
+  let worldEditor = uig ^. uiWorldEditor
+      maybeBounds = uig ^. uiWorldEditor . editingBounds . boundsRect
+
+      w = land ^. multiWorld
+      tm = land ^. terrainAndEntities . terrainMap
+      mapCellGrid =
         Just
           <$> EU.getEditedMapRectangle tm (worldEditor ^. worldOverdraw) maybeBounds w
 
-  let fp = worldEditor ^. outputFilePath
-  maybeScenarioPair <- use $ uiState . uiGameplay . scenarioRef
+      fp = worldEditor ^. outputFilePath
+      maybeScenarioPair = uig ^. scenarioRef
+
   liftIO $ Y.encodeFile fp $ constructScenario (fst <$> maybeScenarioPair) mapCellGrid
 
   uiState . uiGameplay . uiWorldEditor . lastWorldEditorMessage .= Just "Saved."

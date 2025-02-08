@@ -15,7 +15,7 @@ def negateTuple = \t.
 
 def getRelativeLocation = \absCurrentLoc. \absDestLoc.
     let negatedLoc = negateTuple absCurrentLoc in
-    return $ sumTuples negatedLoc absDestLoc;
+    pure $ sumTuples negatedLoc absDestLoc;
     end;
 
 def moveTuple = \tup.
@@ -34,15 +34,15 @@ def goToLocation = \currentLoc. \absoluteDestination.
 
 def visitNextWaypoint = \nextWpIdx.
     loc <- whereami;
-    nextWaypointQuery <- waypoint "wp" nextWpIdx;
-    goToLocation loc $ snd nextWaypointQuery;
+    let nextWaypointQuery = waypoint "wp" nextWpIdx in
+    goToLocation loc $ nextWaypointQuery;
 
     visitNextWaypoint $ nextWpIdx + 1;
     end;
 
 def go =
-    waypointQuery <- waypoint "wp" 0;
-    teleport self $ snd waypointQuery;
+    let waypointQuery = waypoint "wp" 0 in
+    teleport self $ waypointQuery;
     visitNextWaypoint 1;
     end;
 

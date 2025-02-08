@@ -2,8 +2,8 @@ def goDir = \f. \r.
   let d = fst r in
   if (d == down) {
     eggHere <- ishere "egg";
-    if eggHere {grab; return ()} {};
-    return ()
+    if eggHere {grab; pure ()} {};
+    pure ()
   } {
     turn d;
 
@@ -19,12 +19,12 @@ def goDir = \f. \r.
 
 def followRoute = \loc.
     nextDir <- path (inL ()) (inL loc);
-    case nextDir return $ goDir $ followRoute loc;
+    case nextDir pure $ goDir $ followRoute loc;
     end;
 
 def visitNextWaypoint = \nextWpIdx.
-    nextWaypointQuery <- waypoint "wp" nextWpIdx;
-    followRoute $ snd nextWaypointQuery;
+    let nextWaypointQuery = waypoint "wp" nextWpIdx in
+    followRoute $ nextWaypointQuery;
 
     visitNextWaypoint $ nextWpIdx + 1;
     end;

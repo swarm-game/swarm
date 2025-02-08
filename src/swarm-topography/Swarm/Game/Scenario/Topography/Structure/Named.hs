@@ -4,9 +4,15 @@ module Swarm.Game.Scenario.Topography.Structure.Named where
 
 import Data.Set (Set)
 import Data.Text (Text)
-import Swarm.Game.Scenario.Topography.Grid (Grid)
-import Swarm.Game.Scenario.Topography.Placement (StructureName)
+import Data.Yaml
+import GHC.Generics (Generic)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
+
+newtype StructureName = StructureName Text
+  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
+
+getStructureName :: StructureName -> Text
+getStructureName (StructureName sn) = sn
 
 data NamedArea a = NamedArea
   { name :: StructureName
@@ -20,9 +26,7 @@ data NamedArea a = NamedArea
   -- ^ will be UI-facing only if this is a recognizable structure
   , structure :: a
   }
-  deriving (Eq, Show, Functor)
+  deriving (Eq, Show, Functor, Foldable, Traversable)
 
 isRecognizable :: NamedArea a -> Bool
 isRecognizable = not . null . recognize
-
-type NamedGrid c = NamedArea (Grid c)

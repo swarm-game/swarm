@@ -16,6 +16,7 @@ import Control.Lens (Plated (..))
 import Data.Aeson.Types hiding (Key)
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
+import Data.Hashable (Hashable)
 import Data.Map.Strict (Map)
 import Data.Text (Text)
 import GHC.Generics (Generic)
@@ -37,7 +38,7 @@ data Syntax' ty = Syntax'
   , _sComments :: Comments
   , _sType :: ty
   }
-  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, Hashable)
 
 instance Data ty => Plated (Syntax' ty) where
   plate = uniplate
@@ -46,7 +47,7 @@ instance Data ty => Plated (Syntax' ty) where
 --   as @def x = e1 end; e2@. This enumeration simply records which it
 --   was so that we can pretty-print appropriatly.
 data LetSyntax = LSLet | LSDef
-  deriving (Eq, Ord, Show, Bounded, Enum, Generic, Data, ToJSON, FromJSON)
+  deriving (Eq, Ord, Show, Bounded, Enum, Generic, Data, Hashable, ToJSON, FromJSON)
 
 ------------------------------------------------------------
 -- Term: basic syntax tree
@@ -141,6 +142,8 @@ data Term' ty
   | -- | Run the given command, then suspend and wait for a new REPL
     --   input.
     SSuspend (Syntax' ty)
+  | -- | A type literal.
+    TType Type
   deriving
     ( Eq
     , Show
@@ -148,6 +151,7 @@ data Term' ty
     , Foldable
     , Data
     , Generic
+    , Hashable
     , -- | The Traversable instance for Term (and for Syntax') is used during
       -- typechecking: during intermediate type inference, many of the type
       -- annotations placed on AST nodes will have unification variables in

@@ -11,15 +11,15 @@ def intersperse = \n. \f2. \f1. if (n > 0) {
 
 def whichOrdinal = \str.
     if (str == "capital C") {
-        return 0;
+        pure 0;
     } {
         if (str == "capital O") {
-            return 1;
+            pure 1;
         } {
             if (str == "capital W") {
-                return 2;
+                pure 2;
             } {
-                return (-1);
+                pure (-1);
             }
         }
     }
@@ -30,7 +30,7 @@ Returns -1 if not a recognized letter.
 */
 def getAdjacentOrdinal = \d.
     maybeEntity <- scan d;
-    str <- case maybeEntity (\_. return "") (\s. return s);
+    str <- case maybeEntity (\_. pure "") (\s. pure s);
     whichOrdinal str;
     end;
 
@@ -48,12 +48,12 @@ def iterN = \n. \f.
 
 def chooseLetter = \i.
     if (i == 0) {
-        return "capital C";
+        pure "capital C";
     } {
         if (i == 1) {
-            return "capital O";
+            pure "capital O";
         } {
-            return "capital W";
+            pure "capital W";
         }
     };
     end;
@@ -73,16 +73,16 @@ def getExcludedVerticalLetter =
         teleport self currentLoc;
 
         if (doubleNorthOrdinal == 2) {
-            return 0;
+            pure 0;
         } {
             if (doubleNorthOrdinal == 0) {
-                return 2;
+                pure 2;
             } {
-                return (-1);
+                pure (-1);
             }
         }
     } {
-        return (-1);
+        pure (-1);
     }
     end;
 
@@ -106,18 +106,18 @@ def reRoll = \excludedVertical. \expectedFwdOrdinal. \expectedBkwdOrdinal.
 
     if excludeZero {
         if (excludedVertical == 2) {
-            return 1;
+            pure 1;
         } {
             // Zero is the only excluded value,
             // so just offset a choice between 0 and 1 upward by 1, 
             // to make it a choice between 1 and 2.
             val <- random 2;
-            return $ val + 1;
+            pure $ val + 1;
         };
     } {
         if excludeTwo {
             if (excludedVertical == 0) {
-                return 1;
+                pure 1;
             } {
                 // Two is the only excluded value,
                 // so make it a choice between 0 and 1.
@@ -129,7 +129,7 @@ def reRoll = \excludedVertical. \expectedFwdOrdinal. \expectedBkwdOrdinal.
                 // so just offset a choice between 0 and 1 upward by 1, 
                 // to make it a choice between 1 and 2.
                 val <- random 2;
-                return $ val + 1;
+                pure $ val + 1;
             } {
                 if (excludedVertical == 2) {
                     // Two is the only excluded value,
@@ -150,7 +150,7 @@ def singleTile = \expectedFwdOrdinal. \expectedBkwdOrdinal.
     letterIndex <- reRoll excludedVertical expectedFwdOrdinal expectedBkwdOrdinal;
     chosenLetter <- chooseLetter letterIndex;
     place chosenLetter;
-    return letterIndex;
+    pure letterIndex;
     end;
 
 def crossBack = \_n.
@@ -169,15 +169,15 @@ def layTilesRow = \expectedFwdOrdinal. \expectedBkwdOrdinal. \n.
         move;
 
         newFwdOrdinal <- if (placedIndex == expectedFwdOrdinal || placedIndex == 0) {
-            return $ placedIndex + 1;
+            pure $ placedIndex + 1;
         } {
-            return 0;
+            pure 0;
         };
 
         newBkwdOrdinal <- if (placedIndex == expectedBkwdOrdinal || placedIndex == 2) {
-            return $ placedIndex - 1;
+            pure $ placedIndex - 1;
         } {
-            return 2;
+            pure 2;
         };
 
         layTilesRow newFwdOrdinal newBkwdOrdinal $ n - 1;

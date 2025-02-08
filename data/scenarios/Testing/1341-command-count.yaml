@@ -22,7 +22,7 @@ solution: |
     move;
     grab;
   } {
-    return "";
+    pure "";
   };
 robots:
   - name: base

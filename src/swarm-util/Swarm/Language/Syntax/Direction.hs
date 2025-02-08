@@ -10,6 +10,7 @@
 module Swarm.Language.Syntax.Direction (
   -- * Directions
   Direction (..),
+  CoordinateOrientation (..),
   AbsoluteDir (..),
   RelativeDir (..),
   PlanarRelativeDir (..),

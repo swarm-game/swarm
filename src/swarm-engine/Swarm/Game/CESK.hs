@@ -169,9 +169,6 @@ data Frame
 instance ToJSON Frame where
   toJSON = genericToJSON optionsMinimize
 
-instance FromJSON Frame where
-  parseJSON = genericParseJSON optionsMinimize
-
 -- | A continuation is just a stack of frames.
 type Cont = [Frame]
 
@@ -184,7 +181,7 @@ type Addr = Int
 -- | 'Store' represents a store, /i.e./ memory, indexing integer
 --   locations to 'Value's.
 data Store = Store {next :: Addr, mu :: IntMap Value}
-  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+  deriving (Show, Eq, Generic, ToJSON)
 
 emptyStore :: Store
 emptyStore = Store 0 IM.empty
@@ -269,9 +266,6 @@ data CESK
 instance ToJSON CESK where
   toJSON = genericToJSON optionsMinimize
 
-instance FromJSON CESK where
-  parseJSON = genericParseJSON optionsMinimize
-
 -- | Is the CESK machine in a final (finished) state?  If so, extract
 --   the final value and store.
 finalValue :: CESK -> Maybe Value
@@ -326,7 +320,7 @@ cont = lens get set
 -- | Create a brand new CESK machine, with empty environment and
 --   store, to evaluate a given term.  We always initialize the
 --   machine with a single FExec frame as the continuation; if the
---   given term does not have a command type, we wrap it in @return@.
+--   given term does not have a command type, we wrap it in @pure@.
 initMachine :: TSyntax -> CESK
 initMachine t = In (prepareTerm mempty t) mempty emptyStore [FExec]
 
@@ -359,14 +353,14 @@ continue t = \case
 
 -- | Prepare a term for evaluation by a CESK machine in the given
 --   environment: erase all type annotations, and optionally wrap it
---   in @return@ if it does not have a command type.  Note that since
+--   in @pure@ if it does not have a command type.  Note that since
 --   the environment might contain type aliases, we have to be careful
 --   to expand them before concluding whether the term has a command
 --   type or not.
 prepareTerm :: Env -> TSyntax -> Term
 prepareTerm e t = case whnfType (e ^. envTydefs) (ptBody (t ^. sType)) of
   TyCmd _ -> t'
-  _ -> TApp (TConst Return) t'
+  _ -> TApp (TConst Pure) t'
  where
   t' = eraseS t
 

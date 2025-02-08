@@ -9,9 +9,8 @@ module Swarm.Language.Parser.Term where
 import Control.Lens (view, (^.))
 import Control.Monad (guard, join)
 import Control.Monad.Combinators.Expr
-import Data.Foldable (asum)
+import Data.Foldable (Foldable (..), asum)
 import Data.Functor (($>))
-import Data.List (foldl')
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
@@ -27,6 +26,7 @@ import Swarm.Language.Types
 import Swarm.Util (failT, findDup)
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
+import Prelude hiding (Foldable (..))
 
 -- Imports for doctests (cabal-docspec needs this)
 
@@ -43,10 +43,17 @@ parseDirection = asum (map alternative allDirs) <?> "direction constant"
 
 -- | Parse Const as reserved words (e.g. @Fail <$ reserved "fail"@)
 parseConst :: Parser Const
-parseConst = asum (map alternative consts) <?> "built-in user function"
+parseConst = do
+  ver <- view languageVersion
+  asum (map (alternative ver) consts) <?> "built-in user function"
  where
   consts = filter isUserFunc allConst
-  alternative c = c <$ reserved (syntax $ constInfo c)
+  alternative ver c = c <$ reserved (syntax $ constInfo' ver c)
+
+  -- Version 0.6 of the language had a constant named @return@, which
+  -- is now renamed to @pure@
+  constInfo' SwarmLang0_6 Pure = (constInfo Pure) {syntax = "return"}
+  constInfo' _ c = constInfo c
 
 -- | Parse an atomic term, optionally trailed by record projections like @t.x.y.z@.
 --   Record projection binds more tightly than function application.
@@ -136,7 +143,7 @@ parseTerm = sepEndBy1 parseStmt (symbol ";") >>= mkBindChain
 
 mkBindChain :: [Stmt] -> Parser Syntax
 mkBindChain stmts = case last stmts of
-  Binder x _ -> return $ foldr mkBind (STerm (TApp (TConst Return) (TVar (lvVar x)))) stmts
+  Binder x _ -> return $ foldr mkBind (STerm (TApp (TConst Pure) (TVar (lvVar x)))) stmts
   BareTerm t -> return $ foldr mkBind t (init stmts)
  where
   mkBind (BareTerm t1) t2 = loc Nothing t1 t2 $ SBind Nothing Nothing Nothing Nothing t1 t2

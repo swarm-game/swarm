@@ -10,8 +10,8 @@ objectives:
       try {
         teleport self (27, -17);
         b <- ishere "goal";
-        return (not b)
-      } { return false }
+        pure (not b)
+      } { pure false }
 solution: |
   run "scenarios/Challenges/Mazes/loopy_maze_sol.sw"
 robots:

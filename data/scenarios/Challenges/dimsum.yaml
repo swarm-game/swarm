@@ -12,7 +12,7 @@ objectives:
       p <- robotnamed "patron";
       as p {
         foodCount <- count "food";
-        return $ foodCount >= 2;
+        pure $ foodCount >= 2;
       }
 solution: |
   run "scenarios/Challenges/_dimsum/solution.sw"

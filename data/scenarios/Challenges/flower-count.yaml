@@ -1,0 +1,178 @@
+version: 1
+name: Flower Count
+author: Brent Yorgey
+description: |
+  Count the flowers quickly... or else!
+creative: false
+objectives:
+  - id: count_flowers
+    teaser: Count the flowers!
+    goal:
+      - |
+        Your evil nemesis, the sadistic arithmomaniac supervillain Count Nemesis, is
+        at it again!  They have wired up some explosives to your
+        `True Love`{=robot} and lit the fuse, but promised to stop it... IF you can
+        count all the flowers in time!
+      - |
+        Specifically, Count Nemesis demands that you count the
+        total number of flowers in the 120x40 field bounded by walls,
+        `print` the number on a piece of `paper`{=entity}, and place
+        the paper at the origin, `(0,0)`.  If the number is correct,
+        the countdown stops and your True Love is saved.  If the
+        number is incorrect... nothing happens, but the fuse continues
+        to burn!
+      - |
+        And watch out, Count Nemesis won't abide anyone picking his flowers.
+    condition: |
+      judge <- robotNamed "judge";
+      as judge { has "gold" }
+  - id: pick_flower
+    hidden: true
+    optional: true
+    teaser: You just don't listen, do you
+    goal:
+      - |
+        I told you not to pick any flowers!  Now your True Love is
+        dead... because of YOU!
+      - |
+        Perhaps you would like to go back in time and try again.
+    condition: |
+      f <- as base { has "flower" };
+      judge <- robotNamed "judge";
+      g <- as judge { has "gold" };
+      pure (not g && f)
+  - id: out_of_time
+    hidden: true
+    optional: true
+    teaser: Not fast enough
+    goal:
+      - |
+        You were not fast enough, and now your True Love is
+        dead... because of YOU!
+      - |
+        Perhaps you would like to go back in time and try again.
+    condition: |
+      truelove <- robotNamed "truelove";
+      as truelove { b <- ishere "fuse"; pure (not b) }
+  - id: joinpoint
+    hidden: true
+    teaser: Follow instructions!
+    prerequisite:
+      logic:
+        and:
+          - count_flowers
+          - not: pick_flower
+          - not: out_of_time
+    condition: |
+      pure true
+  - id: win
+    teaser: Give a flower
+    prerequisite: joinpoint
+    goal:
+      - |
+        Congratulations!  You foiled the plan of evil Dr. Nemesis and
+        saved your True Love!  The only thing left is to give your
+        True Love a `flower`{=entity}!
+    condition: |
+      truelove <- robotNamed "truelove";
+      as truelove { has "flower" }
+solution: |
+  run "scenarios/Challenges/_flower-count/solution.sw"
+robots:
+  - name: base
+    dir: north
+    devices:
+      - solar panel
+      - treads
+      - antenna
+      - comparator
+      - ADT calculator
+      - workbench
+      - grabber
+      - dictionary
+      - lambda
+      - logger
+      - welder
+      - scanner
+      - strange loop
+      - typewriter
+      - 3D printer
+      - branch predictor
+      - clock
+      - GPS receiver
+      - compass
+      - counter
+    inventory:
+      - [12, solar panel]
+      - [12, dictionary]
+      - [12, lambda]
+      - [12, treads]
+      - [12, branch predictor]
+      - [12, comparator]
+      - [12, hyperloop]
+      - [12, compass]
+      - [12, scanner]
+      - [12, logger]
+      - [12, GPS receiver]
+      - [12, string]
+      - [12, typewriter]
+      - [12, rubber band]
+      - [12, grabber]
+      - [12, parsley]
+      - [1, paper]
+  - name: igniter
+    system: true
+    dir: east
+    devices:
+      - logger
+    program: 'ignite down'
+  - name: judge
+    system: true
+    dir: east
+    devices:
+      - logger
+    program: |
+      run "scenarios/Challenges/_flower-count/judge.sw"
+  - name: truelove
+    system: true
+    display:
+      invisible: false
+      attr: red
+      char: '♥'
+    description: Your One True Love.
+attrs:
+  - name: fuse
+    fg: '#cccccc'
+    bg: '#002f00'
+entities:
+  - name: fuse
+    display:
+      attr: fuse
+      char: '-'
+    description:
+      - Slow-burning fuse
+    properties: [combustible, known, boundary]
+    combustion:
+      ignition: 20
+      duration: [64, 64]
+      delay: 63
+      product: ash
+known: [flower, wall, ash]
+world:
+  dsl: |
+    overlay
+    [ if (hash % 7 <= 2) then {grass, flower} else {grass}
+    , mask ((x == 61 || x == (-60)) && y <= 21 && y >= -20) {wall, stone}
+    , mask ((y == 21 || y == (-20)) && x <= 61 && x >= -60) {wall, stone}
+    ]
+  upperleft: [0, 0]
+  offset: false
+  palette:
+    'B': [grass, null, base]
+    'J': [grass, erase, judge]
+    '.': [grass]
+    '-': [grass, fuse]
+    'L': [grass, fuse, truelove]
+    'I': [grass, fuse, igniter]
+  map: |
+    JB..I---------------L

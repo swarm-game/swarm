@@ -25,10 +25,10 @@ queue_rules:
           - or:
             - check-success=HLint
             - -files~=\.hs$
+          - check-success=Haskell-CI - Linux - ghc-9.10.1
           - check-success=Haskell-CI - Linux - ghc-9.8.2
-          - check-success=Haskell-CI - Linux - ghc-9.6.5
+          - check-success=Haskell-CI - Linux - ghc-9.6.6
           - check-success=Haskell-CI - Linux - ghc-9.4.8
-          - check-success=Haskell-CI - Linux - ghc-9.2.8
           - check-success=Haskell-CI - windows-latest - ghc-9.8.2
 
 pull_request_rules:
@@ -57,10 +57,10 @@ pull_request_rules:
       - or:
         - check-success=HLint
         - -files~=\.hs$
+      - check-success=Haskell-CI - Linux - ghc-9.10.1
       - check-success=Haskell-CI - Linux - ghc-9.8.2
-      - check-success=Haskell-CI - Linux - ghc-9.6.5
+      - check-success=Haskell-CI - Linux - ghc-9.6.6
       - check-success=Haskell-CI - Linux - ghc-9.4.8
-      - check-success=Haskell-CI - Linux - ghc-9.2.8
       - check-success=Haskell-CI - windows-latest - ghc-9.8.2
   - label=merge me
   - ! '#approved-reviews-by>=1'

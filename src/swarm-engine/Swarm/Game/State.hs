@@ -15,6 +15,7 @@ module Swarm.Game.State (
   creativeMode,
   winCondition,
   winSolution,
+  completionStatsSaved,
 
   -- ** Launch parameters
   LaunchParams,
@@ -170,6 +171,22 @@ parseCodeFile filepath = do
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
+--
+--   To answer the question of what belongs in the `GameState` and
+--   what belongs in the `UIState`, ask yourself the question: is this
+--   something specific to a particular UI, or is it something
+--   inherent to the game which would be needed even if we put a
+--   different UI on top (web-based, GUI-based, etc.)? For example,
+--   tracking whether the game is paused needs to be in the
+--   `GameState`: especially if we want to have the game running in
+--   one thread and the UI running in another thread, then the game
+--   itself needs to keep track of whether it is currently paused, so
+--   that it can know whether to step independently of the UI telling
+--   it so. For example, the game may run for several ticks during a
+--   single frame, but if an objective is completed during one of
+--   those ticks, the game needs to immediately auto-pause without
+--   waiting for the UI to tell it that it should do so, which could
+--   come several ticks late.
 data GameState = GameState
   { _creativeMode :: Bool
   , _temporal :: TemporalState
@@ -185,6 +202,7 @@ data GameState = GameState
   , _needsRedraw :: Bool
   , _gameControls :: GameControls
   , _messageInfo :: Messages
+  , _completionStatsSaved :: Bool
   }
 
 makeLensesNoSigs ''GameState
@@ -222,7 +240,7 @@ pathCaching :: Lens' GameState PathCaching
 -- | Get all the robots within a given Manhattan distance from a
 --   location.
 robotsInArea :: Cosmic Location -> Int32 -> Robots -> [Robot]
-robotsInArea (Cosmic subworldName o) d rs = map (rm IM.!) rids
+robotsInArea (Cosmic subworldName o) d rs = mapMaybe (rm IM.!?) rids
  where
   rm = rs ^. robotMap
   rl = rs ^. robotsByLocation
@@ -274,6 +292,17 @@ gameControls :: Lens' GameState GameControls
 
 -- | Message info
 messageInfo :: Lens' GameState Messages
+
+-- | Whether statistics for the current scenario have been saved to
+--   disk *upon scenario completion*. (It should remain False whenever
+--   the current scenario has not been completed, either because there
+--   is no win condition or because the player has not yet achieved
+--   it.)  If this is set to True, we should not update completion
+--   statistics any more.  We need this to make sure we don't
+--   overwrite statistics if the user continues playing the scenario
+--   after completing it (or even if the user stays in the completion
+--   menu for a while before quitting; see #1932).
+completionStatsSaved :: Lens' GameState Bool
 
 ------------------------------------------------------------
 -- Utilities
@@ -476,6 +505,7 @@ initGameState gsc =
     , _needsRedraw = False
     , _gameControls = initGameControls
     , _messageInfo = initMessages
+    , _completionStatsSaved = False
     }
 
 -- | Provide an entity accessor via the MTL transformer State API.

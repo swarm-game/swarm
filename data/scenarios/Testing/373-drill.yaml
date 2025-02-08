@@ -9,8 +9,8 @@ objectives:
         i <- as base {has "iron ore"};
         c <- as base {has "copper ore"};
         s <- as base {has "rock"};
-        return (i && c && s)
-      } { return false }
+        pure (i && c && s)
+      } { pure false }
 solution: |
   build {
     move; drill forward; turn back; move; turn left;

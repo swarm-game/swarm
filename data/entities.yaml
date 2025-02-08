@@ -69,7 +69,7 @@
     char: '■'
   description:
     - A flat material made of pressed and dried wood fibers, used as a surface on which to inscribe symbols.
-  properties: [pickable, combustible]
+  properties: [pickable, combustible, printable]
   combustion:
     ignition: 0.5
     duration: [10, 20]
@@ -330,6 +330,22 @@
     ignition: 0.1
     duration: [20, 40]
     product: ash
+- name: parsley
+  display:
+    attr: plant
+    char: 'p'
+  description:
+    - A fast-growing plant with a pungent aroma, often found growing near rocks.
+    - |
+      When equipped as a device, parsley enables the `read` command, which can be used to turn text into values:
+      ```
+      read : Text -> a
+      ```
+      If the given `Text`{=type} represents a value of the expected type, the value will be returned; otherwise, an exception is thrown.  For example, `(read "3" : Int) == 3`, but `read "hello" : Int` crashes.
+    - Note that `read`, unlike `format`, is unable to deal with function, delay, or command types.
+  properties: [pickable, growable]
+  capabilities: [read]
+  growth: [10, 100]
 - name: linotype
   display:
     attr: silver
@@ -580,15 +596,15 @@
     attr: blue
     char: 'B'
   description:
-    - This enables the `structure` and `floorplan` commands to locate and analyze structures placed in the world.
+    - This enables the `structures` and `floorplan` commands to locate and analyze structures placed in the world.
     - |
-      `structure : Text -> Int -> Cmd (Unit + (Int * (Int * Int)))`
-    - Gets the x, y coordinates of the southwest corner of a constructed structure, by name and index.
+      `structures : Text -> Cmd (rec l. Unit + (Int * Int) * l)`
+    - Gets the x, y coordinates of the southwest corner of every constructed structure with a given name.
     - |
       `floorplan : Text -> Cmd (Int * Int)`
     - Gets the dimensions of a structure template.
   properties: [pickable]
-  capabilities: [structure, floorplan]
+  capabilities: [structures, floorplan]
 - name: drill bit
   display:
     attr: entity
@@ -868,8 +884,9 @@
     attr: device
     char: 'Д'
   description:
-    - A typewriter is used to inscribe symbols on paper, thus reifying pure, platonic information into a physical form.
+    - A typewriter is used to inscribe symbols on `paper`{=entity}, thus reifying pure, platonic information into a physical form.
   properties: [pickable]
+  capabilities: [print, erase]
 - name: 3D printer
   display:
     attr: device
@@ -1163,14 +1180,14 @@
     - "A rubber band can tie multiple commands together so that other robots can't execute commands in between them.  It can be used via the `atomic` command. For example, suppose robot A executes the following code:"
     - |
       ```
-      b <- ishere "rock"; if b {grab; return ()} {}
+      b <- ishere "rock"; if b {grab; pure ()} {}
       ```
     - "This seems like a safe way to execute `grab` only when there is a rock to grab.  However, it is actually possible for the `grab` to fail, if some other robot B snatches the rock right after robot A sensed it and before robot A got around to grabbing it on the next game tick."
     - "This will make robot A very sad and it will crash."
     - "To prevent this situation, robot A can wrap the commands in `atomic`, like so:"
     - |
       ```
-      atomic (b <- ishere "rock"; if b {grab; return ()} {})
+      atomic (b <- ishere "rock"; if b {grab; pure ()} {})
       ```
   properties: [pickable]
   capabilities: [atomic]

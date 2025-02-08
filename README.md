@@ -52,7 +52,7 @@ unreleased features), read on.
        Haskell toolchain.
     1. Use `ghcup` to install a supported version of GHC:
 
-           ghcup install ghc 9.8.2
+           ghcup install ghc 9.8.2 --set
 
     1. Use `ghcup` to install `cabal`:
 

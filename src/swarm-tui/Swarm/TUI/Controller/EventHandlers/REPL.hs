@@ -51,7 +51,7 @@ togglePilotingMode = do
   s <- get
   let theRepl = s ^. uiState . uiGameplay . uiREPL
       uinput = theRepl ^. replPromptText
-  curMode <- use $ uiState . uiGameplay . uiREPL . replControlMode
+      curMode = theRepl ^. replControlMode
   case curMode of
     Piloting -> uiState . uiGameplay . uiREPL . replControlMode .= Typing
     _ ->

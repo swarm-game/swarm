@@ -6,12 +6,14 @@
 -- See "Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute" for
 -- details of the structure recognition process.
 module Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking (
+  RecognitionActiveStatus (..),
   entityModified,
+  entityModifiedLoggable,
 ) where
 
 import Control.Arrow (left, (&&&))
 import Control.Lens ((%~), (&), (.~), (^.))
-import Control.Monad (foldM, guard, unless)
+import Control.Monad (foldM, forM_, guard, unless)
 import Control.Monad.Extra (findM)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
@@ -33,6 +35,7 @@ import Data.Semigroup (Max (..), Min (..))
 import Data.Tuple (swap)
 import Linear (V2 (..))
 import Swarm.Game.Location (Location)
+import Swarm.Game.Scenario.Topography.Structure.Named (name)
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (GenericEntLocator, ensureStructureIntact)
@@ -43,60 +46,78 @@ import Swarm.Game.Scenario.Topography.Terraform
 import Swarm.Game.Universe
 import Text.AhoCorasick
 
+data RecognitionActiveStatus
+  = RecognizeNewStructures
+  | -- | Do not add new recognitions to the registry.
+    -- This is useful if one needs to construct a larger structure
+    -- for which other smaller structures contained within it
+    -- would otherwise be recognized first, precluding the larger
+    -- structure from ever being recognized.
+    -- Removing elements of a previously recognized structure
+    -- will still cause it to be removed from the registry.
+    DisableNewRecognition
+  deriving (Show, Eq, Ord, Enum, Bounded)
+
 -- | A hook called from the centralized entity update function,
 -- 'Swarm.Game.Step.Util.updateEntityAt'.
---
--- This handles structure detection upon addition of an entity,
--- and structure de-registration upon removal of an entity.
--- Also handles atomic entity swaps.
 entityModified ::
   (Monad s, Hashable a, Eq b) =>
   GenericEntLocator s a ->
   CellModification a ->
   Cosmic Location ->
-  StructureRecognizer b a ->
-  s (StructureRecognizer b a)
-entityModified entLoader modification cLoc recognizer = do
-  (val, accumulatedLogs) <- runWriterT $ case modification of
-    Add newEntity -> doAddition newEntity recognizer
-    Remove _ -> doRemoval
-    Swap _ newEntity -> doRemoval >>= doAddition newEntity
+  RecognizerAutomatons b a ->
+  RecognitionState b a ->
+  s (RecognitionState b a)
+entityModified entLoader modification cLoc autoRecognizer oldRecognitionState = do
+  (val, accumulatedLogs) <-
+    runWriterT $
+      entityModifiedLoggable RecognizeNewStructures entLoader modification cLoc autoRecognizer oldRecognitionState
   return $
     val
-      & recognitionState . recognitionLog %~ (reverse accumulatedLogs <>)
+      & recognitionLog %~ (reverse accumulatedLogs <>)
+
+-- | This handles structure detection upon addition of an entity,
+-- and structure de-registration upon removal of an entity.
+-- Also handles atomic entity swaps.
+entityModifiedLoggable ::
+  (Monoid (f (SearchLog a)), Monad m, Hashable a, Eq b, Applicative f) =>
+  RecognitionActiveStatus ->
+  (Cosmic Location -> m (AtomicKeySymbol a)) ->
+  CellModification a ->
+  Cosmic Location ->
+  RecognizerAutomatons b a ->
+  RecognitionState b a ->
+  WriterT (f (SearchLog a)) m (RecognitionState b a)
+entityModifiedLoggable activeStatus entLoader modification cLoc autoRecognizer oldRecognitionState = do
+  case modification of
+    Add newEntity -> doAddition newEntity oldRecognitionState
+    Remove _ -> doRemoval oldRecognitionState
+    Swap _ newEntity -> doRemoval oldRecognitionState >>= doAddition newEntity
  where
-  entLookup = recognizer ^. automatons . automatonsByEntity
+  entLookup = autoRecognizer ^. automatonsByEntity
 
-  doAddition newEntity r = do
-    stateRevision <- case HM.lookup newEntity entLookup of
-      Nothing -> return oldRecognitionState
-      Just finder -> do
-        tell . pure . FoundParticipatingEntity $
-          ParticipatingEntity
-            newEntity
-            (finder ^. inspectionOffsets)
-        registerRowMatches entLoader cLoc finder oldRecognitionState
-
-    return $ r & recognitionState .~ stateRevision
+  doAddition newEntity = case activeStatus of
+    RecognizeNewStructures -> maybe return logAndRegister $ HM.lookup newEntity entLookup
+    DisableNewRecognition -> return
    where
-    oldRecognitionState = r ^. recognitionState
+    logAndRegister finder s = do
+      tell . pure . FoundParticipatingEntity $
+        ParticipatingEntity
+          newEntity
+          (finder ^. inspectionOffsets)
+      newFoundStructures <- registerRowMatches entLoader cLoc finder $ s ^. foundStructures
+      return $ s & foundStructures .~ newFoundStructures
 
-  doRemoval = do
+  doRemoval sOld =
     -- Entity was removed; may need to remove registered structure.
-    stateRevision <- case M.lookup cLoc $ foundByLocation structureRegistry of
-      Nothing -> return oldRecognitionState
-      Just fs -> do
-        tell $ pure $ StructureRemoved structureName
-        return $
-          oldRecognitionState
-            & foundStructures %~ removeStructure fs
-       where
-        structureName = getName $ originalDefinition $ structureWithGrid fs
-
-    return $ recognizer & recognitionState .~ stateRevision
+    maybe return logAndRemove structureAtLoc sOld
    where
-    oldRecognitionState = recognizer ^. recognitionState
-    structureRegistry = oldRecognitionState ^. foundStructures
+    structureAtLoc = M.lookup cLoc $ foundByLocation $ sOld ^. foundStructures
+    logAndRemove fs s = do
+      tell $ pure $ StructureRemoved structureName
+      return $ s & foundStructures %~ removeStructure fs
+     where
+      structureName = name . originalItem . entityGrid $ structureWithGrid fs
 
 -- | In case this cell would match a candidate structure,
 -- ensures that the entity in this cell is not already
@@ -111,7 +132,7 @@ candidateEntityAt ::
   GenericEntLocator s a ->
   FoundRegistry b a ->
   Cosmic Location ->
-  s (Maybe a)
+  s (AtomicKeySymbol a)
 candidateEntityAt entLoader registry cLoc = runMaybeT $ do
   guard $ M.notMember cLoc $ foundByLocation registry
   MaybeT $ entLoader cLoc
@@ -124,7 +145,7 @@ getWorldRow ::
   FoundRegistry b a ->
   Cosmic Location ->
   InspectionOffsets ->
-  s [Maybe a]
+  s [AtomicKeySymbol a]
 getWorldRow entLoader registry cLoc (InspectionOffsets (Min offsetLeft) (Max offsetRight)) = do
   mapM getCandidate horizontalOffsets
  where
@@ -173,9 +194,9 @@ checkChunksCombination
       NE.toList $ NE.map mkFoundStructure . referencingRows . chunkStructure $ foundChunkRow x
      where
       mkFoundStructure r =
-        FoundStructure
-          (wholeStructure r)
+        PositionedStructure
           (cLoc `offsetBy` theOffset)
+          (wholeStructure r)
        where
         theOffset = V2 (horizontalStructPos $ foundChunkRow x) (rowIndex r)
 
@@ -238,9 +259,9 @@ registerRowMatches ::
   GenericEntLocator s a ->
   Cosmic Location ->
   AutomatonInfo b a ->
-  RecognitionState b a ->
-  WriterT (f (SearchLog a)) s (RecognitionState b a)
-registerRowMatches entLoader cLoc (AutomatonInfo horizontalOffsets pwMatcher) rState = do
+  FoundRegistry b a ->
+  WriterT (f (SearchLog a)) s (FoundRegistry b a)
+registerRowMatches entLoader cLoc (AutomatonInfo horizontalOffsets pwMatcher) registry = do
   tell $ pure $ StartSearchAt cLoc horizontalOffsets
 
   tell . pure . ExpectedChunks $
@@ -259,10 +280,12 @@ registerRowMatches entLoader cLoc (AutomatonInfo horizontalOffsets pwMatcher) rS
   let candidatesChunked = findAll pwSM entitiesRow
   unrankedCandidateStructures <- checkCombo candidatesChunked
 
+  -- [STRUCTURE RECOGNIZER CONFLICT RESOLUTION]
   -- We only allow an entity to participate in one structure at a time,
   -- so multiple matches require a tie-breaker.
   -- The largest structure (by area) shall win.
-  -- Sort by decreasing order of preference.
+  -- Sort by decreasing order of preference
+  -- (see the Ord instance of 'FoundStructure').
   let rankedCandidates = sortOn Down unrankedCandidateStructures
   tell . pure . FoundCompleteStructureCandidates $
     map getStructInfo rankedCandidates
@@ -272,20 +295,22 @@ registerRowMatches entLoader cLoc (AutomatonInfo horizontalOffsets pwMatcher) rS
   -- and now choose the first one that is verified.
   maybeIntactStructure <- findM validateIntactness2d rankedCandidates
 
-  lift $ registerBestStructureMatch maybeIntactStructure rState
+  forM_ maybeIntactStructure $
+    tell . pure . RecognizedSingleStructure . getStructInfo
+
+  return $ maybe id addFound maybeIntactStructure registry
  where
-  registry = rState ^. foundStructures
   PiecewiseRecognition pwSM rowChunkReferences = pwMatcher
 
-  getStructInfo (FoundStructure swg loc) = (distillLabel swg, loc)
+  getStructInfo (PositionedStructure loc swg) = (distillLabel swg, loc)
 
   validateIntactness2d fs = do
-    maybeIntactnessFailure <- lift $ ensureStructureIntact (rState ^. foundStructures) entLoader fs
-    tell . pure . ChunkIntactnessVerification $
-      IntactPlacementLog
+    maybeIntactnessFailure <- lift $ ensureStructureIntact registry entLoader fs
+    tell . pure . ChunkIntactnessVerification
+      $ IntactPlacementLog
         maybeIntactnessFailure
-        (getName . originalDefinition . structureWithGrid $ fs)
-        (upperLeftCorner fs)
+      $ PositionedStructure (upperLeftCorner fs) (distillLabel . structureWithGrid $ fs)
+
     return $ null maybeIntactnessFailure
 
   checkCombo = checkChunksCombination cLoc horizontalOffsets rowChunkReferences
@@ -345,13 +370,3 @@ findCoveringOffsets possibleOffsets x =
 isCoveredWithOffset :: FoundAndExpectedChunkPositions -> Int -> Bool
 isCoveredWithOffset (FoundAndExpectedChunkPositions found expected) offset =
   NEIS.map (+ offset) expected `NEIS.isSubsetOf` found
-
-registerBestStructureMatch ::
-  (Monad s, Eq a, Eq b) =>
-  Maybe (FoundStructure b a) ->
-  RecognitionState b a ->
-  s (RecognitionState b a)
-registerBestStructureMatch maybeValidCandidate oldState =
-  return $
-    oldState
-      & foundStructures %~ maybe id addFound maybeValidCandidate

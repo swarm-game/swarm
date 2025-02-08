@@ -11,6 +11,8 @@
 -- Implementation of robot commands
 module Swarm.Game.Step.Const where
 
+import Swarm.Game.Scenario (RecognizableStructureContent)
+
 import Control.Applicative (Applicative (..))
 import Control.Arrow ((&&&))
 import Control.Carrier.State.Lazy
@@ -59,11 +61,12 @@ import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Robot.Walk (emptyExceptions)
-import Swarm.Game.Scenario.Topography.Area (getAreaDimensions)
+import Swarm.Game.Scenario.Topography.Area (getNEGridDimensions, rectHeight)
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.Navigation.Util
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointName (..))
-import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons, foundStructures, recognitionState)
+import Swarm.Game.Scenario.Topography.Structure.Named (StructureName (..))
+import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
@@ -86,6 +89,7 @@ import Swarm.Game.Universe
 import Swarm.Game.Value
 import Swarm.Language.Capability
 import Swarm.Language.Key (parseKeyComboFull)
+import Swarm.Language.Parser.Value (readValue)
 import Swarm.Language.Pipeline
 import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
@@ -139,7 +143,7 @@ execConst runChildProg c vs s k = do
   -- Now proceed to actually carry out the operation.
   case c of
     Noop -> return $ mkReturn ()
-    Return -> case vs of
+    Pure -> case vs of
       [v] -> return $ Out v s k
       _ -> badConst
     Wait -> case vs of
@@ -210,22 +214,20 @@ execConst runChildProg c vs s k = do
       -- If unobstructed, the robot will move even if
       -- there is nothing to push.
       maybeCurrentE <- entityAt nextLoc
-      case maybeCurrentE of
-        Just e -> do
-          -- Make sure there's nothing already occupying the destination
-          nothingHere <- isNothing <$> entityAt placementLoc
-          nothingHere `holdsOrFail` ["Something is in the way!"]
+      forM_ maybeCurrentE $ \e -> do
+        -- Make sure there's nothing already occupying the destination
+        nothingHere <- isNothing <$> entityAt placementLoc
+        nothingHere `holdsOrFail` ["Something is in the way!"]
 
-          let verbed = verbedGrabbingCmd Push'
-          -- Ensure it can be pushed.
-          omni <- isPrivilegedBot
-          (omni || e `hasProperty` Pushable || e `hasProperty` Pickable && not (e `hasProperty` Liquid))
-            `holdsOrFail` ["The", e ^. entityName, "here can't be", verbed <> "."]
+        let verbed = verbedGrabbingCmd Push'
+        -- Ensure it can be pushed.
+        omni <- isPrivilegedBot
+        (omni || e `hasProperty` Pushable || e `hasProperty` Pickable && not (e `hasProperty` Liquid))
+          `holdsOrFail` ["The", e ^. entityName, "here can't be", verbed <> "."]
 
-          -- Place the entity and remove it from previous loc
-          updateEntityAt nextLoc (const Nothing)
-          updateEntityAt placementLoc (const (Just e))
-        Nothing -> return ()
+        -- Place the entity and remove it from previous loc
+        updateEntityAt nextLoc (const Nothing)
+        updateEntityAt placementLoc (const (Just e))
 
       updateRobotLocation loc nextLoc
       return $ mkReturn ()
@@ -543,31 +545,38 @@ execConst runChildProg c vs s k = do
         lm <- use $ landscape . worldNavigation
         Cosmic swName _ <- use robotLocation
         case M.lookup (WaypointName name) $ M.findWithDefault mempty swName $ waypoints lm of
-          Nothing -> throwError $ CmdFailed Waypoint (T.unwords ["No waypoint named", name]) Nothing
-          Just wps -> return $ mkReturn (NE.length wps, indexWrapNonEmpty wps idx)
+          Nothing -> raise Waypoint ["There are no waypoints named", quote name <> "."]
+          Just wps -> return $ mkReturn $ indexWrapNonEmpty wps idx
       _ -> badConst
-    Structure -> case vs of
-      [VText name, VInt idx] -> do
-        registry <- use $ discovery . structureRecognition . recognitionState . foundStructures
-        let maybeFoundStructures = M.lookup name $ foundByName registry
-            mkOutput mapNE = (NE.length xs, bottomLeftCorner)
+    Waypoints -> case vs of
+      [VText name] -> do
+        lm <- use $ landscape . worldNavigation
+        Cosmic swName _ <- use robotLocation
+        let mwps = M.lookup (WaypointName name) $ M.findWithDefault mempty swName $ waypoints lm
+        return $ mkReturn $ maybe [] NE.toList mwps
+      _ -> badConst
+    Structures -> case vs of
+      [VText name] -> do
+        registry <- use $ discovery . structureRecognition . foundStructures
+        let maybeFoundStructures = M.lookup (StructureName name) $ foundByName registry
+            structures :: [((Cosmic Location, AbsoluteDir), StructureWithGrid RecognizableStructureContent Entity)]
+            structures = maybe [] (NE.toList . NEM.toList) maybeFoundStructures
+
+            bottomLeftCorner ((pos, _), struc) = topLeftCorner .+^ offsetHeight
              where
-              xs = NEM.toList mapNE
-              (pos, struc) = indexWrapNonEmpty xs idx
               topLeftCorner = pos ^. planar
-              offsetHeight = V2 0 $ -fromIntegral (length (entityGrid struc) - 1)
-              bottomLeftCorner :: Location
-              bottomLeftCorner = topLeftCorner .+^ offsetHeight
-        return $ mkReturn $ mkOutput <$> maybeFoundStructures
+              offsetHeight = V2 0 $ negate (rectHeight (getNEGridDimensions $ extractedGrid $ entityGrid struc) - 1)
+
+        return $ mkReturn $ map bottomLeftCorner structures
       _ -> badConst
     Floorplan -> case vs of
       [VText name] -> do
-        structureTemplates <- use $ discovery . structureRecognition . automatons . originalStructureDefinitions
-        let maybeStructure = M.lookup name structureTemplates
+        structureTemplates <- use $ landscape . recognizerAutomatons . originalStructureDefinitions
+        let maybeStructure = M.lookup (StructureName name) structureTemplates
         structureDef <-
           maybeStructure
             `isJustOr` cmdExn Floorplan (pure $ T.unwords ["Unknown structure", quote name])
-        return . mkReturn . getAreaDimensions $ entityProcessedGrid structureDef
+        return . mkReturn . getNEGridDimensions $ entityProcessedGrid structureDef
       _ -> badConst
     HasTag -> case vs of
       [VText eName, VText tName] -> do
@@ -578,11 +587,11 @@ execConst runChildProg c vs s k = do
         return $ mkReturn $ tName `S.member` (e ^. entityTags)
       _ -> badConst
     TagMembers -> case vs of
-      [VText tagName, VInt idx] -> do
+      [VText tagName] -> do
         tm <- use $ discovery . tagMembers
         case M.lookup tagName tm of
           Nothing -> throwError $ CmdFailed TagMembers (T.unwords ["No tag named", tagName]) Nothing
-          Just theMembers -> return $ mkReturn (NE.length theMembers, indexWrapNonEmpty theMembers idx)
+          Just theMembers -> return $ mkReturn theMembers
       _ -> badConst
     Detect -> case vs of
       [VText name, VRect x1 y1 x2 y2] -> do
@@ -891,9 +900,10 @@ execConst runChildProg c vs s k = do
             omni <- isPrivilegedBot
             case omni || not (target ^. systemRobot) of
               True -> zoomRobots $ do
-                -- Cancel its CESK machine, and put it to sleep.
+                -- Cancel its CESK machine, and wake it up to ensure
+                -- it can do cleanup + run to completion.
                 robotMap . at targetID . _Just . machine %= cancel
-                sleepForever targetID
+                activateRobot targetID
                 return $ mkReturn ()
               False -> throwError $ cmdExn c ["You are not authorized to halt that robot."]
       _ -> badConst
@@ -923,14 +933,15 @@ execConst runChildProg c vs s k = do
       let neighbor =
             find ((/= rid) . (^. robotID)) -- pick one other than ourself
               . sortOn ((manhattan `on` view planar) loc . (^. robotLocation)) -- prefer closer
-              $ robotsInArea loc 1
+              . filter isInteractive
+              . robotsInArea loc 1
               $ g ^. robotInfo -- all robots within Manhattan distance 1
       return $ mkReturn neighbor
     MeetAll -> do
       loc <- use robotLocation
       rid <- use robotID
       g <- get @GameState
-      let neighborIDs = filter ((/= rid) . (^. robotID)) . robotsInArea loc 1 $ g ^. robotInfo
+      let neighborIDs = filter ((/= rid) . (^. robotID)) . filter isInteractive . robotsInArea loc 1 $ g ^. robotInfo
       return $ mkReturn neighborIDs
     Whoami -> case vs of
       [] -> do
@@ -1206,6 +1217,36 @@ execConst runChildProg c vs s k = do
     Exp -> returnEvalArith
     Format -> case vs of
       [v] -> return $ mkReturn $ prettyValue v
+      _ -> badConst
+    Read -> case vs of
+      [VType ty, VText txt] -> case readValue ty txt of
+        Nothing -> raise Read ["Could not read", showT txt, "at type", prettyText ty]
+        Just v -> return (mkReturn v)
+      _ -> badConst
+    Print -> case vs of
+      [VText printableName, VText txt] -> do
+        printable <- ensureItem printableName "print"
+        (printable `hasProperty` Printable)
+          `holdsOrFail` ["You cannot print on", indefinite printableName <> "!"]
+        let newEntityName = printableName <> ": " <> txt
+        robotInventory %= delete printable
+        robotInventory %= insert (printable & entityName .~ newEntityName)
+        return $ mkReturn newEntityName
+      _ -> badConst
+    Erase -> case vs of
+      [VText printableName] -> do
+        toErase <- ensureItem printableName "erase"
+        let (baseName, _) = T.break (== ':') printableName
+        em <- use $ landscape . terrainAndEntities . entityMap
+        erased <-
+          lookupEntityName baseName em
+            `isJustOrFail` ["I've never heard of", indefiniteQ baseName <> "."]
+        (erased `hasProperty` Printable)
+          `holdsOrFail` ["You cannot erase", indefinite baseName <> "!"]
+
+        robotInventory %= delete toErase
+        robotInventory %= insert erased
+        return $ mkReturn baseName
       _ -> badConst
     Chars -> case vs of
       [VText t] -> return $ mkReturn $ T.length t
@@ -1557,14 +1598,16 @@ execConst runChildProg c vs s k = do
           `holdsOr` Incapable fixI (R.Requirements (S.fromList capsWithNoDevice) S.empty M.empty) cmd
 
         -- Now, ensure there is at least one device available to be
-        -- equipped for each requirement.
-        let missingDevices = map snd . filter (null . fst) $ partitionedDevices
+        -- equipped for each requirement, and minimize the resulting
+        -- sets of device alternatives by removing any set which is a
+        -- superset of another.
+        let missingDevices = removeSupersets . S.fromList . map snd . filter (null . fst) $ partitionedDevices
         let IncapableFixWords fVerb fNoun = formatIncapableFix fixI
         null missingDevices
           `holdsOrFail` ( singularSubjectVerb subject "do"
                             : "not have required " <> fNoun <> ", please"
                             : fVerb <> ":"
-                            : (("\n  - " <>) . formatDevices <$> missingDevices)
+                            : (("\n  - " <>) . formatDevices <$> S.toList missingDevices)
                         )
 
         let minimalEquipSet = smallHittingSet (filter (S.null . S.intersection alreadyEquipped) (map fst partitionedDevices))
@@ -1614,7 +1657,7 @@ execConst runChildProg c vs s k = do
       (mAch False)
 
     selfDestruct .= True
-    maybe (return ()) grantAchievementForRobot (mAch True)
+    forM_ (mAch True) grantAchievementForRobot
 
   moveInDirection :: (HasRobotStepState sig m, Has (Lift IO) sig m) => Heading -> m CESK
   moveInDirection orientation = do
@@ -1633,19 +1676,17 @@ execConst runChildProg c vs s k = do
     MoveFailureHandler ->
     m ()
   applyMoveFailureEffect maybeFailure failureHandler =
-    case maybeFailure of
-      Nothing -> return ()
-      Just failureMode -> case failureHandler failureMode of
-        IgnoreFail -> return ()
-        Destroy -> destroyIfNotBase $ \b -> case (b, failureMode) of
-          (True, PathLiquid _) -> Just RobotIntoWater -- achievement for drowning
-          _ -> Nothing
-        ThrowExn -> throwError . cmdExn c $
-          case failureMode of
-            PathBlockedBy ent -> case ent of
-              Just e -> ["There is a", e ^. entityName, "in the way!"]
-              Nothing -> ["There is nothing to travel on!"]
-            PathLiquid e -> ["There is a dangerous liquid", e ^. entityName, "in the way!"]
+    forM_ maybeFailure $ \failureMode -> case failureHandler failureMode of
+      IgnoreFail -> return ()
+      Destroy -> destroyIfNotBase $ \b -> case (b, failureMode) of
+        (True, PathLiquid _) -> Just RobotIntoWater -- achievement for drowning
+        _ -> Nothing
+      ThrowExn -> throwError . cmdExn c $
+        case failureMode of
+          PathBlockedBy ent -> case ent of
+            Just e -> ["There is a", e ^. entityName, "in the way!"]
+            Nothing -> ["There is nothing to travel on!"]
+          PathLiquid e -> ["There is a dangerous liquid", e ^. entityName, "in the way!"]
 
   -- Determine the move failure mode and apply the corresponding effect.
   checkMoveAhead ::

@@ -13,7 +13,7 @@ end
 def waitForBaseAt = \l. \get_timeout.
     loc <- as base {whereami};
     if (loc == l) {
-        return true
+        pure true
     } {
         wait (get_timeout l loc);
         waitForBaseAt l get_timeout

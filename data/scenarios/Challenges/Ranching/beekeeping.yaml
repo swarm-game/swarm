@@ -32,8 +32,8 @@ objectives:
         judicious placement is essential for efficient
         `honeycomb`{=entity} production.
     condition: |
-      foundStructure <- structure "beehive" 0;
-      return $ case foundStructure (\_. false) (\_. true);
+      foundStructure <- structures "beehive";
+      pure $ case foundStructure (\_. false) (\_. true);
   - teaser: Collect honeycomb
     goal:
       - |
@@ -67,7 +67,7 @@ objectives:
     condition: |
       as base {
         meadCount <- count "mead";
-        return $ meadCount >= 2;
+        pure $ meadCount >= 2;
       }
   - teaser: Tavern keeper
     optional: true
@@ -75,8 +75,8 @@ objectives:
       - |
         Construct a `mead hall`{=structure}.
     condition: |
-      foundStructure <- structure "mead hall" 0;
-      return $ case foundStructure (\_. false) (\_. true);
+      foundStructure <- structures "mead hall";
+      pure $ case foundStructure (\_. false) (\_. true);
 robots:
   - name: base
     display:
@@ -193,7 +193,7 @@ entities:
     description:
       - Senses direction to nectar-producing flowers
     properties: [known, pickable]
-    capabilities: [chirp, structure]
+    capabilities: [chirp, structures]
   - name: honey
     display:
       char: 'h'

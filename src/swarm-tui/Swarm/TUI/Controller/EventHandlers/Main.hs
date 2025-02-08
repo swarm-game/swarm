@@ -13,9 +13,10 @@ import Brick.Keybindings
 import Control.Lens as Lens
 import Control.Monad (unless, void, when)
 import Control.Monad.IO.Class (liftIO)
-import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (originalStructureDefinitions)
 import Swarm.Game.State
+import Swarm.Game.State.Landscape
+import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Step (finishGameTick)
 import Swarm.TUI.Controller.EventHandlers.Frame (runGameTickUI)
@@ -41,7 +42,7 @@ mainEventHandlers = allHandlers Main $ \case
   ViewRecipesEvent -> ("View Recipes screen", toggleDiscoveryNotificationModal RecipesModal availableRecipes)
   ViewCommandsEvent -> ("View Commands screen", toggleDiscoveryNotificationModal CommandsModal availableCommands)
   ViewMessagesEvent -> ("View Messages screen", toggleMessagesModal)
-  ViewStructuresEvent -> ("View Structures screen", toggleDiscoveryModal StructuresModal (structureRecognition . automatons . originalStructureDefinitions))
+  ViewStructuresEvent -> ("View Structures screen", toggleStructuresModal StructuresModal (recognizerAutomatons . originalStructureDefinitions))
   ViewGoalEvent -> ("View scenario goal description", viewGoal)
   HideRobotsEvent -> ("Hide robots for a few ticks", hideRobots)
   ShowCESKDebugEvent -> ("Show active robot CESK machine debugging line", showCESKDebug)
@@ -56,6 +57,8 @@ mainEventHandlers = allHandlers Main $ \case
   ToggleCreativeModeEvent -> ("Toggle creative mode", whenDebug ToggleCreative toggleCreativeMode)
   ToggleWorldEditorEvent -> ("Toggle world editor mode", whenDebug ToggleWorldEditor toggleWorldEditor)
   ToggleREPLVisibilityEvent -> ("Collapse/Expand REPL panel", toggleREPLVisibility)
+  ViewBaseEvent -> ("View the base robot", viewBase)
+  ToggleFPSEvent -> ("Toggle the FPS display", toggleFPS)
 
 toggleQuitGameDialog :: EventM Name AppState ()
 toggleQuitGameDialog = do
@@ -72,8 +75,8 @@ toggleGameModal m l = do
   unless nothingToShow $ toggleModal m
   return nothingToShow
 
-toggleDiscoveryModal :: Foldable t => ModalType -> Lens' Discovery (t a) -> EventM Name AppState ()
-toggleDiscoveryModal m l = void $ toggleGameModal m (discovery . l)
+toggleStructuresModal :: Foldable t => ModalType -> Lens' Landscape (t a) -> EventM Name AppState ()
+toggleStructuresModal m l = void $ toggleGameModal m (landscape . l)
 
 toggleDiscoveryNotificationModal :: ModalType -> Lens' Discovery (Notifications a) -> EventM Name AppState ()
 toggleDiscoveryNotificationModal m l = do
@@ -94,15 +97,15 @@ viewGoal = do
     else continueWithoutRedraw
 
 hideRobots :: EventM Name AppState ()
-hideRobots = do
+hideRobots = Brick.zoom (uiState . uiGameplay) $ do
   t <- liftIO $ getTime Monotonic
-  h <- use $ uiState . uiGameplay . uiHideRobotsUntil
+  h <- use uiHideRobotsUntil
   case h >= t of
     -- ignore repeated keypresses
     True -> continueWithoutRedraw
     -- hide for two seconds
     False -> do
-      uiState . uiGameplay . uiHideRobotsUntil .= t + TimeSpec 2 0
+      uiHideRobotsUntil .= t + TimeSpec 2 0
       invalidateCacheEntry WorldCache
 
 showCESKDebug :: EventM Name AppState ()
@@ -138,6 +141,14 @@ toggleREPLVisibility :: EventM Name AppState ()
 toggleREPLVisibility = do
   invalidateCacheEntry WorldCache
   uiState . uiGameplay . uiShowREPL %= not
+
+viewBase :: EventM Name AppState ()
+viewBase = do
+  invalidateCacheEntry WorldCache
+  gameState . robotInfo . viewCenterRule .= VCRobot 0
+
+toggleFPS :: EventM Name AppState ()
+toggleFPS = uiState . uiGameplay . uiTiming . uiShowFPS %= not
 
 -- ----------------------------------------------
 --                 HELPER UTILS

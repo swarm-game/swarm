@@ -19,7 +19,7 @@ objectives:
     condition: |
       try {
         as base {has "branch predictor"}
-      } { return false }
+      } { pure false }
 solution: |
   make "branch"; make "branch predictor"
 robots:

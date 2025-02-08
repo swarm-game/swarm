@@ -11,7 +11,7 @@ objectives:
     condition: |
       try {
         as base {has "periwinkle"}
-      } { return false }
+      } { pure false }
 entities:
   - name: periwinkle
     display:

@@ -20,17 +20,17 @@ def waitUntilUnblocked =
 def whichOrdinal =
     isC <- ishere "capital C";
     if (isC) {
-        return 0;
+        pure 0;
     } {
         isO <- ishere "capital O";
         if (isO) {
-            return 1;
+            pure 1;
         } {
             isW <- ishere "capital W";
             if (isW) {
-                return 2;
+                pure 2;
             } {
-                return (-1);
+                pure (-1);
             }
         }
     }
@@ -57,23 +57,23 @@ def traverseRow = \expectedOrdinal. \colCount.
     // considered a "match".
     let shouldAdvance = theFoundOrdinal == expectedOrdinal || theFoundOrdinal == 0 in
     newExpectedOrdinal <- if shouldAdvance {
-        return $ theFoundOrdinal + 1;
+        pure $ theFoundOrdinal + 1;
     } {
         // Reset the progress
-        return 0;
+        pure 0;
     };
 
     if (newExpectedOrdinal == 3) {
         turn back;
 
         intersperse 3 move highlightLetter;
-        return true;
+        pure true;
     } {
         if (colCount > 1) {
             move;
             traverseRow newExpectedOrdinal (colCount - 1);
         } {
-          return false;
+          pure false;
         };
     };
     end;
@@ -92,18 +92,18 @@ in either direction.
 def traverseCols = \width. \height. 
     didWin <- traverseRow 0 width;
     if didWin {
-        return true;
+        pure true;
     } {
         turn back;
         didWinBackward <- traverseRow 0 width;
         if didWinBackward {
-            return true;
+            pure true;
         } {
             if (height > 1) {
                 advanceRow;
                 traverseCols width $ height - 1;
             } {
-                return false;
+                pure false;
             };
         }
     } 
@@ -115,7 +115,7 @@ def solve = \boardWidth. \boardHeight.
 
     wonHorizontally <- traverseCols boardWidth boardHeight;
     if wonHorizontally {
-        return true;
+        pure true;
     } {
         // If we did not find a horizontal solution,
         // look for vertical solutions.

@@ -39,6 +39,7 @@ module Swarm.Language.Typecheck (
 
   -- * Type inference
   inferTop,
+  checkTop,
   infer,
   inferConst,
   check,
@@ -57,7 +58,7 @@ import Control.Effect.Throw
 import Control.Lens (view, (^.))
 import Control.Lens.Indexed (itraverse)
 import Control.Monad (forM_, void, when, (<=<), (>=>))
-import Control.Monad.Free (Free (..))
+import Control.Monad.Free qualified as Free
 import Data.Data (Data, gmapM)
 import Data.Foldable (fold, traverse_)
 import Data.Functor.Identity
@@ -93,17 +94,19 @@ import Prelude hiding (lookup)
 data TCFrame where
   -- | Checking a definition.
   TCLet :: Var -> TCFrame
-  -- | Inferring the LHS of a bind.
-  TCBindL :: TCFrame
-  -- | Inferring the RHS of a bind.
-  TCBindR :: TCFrame
+  -- | Inferring the LHS of an application.  Stored Syntax is the term
+  --   on the RHS.
+  TCAppL :: Syntax -> TCFrame
+  -- | Checking the RHS of an application.  Stored Syntax is the term
+  -- on the LHS.
+  TCAppR :: Syntax -> TCFrame
   deriving (Show)
 
 instance PrettyPrec TCFrame where
   prettyPrec _ = \case
     TCLet x -> "While checking the definition of" <+> pretty x
-    TCBindL -> "While checking the left-hand side of a semicolon"
-    TCBindR -> "While checking the right-hand side of a semicolon"
+    TCAppL s -> "While checking a function applied to an argument: _" <+> prettyPrec 11 s
+    TCAppR s -> "While checking the argument to a function:" <+> prettyPrec 10 s <+> "_"
 
 -- | A typechecking stack frame together with the relevant @SrcLoc@.
 data LocatedTCFrame = LocatedTCFrame SrcLoc TCFrame
@@ -255,15 +258,14 @@ lookup loc x = do
 addLocToTypeErr ::
   ( Has (Throw ContextualTypeErr) sig m
   , Has (Catch ContextualTypeErr) sig m
-  , Has (Reader TCStack) sig m
   ) =>
   SrcLoc ->
   m a ->
   m a
 addLocToTypeErr l m =
   m `catchError` \case
-    CTE NoLoc _ te -> throwTypeErr l te
-    te -> throwError te
+    CTE NoLoc stk te -> throwError $ CTE l stk te
+    cte -> throwError cte
 
 ------------------------------------------------------------
 -- Dealing with variables: free variables, fresh variables,
@@ -287,7 +289,7 @@ instance FreeUVars UCtx where
 
 -- | Generate a fresh unification variable.
 fresh :: Has Unification sig m => m UType
-fresh = Pure <$> U.freshIntVar
+fresh = Free.Pure <$> U.freshIntVar
 
 -- | Perform a substitution over a 'UType', substituting for both type
 --   and unification variables.  Note that since 'UType's do not have
@@ -296,10 +298,10 @@ fresh = Pure <$> U.freshIntVar
 substU :: Map (Either Var IntVar) UType -> UType -> UType
 substU m =
   ucata
-    (\v -> fromMaybe (Pure v) (M.lookup (Right v) m))
+    (\v -> fromMaybe (Free.Pure v) (M.lookup (Right v) m))
     ( \case
         TyVarF v -> fromMaybe (UTyVar v) (M.lookup (Left v) m)
-        f -> Free f
+        f -> Free.Free f
     )
 
 -- | Make sure none of the given skolem variables have escaped.
@@ -405,7 +407,7 @@ skolemize (unPoly -> (xs, uty)) = do
   let xs' = map UTyVar skolemNames
       newSubst = M.fromList $ zip xs xs'
       s = M.mapKeys Left (newSubst `M.union` unCtx boundSubst)
-  pure (Ctx newSubst, substU s uty)
+  pure (Ctx.fromMap newSubst, substU s uty)
 
 -- | 'generalize' is the opposite of 'instantiate': add a 'Forall'
 --   which closes over all free type and unification variables.
@@ -679,13 +681,14 @@ prettyTypeErr code (CTE l tcStack te) =
     NoLoc -> emptyDoc
   showLoc (r, c) = pretty r <> ":" <> pretty c
 
--- | Filter the TCStack of extravagant Binds.
+-- | Filter the TCStack so we stop printing context outside of a def/let
 filterTCStack :: TCStack -> TCStack
 filterTCStack tcStack = case tcStack of
   [] -> []
+  -- A def/let is enough context to locate something; don't keep
+  -- printing wider context after that
   t@(LocatedTCFrame _ (TCLet _)) : _ -> [t]
-  t@(LocatedTCFrame _ TCBindR) : xs -> t : filterTCStack xs
-  t@(LocatedTCFrame _ TCBindL) : xs -> t : filterTCStack xs
+  t : xs -> t : filterTCStack xs
 
 ------------------------------------------------------------
 -- Type decomposition
@@ -809,6 +812,10 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 inferTop :: TCtx -> ReqCtx -> TDCtx -> Syntax -> Either ContextualTypeErr TSyntax
 inferTop ctx reqCtx tdCtx = runTC ctx reqCtx tdCtx Ctx.empty . infer
 
+-- | Top level type checking function.
+checkTop :: TCtx -> ReqCtx -> TDCtx -> Syntax -> Type -> Either ContextualTypeErr TSyntax
+checkTop ctx reqCtx tdCtx t ty = runTC ctx reqCtx tdCtx Ctx.empty $ check t (toU ty)
+
 -- | Infer the type of a term, returning a type-annotated term.
 --
 --   The only cases explicitly handled in 'infer' are those where
@@ -892,11 +899,13 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- each time.
   SApp f x -> do
     -- Infer the type of the left-hand side and make sure it has a function type.
-    f' <- infer f
-    (argTy, resTy) <- decomposeFunTy f (Actual, f' ^. sType)
+    (f', argTy, resTy) <- withFrame l (TCAppL x) $ do
+      f' <- infer f
+      (argTy, resTy) <- decomposeFunTy f (Actual, f' ^. sType)
+      pure (f', argTy, resTy)
 
     -- Then check that the argument has the right type.
-    x' <- check x argTy
+    x' <- withFrame l (TCAppR f) $ check x argTy
 
     -- Call applyBindings explicitly, so that anything we learned
     -- about unification variables while checking the type of the
@@ -922,13 +931,12 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- the surface syntax, so the second through fourth fields are
   -- necessarily Nothing.
   SBind mx _ _ _ c1 c2 -> do
-    c1' <- withFrame l TCBindL $ infer c1
+    c1' <- infer c1
     a <- decomposeCmdTy c1 (Actual, c1' ^. sType)
     genA <- generalize a
     c2' <-
-      maybe id ((`withBinding` genA) . lvVar) mx
-        . withFrame l TCBindR
-        $ infer c2
+      maybe id ((`withBinding` genA) . lvVar) mx $
+        infer c2
 
     -- We don't actually need the result type since we're just
     -- going to return the entire type, but it's important to
@@ -1037,11 +1045,12 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Scout -> [tyQ| Dir -> Cmd Bool |]
   Whereami -> [tyQ| Cmd (Int * Int) |]
   LocateMe -> [tyQ| Cmd (Text * (Int * Int)) |]
-  Waypoint -> [tyQ| Text -> Int -> Cmd (Int * (Int * Int)) |]
-  Structure -> [tyQ| Text -> Int -> Cmd (Unit + (Int * (Int * Int))) |]
+  Waypoint -> [tyQ| Text -> Int -> (Int * Int) |]
+  Waypoints -> [tyQ| Text -> (rec l. Unit + (Int * Int) * l) |]
+  Structures -> [tyQ| Text -> Cmd (rec l. Unit + (Int * Int) * l) |]
   Floorplan -> [tyQ| Text -> Cmd (Int * Int) |]
-  HasTag -> [tyQ| Text -> Text -> Cmd Bool |]
-  TagMembers -> [tyQ| Text -> Int -> Cmd (Int * Text) |]
+  HasTag -> [tyQ| Text -> Text -> Bool |]
+  TagMembers -> [tyQ| Text -> (rec l. Unit + Text * l) |]
   Detect -> [tyQ| Text -> ((Int * Int) * (Int * Int)) -> Cmd (Unit + (Int * Int)) |]
   Resonate -> [tyQ| Text -> ((Int * Int) * (Int * Int)) -> Cmd Int |]
   Density -> [tyQ| ((Int * Int) * (Int * Int)) -> Cmd Int |]
@@ -1071,7 +1080,7 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Fst -> [tyQ| a * b -> a |]
   Snd -> [tyQ| a * b -> b |]
   Force -> [tyQ| {a} -> a |]
-  Return -> [tyQ| a -> Cmd a |]
+  Pure -> [tyQ| a -> Cmd a |]
   Try -> [tyQ| {Cmd a} -> {Cmd a} -> Cmd a |]
   Undefined -> [tyQ| a |]
   Fail -> [tyQ| Text -> a |]
@@ -1091,6 +1100,9 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Div -> arithBinT
   Exp -> arithBinT
   Format -> [tyQ| a -> Text |]
+  Read -> [tyQ| Text -> a |]
+  Print -> [tyQ| Text -> Text -> Cmd Text |]
+  Erase -> [tyQ| Text -> Cmd Text |]
   Concat -> [tyQ| Text -> Text -> Text |]
   Chars -> [tyQ| Text -> Int |]
   Split -> [tyQ| Int -> Text -> (Text * Text) |]
@@ -1148,17 +1160,16 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   SLam x mxTy body -> do
     (argTy, resTy) <- decomposeFunTy s (Expected, expected)
     traverse_ (adaptToTypeErr l KindErr . checkKind) mxTy
-    case toU mxTy of
-      Just xTy -> do
-        res <- argTy U.=:= xTy
-        case res of
-          -- Generate a special error when the explicit type annotation
-          -- on a lambda doesn't match the expected type,
-          -- e.g. (\x:Int. x + 2) : Text -> Int, since the usual
-          -- "expected/but got" language would probably be confusing.
-          Left _ -> throwTypeErr l $ LambdaArgMismatch (joined argTy xTy)
-          Right _ -> return ()
-      Nothing -> return ()
+    forM_ (toU mxTy) $ \xTy -> do
+      res <- argTy U.=:= xTy
+      case res of
+        -- Generate a special error when the explicit type annotation
+        -- on a lambda doesn't match the expected type,
+        -- e.g. (\x:Int. x + 2) : Text -> Int, since the usual
+        -- "expected/but got" language would probably be confusing.
+        Left _ -> throwTypeErr l $ LambdaArgMismatch (joined argTy xTy)
+        Right _ -> return ()
+
     body' <- withBinding @UPolytype (lvVar x) (mkTrivPoly argTy) $ check body resTy
     return $ Syntax' l (SLam x mxTy body') cs (UTyFun argTy resTy)
 
@@ -1215,8 +1226,8 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
 
     -- If we are checking a 'def', ensure t2 has a command type.  This ensures that
     -- something like 'def ... end; x + 3' is not allowed, since this
-    -- would result in the whole thing being wrapped in return, like
-    -- 'return (def ... end; x + 3)', which means the def would be local and
+    -- would result in the whole thing being wrapped in pure, like
+    -- 'pure (def ... end; x + 3)', which means the def would be local and
     -- not persist to the next REPL input, which could be surprising.
     --
     -- On the other hand, 'let x = y in x + 3' is perfectly fine.
@@ -1239,7 +1250,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
     -- terms if the environment holds not only a value but also a type
     -- + requirements for them.  For example:
     --
-    -- > def x : Int = 3 end; return (x + 2)
+    -- > def x : Int = 3 end; pure (x + 2)
     -- 5
     -- > x
     -- 3
@@ -1247,7 +1258,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
     -- 5
     -- > y
     -- 1:1: Unbound variable y
-    -- > let y = 3 in def x = 5 end; return (x + y)
+    -- > let y = 3 in def x = 5 end; pure (x + y)
     -- 8
     -- > y
     -- 1:1: Unbound variable y
@@ -1384,6 +1395,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   TRequire {} -> return 0
   SRequirements {} -> return 0
   STydef {} -> return 0
+  TType {} -> return 0
   -- Constants.
   TConst c
     -- Nested 'atomic' is not allowed.
@@ -1478,5 +1490,5 @@ isSimpleUType = \case
   UTyCmd {} -> False
   UTyDelay {} -> False
   -- Make the pattern-match coverage checker happy
-  Pure {} -> False
-  Free {} -> False
+  Free.Pure {} -> False
+  Free.Free {} -> False

@@ -18,3 +18,5 @@
 2115-encroaching-upon-interior-transparent-cells.yaml
 2201-piecewise-lines.yaml
 2201-preclude-overlapping-recognition.yaml
+2201-initial-recognition-overlap.yaml
+2229-position-uniqueness-multiple-orientations.yaml

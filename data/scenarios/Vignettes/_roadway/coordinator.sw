@@ -9,13 +9,13 @@ def atLocation = \newLoc. \f.
     teleport self newLoc;
     retval <- f;
     teleport self prevLoc;
-    return retval;
+    pure retval;
     end;
 
 def swapItem = \ent.
   create ent;
   emptyHere <- isempty;
-  if emptyHere {} {grab; return ()};
+  if emptyHere {} {grab; pure ()};
   place ent;
   end;
 

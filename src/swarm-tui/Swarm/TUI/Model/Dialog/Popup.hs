@@ -32,6 +32,7 @@ data Popup
   = AchievementPopup CategorizedAchievement
   | RecipesPopup
   | CommandsPopup [Const]
+  | DebugWarningPopup
 
 -- | State to track pending popup queue as well as any
 --   popup which is currently being displayed.

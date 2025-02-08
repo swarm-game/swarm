@@ -135,13 +135,13 @@ isError :: LogEntry -> Bool
 isError = (>= Warning) . view leSeverity
 
 exampleTests :: [FilePath] -> TestTree
-exampleTests inputs = testGroup "Test example" (map exampleTest inputs)
+exampleTests = testGroup "Test example" . map exampleTest
 
 exampleTest :: FilePath -> TestTree
 exampleTest path =
   testCase ("processTerm for contents of " ++ show path) $ do
     value <- processTerm <$> T.readFile path
-    either (assertFailure . into @String) (\_ -> return ()) value
+    either (assertFailure . into @String) (const $ return ()) value
 
 scenarioParseTests :: ScenarioInputs -> [FilePath] -> TestTree
 scenarioParseTests scenarioInputs inputs =
@@ -166,11 +166,9 @@ getScenario expRes scenarioInputs p = do
   res <- decodeFileEitherE scenarioInputs p :: IO (Either ParseException Scenario)
   case expRes of
     Parsed -> case res of
-      Left err -> assertFailure (prettyPrintParseException err)
+      Left err -> assertFailure $ prettyPrintParseException err
       Right _s -> return ()
-    Failed -> case res of
-      Left _err -> return ()
-      Right _s -> assertFailure "Unexpectedly parsed invalid scenario!"
+    Failed -> forM_ res $ const $ assertFailure "Unexpectedly parsed invalid scenario!"
 
 data Time
   = -- | One second should be enough to run most programs.
@@ -248,7 +246,9 @@ testScenarioSolutions rs ui key =
         , testSolution Default "Challenges/friend"
         , testSolution Default "Challenges/pack-tetrominoes"
         , testSolution (Sec 10) "Challenges/dimsum"
-        , testSolution (Sec 15) "Challenges/gallery"
+        , testSolution (Sec 20) "Challenges/gallery"
+        , testSolution (Sec 10) "Challenges/telephone"
+        , testSolution (Sec 10) "Challenges/flower-count"
         , testGroup
             "Mazes"
             [ testSolution Default "Challenges/Mazes/easy_cave_maze"
@@ -476,6 +476,8 @@ testScenarioSolutions rs ui key =
             , testSolution Default "Testing/1575-structure-recognizer/2115-encroaching-upon-exterior-transparent-cells"
             , testSolution Default "Testing/1575-structure-recognizer/2201-piecewise-lines"
             , testSolution Default "Testing/1575-structure-recognizer/2201-preclude-overlapping-recognition"
+            , testSolution Default "Testing/1575-structure-recognizer/2201-initial-recognition-overlap"
+            , testSolution Default "Testing/1575-structure-recognizer/2229-position-uniqueness-multiple-orientations"
             ]
         ]
     , testSolution' Default "Testing/1430-built-robot-ownership" CheckForBadErrors $ \g -> do
@@ -498,6 +500,14 @@ testScenarioSolutions rs ui key =
           assertEqual "Incorrect step count." 62 $ view lifetimeStepCount counters
     , expectFailBecause "Awaiting fix for #231" $
         testSolution Default "Testing/231-requirements/231-command-transformer-reqs"
+    , testSolution Default "Testing/2239-custom-entity"
+    , testSolution' Default "Testing/2240-overridden-entity-capabilities" CheckForBadErrors $ \g -> do
+        let msgs = g ^.. robotInfo . robotMap . traverse . robotLog . to logToText . traverse
+        assertBool "Error message should mention tank treads but not treads" $
+          not (any ("- treads" `T.isInfixOf`) msgs)
+            && any ("- tank treads" `T.isInfixOf`) msgs
+    , testSolution Default "Testing/2253-halt-waiting"
+    , testSolution Default "Testing/2270-instant-defs"
     ]
  where
   -- expectFailIf :: Bool -> String -> TestTree -> TestTree

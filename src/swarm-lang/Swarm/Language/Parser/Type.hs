@@ -13,13 +13,12 @@ module Swarm.Language.Parser.Type (
   parseTyCon,
 ) where
 
-import Control.Lens (view)
 import Control.Monad.Combinators (many)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.Fix (Fix (..), foldFix)
 import Data.List.Extra (enumerate)
 import Data.Maybe (fromMaybe)
-import Swarm.Language.Parser.Core (LanguageVersion (..), Parser, languageVersion)
+import Swarm.Language.Parser.Core (Parser)
 import Swarm.Language.Parser.Lex (
   braces,
   brackets,
@@ -78,14 +77,8 @@ parseTypeAtom =
 -- | A type constructor.
 parseTyCon :: Parser TyCon
 parseTyCon = do
-  ver <- view languageVersion
-  let reservedCase = case ver of
-        -- Version 0.5 of the language accepted type names in any case
-        SwarmLang0_5 -> reserved
-        -- The latest version requires them to be uppercase
-        SwarmLangLatest -> reservedCS
-  choice (map (\b -> TCBase b <$ reservedCase (baseTyName b)) enumerate)
-    <|> TCCmd <$ reservedCase "Cmd"
+  choice (map (\b -> TCBase b <$ reservedCS (baseTyName b)) enumerate)
+    <|> TCCmd <$ reservedCS "Cmd"
     <|> TCUser <$> tyName
 
 -- | Close over a recursive type, replacing any bound occurrences

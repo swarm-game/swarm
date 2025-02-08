@@ -18,7 +18,7 @@ objectives:
       try {
         l <- robotNamed "listener";
         as l {has "READY"}
-      } { return false }
+      } { pure false }
 solution: |
   say "Ready!"
 entities:

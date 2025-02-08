@@ -1,7 +1,7 @@
 def get_x_coord = \r.
     as r {
         pos <- whereami;
-        return $ fst pos;
+        pure $ fst pos;
     };
     end;
 
@@ -10,19 +10,19 @@ def is_unattended_together = \baseX. \robotName.
     thisX <- get_x_coord r;
 
     if (baseX == thisX) {
-        return false;
+        pure false;
     } {
         as r {
-            try {grab; return ()} {};
+            try {grab; pure ()} {};
             move;
-            try {grab; return ()} {};
+            try {grab; pure ()} {};
             move;
-            try {grab; return ()} {};
+            try {grab; pure ()} {};
 
             has_wolf <- has "wolf";
             has_goat <- has "goat";
             has_cabbage <- has "cabbage";
-            return $ (has_wolf && has_goat) || (has_goat && has_cabbage);
+            pure $ (has_wolf && has_goat) || (has_goat && has_cabbage);
         };        
     }
     end;
@@ -32,4 +32,4 @@ baseX <- get_x_coord base;
 west_bad <- is_unattended_together baseX "west_detector";
 east_bad <- is_unattended_together baseX "east_detector";
 
-return $ west_bad || east_bad;
+pure $ west_bad || east_bad;

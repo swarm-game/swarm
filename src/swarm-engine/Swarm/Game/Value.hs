@@ -12,6 +12,7 @@ import Control.Lens (view)
 import Data.Either.Extra (maybeToEither)
 import Data.Int (Int32)
 import Data.List (uncons)
+import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Linear (V2 (..))
 import Swarm.Game.Entity
@@ -37,6 +38,9 @@ pattern VRect x1 y1 x2 y2 = VPair (VPair (VInt x1) (VInt y1)) (VPair (VInt x2) (
 -- in Haskell.
 class Valuable a where
   asValue :: a -> Value
+
+instance Valuable Value where
+  asValue = id
 
 instance Valuable Int32 where
   asValue = VInt . fromIntegral
@@ -86,6 +90,9 @@ instance (Valuable a, Valuable b) => Valuable (Either a b) where
 
 instance Valuable a => Valuable [a] where
   asValue = asValue . uncons
+
+instance Valuable a => Valuable (NE.NonEmpty a) where
+  asValue = asValue . NE.toList
 
 instance Valuable AreaDimensions where
   asValue (AreaDimensions w h) = asValue (w, h)

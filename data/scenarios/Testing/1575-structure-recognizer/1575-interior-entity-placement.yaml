@@ -17,9 +17,9 @@ objectives:
       - |
         Place the `rock`{=entity} entity back inside the `pigpen`{=structure}.
     condition: |
-      foundBox <- structure "pigpen" 0;
-      case foundBox (\_. return false) (\struc.
-        let structPos = snd struc in
+      foundBoxes <- structures "pigpen";
+      case foundBoxes (\_. pure false) (\cons.
+        let structPos = fst cons in
         j <- robotnamed "judge";
         as j {
           structBounds <- floorplan "pigpen";
@@ -28,7 +28,7 @@ objectives:
           teleport self structPos;
 
           rockCount <- resonate "rock" ((0, 0), structBounds);
-          return $ rockCount > 0;
+          pure $ rockCount > 0;
         }
       );
   - teaser: Grab rock
@@ -49,8 +49,8 @@ objectives:
         even with an extraneous entity within its bounds.
     condition: |
       def isRight = \x. case x (\_. false) (\_. true); end;
-      foundBox <- structure "pigpen" 0;
-      return $ isRight foundBox;
+      foundBoxes <- structures "pigpen";
+      pure $ isRight foundBoxes;
 robots:
   - name: base
     dir: east

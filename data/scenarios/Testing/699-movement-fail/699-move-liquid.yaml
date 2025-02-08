@@ -5,13 +5,13 @@ description: |
   https://github.com/swarm-game/swarm/issues/699
 objectives:
   - condition: |
-      def isAliveOn = \name.\loc. try {r <- robotNamed name; l <- as r {whereami}; return $ l == loc} {return false} end;
-      def isDead = \name. try {robotNamed name; return false} {return true} end;
+      def isAliveOn = \name.\loc. try {r <- robotNamed name; l <- as r {whereami}; pure $ l == loc} {pure false} end;
+      def isDead = \name. try {robotNamed name; pure false} {pure true} end;
       d1 <- isDead "one";
       a2 <- isAliveOn "two" (1,-2);
       a3 <- isAliveOn "three" (1,-3);
       b <- isAliveOn "base" (0,0);
-      return (d1 && a2 && a3 && b)
+      pure (d1 && a2 && a3 && b)
 solution: |
   move; say "Fatal error: base was able to move into water and not fail!"
 robots:

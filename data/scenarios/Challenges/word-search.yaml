@@ -14,8 +14,8 @@ objectives:
         or vertically in either the upward or downward direction.
         Diagonal appearances are not valid.
     condition: |
-      foundStructure <- structure "cow" 0;
-      return $ case foundStructure (\_. false) (\_. true);
+      foundStructures <- structures "cow";
+      pure $ case foundStructures (\_. false) (\_. true);
 robots:
   - name: base
     display:

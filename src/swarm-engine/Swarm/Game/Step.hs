@@ -101,15 +101,12 @@ gameTick = do
   -- also save the current store into the robotContext so we can
   -- restore it the next time we start a computation.
   mr <- use (robotInfo . robotMap . at 0)
-  case mr of
-    Just r -> do
-      res <- use $ gameControls . replStatus
-      case res of
-        REPLWorking ty Nothing -> case getResult r of
-          Just v -> gameControls . replStatus .= REPLWorking ty (Just v)
-          Nothing -> pure ()
-        _otherREPLStatus -> pure ()
-    Nothing -> pure ()
+  forM_ mr $ \r -> do
+    res <- use $ gameControls . replStatus
+    case res of
+      REPLWorking ty Nothing -> forM_ (getResult r) $ \v ->
+        gameControls . replStatus .= REPLWorking ty (Just v)
+      _otherREPLStatus -> pure ()
 
   -- Possibly update the view center.
   modify recalcViewCenterAndRedraw
@@ -561,6 +558,7 @@ stepCESK cesk = case cesk of
   In (TInt n) _ s k -> return $ Out (VInt n) s k
   In (TText str) _ s k -> return $ Out (VText str) s k
   In (TBool b) _ s k -> return $ Out (VBool b) s k
+  In (TType ty) _ s k -> return $ Out (VType ty) s k
   -- There should not be any antiquoted variables left at this point.
   In (TAntiText v) _ s k ->
     return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $str:" v)) s k
@@ -602,6 +600,32 @@ stepCESK cesk = case cesk of
   Out v2 s (FFst v1 : k) -> return $ Out (VPair v1 v2) s k
   -- Lambdas immediately turn into closures.
   In (TLam x _ t) e s k -> return $ Out (VClo x t e) s k
+  -- Special case for evaluating an application of Instant or Atomic:
+  -- set the runningAtomic flag and push a stack frame to unset it
+  -- when done evaluating.  We do this here so that even /evaluating/
+  -- the argument to instant/atomic will happen atomically (#2270).
+  -- Execution will also happen atomically; that is handled in
+  -- execConst.
+  In (TApp (TConst c) t2) e s k
+    | c `elem` [Atomic, Instant] -> do
+        runningAtomic .= True
+        case k of
+          -- In the (common) special case that we will immediately
+          -- execute the atomic/instant command next, don't bother
+          -- pushing an FFinishAtomic frame. That way, runningAtomic
+          -- will remain set, and evaluation + execution together will
+          -- all happen in a single tick.
+          FExec : _ -> return $ In t2 e s (FApp (VCApp c []) : k)
+          -- Otherwise, in general, other evaluation may take place in
+          -- between evaluating the argument to atomic/instant and
+          -- executing it, so we must push an FFinishAtomic frame so
+          -- that intermediate evaluation will not happen atomically.
+          -- For example, consider something like `f (instant c)`,
+          -- where `f : Cmd Unit -> Cmd Unit`.  After evaluating `c`
+          -- atomically, `instant c` is then passed to `f`, which may
+          -- do some (non-atomic) computation before executing its
+          -- argument (if it is executed at all).
+          _ -> return $ In t2 e s (FApp (VCApp c []) : FFinishAtomic : k)
   -- To evaluate an application, start by focusing on the left-hand
   -- side and saving the argument for later.
   In (TApp t1 t2) e s k -> return $ In t1 e s (FArg t2 e : k)

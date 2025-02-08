@@ -148,15 +148,18 @@ data Const
     Whereami
   | -- | Get the current subworld and x, y coordinates
     LocateMe
-  | -- | Get the x, y coordinates of a named waypoint, by index
+  | -- | Get the x, y coordinates of a specific waypoints by name and index
     Waypoint
-  | -- | Get the x, y coordinates of southwest corner of a constructed structure, by index
-    Structure
+  | -- | Get the list of x, y coordinates of the waypoints for a given name
+    Waypoints
+  | -- | Get the list of x, y coordinates of the southwest corner of all
+    --   constructed structures of a given name
+    Structures
   | -- | Get the width and height of a structure template
     Floorplan
   | -- | Answer whether a given entity has the given tag
     HasTag
-  | -- | Cycle through the entity names that are labeled with a given tag
+  | -- | Get the list of entity names that are labeled with a given tag
     TagMembers
   | -- | Locate the closest instance of a given entity within the rectangle
     -- specified by opposite corners, relative to the current location.
@@ -223,8 +226,8 @@ data Const
     Snd
   | -- | Force a delayed evaluation.
     Force
-  | -- | Return for the cmd monad.
-    Return
+  | -- | Pure for the cmd monad.
+    Pure
   | -- | Try/catch block
     Try
   | -- | Undefined
@@ -271,6 +274,12 @@ data Const
 
     -- | Turn an arbitrary value into a string
     Format
+  | -- | Try to turn a string into a value
+    Read
+  | -- | Print a string onto a printable surface
+    Print
+  | -- | Erase a printable surface
+    Erase
   | -- | Concatenate string values
     Concat
   | -- | Count number of characters.
@@ -688,35 +697,32 @@ constInfo c = case c of
         (Set.singleton $ Query $ Sensing RobotSensing)
         "Get the current subworld and x, y coordinates."
   Waypoint ->
-    command 2 Intangible . doc (Set.singleton $ Query APriori) "Get the x, y coordinates of a named waypoint, by index" $
-      [ "Return only the waypoints in the same subworld as the calling robot."
-      , "Since waypoint names can have plural multiplicity, returns a tuple of (count, (x, y))."
-      , "The supplied index will be wrapped automatically, modulo the waypoint count."
-      , "A robot can use the count to know whether they have iterated over the full waypoint circuit."
+    function 2 . doc (Set.singleton $ Query APriori) "Get the x, y coordinates of a waypoint, by name and index." $
+      [ "Returns only waypoints in the same subworld as the calling robot."
+      , "Wraps around modulo the number of waypoints with the given name.  Throws an exception if there are no waypoints with the given name."
       ]
-  Structure ->
-    command 2 Intangible . doc (Set.singleton $ Query $ Sensing EntitySensing) "Get the x, y coordinates of the southwest corner of a constructed structure, by name and index" $
-      [ "The outermost type of the return value indicates whether any structure of such name exists."
-      , "Since structures can have multiple occurrences, returns a tuple of (count, (x, y))."
-      , "The supplied index will be wrapped automatically, modulo the structure count."
-      , "A robot can use the count to know whether they have iterated over the full structure list."
+  Waypoints ->
+    function 1 . doc (Set.singleton $ Query APriori) "Get the list of x, y coordinates of a named waypoint" $
+      [ "Returns only the waypoints in the same subworld as the calling robot."
+      , "Since waypoint names can have plural multiplicity, returns a list of (x, y) coordinates)."
       ]
+  Structures ->
+    command 1 Intangible . doc (Set.singleton $ Query $ Sensing EntitySensing) "Get the x, y coordinates of the southwest corner of all constructed structures of a given name" $
+      ["Since structures can have multiple occurrences, returns a list of (x, y) coordinates."]
   Floorplan ->
     command 1 Intangible . doc (Set.singleton $ Query APriori) "Get the dimensions of a structure template" $
       [ "Returns a tuple of (width, height) for the structure of the requested name."
       , "Yields an error if the supplied string is not the name of a structure."
       ]
   HasTag ->
-    command 2 Intangible . doc (Set.singleton $ Query APriori) "Check whether the given entity has the given tag" $
+    function 2 . doc (Set.singleton $ Query APriori) "Check whether the given entity has the given tag" $
       [ "Returns true if the first argument is an entity that is labeled by the tag in the second argument."
       , "Yields an error if the first argument is not a valid entity."
       ]
   TagMembers ->
-    command 2 Intangible . doc (Set.singleton $ Query APriori) "Get the entities labeled by a tag." $
-      [ "Returns a tuple of (member count, entity)."
-      , "The supplied index will be wrapped automatically, modulo the member count."
-      , "A robot can use the count to know whether they have iterated over the full list."
-      , "Item order is determined by definition sequence in the scenario file."
+    function 1 . doc (Set.singleton $ Query APriori) "Get the entities labeled by a tag." $
+      [ "Returns a list of all entities with the given tag."
+      , "The order of the list is determined by the definition sequence in the scenario file."
       ]
   Detect ->
     command 2 Intangible . doc (Set.singleton $ Query $ Sensing EntitySensing) "Detect an entity within a rectangle." $
@@ -784,7 +790,7 @@ constInfo c = case c of
     command 1 Intangible . doc (Set.singleton $ Query PRNG) "Get a uniformly random integer." $
       ["The random integer will be chosen from the range 0 to n-1, exclusive of the argument."]
   Run -> command 1 long $ shortDoc (Set.singleton $ Mutation $ RobotChange BehaviorChange) "Run a program loaded from a file."
-  Return -> command 1 Intangible $ shortDoc Set.empty "Make the value a result in `cmd`."
+  Pure -> command 1 Intangible $ shortDoc Set.empty "Create a pure `Cmd a`{=type} computation that yields the given value."
   Try -> command 2 Intangible $ shortDoc Set.empty "Execute a command, catching errors."
   Undefined -> function 0 $ shortDoc Set.empty "A value of any type, that is evaluated as error."
   Fail -> function 1 $ shortDoc Set.empty "A value of any type, that is evaluated as error with message."
@@ -813,6 +819,26 @@ constInfo c = case c of
   Leq -> binaryOp "<=" 4 N $ shortDoc Set.empty "Check that the left value is lesser or equal to the right one."
   Geq -> binaryOp ">=" 4 N $ shortDoc Set.empty "Check that the left value is greater or equal to the right one."
   Format -> function 1 $ shortDoc Set.empty "Turn an arbitrary value into a string."
+  Read -> function 2 $ shortDoc Set.empty "Try to read a string into a value of the expected type."
+  Print ->
+    command 2 short
+      . doc
+        (Set.singleton $ Mutation $ RobotChange InventoryChange)
+        "Print text onto an entity."
+      $ [ "`print p txt` Consumes one printable `p` entity from your inventory, and produces an entity"
+        , "whose name is concatenated with a colon and the given text."
+        , "In conjunction with `format`, this can be used to print values onto entities such as `paper`{=entity}"
+        , "and give them to other robots, which can reconstitute the values with `read`."
+        ]
+  Erase ->
+    command 1 short
+      . doc
+        (Set.singleton $ Mutation $ RobotChange InventoryChange)
+        "Erase an entity."
+      $ [ "Consumes the named printable entity from your inventory, which must have something"
+        , "printed on it, and produces an erased entity.  This can be used to undo"
+        , "the effects of a `print` command."
+        ]
   Concat -> binaryOp "++" 6 R $ shortDoc Set.empty "Concatenate the given strings."
   Chars -> function 1 $ shortDoc Set.empty "Counts the number of characters in the text."
   Split ->

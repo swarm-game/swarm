@@ -1,6 +1,6 @@
 def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
 def until = \p. \c. q <- p; if q {} {c; until p c} end;
-def while = \p. until (x <- p; return $ not x) end;
+def while = \p. until (x <- p; pure $ not x) end;
 
 def abs = \n. if (n < 0) {-n} {n} end;
 
@@ -28,7 +28,7 @@ def negateTuple = \t.
 
 def getRelativeLocation = \absCurrentLoc. \absDestLoc.
     let negatedLoc = negateTuple absCurrentLoc in
-    return $ sumTuples negatedLoc absDestLoc;
+    pure $ sumTuples negatedLoc absDestLoc;
     end;
 
 def splitStride = \n.
@@ -73,7 +73,7 @@ def recordFirstEncounter = \stashLoc. \item.
 
 def tryHarvest = \stashLoc.
     maybeItem <- scan down;
-    case maybeItem return (\item.
+    case maybeItem pure (\item.
         hasSome <- has item;
         harvest;
         if hasSome {} {
@@ -105,7 +105,7 @@ def countLine = \tally.
     if emptyhere {
         turn back;
         splitStride tally;
-        return tally;
+        pure tally;
     } {
         move;
         countLine $ tally + 1;
@@ -123,7 +123,7 @@ def placeFinalCopy = \item.
 
 def copyIfNeeded = \targetCount.
     maybeItem <- scan down;
-    case maybeItem return (\item.
+    case maybeItem pure (\item.
         quantity <- count item;
         if (quantity < targetCount) {
             placeFinalCopy item;

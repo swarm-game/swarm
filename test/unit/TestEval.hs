@@ -12,7 +12,11 @@ import Data.Char (ord)
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
+import Graphics.Vty.Input.Events qualified as V
 import Swarm.Game.State
+import Swarm.Game.Value (Valuable (..))
+import Swarm.Language.Key
+import Swarm.Language.Syntax.Direction
 import Swarm.Language.Value
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -202,19 +206,19 @@ testEval g =
             ("fail \"foo\"" `throwsError` ("foo" `T.isInfixOf`))
         , testCase
             "try / no exception 1"
-            ("try {return 1} {return 2}" `evaluatesTo` VInt 1)
+            ("try {pure 1} {pure 2}" `evaluatesTo` VInt 1)
         , testCase
             "try / no exception 2"
-            ("try {return 1} {let x = x in x}" `evaluatesTo` VInt 1)
+            ("try {pure 1} {let x = x in x}" `evaluatesTo` VInt 1)
         , testCase
             "try / fail"
-            ("try {fail \"foo\"} {return 3}" `evaluatesTo` VInt 3)
+            ("try {fail \"foo\"} {pure 3}" `evaluatesTo` VInt 3)
         , testCase
             "try / fail / fail"
             ("try {fail \"foo\"} {fail \"bar\"}" `throwsError` ("bar" `T.isInfixOf`))
         , testCase
             "try / div by 0"
-            ("try {return (1/0)} {return 3}" `evaluatesTo` VInt 3)
+            ("try {pure (1/0)} {pure 3}" `evaluatesTo` VInt 3)
         ]
     , testGroup
         "text"
@@ -269,6 +273,136 @@ testEval g =
             )
         ]
     , testGroup
+        "read"
+        [ testCase
+            "read Unit"
+            ("read \"()\" : Unit" `evaluatesToV` ())
+        , testCase
+            "read Unit with spaces"
+            ("read \"   ()    \" : Unit" `evaluatesToV` ())
+        , testCase
+            "no read Unit"
+            ("read \"xyz\" : Unit" `throwsError` ("Could not read" `T.isInfixOf`))
+        , testCase
+            "read Int"
+            ("read \"32\" : Int" `evaluatesToV` (32 :: Integer))
+        , testCase
+            "read negative Int"
+            ("read \"-32\" : Int" `evaluatesToV` (-32 :: Integer))
+        , testCase
+            "read Int with spaces"
+            ("read \"   -  32   \" : Int" `evaluatesToV` (-32 :: Integer))
+        , testCase
+            "no read Int"
+            ("read \"32.0\" : Int" `throwsError` ("Could not read" `T.isInfixOf`))
+        , testCase
+            "read false"
+            ("read \"false\" : Bool" `evaluatesToV` False)
+        , testCase
+            "read true"
+            ("read \"true\" : Bool" `evaluatesToV` True)
+        , testCase
+            "read forward"
+            ( "read \"forward\" : Dir"
+                `evaluatesTo` VDir (DRelative (DPlanar DForward))
+            )
+        , testCase
+            "read east"
+            ("read \"east\" : Dir" `evaluatesTo` VDir (DAbsolute DEast))
+        , testCase
+            "read down"
+            ("read \"down\" : Dir" `evaluatesTo` VDir (DRelative DDown))
+        , testCase
+            "read text"
+            ("read \"\\\"hi\\\"\" : Text" `evaluatesToV` ("hi" :: Text))
+        , testCase
+            "read sum inl"
+            ( "read \"inl 3\" : (Int + Bool)"
+                `evaluatesToV` Left @Integer @Bool 3
+            )
+        , testCase
+            "read sum inr"
+            ( "read \"inr true\" : (Int + Bool)"
+                `evaluatesToV` Right @Integer True
+            )
+        , testCase
+            "read nested sum"
+            ( "read \"inl (inr true)\" : ((Int + Bool) + Unit)"
+                `evaluatesToV` Left @_ @() (Right @Integer True)
+            )
+        , testCase
+            "read pair"
+            ( "read \"(3, true)\" : Int * Bool"
+                `evaluatesToV` (3 :: Integer, True)
+            )
+        , testCase
+            "read pair with non-atomic value"
+            ( "read \"(3, inr true)\" : Int * (Unit + Bool)"
+                `evaluatesToV` (3 :: Integer, Right @() True)
+            )
+        , testCase
+            "read nested pair"
+            ( "read \"(3, true, ())\" : Int * Bool * Unit"
+                `evaluatesToV` (3 :: Integer, (True, ()))
+            )
+        , testCase
+            "read left-nested pair"
+            ( "read \"((3, true), ())\" : ((Int * Bool) * Unit)"
+                `evaluatesToV` ((3 :: Integer, True), ())
+            )
+        , testCase
+            "read empty record"
+            ("read \"[]\" : []" `evaluatesTo` VRcd M.empty)
+        , testCase
+            "read singleton record"
+            ( "read \"[x = 2]\" : [x : Int]"
+                `evaluatesTo` VRcd (M.singleton "x" (VInt 2))
+            )
+        , testCase
+            "read doubleton record"
+            ( "read \"[x = 2, y = inr ()]\" : [x : Int, y : Bool + Unit]"
+                `evaluatesTo` (VRcd . M.fromList $ [("x", VInt 2), ("y", VInj True VUnit)])
+            )
+        , testCase
+            "read permuted doubleton record"
+            ( "read \"[y = inr (), x = 2]\" : [x : Int, y : Bool + Unit]"
+                `evaluatesTo` (VRcd . M.fromList $ [("x", VInt 2), ("y", VInj True VUnit)])
+            )
+        , testCase
+            "no read record with repeated fields"
+            ( "read \"[x = 2, x = 3]\" : [x : Int]"
+                `throwsError` ("Could not read" `T.isInfixOf`)
+            )
+        , testCase
+            "read key"
+            ( "read \"key \\\"M-C-F5\\\"\" : Key"
+                `evaluatesTo` VKey (mkKeyCombo [V.MCtrl, V.MMeta] (V.KFun 5))
+            )
+        , testCase
+            "read recursive list"
+            ( "read \"inr (3, inr (5, inl ()))\" : rec l. Unit + (Int * l)"
+                `evaluatesToV` [3 :: Integer, 5]
+            )
+        , testCase
+            "read paper with int"
+            ("read \"paper: 52\" : Int" `evaluatesToV` (52 :: Integer))
+        , testCase
+            "read paper with tuple"
+            ( "read \"paper: (3, false, ())\" : Int * Bool * Unit"
+                `evaluatesToV` (3 :: Integer, (False, ()))
+            )
+        , testCase
+            "read random entity with tuple"
+            ( "read \"foo: (3, false, ())\" : Int * Bool * Unit"
+                `evaluatesToV` (3 :: Integer, (False, ()))
+            )
+        , testCase
+            "read Text value containing colon"
+            ( "read \"\\\"hi: there\\\"\" : Text"
+                `evaluatesToV` ("hi: there" :: Text)
+            )
+        ]
+    , testGroup
         "records - #1093"
         [ testCase
             "empty record"
@@ -312,33 +446,33 @@ testEval g =
         "scope - #681"
         [ testCase
             "binder in local scope"
-            ("def f = a <- scan down end; let a = 2 in f; return (a+1)" `evaluatesTo` VInt 3)
+            ("def f = a <- scan down end; let a = 2 in f; pure (a+1)" `evaluatesTo` VInt 3)
         , testCase
             "binder in local scope, no type change"
-            ("def f = a <- return 1 end; let a = 2 in f; return a" `evaluatesTo` VInt 2)
+            ("def f = a <- pure 1 end; let a = 2 in f; pure a" `evaluatesTo` VInt 2)
         , testCase
             "repeat with scan"
-            ("def x = \\n. \\c. if (n==0) {} {c; x (n-1) c} end; x 10 ( c <- scan down; case c (\\_. say \"Hi\") (\\_. return ()))" `evaluatesTo` VUnit)
+            ("def x = \\n. \\c. if (n==0) {} {c; x (n-1) c} end; x 10 ( c <- scan down; case c (\\_. say \"Hi\") (\\_. pure ()))" `evaluatesTo` VUnit)
         , testCase
             "nested recursion with binder - #1032"
-            ("def go = \\n. if (n > 0) {i <- return n; s <- go (n-1); return (s+i)} {return 0} end; go 4" `evaluatesTo` VInt 10)
+            ("def go = \\n. if (n > 0) {i <- pure n; s <- go (n-1); pure (s+i)} {pure 0} end; go 4" `evaluatesTo` VInt 10)
         , testCase
             "binder in local scope - #1796"
-            ("def x = \\x.x end; def foo = x <- return 0 end; foo; return (x 42)" `evaluatesTo` VInt 42)
+            ("def x = \\x.x end; def foo = x <- pure 0 end; foo; pure (x 42)" `evaluatesTo` VInt 42)
         ]
     , testGroup
         "nesting"
         [ testCase
             "def nested in def"
-            ("def x : Cmd Int = def y : Int = 3 end; return (y + 2) end; x" `evaluatesTo` VInt 5)
+            ("def x : Cmd Int = def y : Int = 3 end; pure (y + 2) end; x" `evaluatesTo` VInt 5)
         , testCase
             "nested def does not escape"
-            ( "def z = 1 end; def x = def z = 3 end; return (z + 2) end; n <- x; return (n + z)"
+            ( "def z = 1 end; def x = def z = 3 end; pure (z + 2) end; n <- x; pure (n + z)"
                 `evaluatesTo` VInt 6
             )
         , testCase
             "nested tydef"
-            ( "def x = (tydef X = Int end; def z : X = 3 end; return (z + 2)) end; x"
+            ( "def x = (tydef X = Int end; def z : X = 3 end; pure (z + 2)) end; x"
                 `evaluatesTo` VInt 5
             )
         ]
@@ -364,6 +498,9 @@ testEval g =
   evaluatesTo tm val = do
     result <- evaluate tm
     assertEqual "" (Right val) (fst <$> result)
+
+  evaluatesToV :: Valuable v => Text -> v -> Assertion
+  evaluatesToV tm val = tm `evaluatesTo` asValue val
 
   evaluatesToP :: Text -> Value -> Property
   evaluatesToP tm val = ioProperty $ do

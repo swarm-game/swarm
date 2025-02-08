@@ -16,7 +16,7 @@ objectives:
       m <- robotnamed "monkey";
       as m {
         p <- path (inR 10) (inR "banana");
-        return $ case p (\_. false) (\_. true);
+        pure $ case p (\_. false) (\_. true);
       };
   - id: placed_tree
     teaser: Tree placed
@@ -26,7 +26,7 @@ objectives:
       - Tree must be placed
     condition: |
       x <- as base {has "tree"};
-      return $ not x;
+      pure $ not x;
 solution: |
   move;
   move;

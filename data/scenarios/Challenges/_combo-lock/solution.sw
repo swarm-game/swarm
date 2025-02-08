@@ -10,7 +10,7 @@ def cycleCombos = \n.
         if (n > 0) {
             drill down;
             maybeNextEnt <- scan east;
-            case maybeNextEnt return (\_. turn east; move; cycleCombos 3);
+            case maybeNextEnt pure (\_. turn east; move; cycleCombos 3);
             cycleCombos $ n - 1;
         } {
             turn west;

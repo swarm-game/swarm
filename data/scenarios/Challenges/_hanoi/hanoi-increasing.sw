@@ -34,15 +34,15 @@ repeat (
         z <- scan north;
         if (z == null) {
           if (y == null) {
-            return true
+            pure true
           } {
-            return $ f x y
+            pure $ f x y
           }
         } {
-          return $ f x y && f y z
+          pure $ f x y && f y z
         }
     };
     try {
-        if o {place "OK"} {grab; return ()}
+        if o {place "OK"} {grab; pure ()}
     } {}
 )

@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -8,19 +6,22 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Log where
 
 import Data.Aeson
 import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NE
-import Data.Text (Text)
-import Data.Text qualified as T
+import Data.List.NonEmpty.Extra qualified as NE
 import GHC.Generics (Generic)
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Location (Location)
+import Swarm.Game.Scenario.Topography.Structure.Named (StructureName, name)
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Static (
+  OrientedStructure,
+ )
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic)
+import Swarm.Language.Syntax.Direction (AbsoluteDir)
 
-renderSharedNames :: ConsolidatedRowReferences b a -> Text
+renderSharedNames :: ConsolidatedRowReferences b a -> NonEmpty StructureName
 renderSharedNames =
-  T.intercalate "/" . NE.toList . NE.nub . NE.map (getName . originalDefinition . wholeStructure) . referencingRows
+  NE.nubOrd . NE.map (name . originalItem . entityGrid . wholeStructure) . referencingRows
 
 data ParticipatingEntity e = ParticipatingEntity
   { entity :: e
@@ -30,13 +31,12 @@ data ParticipatingEntity e = ParticipatingEntity
 
 data IntactPlacementLog e = IntactPlacementLog
   { intactnessFailure :: Maybe (StructureIntactnessFailure e)
-  , sName :: OriginalName
-  , locUpperLeft :: Cosmic Location
+  , placedStructure :: PositionedStructure OrientedStructure
   }
   deriving (Functor, Generic, ToJSON)
 
 data ChunkMatchFailureReason e
-  = ChunkMatchFailureReason OriginalName (RowMismatchReason e)
+  = ChunkMatchFailureReason (NonEmpty StructureName) (RowMismatchReason e)
   deriving (Functor, Generic, ToJSON)
 
 data FoundChunkComparison e = FoundChunkComparison
@@ -58,15 +58,16 @@ data SearchLog e
   | StartSearchAt (Cosmic Location) InspectionOffsets
   | FoundParticipatingEntity (ParticipatingEntity e)
   | FoundCompleteStructureCandidates [(OrientedStructure, Cosmic Location)]
+  | RecognizedSingleStructure (OrientedStructure, Cosmic Location)
   | -- | this is actually internally used as a (Map (NonEmpty e) (NonEmpty Int)),
     -- but the requirements of Functor force us to invert the mapping
     FoundPiecewiseChunks [(NonEmpty Int, NonEmpty e)]
   | ExpectedChunks (NonEmpty [NonEmpty e])
   | WorldRowContent [Maybe e]
-  | ChunksMatchingExpected [ChunkedRowMatch OriginalName e]
+  | ChunksMatchingExpected [ChunkedRowMatch (NonEmpty StructureName) e]
   | ChunkFailures [ChunkMatchFailureReason e]
   | ChunkIntactnessVerification (IntactPlacementLog e)
-  | StructureRemoved OriginalName
+  | StructureRemoved StructureName
   deriving (Functor, Generic)
 
 instance (ToJSON e) => ToJSON (SearchLog e) where
@@ -81,7 +82,7 @@ searchLogOptions =
 instance ToSample (SearchLog e) where
   toSamples _ = SD.noSamples
 
-data StructureLocation = StructureLocation OriginalName (Cosmic Location)
+data StructureLocation = StructureLocation StructureName (Cosmic Location, AbsoluteDir)
   deriving (Generic, ToJSON)
 
 instance ToSample StructureLocation where

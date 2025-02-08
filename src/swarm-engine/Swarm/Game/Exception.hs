@@ -129,8 +129,8 @@ data IncapableFixWords = IncapableFixWords
 -- "obtain device", or "obtain consumables".
 formatIncapableFix :: IncapableFix -> IncapableFixWords
 formatIncapableFix = \case
-  FixByEquip -> IncapableFixWords "equip" "device"
-  FixByObtainDevice -> IncapableFixWords "obtain" "device"
+  FixByEquip -> IncapableFixWords "equip" "device(s)"
+  FixByObtainDevice -> IncapableFixWords "obtain" "device(s)"
   FixByObtainConsumables -> IncapableFixWords "obtain" "consumables"
 
 -- | Pretty print the incapable exception with an actionable suggestion
@@ -153,7 +153,7 @@ formatIncapableFix = \case
 --   If God in troth thou wantest to play, try thou a Creative game.
 --
 -- >>> incapableError (R.singletonCap $ CExecute Appear) (TConst Appear)
--- You do not have the device required for:
+-- You do not have the device(s) required for:
 --   'appear'
 --   Please equip:
 --   - magic wand or the one ring

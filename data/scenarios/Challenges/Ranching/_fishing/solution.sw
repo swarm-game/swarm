@@ -17,7 +17,7 @@ def makeRoll =
 def checkIngredients =
     hasTuna <- has "crab";
     hasSeaweed <- has "seaweed";
-    return $ hasTuna && hasSeaweed;
+    pure $ hasTuna && hasSeaweed;
     end;
 
 def catchFish = \rod.
@@ -39,9 +39,9 @@ Precondition:
 At the top-right corner
 */
 def harvestRectangle =
-    intersperse 4 move $ harvest; return ();
+    intersperse 4 move $ harvest; pure ();
     turnAround left;
-    intersperse 4 move $ harvest; return ();
+    intersperse 4 move $ harvest; pure ();
     end;
 
 def harvestIngredients =
@@ -62,23 +62,11 @@ def harvestIngredients =
     move;
     end;
 
-def getJunkItem = \idx.
-    result <- tagmembers "junk" idx;
-    let totalCount = fst result in
-    let member = snd result in
-    let nextIdx = idx + 1 in
-
-    hasProhibited <- has member;
-    if hasProhibited {
-        return $ inr member;
-    } {
-        if (nextIdx < totalCount) {
-            getJunkItem nextIdx;
-        } {
-            return $ inl ();
-        }
-    }
-    end;
+def find : (a -> Cmd Bool) -> (rec l. Unit + a * l) -> Cmd (Unit + a) = \p. \l.
+  case l
+    (\_. pure (inl ()))
+    (\cons. h <- p (fst cons); if h {pure $ inr (fst cons)} {find p (snd cons)})
+end
 
 def tryPlace = \item.
     try {
@@ -120,7 +108,7 @@ def placeSerpentine = \placeFunc.
 
     end;
 
-def returnToCorner =
+def pureToCorner =
     turn back;
     move; move;
     turn right;
@@ -131,7 +119,7 @@ def returnToCorner =
 def unloadTrash =
     try {
         placeSerpentine (
-            item <- getJunkItem 0;
+            item <- find has (tagmembers "junk");
             case item (\_. fail "done") (\item. place item);
         );
         watch down;
@@ -155,7 +143,7 @@ def burnTires =
 
         intersperse 2 move $ (
             placeSerpentine $ tryPlace "car tire";
-            returnToCorner;
+            pureToCorner;
             ignite forward;
 
             turn right;

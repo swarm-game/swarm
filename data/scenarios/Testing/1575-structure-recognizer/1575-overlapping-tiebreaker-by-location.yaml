@@ -12,8 +12,8 @@ objectives:
       - |
         Build a `topleft`{=structure} structure
     condition: |
-      foundStructure <- structure "topleft" 0;
-      return $ case foundStructure (\_. false) (\_. true);
+      foundStructure <- structures "topleft";
+      pure $ case foundStructure (\_. false) (\_. true);
   - id: wrong_structure
     teaser: Don't recognize small structure
     optional: true
@@ -21,8 +21,8 @@ objectives:
       - |
         The `bottomright`{=structure} structure shouldn't be recognized.
     condition: |
-      foundStructure <- structure "bottomright" 0;
-      return $ case foundStructure (\_. false) (\_. true);
+      foundStructure <- structures "bottomright";
+      pure $ case foundStructure (\_. false) (\_. true);
 robots:
   - name: base
     dir: east

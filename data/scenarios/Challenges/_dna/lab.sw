@@ -55,7 +55,7 @@ def waitUntilSomethingExists =
         watch down;
         wait 1000;
         waitUntilSomethingExists;
-    ) return;
+    ) pure;
     end;
 
 def waitUntilHere = \item.
@@ -81,7 +81,7 @@ def myStandby = \receptacleLoc.
     entToClone <- grab;
     teleport self (36, -11);
     turn back;
-    return $ inR entToClone;
+    pure $ inR entToClone;
     end;
 
 def placeBase = \standbyFunc. \n. 
@@ -102,9 +102,9 @@ def placeBase = \standbyFunc. \n.
         move;
 
         if isGood {
-            return clonedOrganism;
+            pure clonedOrganism;
         } {
-            return $ inL ();
+            pure $ inL ();
         }
     } {
         // Returns the clonedOrganism
@@ -126,8 +126,7 @@ def makeDnaStrand = \receptacleLoc.
             teleport self (0, -11);
             waitUntilHere "switch (on)";
 
-            bottomWaypointQuery <- waypoint "receiver" 1;
-            let receptacleLoc2 = snd bottomWaypointQuery in
+            let receptacleLoc2 = waypoint "receiver" 1 in
             teleport self receptacleLoc2;
 
             sow clonedItem;
@@ -145,24 +144,22 @@ def makeDnaStrand = \receptacleLoc.
 
 def waitForCloneableOrganism =
 
-    waypointQuery <- waypoint "receiver" 0;
-    let receptacleLoc = snd waypointQuery in
+    let receptacleLoc = waypoint "receiver" 0 in
     organism <- instant (
         teleport self receptacleLoc;
 
         waitUntilOccupied;
 
         thingHere <- scan down;
-        case thingHere (\x. return $ inL x) (\item.
-            isOrganism <- hastag item "organism";
-            return $ inR item;
-        );
+        pure $ case thingHere (\x. inL x) (\item.
+          if (hastag item "organism") {inR item} {inL ()}
+        )
     );
 
     case organism (\_.
         say "Not a cloneable organism!";
         waitForCloneableOrganism;
-    ) (\item.
+    ) (\_.
         create "pixel (G)";
         makeDnaStrand receptacleLoc;
     );

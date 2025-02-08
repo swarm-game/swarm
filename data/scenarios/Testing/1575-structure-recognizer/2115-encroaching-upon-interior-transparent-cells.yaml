@@ -18,8 +18,8 @@ objectives:
         even with an extraneous entity within its bounds.
     condition: |
       def isRight = \x. case x (\_. false) (\_. true); end;
-      foundBox <- structure "pigpen" 0;
-      return $ isRight foundBox;
+      foundBoxes <- structures "pigpen";
+      pure $ isRight foundBoxes;
 robots:
   - name: base
     dir: east

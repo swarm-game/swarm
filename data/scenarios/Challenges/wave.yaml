@@ -21,7 +21,7 @@ objectives:
       - |
         The robots caught you!
     condition: |
-      as base {x <- meet; return $ case x (\_. false) (\_. true)};
+      as base {x <- meet; pure $ case x (\_. false) (\_. true)};
 robots:
   - name: base
     dir: north

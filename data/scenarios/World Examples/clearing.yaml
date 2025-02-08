@@ -14,9 +14,16 @@ robots:
     dir: north
 world:
   dsl: |
-    overlay
+    let // Weight the y coordinates used for the radius calculation
+        // by 2.  This will result in an ellipse of half the height,
+        // which will look circular thanks to the non-square display.
+        radiussq = x*x + (2*y)*(2*y),
+        inner = radiussq < 6*6,
+        outer = radiussq > 30*30,
+        middle = not inner && not outer
+    in overlay
     [ {dirt}
-    , mask ((x*x + 4*y*y) >= (6*6) && (x*x + 4*y*y) <= (30*30))
-        (let h = hash % 24 in if (36 + h*h) <= (x*x + 4*y*y) then {tree,dirt} else {dirt} )
-    , mask ((x*x + 4*y*y) > (30*30)) {tree, dirt}
+    , mask middle
+      (let h = hash % 24 in if (36 + h*h) <= radiussq then {tree,dirt} else {dirt})
+    , mask outer {tree, dirt}
     ]

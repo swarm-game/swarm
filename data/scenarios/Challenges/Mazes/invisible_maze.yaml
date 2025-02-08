@@ -10,17 +10,17 @@ objectives:
       try {
         teleport self (27, -17);
         b <- ishere "goal";
-        return (not b)
-      } { return false }
+        pure (not b)
+      } { pure false }
 solution: |
   def tL = turn left end;
   def tR = turn right end;
   def ifC = \test. \then. \else. b <- test; if b then else end;
   def forever = \c. c ; forever c end;
-  def rightBlocked = tR; b <- blocked; tL; return b end;
+  def rightBlocked = tR; b <- blocked; tL; pure b end;
   def mazeStep = ifC rightBlocked {ifC blocked {tL} {move}} {tR; move} end;
   build {
-    forever (mazeStep; ifC (ishere "goal") {grab; return ()} {})
+    forever (mazeStep; ifC (ishere "goal") {grab; pure ()} {})
   }
 robots:
   - name: base

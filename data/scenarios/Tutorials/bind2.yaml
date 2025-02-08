@@ -19,8 +19,8 @@ objectives:
       try {
         p <- robotnamed "floorspot";
         w <- as p {ishere "Hastur"};
-        return (not w);
-      } { return false }
+        pure (not w);
+      } { pure false }
   - goal:
       - |
         Your robot obtained the misplaced artifact! Next you need to put it back
@@ -58,8 +58,8 @@ objectives:
       try {
         p <- robotnamed "pedestal";
         w <- as p {ishere "Hastur"};
-        return w;
-      } { return false }
+        pure w;
+      } { pure false }
     prerequisite: grab_artifact
 solution: |
   build {

@@ -12,6 +12,7 @@ module Swarm.TUI.Model.DebugOption (
 
 import Data.Foldable (find, foldl')
 import Data.List.Extra (enumerate, splitOn, trim)
+import Prelude hiding (Foldable (..))
 
 data DebugOption
   = ToggleCreative

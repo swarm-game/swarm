@@ -17,7 +17,7 @@ objectives:
     condition: |
       as base {
         hasFence <- has "fence";
-        return $ not hasFence;
+        pure $ not hasFence;
       }
 solution: |
   def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;

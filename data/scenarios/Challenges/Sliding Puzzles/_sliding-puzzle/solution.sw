@@ -57,13 +57,13 @@ def subtractTuple = \t1. \t2.
 def getRelativeLocation = \absLoc.
     myloc <- whereami;
     let negatedLoc = negateTuple myloc in
-    return $ sumTuples negatedLoc absLoc;
+    pure $ sumTuples negatedLoc absLoc;
     end;
 
 def getRelativeRectangle : (Int * Int) * (Int * Int) -> Cmd ((Int * Int) * (Int * Int)) = \corners.
     myloc <- whereami;
     let negatedLoc = negateTuple myloc in
-    return $ mapTuple (sumTuples negatedLoc) corners;
+    pure $ mapTuple (sumTuples negatedLoc) corners;
     end;
 
 /**
@@ -191,7 +191,7 @@ def blankCellLocatorCriteria = \rect.
     entCount <- density rect;
     let dims = getDimensions rect in
     let tileCount = getRectArea dims in
-    return $ entCount < tileCount;
+    pure $ entCount < tileCount;
     end;
 
 /**
@@ -209,10 +209,10 @@ def findEmptyCell = \foundCriteria. \rect.
     let tileCount = getRectArea dims in
 
     if (tileCount < 1) {
-        return $ inL ();
+        pure $ inL ();
     } $ elif (tileCount == 1) {
         foundHere <- foundCriteria rect;
-        return $ if foundHere {
+        pure $ if foundHere {
             inR $ fst rect;
         } {
             inL ();
@@ -297,7 +297,7 @@ def placeTile = \boardWidth. \idx. \blankLoc.
     log $ "absolute target loc: " ++ format targetLocAbsolute;
     targetRelativeLoc <- getRelativeLocation targetLocAbsolute;
 
-//    case eitherLetterloc return $ moveSpaceToTile blankLoc targetRelativeLoc;
+//    case eitherLetterloc pure $ moveSpaceToTile blankLoc targetRelativeLoc;
     moveTuple blankLoc;
     end;
 
@@ -412,7 +412,7 @@ def go = \boardWidth.
     corners <- getBoardRectangle;
     eitherBlankLoc <- findEmptyCell blankCellLocatorCriteria corners;
 
-    case eitherBlankLoc return $ placeTile boardWidth 1;
+    case eitherBlankLoc pure $ placeTile boardWidth 1;
 
     moveManually;
     end;

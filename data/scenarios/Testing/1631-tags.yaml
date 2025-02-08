@@ -14,41 +14,29 @@ objectives:
     id: got_fruit
     optional: true
     condition: |
-      // Returns true if prohibited item is in inventory.
-      def checkFruit = \idx.
-        result <- tagmembers "fruit" idx;
-        let totalCount = fst result in
-        let member = snd result in
-        let nextIdx = idx + 1 in
+      def hasAny : (rec l. Unit + Text * l) -> Cmd Bool = \items.
+        case items
+          (\_. pure false)
+          (\c. b <- has (fst c); if b {pure true} {hasAny (snd c)})
+      end;
 
-        hasProhibited <- as base {has member};
-        if hasProhibited {
-          return true;
-        } {
-          if (nextIdx < totalCount) {
-            checkFruit nextIdx;
-          } {
-            return false;
-          }
-        }
-        end;
-
-      checkFruit 0;
+      let prohibited = tagmembers "fruit" in
+      hasAny prohibited
     goal:
       - |
         Do not pick up any fruit.
 solution: |
   def findTarget =
     result <- scan down;
-    isTarget <- case result (\_. return false) (\item.
-      isEdible <- hastag item "edible";
-      isFruit <- hastag item "fruit";
-      return $ isEdible && not isFruit;
+    isTarget <- case result (\_. pure false) (\item.
+      let isEdible = hastag item "edible" in
+      let isFruit = hastag item "fruit" in
+      pure $ isEdible && not isFruit;
     );
 
     if isTarget {
       grab;
-      return ();
+      pure ();
     } {
       move;
       findTarget;

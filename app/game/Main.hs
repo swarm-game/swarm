@@ -94,7 +94,7 @@ cliParser =
   widthOpt = option auto (long "width" <> metavar "COLUMNS" <> help "Use layout with maximum width")
 
   langVer :: Parser LanguageVersion
-  langVer = flag SwarmLangLatest SwarmLang0_5 (long "v0.5" <> help "Read (& convert) code from Swarm version 0.5")
+  langVer = flag SwarmLangLatest SwarmLang0_6 (long "v0.6" <> help "Read (& convert) code from Swarm version 0.6")
 
   printKeyMode :: Parser KeybindingPrint
   printKeyMode =

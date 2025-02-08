@@ -10,18 +10,18 @@ objectives:
         `line`{=structure} structure should be recognized upon completion.
     condition: |
       def isRight = \x. case x (\_. false) (\_. true); end;
-      foundStructure <- structure "line" 0;
-      return $ isRight foundStructure;
+      foundStructures <- structures "line";
+      pure $ isRight foundStructures;
   - teaser: Recognize second structure
     id: found_elbow
     optional: true
     goal:
       - |
-        `line`{=structure} structure should be recognized upon completion.
+        `elbow`{=structure} structure should be recognized upon completion.
     condition: |
       def isRight = \x. case x (\_. false) (\_. true); end;
-      foundStructure <- structure "elbow" 0;
-      return $ isRight foundStructure;
+      foundStructures <- structures "elbow";
+      pure $ isRight foundStructures;
   - teaser: Grab tree
     prerequisite:
       not: found_elbow

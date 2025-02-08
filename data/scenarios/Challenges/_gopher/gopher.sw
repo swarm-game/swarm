@@ -7,9 +7,9 @@ def else = \t. t end
 def randSign = \x.
     opposite <- random 2;
     if (opposite == 1) {
-        return (-x);
+        pure (-x);
     } {
-        return x;
+        pure x;
     }
     end;
 
@@ -84,7 +84,7 @@ def waitWhileHere = \e. \remainingTime.
                 // but *before* it executes `grab`, the gopher will crash.
                 // Thus we have wrapped this `grab` in a `try`.
                 grab;
-                return ();
+                pure ();
             } {};
         };
     } {};
@@ -115,7 +115,7 @@ def go = \width. \height. \lastTauntIndex. \startingAmount. \dropping.
             place reward;
         } {
             swap reward;
-            return ();
+            pure ();
         };
 
         baseloc <- as base {whereami};

@@ -28,7 +28,7 @@ import Control.Effect.Accum
 import Control.Effect.Lift
 import Control.Effect.Throw
 import Control.Lens hiding (from, (<.>))
-import Control.Monad (guard, void)
+import Control.Monad (guard, unless, void)
 import Control.Monad.Except (ExceptT (..))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execStateT)
@@ -59,7 +59,6 @@ import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Scenario.Status
-import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (originalStructureDefinitions)
 import Swarm.Game.ScenarioInfo (
   loadScenarioInfo,
@@ -218,6 +217,12 @@ startGameWithSeed siPair@(_scene, si) lp = do
   -- Beware: currentScenarioPath must be set so that progress/achievements can be saved.
   -- It has just been cleared in scenarioToAppState.
   gameState . currentScenarioPath .= Just p
+
+  -- Warn the user that the use of debugging options means progress
+  -- will not be saved.
+  debugging <- use $ uiState . uiDebugOptions
+  unless (null debugging) $
+    uiState . uiPopups %= addPopup DebugWarningPopup
  where
   prevBest t = case si ^. scenarioStatus of
     NotStarted -> emptyBest t
@@ -246,42 +251,33 @@ scenarioToAppState siPair@(scene, _) lp = do
     l .= x'
     return x'
 
--- | Modify the UI state appropriately when starting a new scenario.
-scenarioToUIState ::
+setUIGameplay ::
+  GameState ->
+  TimeSpec ->
   Bool ->
   ScenarioInfoPair ->
-  GameState ->
-  UIState ->
-  IO UIState
-scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
-  curTime <- getTime Monotonic
-  return $
-    u
-      & uiPlaying .~ True
-      & uiAttrMap
-        .~ applyAttrMappings
-          ( map (first getWorldAttrName . toAttrPair) $
-              fst siPair ^. scenarioLandscape . scenarioAttrs
-          )
-          swarmAttrMap
-      & uiGameplay . uiDialogs . uiGoal .~ emptyGoalDisplay
-      & uiGameplay . uiIsAutoPlay .~ isAutoplaying
-      & uiGameplay . uiFocusRing .~ initFocusRing
-      & uiGameplay . uiInventory . uiInventorySearch .~ Nothing
-      & uiGameplay . uiInventory . uiInventoryList .~ Nothing
-      & uiGameplay . uiInventory . uiInventorySort .~ defaultSortOptions
-      & uiGameplay . uiInventory . uiShowZero .~ True
-      & uiGameplay . uiTiming . uiShowFPS .~ False
-      & uiGameplay . uiREPL .~ initREPLState (u ^. uiGameplay . uiREPL . replHistory)
-      & uiGameplay . uiREPL . replHistory %~ restartREPLHistory
-      & uiGameplay . scenarioRef ?~ siPair
-      & uiGameplay . uiTiming . lastFrameTime .~ curTime
-      & uiGameplay . uiWorldEditor . EM.entityPaintList %~ BL.listReplace entityList Nothing
-      & uiGameplay . uiWorldEditor . EM.editingBounds . EM.boundsRect %~ setNewBounds
-      & uiGameplay . uiDialogs . uiStructure
-        .~ StructureDisplay
-          (SR.makeListWidget . M.elems $ gs ^. discovery . structureRecognition . automatons . originalStructureDefinitions)
-          (focusSetCurrent (StructureWidgets StructuresList) $ focusRing $ map StructureWidgets enumerate)
+  UIGameplay ->
+  UIGameplay
+setUIGameplay gs curTime isAutoplaying siPair@(scenario, _) uig =
+  uig
+    & uiDialogs . uiGoal .~ emptyGoalDisplay
+    & uiIsAutoPlay .~ isAutoplaying
+    & uiFocusRing .~ initFocusRing
+    & uiInventory . uiInventorySearch .~ Nothing
+    & uiInventory . uiInventoryList .~ Nothing
+    & uiInventory . uiInventorySort .~ defaultSortOptions
+    & uiInventory . uiShowZero .~ True
+    & uiTiming . uiShowFPS .~ False
+    & uiREPL .~ initREPLState (uig ^. uiREPL . replHistory)
+    & uiREPL . replHistory %~ restartREPLHistory
+    & scenarioRef ?~ siPair
+    & uiTiming . lastFrameTime .~ curTime
+    & uiWorldEditor . EM.entityPaintList %~ BL.listReplace entityList Nothing
+    & uiWorldEditor . EM.editingBounds . EM.boundsRect %~ setNewBounds
+    & uiDialogs . uiStructure
+      .~ StructureDisplay
+        (SR.makeListWidget . M.elems $ gs ^. landscape . recognizerAutomatons . originalStructureDefinitions)
+        (focusSetCurrent (StructureWidgets StructuresList) $ focusRing $ map StructureWidgets enumerate)
  where
   entityList = EU.getEntitiesForList $ gs ^. landscape . terrainAndEntities . entityMap
 
@@ -294,6 +290,26 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
     if isEmptyArea
       then maybeOldBounds
       else Just newBounds
+
+-- | Modify the UI state appropriately when starting a new scenario.
+scenarioToUIState ::
+  Bool ->
+  ScenarioInfoPair ->
+  GameState ->
+  UIState ->
+  IO UIState
+scenarioToUIState isAutoplaying siPair gs u = do
+  curTime <- getTime Monotonic
+  return $
+    u
+      & uiPlaying .~ True
+      & uiAttrMap
+        .~ applyAttrMappings
+          ( map (first getWorldAttrName . toAttrPair) $
+              fst siPair ^. scenarioLandscape . scenarioAttrs
+          )
+          swarmAttrMap
+      & uiGameplay %~ setUIGameplay gs curTime isAutoplaying siPair
 
 -- | Create an initial app state for a specific scenario.  Note that
 --   this function is used only for unit tests, integration tests, and

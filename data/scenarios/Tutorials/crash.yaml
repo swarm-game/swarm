@@ -26,7 +26,7 @@ objectives:
     condition: |
       try {
         as base {has "Win"}
-      } { return false }
+      } { pure false }
 entities:
   - name: Win
     display:
