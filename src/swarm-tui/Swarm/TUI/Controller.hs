@@ -62,6 +62,7 @@ import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec, FSuspend))
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Land
 import Swarm.Game.Robot.Concrete
+import Swarm.Game.Scenario (scenarioMetadata, scenarioName)
 import Swarm.Game.Scenario.Scoring.Best (scenarioBestByTime)
 import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.ScenarioInfo
@@ -179,19 +180,11 @@ handleMainMenuEvent menu = \case
         ss <- use $ runtimeState . scenarios
         uiState . uiMenu .= NewGameMenu (pure $ mkScenarioList ss)
       Tutorial -> do
-        -- Set up the menu stack as if the user had chosen "New Game > Tutorials"
         ss <- use $ runtimeState . scenarios
-        let tutorialCollection = getTutorials ss
-            topMenu =
-              BL.listFindBy
-                ((== tutorialsDirname) . T.unpack . scenarioItemName)
-                (mkScenarioList ss)
-            tutorialMenu = mkScenarioList tutorialCollection
-            menuStack = tutorialMenu :| pure topMenu
-        uiState . uiMenu .= NewGameMenu menuStack
 
-        -- Extract the first unsolved tutorial challenge and run it
-        let tutorials = scOrder tutorialCollection
+        -- Extract the first unsolved tutorial challenge
+        let tutorialCollection = getTutorials ss
+            tutorials = scOrder tutorialCollection
             -- Find first unsolved tutorial, or first tutorial if all are solved
             firstUnsolved :: Maybe FilePath
             firstUnsolved = (tutorials >>= find unsolved) <|> (tutorials >>= listToMaybe)
@@ -202,10 +195,27 @@ handleMainMenuEvent menu = \case
                   | otherwise -> True
                 _ -> True
               _ -> False
-        let firstUnsolvedInfo = case firstUnsolved >>= (scMap tutorialCollection M.!?) of
+            firstUnsolvedInfo = case firstUnsolved >>= (scMap tutorialCollection M.!?) of
               Just (SISingle siPair) -> siPair
               _ -> error "No first tutorial found!"
+            firstUnsolvedName = firstUnsolvedInfo ^. _1 . scenarioMetadata . scenarioName
+
+        -- Now set up the menu stack as if the user had chosen "New Game > Tutorials > t"
+        -- where t is the tutorial scenario we identified as the first unsolved one
+        let topMenu =
+              BL.listFindBy
+                ((== tutorialsDirname) . T.unpack . scenarioItemName)
+                (mkScenarioList ss)
+            tutorialMenu =
+              BL.listFindBy
+                ((== firstUnsolvedName) . scenarioItemName)
+                (mkScenarioList tutorialCollection)
+            menuStack = tutorialMenu :| pure topMenu
+
+        -- Finally, set the menu stack, and start the scenario!
+        uiState . uiMenu .= NewGameMenu menuStack
         startGame firstUnsolvedInfo Nothing
+
       Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
       Messages -> do
         runtimeState . eventLog . notificationsCount .= 0
