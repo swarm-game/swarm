@@ -231,10 +231,13 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
   drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
   drawStatusInfo s si = case si ^. scenarioStatus of
     NotStarted -> txt " ○ "
-    Played _initialScript (Metric Attempted _) _ -> case s ^. scenarioOperation . scenarioObjectives of
+    Played _script _latestMetric best | isCompleted best -> withAttr greenAttr $ txt " ● "
+    Played {} -> case s ^. scenarioOperation . scenarioObjectives of
       [] -> withAttr cyanAttr $ txt " ◉ "
       _ -> withAttr yellowAttr $ txt " ◎ "
-    Played _initialScript (Metric Completed _) _ -> withAttr greenAttr $ txt " ● "
+  
+  isCompleted :: BestRecords -> Bool
+  isCompleted best = best ^. scenarioBestByTime . metricProgress == Completed
 
   describeStatus :: ScenarioStatus -> Widget n
   describeStatus = \case
