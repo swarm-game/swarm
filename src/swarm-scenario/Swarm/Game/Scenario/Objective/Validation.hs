@@ -45,5 +45,5 @@ validateObjectives objectives = do
 
   return objectives
  where
-  edges = makeGraphEdges objectives
+  edges = makeObjectiveGraphEdges objectives
   allIds = Set.fromList $ mapMaybe (view objectiveId) objectives

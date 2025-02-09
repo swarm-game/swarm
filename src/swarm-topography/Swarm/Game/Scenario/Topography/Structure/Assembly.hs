@@ -8,13 +8,14 @@
 module Swarm.Game.Scenario.Topography.Structure.Assembly (
   mergeStructures,
   makeStructureMap,
-  makeGraphEdges,
+  makeStructureGraphEdges,
 
   -- * Exposed for unit tests:
   foldLayer,
 )
 where
 
+import Data.Tree
 import Control.Arrow (left, (&&&))
 import Control.Monad (when)
 import Data.Coerce
@@ -67,8 +68,12 @@ makeStructureMap = M.fromList . map (name &&& id)
 
 type GraphEdge a = (NamedStructure a, StructureName, [StructureName])
 
-makeGraphEdges :: [NamedStructure a] -> [GraphEdge a]
-makeGraphEdges =
+makeStructureDefinitionTree :: NamedStructure a -> Tree (NamedStructure a)
+makeStructureDefinitionTree s =
+  Node s . map makeStructureDefinitionTree . structures $ structure s
+
+makeStructureGraphEdges :: [NamedStructure a] -> [GraphEdge a]
+makeStructureGraphEdges =
   map makeGraphNodeWithEdges
  where
   makeGraphNodeWithEdges s =
@@ -96,7 +101,7 @@ mergeStructures inheritedStrucDefs parentPlacement baseStructure = do
 
   -- deeper definitions override the outer (toplevel) ones
   structureMap = M.union (makeStructureMap subStructures) inheritedStrucDefs
-  gEdges = makeGraphEdges $ M.elems structureMap
+  gEdges = makeStructureGraphEdges $ M.elems structureMap
 
 -- | NOTE: Each successive overlay may alter the coordinate origin.
 -- We make sure this new origin is propagated to subsequent sibling placements.

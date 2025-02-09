@@ -7,7 +7,9 @@ module Swarm.Render.Structures where
 
 import Codec.Picture as JP
 import Control.Carrier.Throw.Either
+import Swarm.Game.Scenario.Topography.WorldDescription
 import Control.Effect.Lift
+import Data.List.NonEmpty qualified as NE
 import Data.GraphViz (GraphvizParams (..))
 import Data.GraphViz qualified as GV
 import Data.GraphViz.Attributes.Complete as GVA
@@ -40,6 +42,12 @@ renderStructuresGraph ::
 renderStructuresGraph imgRendering sMap = do
   g' <- layoutGraph' params Dot g
 
+  putStrLn "Structure keys:"
+  print $ M.keys sMap
+  putStrLn "Edge list:"
+  print edgeList
+
+  putStrLn "------"
   putStrLn . LT.unpack . GV.printDotGraph $ GV.graphToDot params g
   let drawing =
         drawGraph
@@ -138,7 +146,7 @@ renderStructuresGraph imgRendering sMap = do
    where
     i = genStructureImage imgRendering sMap x
 
-  gEdges = makeGraphEdges $ M.elems sMap
+  gEdges = makeStructureGraphEdges $ M.elems sMap
 
   edgeList = [(m, n) | (_, n, neighbors) <- gEdges, m <- neighbors]
   nodeList = [a | (_, a, _) <- gEdges]
@@ -171,12 +179,16 @@ doRenderStructures scenarioFilepath outputFilepath = do
   (scenario, _) <- loadStandaloneScenario scenarioFilepath
 
   let sMap = scenario ^. scenarioDiagnostic . scenarioStructureMap
+      sMapWorld = view worldStructureMap . worldDiagnostic . NE.head $
+        scenario ^. scenarioLandscape . scenarioWorlds 
       aMap = scenario ^. scenarioLandscape . scenarioCosmetics
 
   sendIO $ do
     g <-
       renderStructuresGraph (ImgRendering 8 DiagonalIndicators) $
-        M.map (applyStructureColors aMap) sMap
+        M.map (applyStructureColors aMap)
+          -- sMap
+          sMapWorld
     putStrLn $ "Rendering to path: " ++ outputFilepath
     renderRasterific outputFilepath (mkWidth 2000) g
     putStrLn "Finished rendering."

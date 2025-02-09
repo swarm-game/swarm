@@ -142,6 +142,7 @@ constructScenario maybeOriginalScenario cellGrid =
       , placedStructures = mempty
       , worldName = DefaultRootSubworld
       , worldProg = Nothing
+      , worldDiagnostic = WorldDiagnostic mempty
       }
 
   extractPalette = unPalette . palette . NE.head . (^. scenarioLandscape . scenarioWorlds)

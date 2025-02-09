@@ -240,7 +240,7 @@ newtype ScenarioDiagnostic = ScenarioDiagnostic
 
 makeLensesNoSigs ''ScenarioDiagnostic
 
--- | Authorship information about scenario not used at play-time
+-- | Raw structure definitions at the scenario level
 scenarioStructureMap :: Lens' ScenarioDiagnostic (M.Map Structure.StructureName (Structure.NamedStructure (Maybe Cell)))
 
 -- | A 'Scenario' contains all the information to describe a
