@@ -15,7 +15,6 @@ module Swarm.Game.Scenario.Topography.Structure.Assembly (
 )
 where
 
-import Data.Tree
 import Control.Arrow (left, (&&&))
 import Control.Monad (when)
 import Data.Coerce
@@ -25,6 +24,7 @@ import Data.Map qualified as M
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Tree
 import Linear.Affine
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area

@@ -1,8 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -10,10 +10,11 @@ module Swarm.Game.Scenario.Topography.WorldDescription where
 
 import Control.Carrier.Reader (runReader)
 import Control.Carrier.Throw.Either
-import Swarm.Util.Lens (makeLensesNoSigs)
+import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad (forM)
 import Data.Coerce
 import Data.Functor.Identity
+import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Yaml as Y
 import Swarm.Game.Entity (Entity)
@@ -35,7 +36,9 @@ import Swarm.Game.Scenario.Topography.Structure (
   NamedStructure,
   parseStructure,
  )
+import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
+import Swarm.Game.Scenario.Topography.Structure.Named qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Overlay (
   PositionedGrid (..),
  )
@@ -43,14 +46,11 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Static (LocatedStruc
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Universe (SubworldName (DefaultRootSubworld))
 import Swarm.Game.World.Parse ()
-import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Swarm.Game.World.Syntax
 import Swarm.Game.World.Typecheck
 import Swarm.Pretty (prettyString)
+import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
-import Data.Map qualified as M
-import Swarm.Game.Scenario.Topography.Structure qualified as Structure
-import Swarm.Game.Scenario.Topography.Structure.Named qualified as Structure
 
 ------------------------------------------------------------
 -- World description
@@ -64,7 +64,6 @@ makeLensesNoSigs ''WorldDiagnostic
 
 -- | Raw structure definitions at the subworld level
 worldStructureMap :: Lens' WorldDiagnostic (M.Map Structure.StructureName (Structure.NamedStructure (Maybe Cell)))
-
 
 -- | A description of a world parsed from a YAML file.
 -- This type is parameterized to accommodate Cells that
