@@ -2,11 +2,23 @@ version: 1
 name: Logs from same-template robots
 description: |
   Logs from different robots generated from the same template.
+objectives:
+  - goal:
+    - Please `grab` the `token`{=entity} if you hear what you expected.
+    condition: |
+      as base { has "token" }
+solution: |
+  s <- listen;
+  if (s == "Hello from (4, -2)!") {grab; say "OK!"} {say $ "Not what I expected: " ++ s}
 robots:
   - name: base
     devices:
       - logger
       - hearing aid
+      - comparator
+      - branch predictor
+      - string
+      - grabber
   - name: saybot
     system: true
     display:
@@ -15,14 +27,21 @@ robots:
     program: |
       loc <- whereami;
       wait $ snd loc;
-      say "Hello";
+      say ("Hello from " ++ format loc ++ "!");
+entities:
+  - name: token
+    display:
+      char: 'W'
+    properties:
+      - known
+      - pickable
+    description:
+      - Signals a success.
 world:
   palette:
     '.': [grass]
-    'B': [grass, null, base]
-    's': [grass, null, saybot]
-    
-  upperleft: [0, 4]
+    'B': [grass, token, base]
+    's': [grass, null, saybot]    
   map: |
     ....s
     ...ss
