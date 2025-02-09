@@ -1,5 +1,6 @@
 version: 1
 name: Logs from same-template robots
+creative: false
 description: |
   Logs from different robots generated from the same template.
 
