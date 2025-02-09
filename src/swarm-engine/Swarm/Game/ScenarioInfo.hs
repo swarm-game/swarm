@@ -218,27 +218,20 @@ loadScenarioDir scenarioInputs loadTestScenarios dir = do
   -- warn that the ORDER file is missing
   loadUnorderedScenarioDir :: Map FilePath ScenarioItem -> m ScenarioCollection
   loadUnorderedScenarioDir scenarioMap = do
-    when (dirName /= testingDirectory) . warn $
-      OrderFileWarning orderFileShortPath NoOrderFile
+    when (dirName /= testingDirectory) (warn $ OrderFileWarning orderFileShortPath NoOrderFile)
     pure $ SC Nothing scenarioMap
 
   -- warn if the ORDER file does not match directory contents
   loadOrderedScenarioDir :: [String] -> Map FilePath ScenarioItem -> m ScenarioCollection
   loadOrderedScenarioDir order scenarioMap = do
     let missing = M.keys scenarioMap \\ order
-        (existing, dangling) = partition (`M.member` scenarioMap) order
+        (loaded, notPresent) = partition (`M.member` scenarioMap) order
+        dangling = filter (not . isHiddenDir) notPresent
 
-    forM_ (NE.nonEmpty missing) $
-      warn
-        . OrderFileWarning orderFileShortPath
-        . MissingFiles
+    forM_ (NE.nonEmpty missing) (warn . OrderFileWarning orderFileShortPath . MissingFiles)
+    forM_ (NE.nonEmpty dangling) (warn . OrderFileWarning orderFileShortPath . DanglingFiles)
 
-    forM_ (NE.nonEmpty dangling) $
-      warn
-        . OrderFileWarning orderFileShortPath
-        . DanglingFiles
-
-    pure $ SC (Just existing) scenarioMap
+    pure $ SC (Just loaded) scenarioMap
 
 -- | How to transform scenario path to save path.
 scenarioPathToSavePath :: FilePath -> FilePath -> FilePath
