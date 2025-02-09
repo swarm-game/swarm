@@ -36,17 +36,18 @@ import Brick.Widgets.Edit (Editor, applyEdit, editContentsL, handleEditorEvent)
 import Brick.Widgets.List (handleListEvent)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.TabularList.Mixed
-import Control.Applicative (pure)
+import Control.Applicative (pure, (<|>))
 import Control.Category ((>>>))
 import Control.Lens as Lens
 import Control.Monad (forM_, unless, void, when)
 import Control.Monad.Extra (whenJust)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execState)
+import Data.List (find)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, listToMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
@@ -61,6 +62,9 @@ import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec, FSuspend))
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Land
 import Swarm.Game.Robot.Concrete
+import Swarm.Game.Scenario (scenarioMetadata, scenarioName)
+import Swarm.Game.Scenario.Scoring.Best (scenarioBestByTime)
+import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
@@ -96,7 +100,7 @@ import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep (prepareLaunchDialog)
 import Swarm.TUI.List
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Dialog
+import Swarm.TUI.Model.Dialog hiding (Completed)
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
@@ -176,24 +180,41 @@ handleMainMenuEvent menu = \case
         ss <- use $ runtimeState . scenarios
         uiState . uiMenu .= NewGameMenu (pure $ mkScenarioList ss)
       Tutorial -> do
-        -- Set up the menu stack as if the user had chosen "New Game > Tutorials"
         ss <- use $ runtimeState . scenarios
+
+        -- Extract the first unsolved tutorial challenge
         let tutorialCollection = getTutorials ss
-            topMenu =
+            tutorials = scOrder tutorialCollection
+            -- Find first unsolved tutorial, or first tutorial if all are solved
+            firstUnsolved :: Maybe FilePath
+            firstUnsolved = (tutorials >>= find unsolved) <|> (tutorials >>= listToMaybe)
+            unsolved t = case M.lookup t (scMap tutorialCollection) of
+              Just (SISingle (_, si)) -> case si ^. scenarioStatus of
+                Played _ _ best
+                  | Metric Completed _ <- best ^. scenarioBestByTime -> False
+                  | otherwise -> True
+                _ -> True
+              _ -> False
+            firstUnsolvedInfo = case firstUnsolved >>= (scMap tutorialCollection M.!?) of
+              Just (SISingle siPair) -> siPair
+              _ -> error "No first tutorial found!"
+            firstUnsolvedName = firstUnsolvedInfo ^. _1 . scenarioMetadata . scenarioName
+
+        -- Now set up the menu stack as if the user had chosen "New Game > Tutorials > t"
+        -- where t is the tutorial scenario we identified as the first unsolved one
+        let topMenu =
               BL.listFindBy
                 ((== tutorialsDirname) . T.unpack . scenarioItemName)
                 (mkScenarioList ss)
-            tutorialMenu = mkScenarioList tutorialCollection
+            tutorialMenu =
+              BL.listFindBy
+                ((== firstUnsolvedName) . scenarioItemName)
+                (mkScenarioList tutorialCollection)
             menuStack = tutorialMenu :| pure topMenu
-        uiState . uiMenu .= NewGameMenu menuStack
 
-        -- Extract the first tutorial challenge and run it
-        let firstTutorial = case scOrder tutorialCollection of
-              Just (t : _) -> case M.lookup t (scMap tutorialCollection) of
-                Just (SISingle siPair) -> siPair
-                _ -> error "No first tutorial found!"
-              _ -> error "No first tutorial found!"
-        startGame firstTutorial Nothing
+        -- Finally, set the menu stack, and start the scenario!
+        uiState . uiMenu .= NewGameMenu menuStack
+        startGame firstUnsolvedInfo Nothing
       Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
       Messages -> do
         runtimeState . eventLog . notificationsCount .= 0
