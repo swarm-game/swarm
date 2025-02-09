@@ -7,12 +7,11 @@ module Swarm.Render.Structures where
 
 import Codec.Picture as JP
 import Control.Carrier.Throw.Either
-import Swarm.Game.Scenario.Topography.WorldDescription
 import Control.Effect.Lift
-import Data.List.NonEmpty qualified as NE
 import Data.GraphViz (GraphvizParams (..))
 import Data.GraphViz qualified as GV
 import Data.GraphViz.Attributes.Complete as GVA
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
@@ -29,6 +28,7 @@ import Swarm.Game.Scenario.Topography.Cell (Cell)
 import Swarm.Game.Scenario.Topography.Structure
 import Swarm.Game.Scenario.Topography.Structure.Assembly
 import Swarm.Game.Scenario.Topography.Structure.Named
+import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Render.Image
 import Swarm.Util.Content (getTerrainEntityColor)
@@ -179,14 +179,16 @@ doRenderStructures scenarioFilepath outputFilepath = do
   (scenario, _) <- loadStandaloneScenario scenarioFilepath
 
   let sMap = scenario ^. scenarioDiagnostic . scenarioStructureMap
-      sMapWorld = view worldStructureMap . worldDiagnostic . NE.head $
-        scenario ^. scenarioLandscape . scenarioWorlds 
+      sMapWorld =
+        view worldStructureMap . worldDiagnostic . NE.head $
+          scenario ^. scenarioLandscape . scenarioWorlds
       aMap = scenario ^. scenarioLandscape . scenarioCosmetics
 
   sendIO $ do
     g <-
       renderStructuresGraph (ImgRendering 8 DiagonalIndicators) $
-        M.map (applyStructureColors aMap)
+        M.map
+          (applyStructureColors aMap)
           -- sMap
           sMapWorld
     putStrLn $ "Rendering to path: " ++ outputFilepath
