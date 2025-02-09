@@ -13,12 +13,14 @@ module Swarm.Game.Scenario.Scoring.GenericMetrics (
   chooseBetter,
 ) where
 
+import Control.Applicative ((<|>))
 import Control.Lens
 import Data.Aeson
+import Data.List.Extra (dropPrefix)
 import Data.Ord (Down (Down))
 import GHC.Generics (Generic)
 import Swarm.Util (maxOn)
-import Swarm.Util.JSON (optionsUntagged)
+import Swarm.Util.JSON (optionsMinimize, optionsUntagged)
 import Swarm.Util.Lens (makeLensesNoSigs)
 
 -- | This is a subset of the "ScenarioStatus" type
@@ -38,7 +40,18 @@ data Metric a = Metric
   { _metricProgress :: Progress
   , _metricData :: a
   }
-  deriving (Eq, Ord, Show, Read, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Read, Generic)
+
+metricSerializeOptions :: Options
+metricSerializeOptions = optionsMinimize {fieldLabelModifier = camelTo2 '_' . dropPrefix "_metric"}
+
+instance FromJSON a => FromJSON (Metric a) where
+  parseJSON v =
+    (uncurry Metric <$> parseJSON v) -- parse saves from time when metric did not have named fields
+      <|> genericParseJSON metricSerializeOptions v
+
+instance ToJSON a => ToJSON (Metric a) where
+  toJSON = genericToJSON metricSerializeOptions
 
 makeLensesNoSigs ''Metric
 
