@@ -753,13 +753,11 @@ execConst runChildProg c vs s k = do
         m <- traceLog Said Info msg
         emitMessage m
         let addToRobotLog :: (Has (State GameState) sgn m) => Robot -> m ()
-            addToRobotLog r = do
-              maybeRidLoc <- evalState r $ do
-                hasLog <- hasCapability $ CExecute Log
-                hasListen <- hasCapability $ CExecute Listen
-                rid <- use robotID
-                return $ if hasLog && hasListen then Just rid else Nothing
-              forM_ maybeRidLoc $ \rid ->
+            addToRobotLog r = evalState r $ do
+              hasLog <- hasCapability $ CExecute Log
+              hasListen <- hasCapability $ CExecute Listen
+              rid <- use robotID
+              when (hasLog && hasListen) $
                 robotInfo . robotMap . at rid . _Just . robotLog %= (|> m)
         robotsAround <-
           zoomRobots $
