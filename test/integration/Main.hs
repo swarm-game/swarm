@@ -32,7 +32,7 @@ import Swarm.Failure (SystemFailure)
 import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
 import Swarm.Game.CESK (initMachine)
 import Swarm.Game.Entity (lookupByName)
-import Swarm.Game.Robot (equippedDevices, systemRobot)
+import Swarm.Game.Robot (equippedDevices, robotName, systemRobot)
 import Swarm.Game.Robot.Activity (commandsHistogram, lifetimeStepCount, tangibleCommandCount)
 import Swarm.Game.Robot.Concrete (activityCounts, machine, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario, ScenarioInputs (..), gsiScenarioInputs)
@@ -508,6 +508,13 @@ testScenarioSolutions rs ui key =
             && any ("- tank treads" `T.isInfixOf`) msgs
     , testSolution Default "Testing/2253-halt-waiting"
     , testSolution Default "Testing/2270-instant-defs"
+    , testSolution' Default "Testing/1592-shared-template-robot-say-logs" CheckForBadErrors $ \g -> do
+        let baseLogs = g ^.. baseRobot . robotLog . to logToText . traverse
+        -- printAllLogs g
+        assertEqual
+          "There should be 6 logs from all of the robots saying things at once!"
+          (length baseLogs)
+          6 -- the final OK said by base happens after win, and is for debugging
     ]
  where
   -- expectFailIf :: Bool -> String -> TestTree -> TestTree
@@ -555,9 +562,9 @@ noBadErrors g =
 
 printAllLogs :: GameState -> IO ()
 printAllLogs g =
-  mapM_
-    (\r -> forM_ (r ^. robotLog) (putStrLn . T.unpack . view leText))
-    (g ^. robotInfo . robotMap)
+  forM_ (g ^. robotInfo . robotMap) $ \r -> do
+    putStrLn $ "-- ROBOT: " ++ T.unpack (r ^. robotName)
+    forM_ (r ^. robotLog) (putStrLn . T.unpack . view leText)
 
 -- | Test that editor files are up-to-date.
 testEditorFiles :: TestTree

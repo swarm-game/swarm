@@ -749,34 +749,16 @@ execConst runChildProg c vs s k = do
       [VText msg] -> do
         isPrivileged <- isPrivilegedBot
         loc <- use robotLocation
-
         -- current robot will be inserted into the robot set, so it needs the log
         m <- traceLog Said Info msg
         emitMessage m
-        let measureToLog robLoc = \case
-              RobotLog _ _ logLoc -> cosmoMeasure manhattan robLoc logLoc
-              SystemLog -> Measurable 0
-            addLatestClosest rl = \case
-              Seq.Empty -> Seq.singleton m
-              es Seq.:|> e
-                | e `isEarlierThan` m -> es |> e |> m
-                | e `isFartherThan` m -> es |> m
-                | otherwise -> es |> e
-             where
-              isEarlierThan = (<) `on` (^. leTime)
-              isFartherThan = (>) `on` (measureToLog rl . view leSource)
         let addToRobotLog :: (Has (State GameState) sgn m) => Robot -> m ()
-            addToRobotLog r = do
-              maybeRidLoc <- evalState r $ do
-                hasLog <- hasCapability $ CExecute Log
-                hasListen <- hasCapability $ CExecute Listen
-                loc' <- use robotLocation
-                rid <- use robotID
-                return $ do
-                  guard $ hasLog && hasListen
-                  Just (rid, loc')
-              forM_ maybeRidLoc $ \(rid, loc') ->
-                robotInfo . robotMap . at rid . _Just . robotLog %= addLatestClosest loc'
+            addToRobotLog r = evalState r $ do
+              hasLog <- hasCapability $ CExecute Log
+              hasListen <- hasCapability $ CExecute Listen
+              rid <- use robotID
+              when (hasLog && hasListen) $
+                robotInfo . robotMap . at rid . _Just . robotLog %= (|> m)
         robotsAround <-
           zoomRobots $
             if isPrivileged
