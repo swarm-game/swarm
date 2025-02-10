@@ -52,10 +52,8 @@ data LoadingFailure
   = DoesNotExist Entry
   | EntryNot Entry
   | CanNotParseYaml ParseException
-  | CanNotParseMegaparsec (ParseErrorBundle Text Void)
-  | DoesNotTypecheck Text -- See Note [Typechecking errors]
   | Duplicate AssetData Text
-  | CustomMessage Text
+  | General SystemFailure
   deriving (Show)
 
 -- ~~~~ Note [Pretty-printing typechecking errors]
@@ -79,6 +77,8 @@ data SystemFailure
   = AssetNotLoaded Asset FilePath LoadingFailure
   | ScenarioNotFound FilePath
   | OrderFileWarning FilePath OrderFileWarning
+  | CanNotParseMegaparsec (ParseErrorBundle Text Void)
+  | DoesNotTypecheck Text -- See Note [Typechecking errors]
   | CustomFailure Text
   deriving (Show)
 
@@ -106,23 +106,15 @@ instance PrettyPrec Entry where
   prettyPrec _ = prettyShowLow
 
 instance PrettyPrec LoadingFailure where
-  prettyPrec _ = \case
+  prettyPrec prec = \case
     DoesNotExist e -> "The" <+> ppr e <+> "is missing!"
     EntryNot e -> "The entry is not a" <+> ppr e <> "!"
     CanNotParseYaml p ->
       nest 2 . vcat $
         "Parse failure:"
           : map pretty (T.lines (into @Text (prettyPrintParseException p)))
-    CanNotParseMegaparsec p ->
-      nest 2 . vcat $
-        "Parse failure:"
-          : map pretty (T.lines (into @Text (errorBundlePretty p)))
-    DoesNotTypecheck t ->
-      nest 2 . vcat $
-        "Parse failure:"
-          : map pretty (T.lines t)
     Duplicate thing duped -> "Duplicate" <+> ppr thing <> ":" <+> squotes (pretty duped)
-    CustomMessage m -> pretty m
+    General g -> prettyPrec prec g
 
 instance PrettyPrec OrderFileWarning where
   prettyPrec _ = \case
@@ -147,4 +139,12 @@ instance PrettyPrec SystemFailure where
         [ "Warning: while processing" <+> pretty orderFile <> ":"
         , ppr w
         ]
+    CanNotParseMegaparsec p ->
+      nest 2 . vcat $
+        "Parse failure:"
+          : map pretty (T.lines (into @Text (errorBundlePretty p)))
+    DoesNotTypecheck t ->
+      nest 2 . vcat $
+        "Parse failure:"
+          : map pretty (T.lines t)
     CustomFailure m -> pretty m
