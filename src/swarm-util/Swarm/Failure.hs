@@ -53,7 +53,7 @@ data LoadingFailure
   | EntryNot Entry
   | CanNotParseYaml ParseException
   | Duplicate AssetData Text
-  | General SystemFailure
+  | SystemFailure SystemFailure
   deriving (Show)
 
 -- ~~~~ Note [Pretty-printing typechecking errors]
@@ -114,7 +114,7 @@ instance PrettyPrec LoadingFailure where
         "Parse failure:"
           : map pretty (T.lines (into @Text (prettyPrintParseException p)))
     Duplicate thing duped -> "Duplicate" <+> ppr thing <> ":" <+> squotes (pretty duped)
-    General g -> prettyPrec prec g
+    SystemFailure g -> prettyPrec prec g
 
 instance PrettyPrec OrderFileWarning where
   prettyPrec _ = \case

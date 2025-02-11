@@ -163,7 +163,7 @@ loadRecipes em = do
     withThrow (AssetNotLoaded (Data Recipes) fileName . CanNotParseYaml)
       . (liftEither <=< sendIO)
       $ decodeFileEither @[Recipe Text] fileName
-  withThrow (AssetNotLoaded (Data Recipes) fileName . General . CustomFailure)
+  withThrow (AssetNotLoaded (Data Recipes) fileName . SystemFailure . CustomFailure)
     . liftEither
     . left (T.append "Unknown entities in recipe(s): " . T.intercalate ", ")
     . validationToEither

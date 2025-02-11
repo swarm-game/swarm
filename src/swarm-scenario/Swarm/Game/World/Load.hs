@@ -46,10 +46,10 @@ loadWorld ::
   m (Text, Some (TTerm '[]))
 loadWorld dir tem (fp, src) = do
   wexp <-
-    liftEither . left (AssetNotLoaded (Data Worlds) fp . General . CanNotParseMegaparsec) $
+    liftEither . left (AssetNotLoaded (Data Worlds) fp . SystemFailure . CanNotParseMegaparsec) $
       runParser parseWExp (into @Text src)
   t <-
-    withThrow (AssetNotLoaded (Data Worlds) fp . General . DoesNotTypecheck . prettyText @CheckErr) $
+    withThrow (AssetNotLoaded (Data Worlds) fp . SystemFailure . DoesNotTypecheck . prettyText @CheckErr) $
       runReader tem . runReader @WorldMap M.empty $
         infer CNil wexp
   return (into @Text (dropExtension (stripDir dir fp)), t)

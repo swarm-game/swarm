@@ -490,7 +490,7 @@ validateEntityAttrRefs validAttrs es =
       AWorld n ->
         unless (Set.member (WorldAttr $ T.unpack n) validAttrs)
           . throwError
-          . General
+          . SystemFailure
           . CustomFailure
           $ T.unwords
             [ "Nonexistent attribute"
@@ -510,7 +510,7 @@ buildEntityMap es = do
   forM_ (findDup $ map fst namedEntities) $
     throwError . Duplicate Entities
   case combineEntityCapsM entsByName es of
-    Left x -> throwError . General . CustomFailure $ x
+    Left x -> throwError . SystemFailure . CustomFailure $ x
     Right ebc ->
       return $
         EntityMap

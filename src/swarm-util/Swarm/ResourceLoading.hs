@@ -146,7 +146,7 @@ readAppData = do
   dirMembers :: [FilePath] <-
     (liftEither <=< sendIO) $
       (pure <$> listDirectory d) `catch` \(e :: IOException) ->
-        return . Left . AssetNotLoaded (Data AppAsset) d . General . CustomFailure . T.pack $ show e
+        return . Left . AssetNotLoaded (Data AppAsset) d . SystemFailure . CustomFailure . T.pack $ show e
   let fs = filter ((== ".txt") . takeExtension) dirMembers
 
   filesList <- sendIO $ forM fs (\f -> (into @Text (dropExtension f),) <$> readFileMayT (d </> f))
