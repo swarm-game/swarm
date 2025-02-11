@@ -15,8 +15,9 @@ module Swarm.Language.Parser.Core (
   languageVersion,
 
   -- * Comment parsing state
-  CommentState (..),
+  WSState (..),
   freshLine,
+  preWSLoc,
   comments,
 
   -- * Parser type
@@ -75,25 +76,30 @@ defaultParserConfig =
     , _languageVersion = SwarmLangLatest
     }
 
-data CommentState = CS
+-- | Miscellaneous state relating to parsing whitespace + comments
+data WSState = WS
   { _freshLine :: Bool
   -- ^ Are we currently on a (so far) blank line, i.e. have there been
   --   no nontrivial tokens since the most recent newline?  This field
   --   is updated every time we parse a lexeme or symbol (set to
   --   false), or a newline (set to true).
+  , _preWSLoc :: Int
+  -- ^ The last source location before we started consuming
+  --   whitespace.  We use this to assign more accurate source spans
+  --   to AST nodes, which do *not* include any trailing whitespace.
   , _comments :: Seq Comment
   -- ^ The actual sequence of comments, in the order they were encountered
   }
 
-makeLenses ''CommentState
+makeLenses ''WSState
 
-initCommentState :: CommentState
-initCommentState = CS {_freshLine = True, _comments = Seq.empty}
+initWSState :: WSState
+initWSState = WS {_freshLine = True, _preWSLoc = 0, _comments = Seq.empty}
 
 ------------------------------------------------------------
 -- Parser types
 
-type Parser = ReaderT ParserConfig (StateT CommentState (Parsec Void Text))
+type Parser = ReaderT ParserConfig (StateT WSState (Parsec Void Text))
 
 type ParserError = ParseErrorBundle Text Void
 
@@ -111,7 +117,7 @@ runParser' :: ParserConfig -> Parser a -> Text -> Either ParserError (a, Seq Com
 runParser' cfg p t =
   (\pt -> parse pt "" t)
     . fmap (second (^. comments))
-    . flip runStateT initCommentState
+    . flip runStateT initWSState
     . flip runReaderT cfg
     $ p
 
@@ -123,7 +129,7 @@ runParserTH (file, line, col) p s =
   either (fail . errorBundlePretty) (return . fst)
     . snd
     . flip MP.runParser' initState
-    . flip runStateT initCommentState
+    . flip runStateT initWSState
     . flip runReaderT defaultParserConfig {_antiquoting = AllowAntiquoting}
     $ p
  where

@@ -31,7 +31,8 @@ module Swarm.Language.Syntax (
 
   -- * SrcLoc
   SrcLoc (..),
-  srcLocBefore,
+  srcLocStartsBefore,
+  srcLocEndsBefore,
   noLoc,
 
   -- * Comments
