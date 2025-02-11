@@ -989,7 +989,7 @@ data KeyHighlight = NoHighlight | Alert | PanelSpecific
 -- | Draw a single key command in the menu.
 drawKeyCmd :: (KeyHighlight, Text, Text) -> Widget Name
 drawKeyCmd (h, key, cmd) =
-  hBox
+  clickable (Shortcut cmd) $ hBox
     [ withAttr attr (txt $ brackets key)
     , txt cmd
     ]
