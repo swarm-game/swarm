@@ -128,7 +128,7 @@ data Name
   | -- | A clickable button in a modal dialog.
     Button Button
   | -- | A clickable shortcut in the TUI.
-    Shortcut Text
+    UIShortcut Text
   | -- | A custom widget name, for use in applications built on top of the Swarm library.
     CustomName Text
   deriving (Eq, Ord, Show, Read)

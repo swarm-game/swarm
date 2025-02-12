@@ -327,6 +327,9 @@ handleMainEvent forceRedraw ev = do
           when shouldUpdateCursor $
             uiState . uiGameplay . uiWorldCursor .= mouseCoordsM
         REPLInput -> handleREPLEvent ev
+        (UIShortcut "Help") -> toggleModal HelpModal
+        (UIShortcut "Robots") -> toggleModal RobotsModal
+        (UIShortcut "Commands") -> toggleModal CommandsModal
         _ -> continueWithoutRedraw
     MouseUp n _ _mouseLoc -> do
       case n of
