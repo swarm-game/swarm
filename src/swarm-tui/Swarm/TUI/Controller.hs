@@ -58,7 +58,7 @@ import Data.Vector qualified as V
 import Graphics.Vty qualified as V
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec, FSuspend))
-import Swarm.Game.Entity hiding (empty)
+import Swarm.Game.Entity (EntityMap (entitiesByName))
 import Swarm.Game.Land
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.ScenarioInfo
@@ -330,6 +330,9 @@ handleMainEvent forceRedraw ev = do
         (UIShortcut "Help") -> toggleModal HelpModal
         (UIShortcut "Robots") -> toggleModal RobotsModal
         (UIShortcut "Commands") -> toggleModal CommandsModal
+        (UIShortcut "pause") -> whenRunning safeTogglePause
+        (UIShortcut "unpause") -> whenRunning safeTogglePause
+        (UIShortcut "step") -> whenRunning runSingleTick
         _ -> continueWithoutRedraw
     MouseUp n _ _mouseLoc -> do
       case n of
