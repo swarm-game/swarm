@@ -40,7 +40,6 @@ import Swarm.TUI.Model (
   ModalType (..),
   gameState,
   modalScroll,
-  modalType,
   uiState,
  )
 import Swarm.TUI.Model.Name

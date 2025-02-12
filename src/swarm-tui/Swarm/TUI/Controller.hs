@@ -58,7 +58,7 @@ import Data.Vector qualified as V
 import Graphics.Vty qualified as V
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec, FSuspend))
-import Swarm.Game.Entity (EntityMap (entitiesByName))
+import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Land
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.ScenarioInfo
