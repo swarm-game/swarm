@@ -25,7 +25,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
-import Data.Yaml (ParseException, prettyPrintParseException)
+import Data.Yaml (ParseException, decodeFileEither, prettyPrintParseException)
 import Swarm.Doc.Keyword (EditorType (..))
 import Swarm.Doc.Keyword qualified as Keyword
 import Swarm.Failure (SystemFailure)
@@ -36,6 +36,8 @@ import Swarm.Game.Robot (equippedDevices, robotName, systemRobot)
 import Swarm.Game.Robot.Activity (commandsHistogram, lifetimeStepCount, tangibleCommandCount)
 import Swarm.Game.Robot.Concrete (activityCounts, machine, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario, ScenarioInputs (..), gsiScenarioInputs)
+import Swarm.Game.Scenario.Scoring.GenericMetrics (Metric (..), Progress (..))
+import Swarm.Game.ScenarioInfo (ScenarioInfo, ScenarioStatus (..), scenarioStatus)
 import Swarm.Game.State (
   GameState,
   baseRobot,
@@ -118,6 +120,7 @@ main = do
       , testScenarioSolutions rs' ui key
       , testEditorFiles
       , recipeTests
+      , saveFileTests
       ]
 
 testNoLoadingErrors :: RuntimeState -> TestTree
@@ -610,3 +613,19 @@ testEditorFiles =
           <> fp
       )
       (removeLW t `T.isInfixOf` removeLW f)
+
+saveFileTests :: TestTree
+saveFileTests =
+  testGroup
+    "Save files"
+    [ checkLoaded "backstory" "0.6.0.0"
+    , checkLoaded "backstory" "latest"
+    ]
+ where
+  checkLoaded scenario version = testCase ("save from version " <> version) $ do
+    ef <- decodeFileEither @ScenarioInfo $ "data/test/saves/" <> scenario <> "-" <> version <> ".yaml"
+    case ef of
+      Left e -> assertFailure $ prettyPrintParseException e
+      Right si -> case si ^. scenarioStatus of
+        Played _par (Metric Completed _) _best -> pure ()
+        other -> assertFailure $ "scenario save file loaded wrong - contains: " <> show other
