@@ -206,7 +206,7 @@ binOps = M.unionsWith (++) $ mapMaybe binOpToTuple allConst
     pure $
       M.singleton
         (fixity ci)
-        [assI (mkOp c <$ operator (syntax ci))]
+        [assI (mkOp c <$> parseLocG (operator (syntax ci)))]
 
 -- | Precedences and parsers of unary operators (currently only 'Neg').
 --

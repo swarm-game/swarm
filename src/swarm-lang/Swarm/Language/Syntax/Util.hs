@@ -49,15 +49,13 @@ import Swarm.Language.Syntax.Pattern
 
 -- | Make an infix operation (e.g. @2 + 3@) a curried function
 --   application (e.g. @((+) 2) 3@).
-mkOp :: Const -> Syntax -> Syntax -> Syntax
-mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
+mkOp :: Const -> (SrcLoc, t) -> Syntax -> Syntax -> Syntax
+mkOp c (opLoc, _) s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
  where
-  -- The new syntax span both terms
-  newLoc = l1 <> l2
-  -- We don't assign a source location for the operator since it is
-  -- usually provided as-is and it is not likely to be useful.
-  sop = noLoc (TConst c)
-  newTerm = SApp (Syntax l1 $ SApp sop s1) s2
+  -- The new syntax spans all terms
+  newLoc = l1 <> opLoc <> l2
+  sop = Syntax opLoc (TConst c)
+  newTerm = SApp (Syntax (l1 <> opLoc) $ SApp sop s1) s2
 
 -- | Make an infix operation, discarding any location information
 mkOp' :: Const -> Term -> Term -> Term
