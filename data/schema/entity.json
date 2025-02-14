@@ -122,7 +122,7 @@
                 "type": "string",
                 "examples": [
                     "unwalkable",
-                    "portable",
+                    "pickable",
                     "infinite",
                     "known",
                     "growable"

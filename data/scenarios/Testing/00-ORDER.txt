@@ -57,6 +57,7 @@ Achievements
 1721-walkability-whitelist-path-cache.yaml
 1535-ping
 1575-structure-recognizer
+1592-shared-template-robot-say-logs.yaml
 1631-tags.yaml
 1634-message-colors.yaml
 1681-pushable-entity.yaml

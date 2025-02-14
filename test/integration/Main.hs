@@ -25,17 +25,19 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
-import Data.Yaml (ParseException, prettyPrintParseException)
+import Data.Yaml (ParseException, decodeFileEither, prettyPrintParseException)
 import Swarm.Doc.Keyword (EditorType (..))
 import Swarm.Doc.Keyword qualified as Keyword
 import Swarm.Failure (SystemFailure)
 import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
 import Swarm.Game.CESK (initMachine)
 import Swarm.Game.Entity (lookupByName)
-import Swarm.Game.Robot (equippedDevices, systemRobot)
+import Swarm.Game.Robot (equippedDevices, robotName, systemRobot)
 import Swarm.Game.Robot.Activity (commandsHistogram, lifetimeStepCount, tangibleCommandCount)
 import Swarm.Game.Robot.Concrete (activityCounts, machine, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario, ScenarioInputs (..), gsiScenarioInputs)
+import Swarm.Game.Scenario.Scoring.GenericMetrics (Metric (..), Progress (..))
+import Swarm.Game.ScenarioInfo (ScenarioInfo, ScenarioStatus (..), scenarioStatus)
 import Swarm.Game.State (
   GameState,
   baseRobot,
@@ -118,6 +120,7 @@ main = do
       , testScenarioSolutions rs' ui key
       , testEditorFiles
       , recipeTests
+      , saveFileTests
       ]
 
 testNoLoadingErrors :: RuntimeState -> TestTree
@@ -508,6 +511,13 @@ testScenarioSolutions rs ui key =
             && any ("- tank treads" `T.isInfixOf`) msgs
     , testSolution Default "Testing/2253-halt-waiting"
     , testSolution Default "Testing/2270-instant-defs"
+    , testSolution' Default "Testing/1592-shared-template-robot-say-logs" CheckForBadErrors $ \g -> do
+        let baseLogs = g ^.. baseRobot . robotLog . to logToText . traverse
+        -- printAllLogs g
+        assertEqual
+          "There should be 6 logs from all of the robots saying things at once!"
+          (length baseLogs)
+          6 -- the final OK said by base happens after win, and is for debugging
     ]
  where
   -- expectFailIf :: Bool -> String -> TestTree -> TestTree
@@ -555,9 +565,9 @@ noBadErrors g =
 
 printAllLogs :: GameState -> IO ()
 printAllLogs g =
-  mapM_
-    (\r -> forM_ (r ^. robotLog) (putStrLn . T.unpack . view leText))
-    (g ^. robotInfo . robotMap)
+  forM_ (g ^. robotInfo . robotMap) $ \r -> do
+    putStrLn $ "-- ROBOT: " ++ T.unpack (r ^. robotName)
+    forM_ (r ^. robotLog) (putStrLn . T.unpack . view leText)
 
 -- | Test that editor files are up-to-date.
 testEditorFiles :: TestTree
@@ -603,3 +613,19 @@ testEditorFiles =
           <> fp
       )
       (removeLW t `T.isInfixOf` removeLW f)
+
+saveFileTests :: TestTree
+saveFileTests =
+  testGroup
+    "Save files"
+    [ checkLoaded "backstory" "0.6.0.0"
+    , checkLoaded "backstory" "latest"
+    ]
+ where
+  checkLoaded scenario version = testCase ("save from version " <> version) $ do
+    ef <- decodeFileEither @ScenarioInfo $ "data/test/saves/" <> scenario <> "-" <> version <> ".yaml"
+    case ef of
+      Left e -> assertFailure $ prettyPrintParseException e
+      Right si -> case si ^. scenarioStatus of
+        Played _par (Metric Completed _) _best -> pure ()
+        other -> assertFailure $ "scenario save file loaded wrong - contains: " <> show other

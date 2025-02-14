@@ -58,6 +58,7 @@ data-files:
   scenarios/**/*.txt
   scenarios/**/*.yaml
   test/language-snippets/**/*.sw
+  test/saves/*.yaml
   test/standalone-topography/*.png
   test/standalone-topography/*.yaml
   worlds/*.world

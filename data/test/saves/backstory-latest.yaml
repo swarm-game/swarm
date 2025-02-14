@@ -1,0 +1,63 @@
+# obtained by:
+# git checkout main
+# cabal run swarm -- --scenario Tutorials/Backstory --run <(echo 'say "Ready!"')
+path: Tutorials/backstory.yaml
+status:
+  contents:
+    - initialCode: /dev/fd/15
+      seedVal: null
+    - data:
+        attemptmetrics:
+          codemetrics:
+            astSize: 3
+            sourceTextLength: 13
+          durationmetrics:
+            elapsed: 0.351809
+            elapsedticks: 5
+        started: 2025-02-12T22:40:26.141009+01:00
+      progress: Completed
+    - bestbyastsize:
+        data:
+          attemptmetrics:
+            codemetrics:
+              astSize: 3
+              sourceTextLength: 13
+            durationmetrics:
+              elapsed: 0.351809
+              elapsedticks: 5
+          started: 2025-02-12T22:40:26.141009+01:00
+        progress: Completed
+      bestbycharcount:
+        data:
+          attemptmetrics:
+            codemetrics:
+              astSize: 3
+              sourceTextLength: 13
+            durationmetrics:
+              elapsed: 0.351809
+              elapsedticks: 5
+          started: 2025-02-12T22:40:26.141009+01:00
+        progress: Completed
+      bestbyticks:
+        data:
+          attemptmetrics:
+            codemetrics:
+              astSize: 3
+              sourceTextLength: 13
+            durationmetrics:
+              elapsed: 0.351809
+              elapsedticks: 5
+          started: 2025-02-12T22:40:26.141009+01:00
+        progress: Completed
+      bestbytime:
+        data:
+          attemptmetrics:
+            codemetrics:
+              astSize: 3
+              sourceTextLength: 13
+            durationmetrics:
+              elapsed: 0.351809
+              elapsedticks: 5
+          started: 2025-02-12T22:40:26.141009+01:00
+        progress: Completed
+  tag: Played
