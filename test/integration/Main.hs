@@ -88,6 +88,7 @@ import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, testCase)
+import TestFormat
 import TestRecipeCoverage
 import Witch (into)
 
@@ -107,6 +108,7 @@ main = do
   let scenarioInputs = gsiScenarioInputs $ initState $ rs ^. stdGameConfigInputs
       rs' = rs & eventLog .~ mempty
   recipeTests <- testRecipeCoverage
+  formatTests <- testFormatting
   defaultMain $
     testGroup
       "Tests"
@@ -115,6 +117,7 @@ main = do
       , exampleTests scenarioPrograms
       , scenarioParseTests scenarioInputs parseableScenarios
       , scenarioParseInvalidTests scenarioInputs unparseableScenarios
+      , formatTests
       , testScenarioSolutions rs' ui key
       , testEditorFiles
       , recipeTests

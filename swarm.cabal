@@ -1284,7 +1284,9 @@ test-suite swarm-integration
     yaml,
 
   main-is: Main.hs
-  other-modules: TestRecipeCoverage
+  other-modules:
+    TestFormat
+    TestRecipeCoverage
   type: exitcode-stdio-1.0
   build-depends:
     swarm:swarm-doc,
