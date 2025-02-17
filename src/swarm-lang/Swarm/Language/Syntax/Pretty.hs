@@ -83,8 +83,10 @@ instance PrettyPrec (Term' ty) where
     t@SLam {} ->
       pparens (p > 9) $
         prettyLambdas t
-    -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3
-    SApp t@(Syntax' _ (SApp (Syntax' _ (TConst c) _ _) l) _ _) r ->
+    -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3.
+    -- Note a comment right after the operator will end up attached to
+    -- the application of the operator to the first argument.
+    SApp t@(Syntax' _ (SApp op@(Syntax' _ (TConst c) _ _) l) opcom _) r ->
       let ci = constInfo c
           pC = fixity ci
        in case constMeta ci of
@@ -92,7 +94,8 @@ instance PrettyPrec (Term' ty) where
               pparens (p > pC) $
                 hsep
                   [ prettyPrec (pC + fromEnum (assoc == R)) l
-                  , ppr c
+                    -- pretty-print the operator with comments reattached
+                  , ppr (op { _sComments = opcom })
                   , prettyPrec (pC + fromEnum (assoc == L)) r
                   ]
             _ -> prettyPrecApp p t r
