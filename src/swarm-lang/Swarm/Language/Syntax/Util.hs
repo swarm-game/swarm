@@ -71,13 +71,18 @@ unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
   Syntax' _ (SApp s1 s2) _ _ -> (s2, Just s1)
   s -> (s, Nothing)
 
--- | Create a nested tuple out of a list of syntax nodes.
-mkTuple :: [Syntax] -> Syntax
-mkTuple [] = Syntax NoLoc TUnit -- should never happen
-mkTuple [x] = x
-mkTuple (x : xs) = let r = mkTuple xs in loc x r $ SPair x r
- where
-  loc a b = Syntax $ (a ^. sLoc) <> (b ^. sLoc)
+-- | XXX expand this comment, it does more than nested tuples, also
+--   handles unit value + explicit parenthesization
+--   Create a nested
+--   tuple out of a list of syntax nodes.
+mkTuple :: [Syntax] -> Term
+mkTuple [] = TUnit
+mkTuple [x] = SParens x
+mkTuple [x,y] = SPair x y
+mkTuple (x:r) = SPair x (Syntax NoLoc (mkTuple r))
+-- mkTuple (x : xs) = let r = mkTuple xs in loc x r $ SPair x r
+--  where
+--   loc a b = Syntax $ (a ^. sLoc) <> (b ^. sLoc)
 
 -- | Decompose a nested tuple into a list of components.
 unTuple :: Syntax' ty -> [Syntax' ty]
@@ -143,6 +148,7 @@ freeVarsS f = go S.empty
     SProj s1 x -> rewrap $ SProj <$> go bound s1 <*> pure x
     SAnnotate s1 pty -> rewrap $ SAnnotate <$> go bound s1 <*> pure pty
     SSuspend s1 -> rewrap $ SSuspend <$> go bound s1
+    SParens s1 -> rewrap $ SParens <$> go bound s1
     TType {} -> pure s
    where
     rewrap s' = Syntax' l <$> s' <*> pure ty <*> pure cmts

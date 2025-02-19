@@ -139,6 +139,7 @@ instance PrettyPrec (Term' ty) where
     SSuspend t ->
       pparens (p > 10) $
         "suspend" <+> prettyPrec 11 t
+    SParens t -> pparens True (ppr t)
     TType ty -> prettyPrec p ty
 
 prettyDefinition :: Doc ann -> Var -> Maybe (Poly q Type) -> Syntax' ty -> Doc ann

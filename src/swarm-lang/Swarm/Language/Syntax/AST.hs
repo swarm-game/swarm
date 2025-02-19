@@ -142,6 +142,11 @@ data Term' ty
   | -- | Run the given command, then suspend and wait for a new REPL
     --   input.
     SSuspend (Syntax' ty)
+  | -- | An explicit representation of parentheses in the input.  We
+    --   need this to be able to print formatted code with parentheses
+    --   and comments preserved, but we get rid of them during
+    --   elaboration.
+    SParens (Syntax' ty)
   | -- | A type literal.
     TType Type
   deriving

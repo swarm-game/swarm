@@ -30,6 +30,7 @@ module Swarm.Language.Syntax.Pattern (
   pattern TProj,
   pattern TAnnotate,
   pattern TSuspend,
+  pattern TParens,
   Term,
   TTerm,
   UTerm,
@@ -142,6 +143,10 @@ pattern TAnnotate t pt = SAnnotate (STerm t) pt
 pattern TSuspend :: Term -> Term
 pattern TSuspend t = SSuspend (STerm t)
 
+-- | Match a TParens without annotations.
+pattern TParens :: Term -> Term
+pattern TParens t = SParens (STerm t)
+
 -- COMPLETE pragma tells GHC using this set of patterns is complete for Term
 
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TRequirements, TVar, TPair, TLam, TApp, TLet, TTydef, TBind, TDelay, TRcd, TProj, TAnnotate, TSuspend #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TRequirements, TVar, TPair, TLam, TApp, TLet, TTydef, TBind, TDelay, TRcd, TProj, TAnnotate, TSuspend, TParens #-}

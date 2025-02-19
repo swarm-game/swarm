@@ -71,6 +71,7 @@ module Swarm.Language.Syntax (
   pattern TProj,
   pattern TAnnotate,
   pattern TSuspend,
+  pattern TParens,
 
   -- * Terms
   Var,
