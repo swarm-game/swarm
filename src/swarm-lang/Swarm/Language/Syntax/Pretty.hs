@@ -20,6 +20,7 @@ module Swarm.Language.Syntax.Pretty (
 
 ) where
 
+import Control.Lens ((&), (<>~))
 import Control.Lens.Empty (pattern Empty)
 import Data.Bool (bool)
 import Data.Foldable qualified as F
@@ -31,7 +32,7 @@ import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Loc
-import Swarm.Language.Syntax.Pattern (pattern STerm)
+import Swarm.Language.Syntax.Pattern (pattern STerm, sComments)
 import Swarm.Language.Syntax.Util (erase, unTuple)
 import Swarm.Language.Types
 import Swarm.Pretty (PrettyPrec (..), encloseWithIndent, pparens, ppr, prettyEquality)
@@ -177,7 +178,9 @@ prettyLambdas t = hsep (prettyLambda <$> lms) <> softline <> ppr rest
 
 unchainLambdas :: Syntax' ty -> (Syntax' ty, [(Var, Maybe Type)])
 unchainLambdas = \case
-  Syntax' _ (SLam (LV _ x) mty body) _ _ -> ((x, mty) :) <$> unchainLambdas body
+  -- Peel off consecutive lambdas, being sure to accumulate any
+  -- attached comments along the way so they attach to the body
+  Syntax' _ (SLam (LV _ x) mty body) coms _ -> ((x, mty) :) <$> unchainLambdas (body & sComments <>~ coms)
   body -> (body, [])
 
 prettyLambda :: (Pretty a1, PrettyPrec a2) => (a1, Maybe a2) -> Doc ann
