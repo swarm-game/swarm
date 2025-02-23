@@ -317,6 +317,7 @@ entities:
       char: '┴'
     description:
       - A up and horizontal wall.
+    properties: [unwalkable, known]
   - name: barcode reader
     display:
       attr: red
