@@ -106,19 +106,14 @@ world:
     'x': [dirt, null]
     'H': [blank, Hastur, floorspot]
     's': [stone, null, pedestal]
-    '┌': [stone, upper left corner]
-    '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
-    '│': [stone, vertical wall]
+    '+': [stone, wall]
   upperleft: [-1, -3]
   map: |
-    ┌─────────┐
-    │.........│
-    │...xxx...│
-    │...xsx...│
-    │...xxxH..│
-    │.........│
-    │Ω┌───────┘
-    └─┘........
+    +++++++++++
+    +.........+
+    +...xxx...+
+    +...xsx...+
+    +...xxxH..+
+    +.........+
+    +Ω+++++++++
+    +++........

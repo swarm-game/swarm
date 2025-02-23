@@ -304,6 +304,20 @@ structures:
           offset: [4, 3]
       map: ""
 entities:
+  - name: down and horizontal wall
+    display:
+      attr: entity
+      char: '┬'
+    description:
+      - A down and horizontal wall.
+    properties: [unwalkable, known]
+  - name: up and horizontal wall
+    display:
+      attr: entity
+      char: '┴'
+    description:
+      - A up and horizontal wall.
+    properties: [unwalkable, known]
   - name: barcode reader
     display:
       attr: red

@@ -52,23 +52,18 @@ world:
     '~': [ice, wavy water]
     'L': [grass, Linux]
     'T': [grass, tree]
-    '┌': [stone, upper left corner]
-    '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
-    '│': [stone, vertical wall]
+    '+': [stone, wall]
     'A': [stone, magnetic vein]
     'o': [stone, lodestone]
     '0': [grass, bit (0)]
     'B': [grass, erase, base]
   upperleft: [-1, 1]
   map: |
-    ┌─────┐                                                                ~~
-    │o.AT~                                                                ~L~
-    │..AAA│                                                                ~~
-    │B.0.A│                                                                 ~
-    └─────┘                                                                 ~
+    +++++++                                                                ~~
+    +o.AT~                                                                ~L~
+    +..AAA+                                                                ~~
+    +B.0.A+                                                                 ~
+    +++++++                                                                 ~
 entities:
   - name: magnetic vein
     display:

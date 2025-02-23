@@ -277,12 +277,7 @@ world:
     'x': [blank, wall]
     'T': [blank, null, teleport_monitor]
     '=': [blank, gate]
-    '┌': [stone, upper left corner]
-    '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
-    '│': [stone, vertical wall]
+    '+': [stone, wall]
     'W':
       cell: [blank]
       waypoint:
@@ -317,9 +312,9 @@ world:
     Bx.....x....x....x.....xB
     Bxxxxx.xxxxBxBxxxx.xxxxxB
     BBBBBx.xBBBBBBBBBx.xBBBBB
-    Bxxxxx.xB┌──=──┐Bx.xxxxxB
-    ZYBBBB.BB│abBcd│BB.BBBBWX
-    Bxxxxx.xB└─────┘Bx.xxxxxB
+    Bxxxxx.xB+++=+++Bx.xxxxxB
+    ZYBBBB.BB+abBcd+BB.BBBBWX
+    Bxxxxx.xB+++++++Bx.xxxxxB
     BBBBBx.xBBBfΩBBBBx.xBBBBB
     Bxxxxx.xBxxxxxxxBx.xxxxxB
     Bx..........x..........xB

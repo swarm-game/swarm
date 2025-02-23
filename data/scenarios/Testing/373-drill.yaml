@@ -49,23 +49,18 @@ world:
     '~': [ice, wavy water]
     'L': [grass, Linux]
     'T': [grass, tree]
-    '┌': [stone, upper left corner]
-    '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
-    '│': [stone, vertical wall]
+    '+': [stone, wall]
     'A': [stone, mountain]
     'C': [stone, copper vein]
     '@': [stone, boulder]
     'I': [stone, iron vein]
   upperleft: [-1, 1]
   map: |
-    ┌─────┐                                                                ~~
-    │IAAT~                                                                ~L~
-    │..@AA│                                                                ~~
-    │Ω...C│                                                                 ~
-    └─────┘                                                                 ~
+    +++++++                                                                ~~
+    +IAAT~                                                                ~L~
+    +..@AA+                                                                ~~
+    +Ω...C+                                                                 ~
+    +++++++                                                                 ~
 entities:
   - name: copper vein
     display:

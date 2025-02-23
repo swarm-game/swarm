@@ -48,16 +48,11 @@ world:
     '.': [grass]
     'Ω': [grass, null]
     'o': [grass, null, other]
-    '┌': [stone, upper left corner]
-    '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
-    '│': [stone, vertical wall]
+    '+': [stone, wall]
   upperleft: [-2, 2]
   map: |
-    ┌───┐
-    │.o.│
-    │oΩo│
-    │.o.│
-    └───┘
+    +++++
+    +.o.+
+    +oΩo+
+    +.o.+
+    +++++

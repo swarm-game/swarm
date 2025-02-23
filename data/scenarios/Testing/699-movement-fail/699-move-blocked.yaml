@@ -34,16 +34,11 @@ world:
     'B': [grass, null, base]
     '1': [grass, null, one]
     '2': [grass, null, two]
-    '┌': [stone, upper left corner]
-    '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
-    '│': [stone, vertical wall]
+    '+': [stone, wall]
   upperleft: [-1, 1]
   map: |
-    ┌──┐
-    │B@│
-    │1@│
-    │2@│
-    └──┘
+    ++++
+    +B@+
+    +1@+
+    +2@+
+    ++++

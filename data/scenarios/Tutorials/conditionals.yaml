@@ -103,18 +103,13 @@ world:
     '.': [grass]
     '_': [stone]
     'o': [stone, very small rock]
-    '┌': [stone, upper left corner]
-    '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
-    '│': [stone, vertical wall]
+    '+': [stone, wall]
   upperleft: [-1, 1]
   map: |
-    ┌─────┐
-    │Ω....│
-    │.o___│
-    │._o__│
-    │.___o│
-    │.__o_│
-    └─────┘
+    +++++++
+    +Ω....+
+    +.o___+
+    +._o__+
+    +.___o+
+    +.__o_+
+    +++++++
