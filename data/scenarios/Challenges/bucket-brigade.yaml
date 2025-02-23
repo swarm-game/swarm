@@ -79,7 +79,26 @@ objectives:
 solution: |
   run "scenarios/Challenges/_bucket-brigade/brigade.sw"
 entities:
-  - name: bucketwheel excavator
+  - name: upper left corner
+    display:
+      attr: entity
+      char: '┌'
+    description:
+      - Upper left corner.
+    properties: [unwalkable, known]
+  - name: upper right corner
+    display:
+      attr: entity
+      char: '┐'
+    description:
+      - An upper right corner wall.
+  - name: vertical wall
+    display:
+      attr: entity
+      char: '│'
+    description:
+      - A vertical wall.
+ - name: bucketwheel excavator
     display:
       char: 'x'
     description:

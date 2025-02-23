@@ -41,16 +41,11 @@ world:
     '.': [grass]
     '~': [ice, water]
     '3': [grass, 3D printer]
-    '┌': [stone, upper left corner]
-    '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
-    '│': [stone, vertical wall]
+    '+': [stone, wall]
   upperleft: [-1, 1]
   map: |
-    ┌───┐
-    │>..│
-    │3..│
-    │~~~│
-    └───┘
+    +++++
+    +>..+
+    +3..+
+    +~~~+
+    +++++
