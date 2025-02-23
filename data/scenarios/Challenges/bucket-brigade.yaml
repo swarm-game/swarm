@@ -92,12 +92,14 @@ entities:
       char: '┐'
     description:
       - An upper right corner wall.
+    properties: [unwalkable, known]
   - name: vertical wall
     display:
       attr: entity
       char: '│'
     description:
       - A vertical wall.
+    properties: [unwalkable, known]
   - name: bucketwheel excavator
     display:
       char: 'x'
