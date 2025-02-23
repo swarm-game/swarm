@@ -98,7 +98,7 @@ entities:
       char: '│'
     description:
       - A vertical wall.
- - name: bucketwheel excavator
+  - name: bucketwheel excavator
     display:
       char: 'x'
     description:
