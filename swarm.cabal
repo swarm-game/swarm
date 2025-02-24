@@ -1287,6 +1287,7 @@ test-suite swarm-integration
   other-modules:
     TestFormat
     TestRecipeCoverage
+
   type: exitcode-stdio-1.0
   build-depends:
     swarm:swarm-doc,
