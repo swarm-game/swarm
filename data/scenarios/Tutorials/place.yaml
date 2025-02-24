@@ -76,14 +76,9 @@ world:
     '>': [grass, null, base]
     '.': [grass]
     'T': [grass, spruce]
-    '┌': [stone, upper left corner]
-    '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
-    '│': [stone, vertical wall]
+    '+': [stone, wall]
   upperleft: [-1, 1]
   map: |
-    ┌────────┐
-    │>.T.....│
-    └────────┘
+    ++++++++++
+    +>.T.....+
+    ++++++++++

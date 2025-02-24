@@ -103,12 +103,7 @@ world:
   palette:
     '.': [grass]
     'k': [stone, kudzu, gardener]
-    '┌': [stone, upper left corner]
-    '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
-    '│': [stone, vertical wall]
+    '+': [stone, wall]
   structures:
     - name: cornerbox
       structure:
@@ -141,14 +136,14 @@ world:
       orient:
         up: west
   map: |
-    ┌───────────┐
-    │...........│
-    │...........│
-    │.....k.....│
-    │...........│
-    │...........│
-    │...........│
-    │.....k.....│
-    │...........│
-    │...........│
-    └───────────┘
+    +++++++++++++
+    +...........+
+    +...........+
+    +.....k.....+
+    +...........+
+    +...........+
+    +...........+
+    +.....k.....+
+    +...........+
+    +...........+
+    +++++++++++++

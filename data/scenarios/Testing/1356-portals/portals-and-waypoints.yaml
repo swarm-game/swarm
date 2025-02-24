@@ -37,12 +37,7 @@ world:
     '.': [grass]
     '*': [stone, flower]
     'p': [grass, telepad exit]
-    '┌': [stone, upper left corner]
-    '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
-    '│': [stone, vertical wall]
+    '+': [stone, wall]
   structures:
     - name: bitpair
       structure:
@@ -102,13 +97,13 @@ world:
       exitInfo:
         exit: meadow
   map: |
-    ┌────────────┐
-    │*..*..*..*.p│
-    │.*..*..*..*.│
-    │..*..*..*..*│
-    │*..*..*..*..│
-    │.*..*..*..*.│
-    │..*..*..*..*│
-    │*..*..*..*..│
-    │.*..*..*..*.│
-    └────────────┘
+    ++++++++++++++
+    +*..*..*..*.p+
+    +.*..*..*..*.+
+    +..*..*..*..*+
+    +*..*..*..*..+
+    +.*..*..*..*.+
+    +..*..*..*..*+
+    +*..*..*..*..+
+    +.*..*..*..*.+
+    ++++++++++++++
