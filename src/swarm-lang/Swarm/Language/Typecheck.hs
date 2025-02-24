@@ -980,7 +980,6 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- Once we're typechecking, we don't need to keep around explicit
   -- parens any more
   SParens t1 -> infer t1
-
   -- To infer a type-annotated term, switch into checking mode.
   -- However, we must be careful to deal properly with polymorphic
   -- type annotations.
@@ -1149,7 +1148,6 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   -- Once we're typechecking, we don't need to keep around explicit
   -- parens any more
   SParens t1 -> check t1 expected
-
   -- If t : ty, then  {t} : {ty}.
   SDelay s1 -> do
     ty1 <- decomposeDelayTy s (Expected, expected)

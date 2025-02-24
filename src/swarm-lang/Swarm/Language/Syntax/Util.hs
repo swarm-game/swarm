@@ -80,11 +80,11 @@ mkTuple [] = TUnit
 -- for better source location tracking
 mkTuple [x] = SParens x
 -- (x,y) = SPair
-mkTuple [x,y] = SPair x y
+mkTuple [x, y] = SPair x y
 -- (x,y,...) = recursively nested pairs.  Note that we do not assign
 -- source spans to the nested tuples since they don't really come from
 -- a specific place in the source.
-mkTuple (x:r) = SPair x (Syntax NoLoc (mkTuple r))
+mkTuple (x : r) = SPair x (Syntax NoLoc (mkTuple r))
 
 -- | Decompose a nested tuple into a list of components.
 unTuple :: Syntax' ty -> [Syntax' ty]

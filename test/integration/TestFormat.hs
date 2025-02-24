@@ -7,9 +7,9 @@
 module TestFormat (testFormatting) where
 
 import Data.Text qualified as T
-import Swarm.Util (findAllWithExt, readFileMayT)
 import Swarm.Language.Format
 import Swarm.Language.Parser.Core (LanguageVersion (SwarmLangLatest))
+import Swarm.Util (findAllWithExt, readFileMayT)
 import Test.Tasty
 import Test.Tasty.HUnit
 import Witch (into)
