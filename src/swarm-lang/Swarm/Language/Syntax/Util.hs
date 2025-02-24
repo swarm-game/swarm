@@ -71,18 +71,20 @@ unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
   Syntax' _ (SApp s1 s2) _ _ -> (s2, Just s1)
   s -> (s, Nothing)
 
--- | XXX expand this comment, it does more than nested tuples, also
---   handles unit value + explicit parenthesization
---   Create a nested
---   tuple out of a list of syntax nodes.
+-- | Create an appropriate `Term` out of a list of syntax nodes which
+--   were enclosed with parentheses (and separated by commas).
 mkTuple :: [Syntax] -> Term
+-- () = TUnit
 mkTuple [] = TUnit
+-- (x) = x, but record the fact that it was explicitly parenthesized,
+-- for better source location tracking
 mkTuple [x] = SParens x
+-- (x,y) = SPair
 mkTuple [x,y] = SPair x y
+-- (x,y,...) = recursively nested pairs.  Note that we do not assign
+-- source spans to the nested tuples since they don't really come from
+-- a specific place in the source.
 mkTuple (x:r) = SPair x (Syntax NoLoc (mkTuple r))
--- mkTuple (x : xs) = let r = mkTuple xs in loc x r $ SPair x r
---  where
---   loc a b = Syntax $ (a ^. sLoc) <> (b ^. sLoc)
 
 -- | Decompose a nested tuple into a list of components.
 unTuple :: Syntax' ty -> [Syntax' ty]
