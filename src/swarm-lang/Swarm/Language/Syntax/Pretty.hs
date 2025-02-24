@@ -32,7 +32,7 @@ import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Loc
-import Swarm.Language.Syntax.Pattern (pattern STerm, sComments)
+import Swarm.Language.Syntax.Pattern (sComments, pattern STerm)
 import Swarm.Language.Syntax.Util (erase, unTuple)
 import Swarm.Language.Types
 import Swarm.Pretty (PrettyPrec (..), encloseWithIndent, pparens, ppr, prettyEquality)
@@ -95,8 +95,8 @@ instance PrettyPrec (Term' ty) where
               pparens (p > pC) $
                 hsep
                   [ prettyPrec (pC + fromEnum (assoc == R)) l
-                    -- pretty-print the operator with comments reattached
-                  , ppr (op { _sComments = opcom })
+                  , -- pretty-print the operator with comments reattached
+                    ppr (op {_sComments = opcom})
                   , prettyPrec (pC + fromEnum (assoc == L)) r
                   ]
             _ -> prettyPrecApp p t r
