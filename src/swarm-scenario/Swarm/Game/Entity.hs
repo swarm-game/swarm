@@ -112,7 +112,7 @@ import Data.IntSet qualified as IS
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (isJust, listToMaybe, mapMaybe)
+import Data.Maybe (isJust, listToMaybe)
 import Data.MonoidMap (MonoidMap)
 import Data.MonoidMap qualified as MM
 import Data.MonoidMap.JSON ()
@@ -752,7 +752,7 @@ lookup e (Inventory cs _ _) = maybe 0 fst $ IM.lookup (e ^. entityHash) cs
 --   positive, or just use 'countByName' in the first place.
 lookupByName :: Text -> Inventory -> [Entity]
 lookupByName name (Inventory cs byN _) =
-  mapMaybe (fmap snd . (cs IM.!?)) . IS.elems $ MM.get (T.toLower name) byN
+  fmap snd . IM.elems . IM.restrictKeys cs $ MM.get (T.toLower name) byN
 
 -- | Look up an entity by name and see how many there are in the
 --   inventory.  If there are multiple entities with the same name, it
