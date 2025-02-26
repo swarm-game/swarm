@@ -789,7 +789,7 @@ insertCount :: Count -> Entity -> Inventory -> Inventory
 insertCount k e (Inventory cs byN h) =
   Inventory
     (IM.insertWith (\(m, _) (n, _) -> (m + n, e)) (e ^. entityHash) (k, e) cs)
-    (MM.adjust (IS.union (IS.singleton (e ^. entityHash))) (T.toLower $ e ^. entityName) byN)
+    (MM.adjust (IS.insert (e ^. entityHash)) (T.toLower $ e ^. entityName) byN)
     (h + (k + extra) * (e ^. entityHash)) -- homomorphic hashing
  where
   -- Include the hash of an entity once just for "knowing about" it;
