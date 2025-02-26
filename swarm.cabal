@@ -255,6 +255,12 @@ common MissingH
 common monad-logger
   build-depends: monad-logger >=0.3.0 && <0.4.0
 
+common monoidmap
+  build-depends: monoidmap >=0.0.3.0 && <0.1
+
+common monoidmap-aeson
+  build-depends: monoidmap-aeson >=0.0.0.1 && <0.1
+
 common mtl
   build-depends: mtl >=2.2.2 && <2.4
 
@@ -585,6 +591,8 @@ library swarm-scenario
     linear,
     megaparsec,
     monad-logger,
+    monoidmap,
+    monoidmap-aeson,
     mtl,
     murmur3,
     palette,
