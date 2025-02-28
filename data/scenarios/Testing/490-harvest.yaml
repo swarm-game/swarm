@@ -29,16 +29,11 @@ world:
   palette:
     '.': [grass]
     'T': [stone, tree]
-    '┌': [stone, upper left corner]
-    '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
-    '│': [stone, vertical wall]
+    '+': [stone, wall]
     '~': [stone, water]
   upperleft: [-1, 1]
   map: |
-    ┌───┐
-    │.TT│
-    │~~~│
-    └───┘
+    +++++
+    +.TT+
+    +~~~+
+    +++++
