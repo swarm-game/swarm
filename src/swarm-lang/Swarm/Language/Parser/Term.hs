@@ -103,8 +103,8 @@ parseTermAtom2 =
           <*> pure Nothing
           <*> (optional (symbol ";") *> (parseTerm <|> (eof $> sNoop)))
         <|> SRcd <$> brackets (parseRecord (optional (symbol "=" *> parseTerm)))
-        <|> parens (view sTerm . mkTuple <$> (parseTerm `sepBy` symbol ","))
     )
+    <|> parseLoc (mkTuple <$> parens (parseTerm `sepBy` symbol ","))
     <|> parseLoc (TDelay (TConst Noop) <$ try (symbol "{" *> symbol "}"))
     <|> parseLoc (SDelay <$> braces parseTerm)
     <|> parseLoc (view antiquoting >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
@@ -206,7 +206,7 @@ binOps = M.unionsWith (++) $ mapMaybe binOpToTuple allConst
     pure $
       M.singleton
         (fixity ci)
-        [assI (mkOp c <$ operator (syntax ci))]
+        [assI (mkOp c <$> parseLocG (operator (syntax ci)))]
 
 -- | Precedences and parsers of unary operators (currently only 'Neg').
 --

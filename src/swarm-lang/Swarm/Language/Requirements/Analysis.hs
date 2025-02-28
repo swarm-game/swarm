@@ -160,6 +160,7 @@ requirements tdCtx ctx =
     TProj t _ -> add (singletonCap CRecord) *> go t
     -- A type ascription doesn't change requirements
     TAnnotate t ty -> go t *> polytypeRequirements ty
+    TParens t -> go t
 
 polytypeRequirements ::
   (Has (Accum Requirements) sig m, Has (Reader TDCtx) sig m) =>

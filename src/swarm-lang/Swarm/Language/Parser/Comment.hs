@@ -39,7 +39,7 @@ import Swarm.Language.Syntax
 --
 --   (3) For each suffix comment (i.e. comments after something else
 --       at the end of a line, or in the middle of a line), attach
---       them to the latest node in a postorder traversal which begins
+--       them to the latest node in a postorder traversal which ends
 --       before the comment.
 
 -- | Re-insert parsed comments into an AST.  Prerequisite: the sequence of comments
@@ -74,15 +74,15 @@ insertComments cmpLoc ins = go
 populateStandaloneComments :: [Comment] -> Syntax -> Syntax
 populateStandaloneComments cmts =
   flip evalState cmts
-    . preorder (insertComments srcLocBefore (\c -> beforeComments %~ (|> c)))
+    . preorder (insertComments srcLocStartsBefore (\c -> beforeComments %~ (|> c)))
 
 -- | Given a list of suffix comments sorted by 'SrcLoc', insert
 --   them into the given AST, attaching each comment to the latest
---   node in a postorder traversal which begins before it.
+--   node in a postorder traversal which ends before it.
 populateSuffixComments :: [Comment] -> Syntax -> Syntax
 populateSuffixComments cmts =
   flip evalState (reverse cmts)
-    . revpostorder (insertComments (flip srcLocBefore) (\c -> afterComments %~ (c <|)))
+    . revpostorder (insertComments (flip srcLocEndsBefore) (\c -> afterComments %~ (c <|)))
 
 ------------------------------------------------------------
 -- Traversals
@@ -108,12 +108,12 @@ preorder g = go
   go = g >=> mapMOf plate go
 
 -- | Reverse postorder traversal of a 'Plated' structure with a
---   monadic transformation.  Apply the transformation recursively to
---   all the children in reverse order, then transform the root.
+--   monadic transformation.  Transform the root, then apply the
+--   transformation recursively to all the children in reverse order.
 --
 -- >>> showTree (evalState (revpostorder next exampleTree) 0)
--- "7(6 5(4 3 2) 1(0))"
+-- "0(7 3(6 5 4) 1(2))"
 revpostorder :: (Plated a, Monad m) => (a -> m a) -> (a -> m a)
 revpostorder g = go
  where
-  go = mapMOf (backwards plate) go >=> g
+  go = g >=> mapMOf (backwards plate) go

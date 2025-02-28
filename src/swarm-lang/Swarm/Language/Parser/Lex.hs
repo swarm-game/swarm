@@ -71,9 +71,14 @@ import Witch (from, into)
 -- | Add 'SrcLoc' to a parser
 parseLocG :: Parser a -> Parser (SrcLoc, a)
 parseLocG pa = do
+  -- Remember the start location.
   start <- getOffset
   a <- pa
-  end <- getOffset
+  -- Instead of using 'getOffset' to get the end location, which would
+  -- include any whitespace consumed at the end of @pa@, get the
+  -- @preWSLoc@ which was set by 'sc' at the /beginning/ of the
+  -- consumed whitespace.
+  end <- use preWSLoc
   pure (SrcLoc start end, a)
 
 -- | Add 'SrcLoc' to a 'Term' parser
@@ -98,23 +103,34 @@ getCommentSituation = do
 lineComment :: Text -> Parser ()
 lineComment start = do
   cs <- getCommentSituation
-  (loc, t) <- parseLocG $ do
-    string start *> takeWhileP (Just "character") (/= '\n')
-  comments %= (Seq.|> Comment loc LineComment cs t)
+  -- Note we must manually get the start and end offset rather than
+  -- using parseLocG, since parseLocG explicitly does not include the
+  -- source span of trailing whitespace.
+  s <- getOffset
+  t <- string start *> takeWhileP (Just "character") (/= '\n')
+  e <- getOffset
+  comments %= (Seq.|> Comment (SrcLoc s e) LineComment cs t)
 
 -- | Parse a block comment, while appending it out-of-band to the list of
 --   comments saved in the custom state.
 blockComment :: Text -> Text -> Parser ()
 blockComment start end = do
   cs <- getCommentSituation
-  (loc, t) <- parseLocG $ do
-    void $ string start
-    manyTill anySingle (string end)
-  comments %= (Seq.|> Comment loc BlockComment cs (into @Text t))
+  -- Note we must manually get the start and end offset rather than
+  -- using parseLocG, since parseLocG explicitly does not include the
+  -- source span of trailing whitespace.
+  s <- getOffset
+  void $ string start
+  t <- manyTill anySingle (string end)
+  e <- getOffset
+  comments %= (Seq.|> Comment (SrcLoc s e) BlockComment cs (into @Text t))
 
 -- | Skip spaces and comments.
 sc :: Parser ()
-sc =
+sc = do
+  -- Remember where we were before we started consuming whitespace.
+  l <- getOffset
+  preWSLoc .= l
   -- Typically we would use L.space here, but we have to inline its
   -- definition and use our own slight variant, since we need to treat
   -- end-of-line specially.

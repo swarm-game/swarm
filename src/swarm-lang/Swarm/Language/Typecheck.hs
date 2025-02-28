@@ -977,6 +977,9 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     m' <- itraverse (\x -> infer . fromMaybe (STerm (TVar x))) m
     return $ Syntax' l (SRcd (Just <$> m')) cs (UTyRcd (fmap (^. sType) m'))
 
+  -- Once we're typechecking, we don't need to keep around explicit
+  -- parens any more
+  SParens t1 -> infer t1
   -- To infer a type-annotated term, switch into checking mode.
   -- However, we must be careful to deal properly with polymorphic
   -- type annotations.
@@ -1142,6 +1145,9 @@ check ::
   UType ->
   m (Syntax' UType)
 check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
+  -- Once we're typechecking, we don't need to keep around explicit
+  -- parens any more
+  SParens t1 -> check t1 expected
   -- If t : ty, then  {t} : {ty}.
   SDelay s1 -> do
     ty1 <- decomposeDelayTy s (Expected, expected)
@@ -1411,10 +1417,11 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- executed.
   TConst If :$: tst :$: thn :$: els ->
     (+) <$> analyzeAtomic locals tst <*> (max <$> analyzeAtomic locals thn <*> analyzeAtomic locals els)
-  -- Pairs, application, and delay are simple: just recurse and sum the results.
+  -- Pairs, application, delay, and parens are simple: just recurse and sum the results.
   SPair s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic locals s2
   SApp s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic locals s2
   SDelay s1 -> analyzeAtomic locals s1
+  SParens s1 -> analyzeAtomic locals s1
   -- Bind is similarly simple except that we have to keep track of a local variable
   -- bound in the RHS.
   SBind mx _ _ _ s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id (S.insert . lvVar) mx locals) s2

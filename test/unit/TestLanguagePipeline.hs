@@ -154,7 +154,7 @@ testLanguagePipeline =
             "failure inside function call"
             ( process
                 "if true \n{} \n(move)"
-                "3:1: Type mismatch:\n  From context, expected `move` to have type `{Cmd Unit}`,\n  but it actually has type `Cmd Unit`"
+                "3:2: Type mismatch:\n  From context, expected `move` to have type `{Cmd Unit}`,\n  but it actually has type `Cmd Unit`"
             )
         , testCase
             "parsing operators #236 - report failure on invalid operator start"
@@ -228,13 +228,13 @@ testLanguagePipeline =
             "atomic move+move"
             ( process
                 "atomic (move; move)"
-                "1:8: Invalid atomic block: block could take too many ticks (2): `move; move`"
+                "1:8: Invalid atomic block: block could take too many ticks (2): `(move; move)`"
             )
         , testCase
             "atomic lambda"
             ( process
                 "atomic ((\\c. c;c) move)"
-                "1:9: Invalid atomic block: def, let, and lambda are not allowed: `\\c. c; c`"
+                "1:10: Invalid atomic block: def, let, and lambda are not allowed: `\\c. c; c`"
             )
         , testCase
             "atomic non-simple"
@@ -270,7 +270,7 @@ testLanguagePipeline =
             "atomic salvage"
             ( process
                 "atomic (salvage)"
-                "1:8: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: `salvage`"
+                "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: `salvage`"
             )
         ]
     , testGroup
@@ -410,7 +410,7 @@ testLanguagePipeline =
             "checking a lambda with the wrong argument type"
             ( process
                 "(\\x:Int. x + 2) : Text -> Int"
-                "1:1: Lambda argument has type annotation `Int`, but expected argument type `Text`"
+                "1:2: Lambda argument has type annotation `Int`, but expected argument type `Text`"
             )
         ]
     , testGroup
@@ -549,7 +549,7 @@ testLanguagePipeline =
             "unify two-argument function and Int"
             ( process
                 "1 + (\\x. \\y. 3)"
-                "1:5: Type mismatch:\n  From context, expected `\\x. \\y. 3` to have type `Int`,\n  but it is actually a function\n"
+                "1:6: Type mismatch:\n  From context, expected `\\x. \\y. 3` to have type `Int`,\n  but it is actually a function\n"
             )
         , testCase
             "apply HOF to int - #1888"
