@@ -6,6 +6,7 @@
 -- Test the behavior of 'swarm format' on selected input files.
 module TestFormat (testFormatting) where
 
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Swarm.Language.Format
 import Swarm.Language.Parser.Core (LanguageVersion (SwarmLangLatest))
@@ -23,6 +24,10 @@ testFormatting = do
  where
   defaultFormatCfg = FormatConfig Stdin Stdout Nothing SwarmLangLatest
 
+  -- Remove a final trailing newline character, if any
+  trimFinalEOL :: T.Text -> T.Text
+  trimFinalEOL t = fromMaybe t (T.stripSuffix "\n" t)
+
   checkFormat :: FilePath -> TestTree
   checkFormat f = testCase f $ do
     mcontent <- readFileMayT f
@@ -30,6 +35,6 @@ testFormatting = do
       Nothing -> assertFailure $ "Failed to load " <> f
       Just content -> case formatSwarm defaultFormatCfg content of
         Left err -> assertFailure (into @String err)
-        -- Make sure they are the same, but ignore leading + trailing whitespace
+        -- Make sure they are the same, up to a trailing newline
         Right formatted ->
-          assertEqual "Formatted code does not match." (T.strip content) (T.strip formatted)
+          assertEqual "Formatted code does not match." (trimFinalEOL content) (trimFinalEOL formatted)

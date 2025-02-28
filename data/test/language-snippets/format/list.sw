@@ -1,4 +1,3 @@
-
 /*******************************************************************/
 /*                       LIST ENCODING IN INT                      */
 /*                                                                 */
@@ -11,7 +10,6 @@
 /*                                                                 */
 /* NOTE THAT THIS IS NOT EFFICIENT OR ERGONIMIC!!! YOU SHOULD USE: */
 tydef NormalListType a = rec l. Unit + (a * l) end
-
 
 /*                                                                 */
 /* This code was written before swarm had 'format' or 'rec', but   */
@@ -34,7 +32,6 @@ tydef NormalListType a = rec l. Unit + (a * l) end
 // It is the callers responsibility to make sure a program using this
 // "type" is type safe. Notably 2 == [0] != [] == 0 but [] !! x == 0.
 tydef ListI = Int end
-
 
 /*******************************************************************/
 /*                             LAYOUT                              */
@@ -62,24 +59,19 @@ def naive_len: Int -> Int -> Int
   if (i == 0) {acc} {naive_len (1 + acc) (i / 2)}
 end
 
-
 // modulus function (%)
 def mod: Int -> Int -> Int = \i. \m. i - m * (i / m) end
-
 
 // f X Y = Y * 2^(-X)
 def shiftL: Int -> Int -> Int = \s. \i. i / 2 ^ s end
 
-
 // f X Y = Y * 2^(X)
 def shiftR: Int -> Int -> Int = \s. \i. i * 2 ^ s end
-
 
 // shift by (8bit) bytes
 def shiftLH: Int -> Int -> Int = \s. shiftL (s * 8) end
 
 def shiftRH: Int -> Int -> Int = \s. shiftR (s * 8) end
-
 
 // bitlength of a number using an accumulator (shifting by 64)
 def len_accum: Int -> Int -> Int 
@@ -88,10 +80,8 @@ def len_accum: Int -> Int -> Int
   if (next == 0) {naive_len acc i} {len_accum (acc + 64) next}
 end
 
-
 // bitlength of a number (uses an accumulator and shifts by 64 bits)
 def len: Int -> Int = len_accum 0 end
-
 
 /*******************************************************************/
 /*                       helper functions                          */
@@ -100,13 +90,11 @@ def getLenPart: Int -> Int = \i. mod (i / 2) (2 ^ 7) end
 
 def setLenPart: Int -> Int = \i. 2 * mod i (2 ^ 7) end
 
-
 // Split length into 7-bit parts and prefix all but last with 1
 def to1numA: Int -> (Int * Int) 
   = \i.
   let nextPart = shiftL 7 i in
   if (nextPart == 0) {
-
     // last part
     (2 * i, 1)
   } {
@@ -114,7 +102,6 @@ def to1numA: Int -> (Int * Int)
     (1 /* header isEnd bit */ + setLenPart i + shiftRH 1 (fst p), 1 + snd p)
   }
 end
-
 
 // Get bitlength of the first number in the list
 // and also the list starting at the number itself
@@ -127,7 +114,6 @@ def getLenA: ListI -> (Int * Int)
     let p = getLenA nextPart in (l + shiftR 7 (fst p), snd p)
   }
 end
-
 
 /*******************************************************************/
 /*                         LIST FUNCTIONS                          */
@@ -157,7 +143,6 @@ end
 
 def nil: ListI = 0 end
 
-
 // Add non-negative number to beginning of list (cons adds the sign)
 def consP: Int -> ListI -> Int 
   = \x. \xs.
@@ -167,13 +152,11 @@ def consP: Int -> ListI -> Int
   }
 end
 
-
 // Add integer to the beginning of the list
 def cons: Int -> ListI -> ListI 
   = \x. \xs.
   if (x >= 0) {2 * consP x xs} {1 + 2 * consP (-x) xs}
 end
-
 
 /*******************************************************************/
 /*                       MORE LIST FUNCTIONS                       */
@@ -199,7 +182,6 @@ def for_each: ListI -> (Int -> Cmd Unit) -> Cmd Unit
   = \xs. \act.
   for_each_i 0 xs (\i. act)
 end
-
 
 /*******************************************************************/
 /*                           UNIT TESTS                            */
@@ -274,7 +256,6 @@ def testLIST =
   );
   log "OK - ALL TEST PASSED\a"
 end
-
 
 // This tests uses VERY LONG lists of size up to 2097332 bits.
 // TIP: increase the game speed (ticks/s) when you run this test.

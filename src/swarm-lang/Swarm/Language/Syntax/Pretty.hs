@@ -43,10 +43,9 @@ instance PrettyPrec (Syntax' ty) where
   prettyPrec p (Syntax' _ t (Comments before after) _) = case before of
     Empty -> t'
     _ ->
-      -- Print out any comments before the node, with a blank line before
+      -- Print out any comments before the node
       mconcat
-        [ hardline
-        , vsep (map ppr (F.toList before))
+        [ vsep (map ppr (F.toList before))
         , hardline
         , t'
         ]
