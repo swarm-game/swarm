@@ -112,7 +112,10 @@ import Data.IntSet qualified as IS
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (isJust, listToMaybe, mapMaybe)
+import Data.Maybe (isJust, listToMaybe)
+import Data.MonoidMap (MonoidMap)
+import Data.MonoidMap qualified as MM
+import Data.MonoidMap.JSON ()
 import Data.Set (Set)
 import Data.Set qualified as Set (fromList, member)
 import Data.Text (Text)
@@ -716,7 +719,7 @@ data Inventory = Inventory
     counts :: IntMap (Count, Entity)
   , -- Mirrors the main map; just caching the ability to look up by
     -- name.
-    byName :: Map Text IntSet
+    byName :: MonoidMap Text IntSet
   , -- Cached hash of the inventory, using a homomorphic hashing scheme
     -- (see https://github.com/swarm-game/swarm/issues/229).
     --
@@ -749,7 +752,7 @@ lookup e (Inventory cs _ _) = maybe 0 fst $ IM.lookup (e ^. entityHash) cs
 --   positive, or just use 'countByName' in the first place.
 lookupByName :: Text -> Inventory -> [Entity]
 lookupByName name (Inventory cs byN _) =
-  maybe [] (mapMaybe (fmap snd . (cs IM.!?)) . IS.elems) (M.lookup (T.toLower name) byN)
+  fmap snd . IM.elems . IM.restrictKeys cs $ MM.get (T.toLower name) byN
 
 -- | Look up an entity by name and see how many there are in the
 --   inventory.  If there are multiple entities with the same name, it
@@ -760,7 +763,7 @@ countByName name inv =
 
 -- | The empty inventory.
 empty :: Inventory
-empty = Inventory IM.empty M.empty 0
+empty = Inventory IM.empty MM.empty 0
 
 -- | Create an inventory containing one entity.
 singleton :: Entity -> Inventory
@@ -786,7 +789,7 @@ insertCount :: Count -> Entity -> Inventory -> Inventory
 insertCount k e (Inventory cs byN h) =
   Inventory
     (IM.insertWith (\(m, _) (n, _) -> (m + n, e)) (e ^. entityHash) (k, e) cs)
-    (M.insertWith IS.union (T.toLower $ e ^. entityName) (IS.singleton (e ^. entityHash)) byN)
+    (MM.adjust (IS.insert (e ^. entityHash)) (T.toLower $ e ^. entityName) byN)
     (h + (k + extra) * (e ^. entityHash)) -- homomorphic hashing
  where
   -- Include the hash of an entity once just for "knowing about" it;
@@ -876,7 +879,7 @@ union :: Inventory -> Inventory -> Inventory
 union (Inventory cs1 byN1 h1) (Inventory cs2 byN2 h2) =
   Inventory
     (IM.unionWith (\(c1, e) (c2, _) -> (c1 + c2, e)) cs1 cs2)
-    (M.unionWith IS.union byN1 byN2)
+    (MM.union byN1 byN2)
     (h1 + h2 - common)
  where
   -- Need to subtract off the sum of the hashes in common, because
