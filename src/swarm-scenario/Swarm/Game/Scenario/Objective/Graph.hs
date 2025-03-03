@@ -123,8 +123,8 @@ makeGraph edges =
  where
   (myGraph, _, _) = graphFromEdges edges
 
-makeGraphEdges :: [Objective] -> Edges
-makeGraphEdges objectives =
+makeObjectiveGraphEdges :: [Objective] -> Edges
+makeObjectiveGraphEdges objectives =
   rootTuples <> negatedTuples
  where
   rootTuples = map f $ M.toList $ assignIds objectives
@@ -142,6 +142,6 @@ makeGraphInfo oc =
     connectedComponents
     (M.keys $ assignIds objs)
  where
-  edges = makeGraphEdges objs
+  edges = makeObjectiveGraphEdges objs
   connectedComponents = stronglyConnComp edges
   objs = oc ^.. allObjectives
