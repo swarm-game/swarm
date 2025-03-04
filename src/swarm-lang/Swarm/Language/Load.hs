@@ -26,7 +26,6 @@ module Swarm.Language.Load (
 
 import Control.Algebra (Has)
 import Control.Carrier.State.Strict (execState)
-import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.State (State, get, modify)
 import Control.Effect.Throw (Throw, throwError)
