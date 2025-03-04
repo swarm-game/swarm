@@ -23,13 +23,12 @@ module Swarm.Language.Pipeline (
 
 import Control.Algebra (Has)
 import Control.Effect.Lift (Lift)
-import Control.Effect.Throw (Throw, liftEither)
-import Control.Carrier.Throw.Either (runThrow)
+import Control.Effect.Error (Error)
+import Control.Effect.Throw (liftEither)
+import Control.Carrier.Error.Either (runError)
 import Control.Lens ((^.))
-import Data.Bifunctor (first)
 import Data.Text (Text)
-import Data.Text qualified as T
-import Swarm.Failure (SystemFailure (CustomFailure))
+import Swarm.Failure (SystemFailure (..))
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Elaborate
 import Swarm.Language.Load (buildSourceMap)
@@ -40,7 +39,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types (TCtx)
 import Swarm.Language.Value (Env, emptyEnv, envReqs, envTydefs, envTypes)
-import Swarm.Util.Effect (withThrow)
+import Swarm.Util.Effect (withError, withThrow)
 
 processTermEither :: Text -> IO (Either SystemFailure TSyntax)
 processTermEither t = do
@@ -59,27 +58,28 @@ processTermEither t = do
 --   Return either the end result (or @Nothing@ if the input was only
 --   whitespace) or a pretty-printed error message.
 processTerm :: Text -> IO (Either SystemFailure (Maybe TSyntax))
-processTerm = runThrow . processTerm' emptyEnv
+processTerm = runError . processTerm' emptyEnv
 
 -- | Like 'processTerm', but use a term that has already been parsed.
 processParsedTerm :: Syntax -> IO (Either SystemFailure TSyntax)
-processParsedTerm = runThrow . processParsedTerm' emptyEnv
+processParsedTerm = runError . processParsedTerm' emptyEnv
 
 -- | Like 'processTerm', but use explicit starting contexts.
 processTerm' ::
-  (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) =>
+  (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
   Env -> Text -> m (Maybe TSyntax)
 processTerm' e txt = do
-  mt <- withThrow _ . liftEither $ readTerm' defaultParserConfig txt
-  withThrow (prettyTypeErrText txt) $ traverse (processParsedTerm' e) mt
+  mt <- withThrow CanNotParseMegaparsec . liftEither $ readTerm' defaultParserConfig txt
+  withError (DoesNotTypecheck . prettyTypeErrText txt) $ traverse (processParsedTerm' e) mt
 
 -- | Like 'processTerm'', but use a term that has already been parsed.
 processParsedTerm' ::
-  (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) =>
+  (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
   Env -> Syntax -> m TSyntax
 processParsedTerm' e t = do
   srcMap <- buildSourceMap t
-  tt <- inferTop (e ^. envTypes) (e ^. envReqs) (e ^. envTydefs) srcMap t
+  tt <- withError (DoesNotTypecheck . prettyTypeErrText "") $  -- XXX fix me: need src
+    inferTop (e ^. envTypes) (e ^. envReqs) (e ^. envTydefs) srcMap t
   return $ elaborate tt
 
 ------------------------------------------------------------
