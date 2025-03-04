@@ -6,9 +6,9 @@ module Swarm.Util.Effect where
 
 import Control.Algebra
 import Control.Carrier.Accum.Strict
-import Control.Carrier.Error.Either (ErrorC (..))
+import Control.Carrier.Error.Either (ErrorC (..), runError)
 import Control.Carrier.Throw.Either (ThrowC (..), runThrow)
-import Control.Effect.Throw
+import Control.Effect.Error
 import Control.Monad ((>=>))
 import Control.Monad.Trans.Except (ExceptT)
 import Data.Either.Extra (eitherToMaybe)
@@ -20,6 +20,11 @@ import Witherable
 --   by supplying an adapter function of type @(e1 -> e2)@.
 withThrow :: (Has (Throw e2) sig m) => (e1 -> e2) -> ThrowC e1 m a -> m a
 withThrow f = runThrow >=> either (throwError . f) return
+
+-- | Transform an @Error e1@ constraint into a @Error e2@ constraint,
+--   by supplying an adapter function of type @(e1 -> e2)@.
+withError :: (Has (Error e2) sig m) => (e1 -> e2) -> ErrorC e1 m a -> m a
+withError f = runError >=> either (throwError . f) return
 
 -- | Transform a @Throw e@ constrint into a concrete @Maybe@,
 --   discarding the error.
