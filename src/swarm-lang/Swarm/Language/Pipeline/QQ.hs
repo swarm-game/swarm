@@ -44,7 +44,8 @@ quoteTermExp s = do
         , snd (TH.loc_start loc)
         )
   parsed <- runParserTH pos (fully sc parseTerm) s
-  case processParsedTerm parsed of
+  processed <- runIO processParsedTerm parsed
+  case processed of
     Left err -> failT [prettyTypeErrText (from s) err]
     Right ptm -> dataToExpQ ((fmap liftText . cast) `extQ` antiTermExp) ptm
 
