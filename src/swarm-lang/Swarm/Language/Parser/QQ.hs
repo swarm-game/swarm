@@ -1,3 +1,5 @@
+{-# LANGUAGE ViewPatterns #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -5,6 +7,7 @@
 module Swarm.Language.Parser.QQ (tyQ) where
 
 import Data.Generics
+import Data.Text (Text)
 import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Quote
 import Swarm.Language.Parser.Core (runParserTH)
@@ -12,6 +15,7 @@ import Swarm.Language.Parser.Lex (sc)
 import Swarm.Language.Parser.Type (parsePolytype)
 import Swarm.Language.Parser.Util (fully)
 import Swarm.Util (liftText)
+import Witch (into)
 
 ------------------------------------------------------------
 -- Quasiquoters
@@ -31,7 +35,7 @@ tyQ =
     }
 
 quoteTypeExp :: String -> TH.ExpQ
-quoteTypeExp s = do
+quoteTypeExp (into @Text -> s) = do
   loc <- TH.location
   let pos =
         ( TH.loc_filename loc
