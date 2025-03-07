@@ -43,7 +43,6 @@ import Swarm.Language.Syntax (Comment)
 import Text.Megaparsec hiding (runParser, runParser')
 import Text.Megaparsec qualified as MP
 import Text.Megaparsec.State (initialPosState, initialState)
-import Witch (from)
 
 ------------------------------------------------------------
 -- Custom parser state
@@ -125,7 +124,7 @@ runParser' cfg p t =
 -- | A utility for running a parser in an arbitrary 'MonadFail' (which
 --   is going to be the TemplateHaskell 'Language.Haskell.TH.Q' monad --- see
 --   "Swarm.Language.Parser.QQ"), with a specified source position.
-runParserTH :: (Monad m, MonadFail m) => TH.Loc -> Parser a -> String -> m a
+runParserTH :: (Monad m, MonadFail m) => TH.Loc -> Parser a -> Text -> m a
 runParserTH loc p s =
   either (fail . errorBundlePretty) (return . fst)
     . snd
@@ -138,9 +137,9 @@ runParserTH loc p s =
   (line, col) = TH.loc_start loc
   initState :: State Text Void
   initState =
-    (initialState file (from s))
+    (initialState file s)
       { statePosState =
-          (initialPosState file (from s))
+          (initialPosState file s)
             { pstateSourcePos = SourcePos file (mkPos line) (mkPos col)
             }
       }
