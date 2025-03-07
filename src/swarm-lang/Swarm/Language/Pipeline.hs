@@ -12,6 +12,7 @@ module Swarm.Language.Pipeline (
   -- * Pipeline functions
   processTerm,
   processParsedTerm,
+  processParsedTermNoImports,
   processTerm',
   processParsedTerm',
   processParsedTermWithSrcMap,
@@ -22,7 +23,7 @@ module Swarm.Language.Pipeline (
   extractReqCtx,
 ) where
 
-import Control.Algebra (Has)
+import Control.Algebra (Has, run)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Error (Error)
 import Control.Effect.Throw (liftEither)
@@ -62,8 +63,13 @@ processTerm :: Text -> IO (Either SystemFailure (Maybe TSyntax))
 processTerm = runError . processTerm' emptyEnv
 
 -- | Like 'processTerm', but use a term that has already been parsed.
-processParsedTerm :: Syntax -> IO (Either SystemFailure TSyntax)
+processParsedTerm :: (Text, Syntax) -> IO (Either SystemFailure TSyntax)
 processParsedTerm = runError . processParsedTerm' emptyEnv
+
+-- | Like 'processParsedTerm', but don't allow any imports (and hence
+--   don't require IO).
+processParsedTermNoImports :: (Text, Syntax) -> Either SystemFailure TSyntax
+processParsedTermNoImports = run . runError . processParsedTermWithSrcMap mempty mempty
 
 -- | Like 'processTerm', but use explicit starting contexts.
 processTerm' ::
@@ -71,15 +77,17 @@ processTerm' ::
   Env -> Text -> m (Maybe TSyntax)
 processTerm' e txt = do
   mt <- withThrow CanNotParseMegaparsec . liftEither $ readTerm' defaultParserConfig txt
-  withError (DoesNotTypecheck . prettyTypeErrText txt) $ traverse (processParsedTerm' e) mt
+  withError (DoesNotTypecheck . prettyTypeErrText txt) $ traverse (processParsedTerm' e . (txt,)) mt
 
--- | Like 'processTerm'', but use a term that has already been parsed.
+-- | Like 'processTerm'', but use a term that has already been parsed
+--   (along with the original unparsed concrete syntax, for use in
+--   generating error messages).
 processParsedTerm' ::
   (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
-  Env -> Syntax -> m TSyntax
-processParsedTerm' e t = do
+  Env -> (Text, Syntax) -> m TSyntax
+processParsedTerm' e (s,t) = do
   srcMap <- buildSourceMap t
-  processParsedTermWithSrcMap srcMap e t
+  processParsedTermWithSrcMap srcMap e (s,t)
 
 -- | Process an already-parsed term with an explicit SourceMap.
 --
@@ -87,9 +95,9 @@ processParsedTerm' e t = do
 --   any imports have already been loaded.
 processParsedTermWithSrcMap ::
   (Has (Error SystemFailure) sig m) =>
-  SourceMap -> Env -> Syntax -> m TSyntax
-processParsedTermWithSrcMap srcMap e t = do
-  tt <- withError (DoesNotTypecheck . prettyTypeErrText "") $  -- XXX fix me: need src
+  SourceMap -> Env -> (Text, Syntax) -> m TSyntax
+processParsedTermWithSrcMap srcMap e (s,t) = do
+  tt <- withError (DoesNotTypecheck . prettyTypeErrText s) $
     inferTop (e ^. envTypes) (e ^. envReqs) (e ^. envTydefs) srcMap t
   return $ elaborate tt
 

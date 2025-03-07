@@ -38,7 +38,6 @@ import Commonmark qualified as Mark
 import Commonmark.Extensions qualified as Mark (rawAttributeSpec)
 import Control.Applicative ((<|>))
 import Control.Arrow (left)
-import Control.Carrier.Error.Either (runError)
 import Control.Lens ((%~), (&), _head, _last)
 import Data.Char (isSpace)
 import Data.Functor.Identity (Identity (..))
@@ -52,11 +51,9 @@ import Data.Tuple.Extra (both, first)
 import Data.Vector (toList)
 import Data.Yaml
 import GHC.Exts qualified (IsList (..), IsString (..))
-import Swarm.Failure (SystemFailure)
 import Swarm.Language.Parser (readTerm)
-import Swarm.Language.Pipeline (processParsedTermWithSrcMap)
+import Swarm.Language.Pipeline (processParsedTermNoImports)
 import Swarm.Language.Syntax (Syntax)
-import Swarm.Language.Typecheck (prettyTypeErrText)
 import Swarm.Pretty (PrettyPrec (..), prettyText, prettyTextLine)
 
 -- | The top-level markdown document.
@@ -170,15 +167,15 @@ instance Mark.IsBlock (Paragraph Text) (Document Text) where
 -- | Parse some syntax and make sure it typechecks, but without
 --   resolving any imports.
 parseSyntax :: Text -> Either String Syntax
-parseSyntax t = case readTerm t of
+parseSyntax s = case readTerm s of
   Left e -> Left (T.unpack e)
   Right Nothing -> Left "empty code"
-  Right (Just s) -> case runError @SystemFailure (processParsedTermWithSrcMap mempty mempty s) of
+  Right (Just t) -> case processParsedTermNoImports (s,t) of
     -- Just run the typechecker etc. to make sure the term typechecks
-    Left e -> Left (T.unpack $ prettyTypeErrText t e)
+    Left e -> Left (T.unpack $ prettyText e)
     -- ...but if it does, we just go back to using the original parsed
     -- (*unelaborated*) AST.  See #1496.
-    Right _ -> Right s
+    Right _ -> Right t
 
 findCode :: Document Syntax -> [Syntax]
 findCode = concatMap (mapMaybe codeOnly . nodes) . paragraphs
