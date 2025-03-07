@@ -14,6 +14,7 @@ module Swarm.Language.Pipeline (
   processParsedTerm,
   processTerm',
   processParsedTerm',
+  processParsedTermWithSrcMap,
   processTermEither,
 
   -- * Utilities
@@ -31,7 +32,7 @@ import Data.Text (Text)
 import Swarm.Failure (SystemFailure (..))
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Elaborate
-import Swarm.Language.Load (buildSourceMap)
+import Swarm.Language.Load (buildSourceMap, SourceMap)
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Requirements.Type (ReqCtx)
@@ -78,6 +79,16 @@ processParsedTerm' ::
   Env -> Syntax -> m TSyntax
 processParsedTerm' e t = do
   srcMap <- buildSourceMap t
+  processParsedTermWithSrcMap srcMap e t
+
+-- | Process an already-parsed term with an explicit SourceMap.
+--
+--   Note that this no longer requires IO, since it is assumed that
+--   any imports have already been loaded.
+processParsedTermWithSrcMap ::
+  (Has (Error SystemFailure) sig m) =>
+  SourceMap -> Env -> Syntax -> m TSyntax
+processParsedTermWithSrcMap srcMap e t = do
   tt <- withError (DoesNotTypecheck . prettyTypeErrText "") $  -- XXX fix me: need src
     inferTop (e ^. envTypes) (e ^. envReqs) (e ^. envTydefs) srcMap t
   return $ elaborate tt
