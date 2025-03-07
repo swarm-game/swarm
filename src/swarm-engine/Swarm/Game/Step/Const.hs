@@ -38,6 +38,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Map.NonEmpty qualified as NEM
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
+import Data.MonoidMap qualified as MM
 import Data.Ord (Down (Down))
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
@@ -509,8 +510,8 @@ execConst runChildProg c vs s k = do
              where
               excludeSelf = (`IS.difference` IS.singleton selfRid)
               botsHere (Cosmic swName loc) =
-                M.findWithDefault mempty loc $
-                  M.findWithDefault mempty swName botsByLocs
+                MM.get loc $
+                  MM.get swName botsByLocs
               botIsVisible = maybe False canSee . (`IM.lookup` rMap)
               canSee = not . (^. robotDisplay . invisible)
 

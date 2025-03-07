@@ -688,6 +688,7 @@ library swarm-engine
     lens,
     linear,
     megaparsec,
+    monoidmap,
     mtl,
     nonempty-containers,
     prettyprinter,

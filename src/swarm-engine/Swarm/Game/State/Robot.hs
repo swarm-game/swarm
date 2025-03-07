@@ -62,10 +62,11 @@ import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
 import Data.List (partition)
-import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.MonoidMap (MonoidMap)
+import Data.MonoidMap qualified as MM
 import Data.Set qualified as S
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
@@ -77,7 +78,7 @@ import Swarm.Game.State.Config
 import Swarm.Game.Tick
 import Swarm.Game.Universe as U
 import Swarm.ResourceLoading (NameGenerator)
-import Swarm.Util (binTuples, surfaceEmpty, (<+=), (<<.=))
+import Swarm.Util ((<+=), (<<.=))
 import Swarm.Util.Lens (makeLensesExcluding)
 
 -- | The 'ViewCenterRule' specifies how to determine the center of the
@@ -122,7 +123,7 @@ data Robots = Robots
     -- prepend to a list than insert into a 'Set'.
     _waitingRobots :: Map TickNumber [RID]
   , _currentTickWakeableBots :: [RID]
-  , _robotsByLocation :: Map SubworldName (Map Location IntSet)
+  , _robotsByLocation :: MonoidMap SubworldName (MonoidMap Location IntSet)
   , -- This member exists as an optimization so
     -- that we do not have to iterate over all "waiting" robots,
     -- since there may be many.
@@ -168,7 +169,7 @@ currentTickWakeableBots :: Lens' Robots [RID]
 --   location of a robot changes, or a robot is created or destroyed.
 --   Fortunately, there are relatively few ways for these things to
 --   happen.
-robotsByLocation :: Lens' Robots (Map SubworldName (Map Location IntSet))
+robotsByLocation :: Lens' Robots (MonoidMap SubworldName (MonoidMap Location IntSet))
 
 -- | Get a list of all the robots that are \"watching\" by location.
 robotsWatching :: Lens' Robots (Map (Cosmic Location) IntSet)
@@ -202,7 +203,7 @@ initRobots gsc =
     , _activeRobots = IS.empty
     , _waitingRobots = M.empty
     , _currentTickWakeableBots = mempty
-    , _robotsByLocation = M.empty
+    , _robotsByLocation = mempty
     , _robotsWatching = mempty
     , _robotNaming =
         RobotNaming
@@ -267,10 +268,7 @@ addRobot r = do
 addRobotToLocation :: (Has (State Robots) sig m) => RID -> Cosmic Location -> m ()
 addRobotToLocation rid rLoc =
   robotsByLocation
-    %= M.insertWith
-      (M.unionWith IS.union)
-      (rLoc ^. subworld)
-      (M.singleton (rLoc ^. planar) (IS.singleton rid))
+    %= MM.adjust (MM.adjust (IS.insert rid) (rLoc ^. planar)) (rLoc ^. subworld)
 
 -- | Takes a robot out of the 'activeRobots' set and puts it in the 'waitingRobots'
 --   queue.
@@ -414,12 +412,8 @@ removeRobotFromLocationMap ::
   RID ->
   m ()
 removeRobotFromLocationMap (Cosmic oldSubworld oldPlanar) rid =
-  robotsByLocation %= M.update (tidyDelete rid) oldSubworld
- where
-  deleteOne x = surfaceEmpty IS.null . IS.delete x
-
-  tidyDelete robID =
-    surfaceEmpty M.null . M.update (deleteOne robID) oldPlanar
+  robotsByLocation
+    %= MM.adjust (MM.adjust (IS.delete rid) oldPlanar) oldSubworld
 
 setRobotInfo :: RID -> [Robot] -> Robots -> Robots
 setRobotInfo baseID robotList rState =
@@ -430,19 +424,16 @@ setRobotList :: [Robot] -> Robots -> Robots
 setRobotList robotList rState =
   rState
     & robotMap .~ IM.fromList (map (view robotID &&& id) robotList)
-    & robotsByLocation .~ M.map (groupRobotsByPlanarLocation . NE.toList) (groupRobotsBySubworld robotList)
+    & robotsByLocation .~ groupRobotsByLocation robotList
     & internalActiveRobots .~ setOf (traverse . robotID) robotList
     & robotNaming . gensym .~ initGensym
  where
   initGensym = length robotList - 1
 
-  groupRobotsBySubworld =
-    binTuples . map (view (robotLocation . subworld) &&& id)
-
-  groupRobotsByPlanarLocation rs =
-    M.fromListWith
-      IS.union
-      (map (view (robotLocation . planar) &&& (IS.singleton . view robotID)) rs)
+  groupRobotsByLocation = foldr f mempty
+   where
+    f r = MM.adjust (g r) (r ^. (robotLocation . subworld))
+    g r = MM.adjust (IS.insert (r ^. robotID)) (r ^. (robotLocation . planar))
 
 -- | Modify the 'viewCenter' by applying an arbitrary function to the
 --   current value.  Note that this also modifies the 'viewCenterRule'
