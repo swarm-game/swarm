@@ -33,7 +33,7 @@ import Language.LSP.VFS
 import Swarm.Language.Context as Ctx
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
-import Swarm.Language.Pipeline (processParsedTerm)
+import Swarm.Language.Pipeline (processParsedTermNoImports)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types
@@ -65,7 +65,7 @@ showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
     R.charLength . fst $ R.charSplitAtPosition (lspToRopePosition p) myRope
 
   genHoverInfo stx =
-    case processParsedTerm stx of
+    case processParsedTermNoImports stx of
       Left _e ->
         let found = narrowToPosition stx $ fromIntegral absolutePos
             finalPos = posToRange myRope (found ^. sLoc)
