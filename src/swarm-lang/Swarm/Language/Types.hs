@@ -59,6 +59,7 @@ module Swarm.Language.Types (
   pattern UTyConApp,
   pattern UTyBase,
   pattern UTyVar,
+  pattern UTyVar',
   pattern UTyVoid,
   pattern UTyUnit,
   pattern UTyInt,
@@ -360,13 +361,10 @@ isPure _ = False
 
 -- | For convenience, so we can write /e.g./ @"a"@ instead of @TyVar "a"@.
 instance IsString Type where
-  fromString x = TyVar v v
-    where v = into @Var x
+  fromString = TyVar . into @Var
 
 instance IsString UType where
-  fromString x = UTyVar v v
-    where
-      v = into @Var x
+  fromString = UTyVar . into @Var
 
 --------------------------------------------------
 -- Recursive type utilities
@@ -629,8 +627,10 @@ pattern TyConApp c tys = Fix (TyConF c tys)
 pattern TyBase :: BaseTy -> Type
 pattern TyBase b = TyConApp (TCBase b) []
 
-pattern TyVar :: Var -> Var -> Type
-pattern TyVar x y = Fix (TyVarF x y)
+pattern TyVar :: Var -> Type
+pattern TyVar x <- Fix (TyVarF _ x)
+  where
+    TyVar x = Fix (TyVarF x x)
 
 pattern TyVoid :: Type
 pattern TyVoid = TyBase BVoid
@@ -695,8 +695,13 @@ pattern UTyConApp c tys = Free (TyConF c tys)
 pattern UTyBase :: BaseTy -> UType
 pattern UTyBase b = UTyConApp (TCBase b) []
 
-pattern UTyVar :: Var -> Var -> UType
-pattern UTyVar x y = Free (TyVarF x y)
+pattern UTyVar :: Var -> UType
+pattern UTyVar x <- Free (TyVarF _ x)
+  where
+    UTyVar x = Free (TyVarF x x)
+
+pattern UTyVar' :: Var -> Var -> UType
+pattern UTyVar' x y = Free (TyVarF x y)
 
 pattern UTyVoid :: UType
 pattern UTyVoid = UTyBase BVoid

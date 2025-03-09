@@ -67,7 +67,7 @@ parseTypeMolecule =
 --   constructor.
 parseTypeAtom :: Parser Type
 parseTypeAtom =
-  (\x -> TyVar x x) <$> tyVar
+  TyVar <$> tyVar
     <|> TyConApp <$> parseTyCon <*> pure []
     <|> TyDelay <$> braces parseType
     <|> TyRcd <$> brackets (parseRecord (symbol ":" *> parseType))

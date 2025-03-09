@@ -300,7 +300,7 @@ substU m =
   ucata
     (\v -> fromMaybe (Free.Pure v) (M.lookup (Right v) m))
     ( \case
-        TyVarF o v -> fromMaybe (UTyVar o v) (M.lookup (Left v) m)
+        TyVarF o v -> fromMaybe (UTyVar' o v) (M.lookup (Left v) m)
         f -> Free.Free f
     )
 
@@ -406,7 +406,7 @@ skolemize (unPoly -> (xs, uty)) = do
     s <- mkVarName "s" <$> U.freshIntVar
     pure (x, s)
   boundSubst <- ask @TVCtx
-  let xs' = map (uncurry UTyVar) skolemNames
+  let xs' = map (uncurry UTyVar') skolemNames
       newSubst = M.fromList $ zip xs xs'
       s = M.mapKeys Left (newSubst `M.union` unCtx boundSubst)
   pure (Ctx.fromMap newSubst, substU s uty)
@@ -431,7 +431,7 @@ generalize uty = do
   return . absQuantify $
     mkPoly
       (map snd renaming)
-      (substU (M.fromList . map (Right *** (\x -> UTyVar x x)) $ renaming) uty')
+      (substU (M.fromList . map (Right *** UTyVar) $ renaming) uty')
 
 ------------------------------------------------------------
 -- Type errors
