@@ -66,6 +66,8 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.MonoidMap (MonoidMap)
+import Data.MonoidMap qualified as MM
 import Data.Set qualified as S
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
@@ -126,7 +128,7 @@ data Robots = Robots
   , -- This member exists as an optimization so
     -- that we do not have to iterate over all "waiting" robots,
     -- since there may be many.
-    _robotsWatching :: Map (Cosmic Location) IntSet
+    _robotsWatching :: MonoidMap (Cosmic Location) IntSet
   , _robotNaming :: RobotNaming
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter :: Cosmic Location
@@ -171,7 +173,7 @@ currentTickWakeableBots :: Lens' Robots [RID]
 robotsByLocation :: Lens' Robots (Map SubworldName (Map Location IntSet))
 
 -- | Get a list of all the robots that are \"watching\" by location.
-robotsWatching :: Lens' Robots (Map (Cosmic Location) IntSet)
+robotsWatching :: Lens' Robots (MonoidMap (Cosmic Location) IntSet)
 
 -- | State and data for assigning identifiers to robots
 robotNaming :: Lens' Robots RobotNaming
@@ -323,7 +325,7 @@ clearWatchingRobots ::
   IntSet ->
   m ()
 clearWatchingRobots rids = do
-  robotsWatching %= M.map (`IS.difference` rids)
+  robotsWatching %= MM.map (`IS.difference` rids)
 
 -- | Iterates through all of the currently @wait@-ing robots,
 -- and moves forward the wake time of the ones that are @watch@-ing this location.
@@ -344,7 +346,7 @@ wakeWatchingRobots myID currentTick loc = do
       botsWatchingThisLoc =
         mapMaybe (`IM.lookup` rMap) $
           IS.toList $
-            M.findWithDefault mempty loc watchingMap
+            MM.get loc watchingMap
 
       -- Step 2: Get the target wake time for each of these robots
       wakeTimes :: [(RID, TickNumber)]
