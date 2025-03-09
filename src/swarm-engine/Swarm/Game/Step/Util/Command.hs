@@ -24,6 +24,7 @@ import Data.IntSet qualified as IS
 import Data.List (find)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
+import Data.MonoidMap qualified as MM
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -158,7 +159,7 @@ purgeFarAwayWatches = do
         applyWhen (not $ isNearby loc) $
           IS.delete rid
 
-  robotInfo . robotsWatching %= M.filter (not . IS.null) . M.mapWithKey f
+  robotInfo . robotsWatching %= MM.mapWithKey f
 
 verbedGrabbingCmd :: GrabbingCmd -> Text
 verbedGrabbingCmd = \case
@@ -335,7 +336,7 @@ addWatchedLocation ::
   m ()
 addWatchedLocation loc = do
   rid <- use robotID
-  robotInfo . robotsWatching %= M.insertWith (<>) loc (IS.singleton rid)
+  robotInfo . robotsWatching %= MM.adjust (IS.insert rid) loc
 
 -- | Give some entities from a parent robot (the robot represented by
 --   the ambient @State Robot@ effect) to a child robot (represented
