@@ -299,7 +299,7 @@ testScenarioSolutions rs ui key =
             let t = g ^. temporal . ticks
                 r1Waits = g ^?! robotInfo . robotMap . ix 1 . to waitingUntil
                 active = IS.member 1 $ g ^. robotInfo . activeRobots
-                waiting = elem 1 . concat . M.elems $ g ^. robotInfo . waitingRobots
+                waiting = elem 1 . concat . toList $ g ^. robotInfo . waitingRobots
             assertBool "The game should only take two ticks" $ getTickNumber t == 2
             assertBool "Robot 1 should have waiting machine" $ isJust r1Waits
             assertBool "Robot 1 should be still active" active
