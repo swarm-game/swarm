@@ -361,12 +361,13 @@ isPure _ = False
 -- | For convenience, so we can write /e.g./ @"a"@ instead of @TyVar "a"@.
 instance IsString Type where
   fromString x = TyVar v v
-    where v = into @Var x
+   where
+    v = into @Var x
 
 instance IsString UType where
   fromString x = UTyVar v v
-    where
-      v = into @Var x
+   where
+    v = into @Var x
 
 --------------------------------------------------
 -- Recursive type utilities
