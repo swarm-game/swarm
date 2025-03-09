@@ -62,13 +62,10 @@ import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
 import Data.List (partition)
-import Data.Map (Map)
-import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.MonoidMap (MonoidMap)
 import Data.MonoidMap qualified as MM
 import Data.Set qualified as S
-import Data.Tuple (swap)
 import GHC.Generics (Generic)
 import Swarm.Game.CESK (CESK (Waiting))
 import Swarm.Game.Location
@@ -121,7 +118,7 @@ data Robots = Robots
     -- 'wakeUpRobotsDoneSleeping'.
     -- Waiting robots for a given time are a list because it is cheaper to
     -- prepend to a list than insert into a 'Set'.
-    _waitingRobots :: Map TickNumber [RID]
+    _waitingRobots :: MonoidMap TickNumber [RID]
   , _currentTickWakeableBots :: [RID]
   , _robotsByLocation :: MonoidMap SubworldName (MonoidMap Location IntSet)
   , -- This member exists as an optimization so
@@ -154,7 +151,7 @@ activeRobots = internalActiveRobots
 -- | The names of the robots that are currently sleeping, indexed by wake up
 --   time. Note that this may not include all sleeping robots, particularly
 --   those that are only taking a short nap (e.g. @wait 1@).
-waitingRobots :: Getter Robots (Map TickNumber [RID])
+waitingRobots :: Getter Robots (MonoidMap TickNumber [RID])
 waitingRobots = internalWaitingRobots
 
 -- | Get a list of all the robots that are \"watching\" by location.
@@ -201,7 +198,7 @@ initRobots gsc =
   Robots
     { _robotMap = IM.empty
     , _activeRobots = IS.empty
-    , _waitingRobots = M.empty
+    , _waitingRobots = mempty
     , _currentTickWakeableBots = mempty
     , _robotsByLocation = mempty
     , _robotsWatching = mempty
@@ -275,7 +272,7 @@ addRobotToLocation rid rLoc =
 sleepUntil :: (Has (State Robots) sig m) => RID -> TickNumber -> m ()
 sleepUntil rid time = do
   internalActiveRobots %= IS.delete rid
-  internalWaitingRobots . at time . non [] %= (rid :)
+  internalWaitingRobots %= MM.adjust (rid :) time
 
 -- | Takes a robot out of the 'activeRobots' set.
 sleepForever :: (Has (State Robots) sig m) => RID -> m ()
@@ -299,20 +296,18 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 -- * 'internalActiveRobots' (aka 'activeRobots')
 wakeUpRobotsDoneSleeping :: (Has (State Robots) sig m) => TickNumber -> m ()
 wakeUpRobotsDoneSleeping time = do
-  mrids <- internalWaitingRobots . at time <<.= Nothing
-  forM_ mrids $ \rids -> do
-    robots <- use robotMap
-    let robotIdSet = IM.keysSet robots
-        wakeableRIDsSet = IS.fromList rids
+  robotIdSet <- IM.keysSet <$> use robotMap
+  wakeableRIDsSet <- IS.fromList . MM.get time <$> use internalWaitingRobots
+  internalWaitingRobots %= MM.nullify time
 
-        -- Limit ourselves to the robots that have not expired in their sleep
-        newlyAlive = IS.intersection robotIdSet wakeableRIDsSet
+  -- Limit ourselves to the robots that have not expired in their sleep
+  let newlyAlive = IS.intersection robotIdSet wakeableRIDsSet
 
-    internalActiveRobots %= IS.union newlyAlive
+  internalActiveRobots %= IS.union newlyAlive
 
-    -- These robots' wake times may have been moved "forward"
-    -- by 'wakeWatchingRobots'.
-    clearWatchingRobots wakeableRIDsSet
+  -- These robots' wake times may have been moved "forward"
+  -- by 'wakeWatchingRobots'.
+  clearWatchingRobots wakeableRIDsSet
 
 -- | Clear the "watch" state of all of the
 -- awakened robots
@@ -348,19 +343,15 @@ wakeWatchingRobots myID currentTick loc = do
       wakeTimes :: [(RID, TickNumber)]
       wakeTimes = mapMaybe (sequenceA . (view robotID &&& waitingUntil)) botsWatchingThisLoc
 
-      wakeTimesToPurge :: Map TickNumber (S.Set RID)
-      wakeTimesToPurge = M.fromListWith (<>) $ map (fmap S.singleton . swap) wakeTimes
+      wakeTimesToPurge :: MonoidMap TickNumber (S.Set RID)
+      wakeTimesToPurge = foldr (uncurry (MM.adjust . S.insert)) mempty wakeTimes
 
       -- Step 3: Take these robots out of their time-indexed slot in "waitingRobots".
       -- To preserve performance, this should be done without iterating over the
       -- entire "waitingRobots" map.
-      filteredWaiting = foldr f waitingMap $ M.toList wakeTimesToPurge
+      filteredWaiting = foldr f waitingMap $ MM.toList wakeTimesToPurge
        where
-        -- Note: some of the map values may become empty lists.
-        -- But we shall not worry about cleaning those up here;
-        -- they will be "garbage collected" as a matter of course
-        -- when their tick comes up in "wakeUpRobotsDoneSleeping".
-        f (k, botsToRemove) = M.adjust (filter (`S.notMember` botsToRemove)) k
+        f (k, botsToRemove) = MM.adjust (filter (`S.notMember` botsToRemove)) k
 
       -- Step 4: Re-add the watching bots to be awakened ASAP:
       wakeableBotIds = map fst wakeTimes
@@ -374,7 +365,7 @@ wakeWatchingRobots myID currentTick loc = do
         [ (currentTick, currTickWakeable)
         , (addTicks 1 currentTick, nextTickWakeable)
         ]
-      newInsertions = M.filter (not . null) $ M.fromList wakeTimeGroups
+      newInsertions = MM.fromList wakeTimeGroups
 
   -- Contract: This must be emptied immediately
   -- in 'iterateRobots'
@@ -385,7 +376,7 @@ wakeWatchingRobots myID currentTick loc = do
   -- 2. In each robot, via the CESK machine state
 
   -- 1. Update the game state
-  internalWaitingRobots .= M.unionWith (<>) filteredWaiting newInsertions
+  internalWaitingRobots .= filteredWaiting <> newInsertions
 
   -- 2. Update the machine of each robot
   forM_ wakeTimeGroups $ \(newWakeTime, wakeableBots) ->
