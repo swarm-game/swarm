@@ -57,7 +57,7 @@ import Control.Effect.Reader
 import Control.Effect.Throw
 import Control.Lens (view, (^.))
 import Control.Lens.Indexed (itraverse)
-import Control.Monad (forM_, void, when, (<=<), (>=>))
+import Control.Monad (forM, forM_, void, when, (<=<), (>=>))
 import Control.Monad.Free qualified as Free
 import Data.Data (Data, gmapM)
 import Data.Foldable (fold, traverse_)
@@ -300,7 +300,7 @@ substU m =
   ucata
     (\v -> fromMaybe (Free.Pure v) (M.lookup (Right v) m))
     ( \case
-        TyVarF v -> fromMaybe (UTyVar v) (M.lookup (Left v) m)
+        TyVarF o v -> fromMaybe (UTyVar o v) (M.lookup (Left v) m)
         f -> Free.Free f
     )
 
@@ -319,7 +319,7 @@ noSkolems l skolems (unPoly -> (xs, upty)) = do
   let tyvs =
         ucata
           (const S.empty)
-          (\case TyVarF v -> S.singleton v; f -> fold f)
+          (\case TyVarF _ v -> S.singleton v; f -> fold f)
           upty'
       freeTyvs = tyvs `S.difference` S.fromList xs
       escapees = freeTyvs `S.intersection` S.fromList skolems
@@ -402,9 +402,11 @@ instantiate (unPoly -> (xs, uty)) = do
 --   Skolem variables, along with the substituted type.
 skolemize :: (Has Unification sig m, Has (Reader TVCtx) sig m) => UPolytype -> m (Ctx UType, UType)
 skolemize (unPoly -> (xs, uty)) = do
-  skolemNames <- mapM (fmap (mkVarName "s") . const U.freshIntVar) xs
+  skolemNames <- forM xs $ \x -> do
+    s <- mkVarName "s" <$> U.freshIntVar
+    pure (x, s)
   boundSubst <- ask @TVCtx
-  let xs' = map UTyVar skolemNames
+  let xs' = map (uncurry UTyVar) skolemNames
       newSubst = M.fromList $ zip xs xs'
       s = M.mapKeys Left (newSubst `M.union` unCtx boundSubst)
   pure (Ctx.fromMap newSubst, substU s uty)
@@ -429,7 +431,7 @@ generalize uty = do
   return . absQuantify $
     mkPoly
       (map snd renaming)
-      (substU (M.fromList . map (Right *** UTyVar) $ renaming) uty')
+      (substU (M.fromList . map (Right *** (\x -> UTyVar x x)) $ renaming) uty')
 
 ------------------------------------------------------------
 -- Type errors
