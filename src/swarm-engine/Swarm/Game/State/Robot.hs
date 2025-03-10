@@ -349,9 +349,10 @@ wakeWatchingRobots myID currentTick loc = do
       -- Step 3: Take these robots out of their time-indexed slot in "waitingRobots".
       -- To preserve performance, this should be done without iterating over the
       -- entire "waitingRobots" map.
-      filteredWaiting = foldr f waitingMap $ MM.toList wakeTimesToPurge
+      filteredWaiting :: MonoidMap TickNumber [RID]
+      filteredWaiting = MM.foldrWithKey f waitingMap wakeTimesToPurge
        where
-        f (k, botsToRemove) = MM.adjust (filter (`S.notMember` botsToRemove)) k
+        f k botsToRemove = MM.adjust (filter (`S.notMember` botsToRemove)) k
 
       -- Step 4: Re-add the watching bots to be awakened ASAP:
       wakeableBotIds = map fst wakeTimes
