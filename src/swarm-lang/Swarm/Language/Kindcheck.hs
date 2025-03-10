@@ -91,7 +91,7 @@ checkKind ty@(Fix tyF) = case tyF of
       Just a -> case compare (length tys) a of
         EQ -> mapM_ checkKind tys
         _ -> throwError $ ArityMismatch c a tys
-  TyVarF _ -> return ()
+  TyVarF _ _ -> return ()
   TyRcdF m -> mapM_ checkKind m
   TyRecF x t -> do
     -- It's important to call checkKind first, to rule out undefined
@@ -100,7 +100,7 @@ checkKind ty@(Fix tyF) = case tyF of
     -- index 0 in the body.  This doesn't affect the checking but it
     -- does ensure that error messages will use the variable name and
     -- not de Bruijn indices.
-    checkKind (substRec (TyVarF x) t NZ)
+    checkKind (substRec (TyVarF x x) t NZ)
     -- Now check that the recursive type is well-formed.  We call this
     -- with the *unsubstituted* t because the check will be looking
     -- for de Bruijn variables specifically.
