@@ -155,7 +155,7 @@ unifyF t1 t2 = case (t1, t2) of
     True -> compose <$> zipWithM unify ts1 ts2
     False -> unifyErr
   (TyConF {}, _) -> unifyErr
-  (TyVarF v1, TyVarF v2) -> case v1 == v2 of
+  (TyVarF _ v1, TyVarF _ v2) -> case v1 == v2 of
     True -> return idS
     False -> unifyErr
   (TyVarF {}, _) -> unifyErr

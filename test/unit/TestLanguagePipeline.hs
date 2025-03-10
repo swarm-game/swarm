@@ -51,7 +51,7 @@ testLanguagePipeline =
             "type variable scope #2178 - shadowing"
             ( process
                 "def f : a -> (a * Int) = \\x. let g : forall a. a * Int = (x, 3) in g end"
-                "1:59: Type mismatch:\n  From context, expected `x` to have type `s2`,\n  but it actually has type `s1`"
+                "1:59: Type mismatch:\n  From context, expected `x` to have type `a`,\n  but it actually has type `a`"
             )
         ]
     , testCase
@@ -396,7 +396,7 @@ testLanguagePipeline =
             (valid "((\\x . x) : a -> a) 3")
         , testCase
             "type ascription too general"
-            (process "1 : a" "1:1: Type mismatch:\n  From context, expected `1` to have type `s0`,\n  but it actually has type `Int`")
+            (process "1 : a" "1:1: Type mismatch:\n  From context, expected `1` to have type `a`,\n  but it actually has type `Int`")
         , testCase
             "type specialization through type ascription"
             (valid "fst:(Int + b) * a -> Int + b")
@@ -404,7 +404,7 @@ testLanguagePipeline =
             "type ascription doesn't allow rank 2 types"
             ( process
                 "\\f. (f:forall a. a->a) 3"
-                "1:24: Type mismatch:\n  From context, expected `3` to have type `s3`,\n  but it actually has type `Int`"
+                "1:24: Type mismatch:\n  From context, expected `3` to have type `a`,\n  but it actually has type `Int`"
             )
         , testCase
             "checking a lambda with the wrong argument type"

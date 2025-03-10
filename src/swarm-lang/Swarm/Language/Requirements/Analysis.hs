@@ -177,7 +177,7 @@ typeRequirements = go
   go (Fix tyF) = goF tyF
 
   goF = \case
-    TyVarF _ -> pure ()
+    TyVarF _ _ -> pure ()
     TyConF (TCUser u) tys -> do
       mapM_ go tys
       ty' <- expandTydef u tys

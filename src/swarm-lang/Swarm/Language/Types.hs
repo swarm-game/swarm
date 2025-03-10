@@ -59,6 +59,7 @@ module Swarm.Language.Types (
   pattern UTyConApp,
   pattern UTyBase,
   pattern UTyVar,
+  pattern UTyVar',
   pattern UTyVoid,
   pattern UTyUnit,
   pattern UTyInt,
@@ -157,7 +158,7 @@ import Swarm.Pretty (PrettyPrec (..), pparens, pparens', ppr, prettyBinding)
 import Swarm.Util (parens, showT, unsnocNE)
 import Swarm.Util.JSON (optionsMinimize, optionsUnwrapUnary)
 import Text.Show.Deriving (deriveShow1)
-import Witch
+import Witch (into)
 
 ------------------------------------------------------------
 -- Base types
@@ -270,8 +271,12 @@ data TypeF t
     --   directly store a list of all arguments (as opposed to
     --   iterating binary application).
     TyConF TyCon [t]
-  | -- | A type variable.
-    TyVarF Var
+  | -- | A type variable.  The first Var represents the original name,
+    --   and should be ignored except for use in e.g. error messages.
+    --   The second Var is the real name of the variable; it may be the
+    --   same as the first, or it may be different e.g. if it is a
+    --   freshly generated skolem variable.
+    TyVarF Var Var
   | -- | Record type.
     TyRcdF (Map Var t)
   | -- | A recursive type variable bound by an enclosing Rec,
@@ -332,7 +337,7 @@ ucata f g (Free t) = g (fmap (ucata f g) t)
 --   as a unification variable) into a unique variable name, by
 --   appending a number to the given name.
 mkVarName :: Text -> IntVar -> Var
-mkVarName nm (IntVar v) = T.append nm (from @String (show v))
+mkVarName nm (IntVar v) = T.append nm (into @Var (show v))
 
 -- | Get all the free unification variables in a 'UType'.
 fuvs :: UType -> Set IntVar
@@ -356,10 +361,10 @@ isPure _ = False
 
 -- | For convenience, so we can write /e.g./ @"a"@ instead of @TyVar "a"@.
 instance IsString Type where
-  fromString x = TyVar (from @String x)
+  fromString = TyVar . into @Var
 
 instance IsString UType where
-  fromString x = UTyVar (from @String x)
+  fromString = UTyVar . into @Var
 
 --------------------------------------------------
 -- Recursive type utilities
@@ -410,7 +415,7 @@ instance UnchainableFun (Free TypeF ty) where
 
 instance (UnchainableFun t, PrettyPrec t, SubstRec t) => PrettyPrec (TypeF t) where
   prettyPrec p = \case
-    TyVarF v -> pretty v
+    TyVarF v _ -> pretty v
     TyRcdF m -> brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
     -- Special cases for type constructors with special syntax.
     -- Always use parentheses around sum and product types, see #1625
@@ -430,7 +435,7 @@ instance (UnchainableFun t, PrettyPrec t, SubstRec t) => PrettyPrec (TypeF t) wh
             flatAlt (concatWith multiLine funs) (concatWith inLine funs)
     TyRecF x ty ->
       pparens (p > 0) $
-        "rec" <+> pretty x <> "." <+> prettyPrec 0 (substRec (TyVarF x) ty NZ)
+        "rec" <+> pretty x <> "." <+> prettyPrec 0 (substRec (TyVarF x x) ty NZ)
     -- This case shouldn't be possible, since TyRecVar should only occur inside a TyRec,
     -- and pretty-printing the TyRec (above) will substitute a variable name for
     -- any bound TyRecVars before recursing.
@@ -483,7 +488,7 @@ instance Typical UType where
 -- | Get all the type variables (/not/ unification variables)
 --   contained in a 'Type' or 'UType'.
 tyVars :: Typical t => t -> Set Var
-tyVars = foldT S.empty (\case TyVarF x -> S.singleton x; f -> fold f)
+tyVars = foldT S.empty (\case TyVarF _ x -> S.singleton x; f -> fold f)
 
 ------------------------------------------------------------
 -- Polytypes
@@ -623,7 +628,9 @@ pattern TyBase :: BaseTy -> Type
 pattern TyBase b = TyConApp (TCBase b) []
 
 pattern TyVar :: Var -> Type
-pattern TyVar v = Fix (TyVarF v)
+pattern TyVar x <- Fix (TyVarF _ x)
+  where
+    TyVar x = Fix (TyVarF x x)
 
 pattern TyVoid :: Type
 pattern TyVoid = TyBase BVoid
@@ -689,7 +696,12 @@ pattern UTyBase :: BaseTy -> UType
 pattern UTyBase b = UTyConApp (TCBase b) []
 
 pattern UTyVar :: Var -> UType
-pattern UTyVar v = Free (TyVarF v)
+pattern UTyVar x <- Free (TyVarF _ x)
+  where
+    UTyVar x = Free (TyVarF x x)
+
+pattern UTyVar' :: Var -> Var -> UType
+pattern UTyVar' x y = Free (TyVarF x y)
 
 pattern UTyVoid :: UType
 pattern UTyVoid = UTyBase BVoid
@@ -840,7 +852,7 @@ substTydef (TydefInfo (Forall as ty) _) tys = refoldT @t substF (fromType ty)
  where
   argMap = M.fromList $ zip as tys
 
-  substF tyF@(TyVarF x) = case M.lookup x argMap of
+  substF tyF@(TyVarF _ x) = case M.lookup x argMap of
     Nothing -> rollT tyF
     Just ty' -> ty'
   substF tyF = rollT tyF
