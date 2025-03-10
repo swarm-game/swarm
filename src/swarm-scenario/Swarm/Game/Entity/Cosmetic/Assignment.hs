@@ -41,6 +41,9 @@ stone = (WorldAttr "stone", BgOnly $ Triple $ RGB 47 47 47)
 ice :: (WorldAttr, PreservableColor)
 ice = (WorldAttr "ice", BgOnly $ AnsiColor White)
 
+burnt :: (WorldAttr, PreservableColor)
+burnt = (WorldAttr "burnt", BgOnly $ Triple $ RGB 40 24 0)   -- dark brown
+
 -- | Colors of entities in the world.
 worldAttributes :: Map WorldAttr PreservableColor
 worldAttributes =
@@ -55,6 +58,7 @@ worldAttributes =
     , grass
     , stone
     , ice
+    , burnt
     ]
       <> map
         (bimap WorldAttr FgOnly)

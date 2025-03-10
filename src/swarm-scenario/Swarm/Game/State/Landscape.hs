@@ -54,8 +54,7 @@ import Swarm.Game.Universe as U
 import Swarm.Game.World
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Eval (runWorld)
-import Swarm.Game.World.Gen (Seed, findGoodOrigin)
-import Swarm.Util (applyWhen)
+import Swarm.Game.World.Gen (Seed)
 import Swarm.Util.Erasable
 import Swarm.Util.Lens (makeLensesNoSigs)
 
@@ -166,7 +165,7 @@ buildWorld tem WorldDescription {..} =
   worldArray = listArray arrayBoundsTuple $ allMembers worldGrid
 
   dslWF, arrayWF :: Seed -> WorldFun TerrainType Entity
-  dslWF = maybe mempty ((applyWhen offsetOrigin findGoodOrigin .) . runWorld) worldProg
+  dslWF = maybe mempty runWorld worldProg
   arrayWF = const $ worldFunFromArray worldArray
 
   wf = dslWF <> arrayWF
