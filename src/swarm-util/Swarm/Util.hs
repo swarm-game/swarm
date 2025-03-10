@@ -25,7 +25,6 @@ module Swarm.Util (
   findDup,
   both,
   allEqual,
-  surfaceEmpty,
   tails1,
   prependList,
   deleteKeys,
@@ -83,11 +82,10 @@ module Swarm.Util (
   smallHittingSet,
 ) where
 
-import Control.Applicative (Alternative)
 import Control.Carrier.Throw.Either
 import Control.Effect.State (State, modify, state)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<&>), (<>~))
-import Control.Monad (filterM, guard, unless)
+import Control.Monad (filterM, unless)
 import Control.Monad.Trans.Maybe (MaybeT (..))
 import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum, toLower)
@@ -239,9 +237,6 @@ both f = bimap f f
 allEqual :: (Ord a) => [a] -> Bool
 allEqual [] = True
 allEqual (x : xs) = all (== x) xs
-
-surfaceEmpty :: Alternative f => (a -> Bool) -> a -> f a
-surfaceEmpty isEmpty t = t <$ guard (not (isEmpty t))
 
 -- | Taken from here:
 -- https://hackage.haskell.org/package/ghc-9.8.1/docs/GHC-Data-FiniteMap.html#v:deleteList
