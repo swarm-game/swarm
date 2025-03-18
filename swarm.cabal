@@ -315,9 +315,6 @@ common servant-JuicyPixels
 common servant-server
   build-depends: servant-server >=0.19 && <0.22
 
-common simple-enumeration
-  build-depends: simple-enumeration >=0.2 && <0.3
-
 common split
   build-depends: split >=0.2.3 && <0.3
 
@@ -600,7 +597,6 @@ library swarm-scenario
     prettyprinter,
     random,
     servant-docs,
-    simple-enumeration,
     tagged,
     text,
     vector,
