@@ -724,7 +724,6 @@ world:
   dsl: |
     {grass}
   upperleft: [-3, 2]
-  offset: false
   palette:
     B: [grass, null, base]
     y: [grass, null, setup]

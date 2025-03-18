@@ -103,7 +103,6 @@ world:
   dsl: |
     {grass}
   upperleft: [0, 0]
-  offset: false
   palette:
     'B': [grass, null, base]
     '.': [grass]

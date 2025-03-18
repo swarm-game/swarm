@@ -83,7 +83,6 @@ robots:
       - [10, logger]
 seed: 2
 world:
-  offset: true
   scrollable: false
   dsl: |
     "classic"

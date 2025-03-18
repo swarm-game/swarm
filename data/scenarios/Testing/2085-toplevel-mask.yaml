@@ -27,7 +27,6 @@ world:
       mask ((x + y) % 2 == 0) {flower}
     ]
   upperleft: [-4, 4]
-  offset: false
   mask: x
   palette:
     'B': [stone, erase, base]

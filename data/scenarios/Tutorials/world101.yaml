@@ -59,7 +59,6 @@ robots:
       - [5, toolkit]
 seed: 2
 world:
-  offset: true
   scrollable: false
   dsl: |
     "classic"

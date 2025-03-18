@@ -185,7 +185,6 @@ world:
         else {grass}
     ]
   upperleft: [0, 0]
-  offset: false
   palette:
     '.': [grass]
     '#': [grass, wall]

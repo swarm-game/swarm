@@ -193,7 +193,6 @@ world:
   dsl: |
     {stone, water}
   upperleft: [0, 0]
-  offset: false
   palette:
     '0': [stone, water]
     '@': [stone, granite boulder]

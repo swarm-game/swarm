@@ -166,7 +166,6 @@ world:
     , mask ((y == 21 || y == (-20)) && x <= 61 && x >= -60) {wall, stone}
     ]
   upperleft: [0, 0]
-  offset: false
   palette:
     'B': [grass, null, base]
     'J': [grass, erase, judge]

@@ -76,7 +76,6 @@ entities:
 known: [fish]
 seed: 1
 world:
-  offset: true
   palette:
     'Ω': [grass, null, base]
     '.': [stone]

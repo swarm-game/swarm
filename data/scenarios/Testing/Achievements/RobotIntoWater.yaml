@@ -43,6 +43,5 @@ robots:
       - [5, toolkit]
 seed: 0
 world:
-  offset: true
   dsl: |
     "classic"
