@@ -74,7 +74,7 @@ entities:
       - A smelly fish. Rather unappetizing to a robot.
     properties: [known, pickable]
 known: [fish]
-seed: 0
+seed: 1
 world:
   offset: true
   palette:

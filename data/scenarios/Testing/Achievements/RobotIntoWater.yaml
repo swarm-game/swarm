@@ -13,7 +13,7 @@ objectives:
     condition: |
       try {robotNumbered 1; pure False} {pure True}
 solution: |
-  build { turn right; move; move; move }
+  build { turn left; move; move; move; move; move; move }
 robots:
   - name: base
     loc: [0, 0]
