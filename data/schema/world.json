@@ -46,11 +46,6 @@
             "type": "string",
             "description": "A term in the Swarm world description DSL.  The world it describes will be layered underneath the world described by the rest of the fields."
         },
-        "offset": {
-            "default": false,
-            "type": "boolean",
-            "description": "Whether the base robot's position should be moved to the nearest \"good\" location, currently defined as a location near a `tree`, in a 16x16 patch which contains at least one each of `tree`, `copper ore`, `bit (0)`, `bit (1)`, `rock`, `lambda`, `water`, and `sand`. The classic scenario uses `offset: True` to make sure that the it is not unreasonably difficult to obtain necessary resources in the early game (see [code](https://github.com/swarm-game/swarm/blob/e06e04f622a3762a10e7c942c1cbd2c1e396144f/src/Swarm/Game/World/Gen.hs#L79))."
-        },
         "scrollable": {
             "default": true,
             "type": "boolean",

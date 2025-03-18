@@ -134,8 +134,7 @@ constructScenario maybeOriginalScenario cellGrid =
   customEntities = tem ^. entityMap
   wd =
     WorldDescription
-      { offsetOrigin = False
-      , scrollable = True
+      { scrollable = True
       , palette = StructurePalette suggestedPalette
       , area = PositionedGrid upperLeftCoord cellGrid
       , navigation = Navigation mempty mempty
