@@ -101,7 +101,6 @@ structures:
 world:
   dsl: |
     {grass}
-  offset: false
   palette:
     '~': [grass, null, base]
     '.': [grass]

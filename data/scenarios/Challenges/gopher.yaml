@@ -132,7 +132,6 @@ world:
   dsl: |
     "classic"
   upperleft: [-1, 1]
-  offset: false
   palette:
     'x': [dirt, erase]
     '.': [grass, erase]

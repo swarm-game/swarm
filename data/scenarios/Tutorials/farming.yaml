@@ -81,9 +81,8 @@ robots:
       - [10, tree]
       - [10, harvester]
       - [10, logger]
-seed: 0
+seed: 2
 world:
-  offset: true
   scrollable: false
   dsl: |
     "classic"

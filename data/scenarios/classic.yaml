@@ -29,7 +29,6 @@ robots:
       - [50, clock]
       - [5, toolkit]
 world:
-  offset: true
   scrollable: false
   dsl: |
     "classic"

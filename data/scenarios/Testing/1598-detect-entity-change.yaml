@@ -100,7 +100,6 @@ world:
   dsl: |
     {blank}
   upperleft: [-1, -1]
-  offset: false
   palette:
     '.': [grass, erase]
     'B': [grass, erase, base]

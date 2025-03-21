@@ -52,7 +52,6 @@ world:
   dsl: |
     {grass, water}
   upperleft: [-1, 1]
-  offset: false
   palette:
     'B': [grass, erase, base]
     '.': [grass, erase]
