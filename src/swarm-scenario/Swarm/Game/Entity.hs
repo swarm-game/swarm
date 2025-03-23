@@ -117,7 +117,7 @@ import Data.MonoidMap (MonoidMap)
 import Data.MonoidMap qualified as MM
 import Data.MonoidMap.JSON ()
 import Data.Set (Set)
-import Data.Set qualified as Set (fromList, member)
+import Data.Set qualified as Set (fromList, member, null)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
@@ -591,8 +591,8 @@ instance ToJSON Entity where
       [ "display" .= (e ^. entityDisplay)
       , "name" .= (e ^. entityName)
       , "description" .= (e ^. entityDescription)
-      , "tags" .= (e ^. entityTags)
       ]
+        ++ ["tags" .= (e ^. entityTags) | not (Set.null (e ^. entityTags))]
         ++ ["plural" .= (e ^. entityPlural) | isJust (e ^. entityPlural)]
         ++ ["orientation" .= (e ^. entityOrientation) | isJust (e ^. entityOrientation)]
         ++ ["growth" .= (e ^. entityGrowth) | isJust (e ^. entityGrowth)]

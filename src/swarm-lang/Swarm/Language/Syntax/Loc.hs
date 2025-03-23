@@ -34,9 +34,11 @@ data SrcLoc
 
 instance ToJSON SrcLoc where
   toJSON = genericToJSON optionsUntagged
+  omitField = (== NoLoc)
 
 instance FromJSON SrcLoc where
   parseJSON = genericParseJSON optionsUntagged
+  omittedField = Just NoLoc
 
 -- | @x <> y@ is the smallest 'SrcLoc' that subsumes both @x@ and @y@.
 instance Semigroup SrcLoc where
