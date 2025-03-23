@@ -34,7 +34,7 @@ instance ToJSON Term where
   toJSON = genericToJSON optionsMinimize
 
 instance ToJSON Syntax where
- toJSON = genericToJSON optionsMinimize
+  toJSON = genericToJSON optionsMinimize
 
 instance ToJSON Value where
   toJSON = genericToJSON optionsMinimize
