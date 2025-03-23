@@ -185,7 +185,6 @@ instance ToJSON Display where
       , "attr" .= (d ^. displayAttr)
       ]
         ++ ["priority" .= (d ^. displayPriority) | (d ^. displayPriority) /= (defaultEntityDisplay ' ' ^. displayPriority)]
-
         ++ ["orientationMap" .= (d ^. orientationMap) | not (M.null (d ^. orientationMap))]
         ++ ["invisible" .= (d ^. invisible) | d ^. invisible]
 
