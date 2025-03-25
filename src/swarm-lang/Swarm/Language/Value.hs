@@ -152,7 +152,10 @@ data Env = Env
   }
   deriving (Hashable, Generic)
 
--- XXX comment me
+-- A derived `Eq` instance for `Env` can cause exponential blowup (see
+-- Note [Env Show and Eq instances]), but we need an `Eq` instance in
+-- order to have a `Hashable` instance.  So we just implement equality
+-- testing by comparing hashes.
 instance Eq Env where
   (==) = (==) `on` hash
 
