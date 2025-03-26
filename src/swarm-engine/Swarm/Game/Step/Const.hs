@@ -430,7 +430,7 @@ execConst runChildProg c vs s k = do
         mfail <- checkMoveFailure loc
         case mfail of
           Nothing -> pure ()
-          Just (PathBlockedBy blocker) -> do
+          Just (PathBlockedBy _) -> do
             -- If unequipping the device would somehow result in the
             -- path being blocked, don't allow it; re-equip the device
             -- and throw an exception.
@@ -438,7 +438,7 @@ execConst runChildProg c vs s k = do
             equippedDevices %= insert item
             throwError . cmdExn Unequip $
               ["You can't unequip the", item ^. entityName, "right now!"]
-          Just (PathLiquid liquid) -> do
+          Just (PathLiquid _) -> do
             -- Unequipping a device that gives the Float capability in
             -- the middle of liquid results in drowning, EVEN for
             -- base!  This is currently the only (known) way to get
