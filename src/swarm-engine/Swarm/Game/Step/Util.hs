@@ -177,8 +177,9 @@ randomName = do
 
 -- * Moving
 
--- | Make sure nothing is in the way.
--- No exception for system robots
+-- | Raw check whether moving to the given location causes any kind of
+--   failure, with no special checks for system robots (see also
+--   'checkMoveFailure').
 checkMoveFailureUnprivileged ::
   HasRobotStepState sig m =>
   Cosmic Location ->
@@ -188,8 +189,10 @@ checkMoveFailureUnprivileged nextLoc = do
   wc <- use walkabilityContext
   return $ checkUnwalkable wc me
 
--- | Make sure nothing is in the way. Note that system robots implicitly ignore
--- and base throws on failure.
+-- | Check whether moving to the given location causes any kind of
+--   failure.  Note that system robots have unrestricted movement and
+--   never fail, but non-system robots have restricted movement even
+--   in creative mode.
 checkMoveFailure :: HasRobotStepState sig m => Cosmic Location -> m (Maybe MoveFailureMode)
 checkMoveFailure nextLoc = do
   systemRob <- use systemRobot
