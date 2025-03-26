@@ -30,7 +30,8 @@ module Swarm.Language.Value (
 import Control.Lens hiding (Const)
 import Data.Bool (bool)
 import Data.Foldable (Foldable (..))
-import Data.Hashable (Hashable)
+import Data.Function (on)
+import Data.Hashable (Hashable, hash)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set qualified as S
@@ -123,7 +124,10 @@ data Value where
   -- | A special value used to represent runtime type information
   --   passed to ad-hoc polymorphic functions.
   VType :: Type -> Value
-  deriving (Eq, Show, Generic, Hashable)
+  deriving (Eq, Generic, Hashable)
+
+-- For the lack of Show and Eq instances, see Note [Env Show and Eq
+-- instances]
 
 -- | A value context is a mapping from variable names to their runtime
 --   values.
@@ -146,7 +150,23 @@ data Env = Env
   , _envTydefs :: TDCtx
   -- ^ Type synonym definitions.
   }
-  deriving (Eq, Show, Generic, Hashable)
+  deriving (Hashable, Generic)
+
+-- A derived `Eq` instance for `Env` can cause exponential blowup (see
+-- Note [Env Show and Eq instances]), but we need an `Eq` instance in
+-- order to have a `Hashable` instance.  So we just implement equality
+-- testing by comparing hashes.
+instance Eq Env where
+  (==) = (==) `on` hash
+
+-- ~~~~ Note [Env Show and Eq instances]
+-- Env contains values, which can be e.g. closures, which
+-- contain more Envs.  Normally, in memory, there is a lot of sharing,
+-- but when naively printing it out all the sharing is lost and it can
+-- generate tons of output.  This is why we intentionally do NOT have
+-- a Show instance for Env (hence neither for Value).  Similarly, we
+-- do not have a derived Eq instance since it would be incredibly
+-- inefficient and there is no good reason to use it.  See #2197.
 
 makeLenses ''Env
 
