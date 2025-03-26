@@ -16,8 +16,8 @@ data MoveFailureMode
     --   could block the path (represented by `PathBlockedBy
     --   Nothing`).
     PathBlockedBy (Maybe Entity)
-    -- | Some liquid entity is in the path.
-  | PathLiquid Entity
+  | -- | Some liquid entity is in the path.
+    PathLiquid Entity
 
 -- | Pure logic used inside of
 --   'Swarm.Game.Step.Util.checkMoveFailureUnprivileged'.  Given a
