@@ -437,7 +437,7 @@ execConst runChildProg c vs s k = do
             robotInventory %= delete item
             equippedDevices %= insert item
             throwError . cmdExn Unequip $
-              [ "You can't unequip the", item ^. entityName, "right now!"]
+              ["You can't unequip the", item ^. entityName, "right now!"]
           Just (PathLiquid liquid) -> do
             -- Unequipping a device that gives the Float capability in
             -- the middle of liquid results in drowning, EVEN for
