@@ -513,7 +513,7 @@ testEval g =
     case result of
       Left err -> assertFailure ("Evaluation failed: " ++ from @Text @String err)
       Right (v, steps) -> do
-        assertEqual "" val v
+        assertBool "Values are not equal" (val == v)
         assertBool ("Took more than " ++ show maxSteps ++ " steps!") (steps <= maxSteps)
 
   evaluate :: Text -> IO (Either Text (Value, Int))
