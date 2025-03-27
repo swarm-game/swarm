@@ -146,6 +146,10 @@ import Text.Printf
 import Text.Wrap
 import Witch (into)
 
+-- | (keyhightlight, key, cmd)
+-- | (h, [(key, cmd)], cmd) where the array has sub commands
+type KeyCmd = Either (KeyHighlight, Text, Text) (KeyHighlight, [(Text, Text)], Text)
+
 -- | The main entry point for drawing the entire UI.
 drawUI :: AppState -> [Widget Name]
 drawUI s = drawPopups s : mainLayers
@@ -877,7 +881,7 @@ drawKeyMenu s =
       ]
  where
   mkCmdRow = hBox . map drawPaddedCmd
-  drawPaddedCmd = padLeftRight 1 . drawKeyCmd
+  drawPaddedCmd = padLeftRight 1 . drawKeyCmdDbl
   contextCmds
     | ctrlMode == Handling = txt $ fromMaybe "" (gs ^? gameControls . inputHandler . _Just . _1)
     | otherwise = mkCmdRow focusedPanelCmds
@@ -923,34 +927,37 @@ drawKeyMenu s =
       $ case creative of
         False -> "Classic"
         True -> "Creative"
+
+  globalKeyCmds::[KeyCmd]
   globalKeyCmds =
     catMaybes
-      [ may goal (NoHighlight, keyM SE.ViewGoalEvent, "goal")
-      , may showCreative (NoHighlight, keyM SE.ToggleCreativeModeEvent, "creative")
-      , may showEditor (NoHighlight, keyM SE.ToggleWorldEditorEvent, "editor")
-      , Just (NoHighlight, keyM SE.PauseEvent, if isPaused then "unpause" else "pause")
-      , may isPaused (NoHighlight, keyM SE.RunSingleTickEvent, "step")
+      [ may goal (Left (NoHighlight, keyM SE.ViewGoalEvent, "goal"))
+      , may showCreative (Left (NoHighlight, keyM SE.ToggleCreativeModeEvent, "creative"))
+      , may showEditor (Left (NoHighlight, keyM SE.ToggleWorldEditorEvent, "editor"))
+      , Just (Left (NoHighlight, keyM SE.PauseEvent, if isPaused then "unpause" else "pause"))
+      , may isPaused (Left (NoHighlight, keyM SE.RunSingleTickEvent, "step"))
       , may
           (isPaused && hasDebug)
-          ( if uig ^. uiShowDebug then Alert else NoHighlight
+          (Left ( if uig ^. uiShowDebug then Alert else NoHighlight
           , keyM SE.ShowCESKDebugEvent
           , "debug"
-          )
-      , Just (NoHighlight, keyM SE.IncreaseTpsEvent <> "/" <> keyM SE.DecreaseTpsEvent, "speed")
+          ))
+      --, Just (Left (NoHighlight, keyM SE.IncreaseTpsEvent <> "/" <> keyM SE.DecreaseTpsEvent, "speed"))
+      , Just (Right (NoHighlight, [(keyM SE.IncreaseTpsEvent, "speed-up"),(keyM SE.DecreaseTpsEvent, "speed-down")], "speed"))
       , Just
-          ( NoHighlight
+          (Left ( NoHighlight
           , keyM SE.ToggleREPLVisibilityEvent
           , if uig ^. uiShowREPL then "hide REPL" else "show REPL"
-          )
+          ))
       , Just
-          ( if uig ^. uiShowRobots then NoHighlight else Alert
+          (Left ( if uig ^. uiShowRobots then NoHighlight else Alert
           , keyM SE.HideRobotsEvent
           , "hide robots"
-          )
+          ))
       ]
   may b = if b then Just else const Nothing
 
-  highlightKeyCmds (k, n) = (PanelSpecific, k, n)
+  highlightKeyCmds (k, n) = Left (PanelSpecific, k, n)
 
   keyCmdsFor (Just (FocusablePanel WorldEditorPanel)) =
     [("^s", "save map")]
@@ -986,19 +993,35 @@ drawKeyMenu s =
 
 data KeyHighlight = NoHighlight | Alert | PanelSpecific
 
+attr :: KeyHighlight -> AttrName
+attr h = 
+ case h of
+  NoHighlight -> defAttr
+  Alert -> notifAttr
+  PanelSpecific -> highlightAttr
+
 -- | Draw a single key command in the menu.
 drawKeyCmd :: (KeyHighlight, Text, Text) -> Widget Name
 drawKeyCmd (h, key, cmd) =
   clickable (UIShortcut cmd) $
     hBox
-      [ withAttr attr (txt $ brackets key)
+      [ withAttr (attr h) (txt $ brackets key)
       , txt cmd
       ]
- where
-  attr = case h of
-    NoHighlight -> defAttr
-    Alert -> notifAttr
-    PanelSpecific -> highlightAttr
+
+drawKeyCmdDbl :: KeyCmd -> Widget Name
+drawKeyCmdDbl keycmd = 
+  case keycmd of
+    Left (h, key, cmd) -> 
+      clickable (UIShortcut cmd) $
+        hBox
+          [ withAttr (attr h) (txt $ brackets key)
+          , txt cmd
+          ]
+    Right (h, keyArr, cmd) -> 
+      hBox $ map (createCmd h) keyArr ++ [txt cmd]
+  where createCmd h (key, cmd) = clickable (UIShortcut cmd) $ withAttr (attr h) (txt $ brackets key)
+
 
 ------------------------------------------------------------
 -- World panel
