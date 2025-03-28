@@ -12,7 +12,7 @@ module Swarm.TUI.Controller.EventHandlers.Main (
   adjustTPS,
   toggleREPLVisibility,
   showCESKDebug,
-  hideRobots
+  hideRobots,
 ) where
 
 import Brick
