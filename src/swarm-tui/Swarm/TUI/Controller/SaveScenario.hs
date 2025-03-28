@@ -74,7 +74,10 @@ saveScenarioInfoOnFinish p = do
   -- Check if all tutorials have been completed
   tutorialMap <- use $ runtimeState . scenarios . to getTutorials . to scMap
   let isComplete (SISingle (_, s)) = scenarioIsCompleted s
-      isComplete _ = True
+      -- There are not currently any subcollections within the
+      -- tutorials, but checking subcollections recursively just seems
+      -- like the right thing to do
+      isComplete (SICollection _ (SC _ m)) = all isComplete m
   when (all isComplete tutorialMap) $
     attainAchievement $ GlobalAchievement CompletedAllTutorials
 
