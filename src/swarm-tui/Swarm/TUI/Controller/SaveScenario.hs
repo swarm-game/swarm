@@ -79,7 +79,8 @@ saveScenarioInfoOnFinish p = do
       -- like the right thing to do
       isComplete (SICollection _ (SC _ m)) = all isComplete m
   when (all isComplete tutorialMap) $
-    attainAchievement $ GlobalAchievement CompletedAllTutorials
+    attainAchievement $
+      GlobalAchievement CompletedAllTutorials
 
   gameState . completionStatsSaved .= won
 
