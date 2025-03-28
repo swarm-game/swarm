@@ -146,6 +146,10 @@ import Text.Printf
 import Text.Wrap
 import Witch (into)
 
+-- | (keyhightlight, key, cmd)
+-- | (h, [(key, cmd)], cmd) where the array has sub commands
+type KeyCmd = Either (KeyHighlight, Text, Text) (KeyHighlight, [(Text, Text)], Text)
+
 -- | The main entry point for drawing the entire UI.
 drawUI :: AppState -> [Widget Name]
 drawUI s = drawPopups s : mainLayers
@@ -836,25 +840,25 @@ colorSeverity = \case
 drawModalMenu :: AppState -> Widget Name
 drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyCmds
  where
-  notificationKey :: Getter GameState (Notifications a) -> SE.MainEvent -> Text -> Maybe (KeyHighlight, Text, Text)
+  notificationKey :: Getter GameState (Notifications a) -> SE.MainEvent -> Text -> Maybe KeyCmd
   notificationKey notifLens key name
     | null (s ^. gameState . notifLens . notificationsContent) = Nothing
     | otherwise =
         let highlight
               | s ^. gameState . notifLens . notificationsCount > 0 = Alert
               | otherwise = NoHighlight
-         in Just (highlight, keyM key, name)
+         in Just (Left (highlight, keyM key, name))
 
   -- Hides this key if the recognizable structure list is empty
   structuresKey =
     if null $ s ^. gameState . landscape . recognizerAutomatons . originalStructureDefinitions
       then Nothing
-      else Just (NoHighlight, keyM SE.ViewStructuresEvent, "Structures")
+      else Just (Left (NoHighlight, keyM SE.ViewStructuresEvent, "Structures"))
 
   globalKeyCmds =
     catMaybes
-      [ Just (NoHighlight, keyM SE.ViewHelpEvent, "Help")
-      , Just (NoHighlight, keyM SE.ViewRobotsEvent, "Robots")
+      [ Just (Left (NoHighlight, keyM SE.ViewHelpEvent, "Help"))
+      , Just (Left (NoHighlight, keyM SE.ViewRobotsEvent, "Robots"))
       , notificationKey (discovery . availableRecipes) SE.ViewRecipesEvent "Recipes"
       , notificationKey (discovery . availableCommands) SE.ViewCommandsEvent "Commands"
       , notificationKey messageNotifications SE.ViewMessagesEvent "Messages"
@@ -926,34 +930,43 @@ drawKeyMenu s =
       $ case creative of
         False -> "Classic"
         True -> "Creative"
+
+  globalKeyCmds :: [KeyCmd]
   globalKeyCmds =
     catMaybes
-      [ may goal (NoHighlight, keyM SE.ViewGoalEvent, "goal")
-      , may showCreative (NoHighlight, keyM SE.ToggleCreativeModeEvent, "creative")
-      , may showEditor (NoHighlight, keyM SE.ToggleWorldEditorEvent, "editor")
-      , Just (NoHighlight, keyM SE.PauseEvent, if isPaused then "unpause" else "pause")
-      , may isPaused (NoHighlight, keyM SE.RunSingleTickEvent, "step")
+      [ may goal (Left (NoHighlight, keyM SE.ViewGoalEvent, "goal"))
+      , may showCreative (Left (NoHighlight, keyM SE.ToggleCreativeModeEvent, "creative"))
+      , may showEditor (Left (NoHighlight, keyM SE.ToggleWorldEditorEvent, "editor"))
+      , Just (Left (NoHighlight, keyM SE.PauseEvent, if isPaused then "unpause" else "pause"))
+      , may isPaused (Left (NoHighlight, keyM SE.RunSingleTickEvent, "step"))
       , may
           (isPaused && hasDebug)
-          ( if uig ^. uiShowDebug then Alert else NoHighlight
-          , keyM SE.ShowCESKDebugEvent
-          , "debug"
+          ( Left
+              ( if uig ^. uiShowDebug then Alert else NoHighlight
+              , keyM SE.ShowCESKDebugEvent
+              , "debug"
+              )
           )
-      , Just (NoHighlight, keyM SE.IncreaseTpsEvent <> "/" <> keyM SE.DecreaseTpsEvent, "speed")
+      , -- , Just (Left (NoHighlight, keyM SE.IncreaseTpsEvent <> "/" <> keyM SE.DecreaseTpsEvent, "speed"))
+        Just (Right (NoHighlight, [(keyM SE.IncreaseTpsEvent, "speed-up"), (keyM SE.DecreaseTpsEvent, "speed-down")], "speed"))
       , Just
-          ( NoHighlight
-          , keyM SE.ToggleREPLVisibilityEvent
-          , if uig ^. uiShowREPL then "hide REPL" else "show REPL"
+          ( Left
+              ( NoHighlight
+              , keyM SE.ToggleREPLVisibilityEvent
+              , if uig ^. uiShowREPL then "hide REPL" else "show REPL"
+              )
           )
       , Just
-          ( if uig ^. uiShowRobots then NoHighlight else Alert
-          , keyM SE.HideRobotsEvent
-          , "hide robots"
+          ( Left
+              ( if uig ^. uiShowRobots then NoHighlight else Alert
+              , keyM SE.HideRobotsEvent
+              , "hide robots"
+              )
           )
       ]
   may b = if b then Just else const Nothing
 
-  highlightKeyCmds (k, n) = (PanelSpecific, k, n)
+  highlightKeyCmds (k, n) = Left (PanelSpecific, k, n)
 
   keyCmdsFor (Just (FocusablePanel WorldEditorPanel)) =
     [("^s", "save map")]
@@ -990,14 +1003,20 @@ drawKeyMenu s =
 data KeyHighlight = NoHighlight | Alert | PanelSpecific
 
 -- | Draw a single key command in the menu.
-drawKeyCmd :: (KeyHighlight, Text, Text) -> Widget Name
-drawKeyCmd (h, key, cmd) =
-  hBox
-    [ withAttr attr (txt $ brackets key)
-    , txt cmd
-    ]
+drawKeyCmd :: KeyCmd -> Widget Name
+drawKeyCmd keycmd =
+  case keycmd of
+    Left (h, key, cmd) ->
+      clickable (UIShortcut cmd) $
+        hBox
+          [ withAttr (attr h) (txt $ brackets key)
+          , txt cmd
+          ]
+    Right (h, keyArr, cmd) ->
+      hBox $ map (createCmd h) keyArr ++ [txt cmd]
  where
-  attr = case h of
+  createCmd h (key, cmd) = clickable (UIShortcut cmd) $ withAttr (attr h) (txt $ brackets key)
+  attr h = case h of
     NoHighlight -> defAttr
     Alert -> notifAttr
     PanelSpecific -> highlightAttr
