@@ -9,6 +9,10 @@ module Swarm.TUI.Controller.EventHandlers.Main (
   isRunning,
   whenRunning,
   runSingleTick,
+  adjustTPS,
+  toggleREPLVisibility,
+  showCESKDebug,
+  hideRobots
 ) where
 
 import Brick

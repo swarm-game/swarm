@@ -837,25 +837,25 @@ colorSeverity = \case
 drawModalMenu :: AppState -> Widget Name
 drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyCmds
  where
-  notificationKey :: Getter GameState (Notifications a) -> SE.MainEvent -> Text -> Maybe (KeyHighlight, Text, Text)
+  notificationKey :: Getter GameState (Notifications a) -> SE.MainEvent -> Text -> Maybe KeyCmd
   notificationKey notifLens key name
     | null (s ^. gameState . notifLens . notificationsContent) = Nothing
     | otherwise =
         let highlight
               | s ^. gameState . notifLens . notificationsCount > 0 = Alert
               | otherwise = NoHighlight
-         in Just (highlight, keyM key, name)
+         in Just (Left (highlight, keyM key, name))
 
   -- Hides this key if the recognizable structure list is empty
   structuresKey =
     if null $ s ^. gameState . landscape . recognizerAutomatons . originalStructureDefinitions
       then Nothing
-      else Just (NoHighlight, keyM SE.ViewStructuresEvent, "Structures")
+      else Just (Left (NoHighlight, keyM SE.ViewStructuresEvent, "Structures"))
 
   globalKeyCmds =
     catMaybes
-      [ Just (NoHighlight, keyM SE.ViewHelpEvent, "Help")
-      , Just (NoHighlight, keyM SE.ViewRobotsEvent, "Robots")
+      [ Just (Left (NoHighlight, keyM SE.ViewHelpEvent, "Help"))
+      , Just (Left (NoHighlight, keyM SE.ViewRobotsEvent, "Robots"))
       , notificationKey (discovery . availableRecipes) SE.ViewRecipesEvent "Recipes"
       , notificationKey (discovery . availableCommands) SE.ViewCommandsEvent "Commands"
       , notificationKey messageNotifications SE.ViewMessagesEvent "Messages"
@@ -881,7 +881,7 @@ drawKeyMenu s =
       ]
  where
   mkCmdRow = hBox . map drawPaddedCmd
-  drawPaddedCmd = padLeftRight 1 . drawKeyCmdDbl
+  drawPaddedCmd = padLeftRight 1 . drawKeyCmd
   contextCmds
     | ctrlMode == Handling = txt $ fromMaybe "" (gs ^? gameControls . inputHandler . _Just . _1)
     | otherwise = mkCmdRow focusedPanelCmds
@@ -994,22 +994,8 @@ drawKeyMenu s =
 data KeyHighlight = NoHighlight | Alert | PanelSpecific
 
 -- | Draw a single key command in the menu.
-drawKeyCmd :: (KeyHighlight, Text, Text) -> Widget Name
-drawKeyCmd (h, key, cmd) =
-  clickable (UIShortcut cmd) $
-    hBox
-      [ withAttr attr (txt $ brackets key)
-      , txt cmd
-      ]
-  where 
-    attr = case h of
-      NoHighlight -> defAttr
-      Alert -> notifAttr
-      PanelSpecific -> highlightAttr
-
-
-drawKeyCmdDbl :: KeyCmd -> Widget Name
-drawKeyCmdDbl keycmd = 
+drawKeyCmd :: KeyCmd -> Widget Name
+drawKeyCmd keycmd = 
   case keycmd of
     Left (h, key, cmd) -> 
       clickable (UIShortcut cmd) $
