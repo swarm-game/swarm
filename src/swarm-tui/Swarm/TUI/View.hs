@@ -993,21 +993,20 @@ drawKeyMenu s =
 
 data KeyHighlight = NoHighlight | Alert | PanelSpecific
 
-attr :: KeyHighlight -> AttrName
-attr h = 
- case h of
-  NoHighlight -> defAttr
-  Alert -> notifAttr
-  PanelSpecific -> highlightAttr
-
 -- | Draw a single key command in the menu.
 drawKeyCmd :: (KeyHighlight, Text, Text) -> Widget Name
 drawKeyCmd (h, key, cmd) =
   clickable (UIShortcut cmd) $
     hBox
-      [ withAttr (attr h) (txt $ brackets key)
+      [ withAttr attr (txt $ brackets key)
       , txt cmd
       ]
+  where 
+    attr = case h of
+      NoHighlight -> defAttr
+      Alert -> notifAttr
+      PanelSpecific -> highlightAttr
+
 
 drawKeyCmdDbl :: KeyCmd -> Widget Name
 drawKeyCmdDbl keycmd = 
@@ -1020,8 +1019,12 @@ drawKeyCmdDbl keycmd =
           ]
     Right (h, keyArr, cmd) -> 
       hBox $ map (createCmd h) keyArr ++ [txt cmd]
-  where createCmd h (key, cmd) = clickable (UIShortcut cmd) $ withAttr (attr h) (txt $ brackets key)
-
+  where 
+    createCmd h (key, cmd) = clickable (UIShortcut cmd) $ withAttr (attr h) (txt $ brackets key)
+    attr h = case h of
+      NoHighlight -> defAttr
+      Alert -> notifAttr
+      PanelSpecific -> highlightAttr
 
 ------------------------------------------------------------
 -- World panel
