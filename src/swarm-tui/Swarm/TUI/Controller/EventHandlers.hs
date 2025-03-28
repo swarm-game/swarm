@@ -30,14 +30,14 @@ module Swarm.TUI.Controller.EventHandlers (
   runGameTickUI,
   ticksPerFrameCap,
 
-   -- ** Event utilities
+  -- ** Event utilities
   isRunning,
   whenRunning,
   runSingleTick,
   adjustTPS,
   toggleREPLVisibility,
   showCESKDebug,
-  hideRobots
+  hideRobots,
 ) where
 
 import Brick hiding (on)
@@ -49,7 +49,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import Swarm.Failure (SystemFailure (..))
 import Swarm.TUI.Controller.EventHandlers.Frame (runFrameUI, runGameTickUI, ticksPerFrameCap)
-import Swarm.TUI.Controller.EventHandlers.Main (isRunning, mainEventHandlers, runSingleTick, whenRunning, adjustTPS, toggleREPLVisibility, showCESKDebug, hideRobots)
+import Swarm.TUI.Controller.EventHandlers.Main (adjustTPS, hideRobots, isRunning, mainEventHandlers, runSingleTick, showCESKDebug, toggleREPLVisibility, whenRunning)
 import Swarm.TUI.Controller.EventHandlers.REPL (replEventHandlers)
 import Swarm.TUI.Controller.EventHandlers.Robot (handleRobotPanelEvent, robotEventHandlers)
 import Swarm.TUI.Controller.EventHandlers.World (worldEventHandlers)
