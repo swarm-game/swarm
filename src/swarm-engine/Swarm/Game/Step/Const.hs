@@ -348,8 +348,9 @@ execConst runChildProg c vs s k = do
         -- Make sure the robot has the thing in its inventory
         e <- hasInInventoryOrFail name
 
-        -- Place the entity and remove it from the inventory
-        updateEntityAt loc (const (Just e))
+        -- Place the entity (if it is not evanescent) and remove it from the inventory
+        unless (Evanescent `S.member` (e ^. entityProperties)) $
+          updateEntityAt loc (const (Just e))
         robotInventory %= delete e
 
         flagRedraw
