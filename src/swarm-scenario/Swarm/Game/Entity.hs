@@ -171,6 +171,9 @@ data EntityProperty
     Infinite
   | -- | Robots drown if they walk on this without a boat.
     Liquid
+  | -- | If robots try to 'Swarm.Language.Syntax.Place' this,
+    --   it disappears
+    Evanescent
   | -- | Robots automatically know what this is without having to scan it.
     Known
   | -- | Text can be printed on this entity with the

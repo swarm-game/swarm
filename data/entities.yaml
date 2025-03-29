@@ -478,14 +478,14 @@
     char: ' '
   description:
     - Liquid dihydrogen monoxide, which seems to be plentiful on this planet.
-  properties: [pickable, infinite, liquid]
+  properties: [pickable, infinite, liquid, evanescent]
 - name: wavy water
   display:
     attr: water
     char: '~'
   description:
     - A wavy section of water.  The same as normal water, but with more waves.
-  properties: [pickable, infinite, liquid]
+  properties: [pickable, infinite, liquid, evanescent]
   yields: water
 - name: boat
   display:
