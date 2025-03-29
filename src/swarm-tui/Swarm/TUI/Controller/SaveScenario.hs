@@ -17,13 +17,13 @@ import Control.Monad.State (MonadState)
 import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Time (getZonedTime)
 import Swarm.Game.Achievement.Definitions
-import Swarm.Game.Scenario.Status (updateScenarioInfoOnFinish)
+import Swarm.Game.Scenario.Status (scenarioIsCompleted, updateScenarioInfoOnFinish)
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Achievements (attainAchievement')
+import Swarm.TUI.Model.Achievements (attainAchievement, attainAchievement')
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
@@ -70,6 +70,17 @@ saveScenarioInfoOnFinish p = do
         attainAchievement' t (Just p) $
           GlobalAchievement CompletedSingleTutorial
     liftIO $ saveScenarioInfo p si
+
+  -- Check if all tutorials have been completed
+  tutorialMap <- use $ runtimeState . scenarios . to getTutorials . to scMap
+  let isComplete (SISingle (_, s)) = scenarioIsCompleted s
+      -- There are not currently any subcollections within the
+      -- tutorials, but checking subcollections recursively just seems
+      -- like the right thing to do
+      isComplete (SICollection _ (SC _ m)) = all isComplete m
+  when (all isComplete tutorialMap) $
+    attainAchievement $
+      GlobalAchievement CompletedAllTutorials
 
   gameState . completionStatsSaved .= won
 
