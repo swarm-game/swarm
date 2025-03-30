@@ -328,11 +328,11 @@ handleMainEvent forceRedraw ev = do
     VtyEvent vev
       | isJust (s ^. playState . uiGameplay . uiDialogs . uiModal) -> handleModalEvent vev
     MouseDown (TerrainListItem pos) V.BLeft _ _ ->
-      Brick.zoom playState $ uiGameplay . uiWorldEditor . terrainList %= BL.listMoveTo pos
+      playState . uiGameplay . uiWorldEditor . terrainList %= BL.listMoveTo pos
     MouseDown (EntityPaintListItem pos) V.BLeft _ _ ->
-      Brick.zoom playState $ uiGameplay . uiWorldEditor . entityPaintList %= BL.listMoveTo pos
+      playState . uiGameplay . uiWorldEditor . entityPaintList %= BL.listMoveTo pos
     MouseDown WorldPositionIndicator _ _ _ ->
-      Brick.zoom playState $ uiGameplay . uiWorldCursor .= Nothing
+      playState . uiGameplay . uiWorldCursor .= Nothing
     MouseDown (FocusablePanel WorldPanel) V.BMiddle _ mouseLoc ->
       -- Eye Dropper tool
       Brick.zoom playState $ EC.handleMiddleClick mouseLoc
@@ -351,9 +351,8 @@ handleMainEvent forceRedraw ev = do
             uiGameplay . uiWorldCursor .= mouseCoordsM
         REPLInput -> handleREPLEvent ev
         _ -> continueWithoutRedraw
-    MouseUp n _ _mouseLoc -> do
-      m <- use $ uiState . uiMenu
-      Brick.zoom playState $ do
+    MouseUp n _ _mouseLoc ->
+      playStateWithMenu $ \m -> do
         case n of
           InventoryListItem pos -> uiGameplay . uiInventory . uiInventoryList . traverse . _2 %= BL.listMoveTo pos
           x@(WorldEditorPanelControl y) -> do
@@ -387,9 +386,7 @@ handleMainEvent forceRedraw ev = do
             wh <- use $ keyEventHandling . keyDispatchers . to worldDispatcher
             void $ B.handleKey wh k m
           WorldPanel | otherwise -> continueWithoutRedraw
-          WorldEditorPanel -> do
-            m <- use $ uiState . uiMenu
-            Brick.zoom playState $ EC.handleWorldEditorPanelEvent m ev
+          WorldEditorPanel -> playStateWithMenu $ EC.handleWorldEditorPanelEvent ev
           RobotPanel -> handleRobotPanelEvent ev
           InfoPanel -> handleInfoPanelEvent infoScroll ev
         _ -> continueWithoutRedraw

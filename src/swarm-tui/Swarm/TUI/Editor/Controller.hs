@@ -102,8 +102,8 @@ handleMiddleClick mouseLoc = do
     whenJust mouseCoordsM setTerrainPaint
 
 -- | Handle user input events in the robot panel.
-handleWorldEditorPanelEvent :: Menu -> BrickEvent Name AppEvent -> EventM Name PlayState ()
-handleWorldEditorPanelEvent m = \case
+handleWorldEditorPanelEvent :: BrickEvent Name AppEvent -> Menu -> EventM Name PlayState ()
+handleWorldEditorPanelEvent e m = case e of
   Key V.KEsc -> uiGameplay . uiWorldEditor . editingBounds . boundsSelectionStep .= SelectionComplete
   Key V.KEnter -> do
     fring <- use $ uiGameplay . uiWorldEditor . editorFocusRing
