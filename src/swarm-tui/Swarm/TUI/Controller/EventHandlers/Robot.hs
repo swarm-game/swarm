@@ -31,7 +31,6 @@ import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event
-import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Util (generateModal)
 
@@ -53,9 +52,7 @@ robotEventHandlers :: [KeyEventHandler SwarmEvent (EventM Name AppState)]
 robotEventHandlers = nonCustomizableHandlers <> customizableHandlers
  where
   nonCustomizableHandlers =
-    [ onKey V.KEnter "Show entity description" $ do
-        m <- use $ uiState . uiMenu
-        Brick.zoom playState $ showEntityDescription m
+    [ onKey V.KEnter "Show entity description" $ playStateWithMenu showEntityDescription
     ]
   customizableHandlers = allHandlers Robot $ \case
     MakeEntityEvent -> ("Make the selected entity", Brick.zoom playState makeFocusedEntity)
@@ -130,8 +127,7 @@ handleInventorySearchEvent = \case
   -- Enter: return to regular inventory mode, and pop out the selected item
   Key V.KEnter -> do
     zoomInventory $ uiInventorySearch .= Nothing
-    m <- use $ uiState . uiMenu
-    Brick.zoom playState $ showEntityDescription m
+    playStateWithMenu showEntityDescription
   -- Any old character: append to the current search string
   CharKey c -> do
     resetViewport infoScroll

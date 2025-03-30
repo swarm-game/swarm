@@ -902,7 +902,7 @@ drawKeyMenu s =
 
   isReplWorking = gs ^. gameControls . replWorking
   isPaused = gs ^. temporal . paused
-  hasDebug = hasDebugCapability creative s
+  hasDebug = hasDebugCapability creative gs
   creative = gs ^. creativeMode
   showCreative = uis ^. uiDebugOptions . Lens.contains ToggleCreative
   showEditor = uis ^. uiDebugOptions . Lens.contains ToggleWorldEditor

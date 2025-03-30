@@ -42,10 +42,12 @@ import Swarm.TUI.Model (
   modalScroll,
   playState,
   uiGameplay,
+  uiState,
  )
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl (REPLHistItem, REPLPrompt, REPLState, addREPLItem, replHistory, replPromptText, replPromptType)
+import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Util (generateModal)
 import System.Clock (Clock (..), getTime)
@@ -122,8 +124,8 @@ safeAutoUnpause = do
   runs <- use $ gameState . temporal . runStatus
   when (runs == AutoPause) safeTogglePause
 
-toggleModal :: Menu -> ModalType -> EventM Name PlayState ()
-toggleModal m mt = do
+toggleModal :: ModalType -> Menu -> EventM Name PlayState ()
+toggleModal mt m = do
   modal <- use $ uiGameplay . uiDialogs . uiModal
   case modal of
     Nothing -> openModal m mt
@@ -160,10 +162,10 @@ mouseLocToWorldCoords (Brick.Location mouseLoc) = do
           my = fst mouseLoc' + snd regionStart
        in pure . Just $ Cosmic (region ^. subworld) $ Coords (mx, my)
 
-hasDebugCapability :: Bool -> AppState -> Bool
+hasDebugCapability :: Bool -> GameState -> Bool
 hasDebugCapability isCreative s =
   maybe isCreative (S.member CDebug . getCapabilitySet) $
-    s ^? playState . gameState . to focusedRobot . _Just . robotCapabilities
+    s ^? to focusedRobot . _Just . robotCapabilities
 
 -- | Resets the viewport scroll position
 resetViewport :: ViewportScroll Name -> EventM Name s ()
@@ -234,3 +236,10 @@ resetREPL t p = uiGameplay . uiREPL %= modifyResetREPL t p
 -- | Add an item to the REPL history.
 addREPLHistItem :: MonadState PlayState m => REPLHistItem -> m ()
 addREPLHistItem item = uiGameplay . uiREPL . replHistory %= addREPLItem item
+
+playStateWithMenu ::
+  (Menu -> EventM Name PlayState ()) ->
+  EventM Name AppState ()
+playStateWithMenu f = do
+  m <- use $ uiState . uiMenu
+  Brick.zoom playState $ f m
