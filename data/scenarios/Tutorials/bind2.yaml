@@ -34,7 +34,7 @@ objectives:
         ishere "Hastur"
       } { pure false }
   - id: fail_to_grab
-    teaser: Robor stopped
+    teaser: Robot stopped
     hidden: true
     optional: true
     goal:
