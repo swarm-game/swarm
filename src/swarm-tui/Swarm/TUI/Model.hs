@@ -356,16 +356,16 @@ runtimeState :: Lens' AppState RuntimeState
 
 -- | Get the currently focused 'InventoryListEntry' from the robot
 --   info panel (if any).
-focusedItem :: AppState -> Maybe InventoryListEntry
+focusedItem :: PlayState -> Maybe InventoryListEntry
 focusedItem s = do
-  list <- s ^? playState . uiGameplay . uiInventory . uiInventoryList . _Just . _2
+  list <- s ^? uiGameplay . uiInventory . uiInventoryList . _Just . _2
   (_, entry) <- BL.listSelectedElement list
   return entry
 
 -- | Get the currently focused entity from the robot info panel (if
 --   any).  This is just like 'focusedItem' but forgets the
 --   distinction between plain inventory items and equipped devices.
-focusedEntity :: AppState -> Maybe Entity
+focusedEntity :: PlayState -> Maybe Entity
 focusedEntity =
   focusedItem >=> \case
     Separator _ -> Nothing

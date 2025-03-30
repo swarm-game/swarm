@@ -37,21 +37,21 @@ import System.Clock
 -- World Editor panel events
 ------------------------------------------------------------
 
-activateWorldEditorFunction :: WorldEditorFocusable -> EventM Name AppState ()
-activateWorldEditorFunction BrushSelector = openModal TerrainPaletteModal
-activateWorldEditorFunction EntitySelector = openModal EntityPaletteModal
-activateWorldEditorFunction AreaSelector =
-  Brick.zoom (playState . uiGameplay . uiWorldEditor . editingBounds) $ do
+activateWorldEditorFunction :: Menu -> WorldEditorFocusable -> EventM Name PlayState ()
+activateWorldEditorFunction m BrushSelector = openModal m TerrainPaletteModal
+activateWorldEditorFunction m EntitySelector = openModal m EntityPaletteModal
+activateWorldEditorFunction _ AreaSelector =
+  Brick.zoom (uiGameplay . uiWorldEditor . editingBounds) $ do
     selectorStage <- use boundsSelectionStep
     case selectorStage of
       SelectionComplete -> boundsSelectionStep .= UpperLeftPending
       _ -> return ()
-activateWorldEditorFunction OutputPathSelector =
+activateWorldEditorFunction _ OutputPathSelector =
   -- TODO: #1371
   liftIO $ putStrLn "File selection"
-activateWorldEditorFunction MapSaveButton = saveMapFile
-activateWorldEditorFunction ClearEntityButton =
-  playState . uiGameplay . uiWorldEditor . entityPaintList . BL.listSelectedL .= Nothing
+activateWorldEditorFunction _ MapSaveButton = saveMapFile
+activateWorldEditorFunction _ ClearEntityButton =
+  uiGameplay . uiWorldEditor . entityPaintList . BL.listSelectedL .= Nothing
 
 handleCtrlLeftClick :: B.Location -> EventM Name AppState ()
 handleCtrlLeftClick mouseLoc = do
@@ -102,17 +102,17 @@ handleMiddleClick mouseLoc = do
     whenJust mouseCoordsM setTerrainPaint
 
 -- | Handle user input events in the robot panel.
-handleWorldEditorPanelEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleWorldEditorPanelEvent = \case
-  Key V.KEsc -> playState . uiGameplay . uiWorldEditor . editingBounds . boundsSelectionStep .= SelectionComplete
+handleWorldEditorPanelEvent :: Menu -> BrickEvent Name AppEvent -> EventM Name PlayState ()
+handleWorldEditorPanelEvent m = \case
+  Key V.KEsc -> uiGameplay . uiWorldEditor . editingBounds . boundsSelectionStep .= SelectionComplete
   Key V.KEnter -> do
-    fring <- use $ playState . uiGameplay . uiWorldEditor . editorFocusRing
+    fring <- use $ uiGameplay . uiWorldEditor . editorFocusRing
     case focusGetCurrent fring of
-      Just (WorldEditorPanelControl x) -> activateWorldEditorFunction x
+      Just (WorldEditorPanelControl x) -> activateWorldEditorFunction m x
       _ -> return ()
   ControlChar 's' -> saveMapFile
-  CharKey '\t' -> playState . uiGameplay . uiWorldEditor . editorFocusRing %= focusNext
-  Key V.KBackTab -> playState . uiGameplay . uiWorldEditor . editorFocusRing %= focusPrev
+  CharKey '\t' -> uiGameplay . uiWorldEditor . editorFocusRing %= focusNext
+  Key V.KBackTab -> uiGameplay . uiWorldEditor . editorFocusRing %= focusPrev
   _ -> return ()
 
 -- | Return value: whether the cursor position should be updated
@@ -139,10 +139,10 @@ updateAreaBounds = \case
         return False
       SelectionComplete -> return True
 
-saveMapFile :: EventM Name AppState ()
+saveMapFile :: EventM Name PlayState ()
 saveMapFile = do
-  uig <- use $ playState . uiGameplay
-  land <- use $ playState . gameState . landscape
+  uig <- use uiGameplay
+  land <- use $ gameState . landscape
   let worldEditor = uig ^. uiWorldEditor
       maybeBounds = uig ^. uiWorldEditor . editingBounds . boundsRect
 
@@ -157,4 +157,4 @@ saveMapFile = do
 
   liftIO $ Y.encodeFile fp $ constructScenario (fst <$> maybeScenarioPair) mapCellGrid
 
-  playState . uiGameplay . uiWorldEditor . lastWorldEditorMessage .= Just "Saved."
+  uiGameplay . uiWorldEditor . lastWorldEditorMessage .= Just "Saved."

@@ -37,12 +37,13 @@ import Swarm.Language.Capability (Capability (CDebug))
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.TUI.Model (
   AppState,
-  ModalType (..),
+  PlayState,
   gameState,
   modalScroll,
   playState,
   uiGameplay,
  )
+import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl (REPLHistItem, REPLPrompt, REPLState, addREPLItem, replHistory, replPromptText, replPromptType)
 import Swarm.TUI.Model.UI.Gameplay
@@ -73,12 +74,12 @@ pattern BackspaceKey = VtyEvent (V.EvKey V.KBS [])
 pattern FKey :: Int -> BrickEvent n e
 pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
-openModal :: ModalType -> EventM Name AppState ()
-openModal mt = do
+openModal :: Menu -> ModalType -> EventM Name PlayState ()
+openModal m mt = do
   resetViewport modalScroll
-  newModal <- gets $ flip generateModal mt
+  newModal <- gets $ flip (generateModal m) mt
   ensurePause
-  playState . uiGameplay . uiDialogs . uiModal ?= newModal
+  uiGameplay . uiDialogs . uiModal ?= newModal
   -- Beep
   case mt of
     ScenarioEndModal _ -> do
@@ -88,8 +89,8 @@ openModal mt = do
  where
   -- Set the game to AutoPause if needed
   ensurePause = do
-    pause <- use $ playState . gameState . temporal . paused
-    unless (pause || isRunningModal mt) $ playState . gameState . temporal . runStatus .= AutoPause
+    pause <- use $ gameState . temporal . paused
+    unless (pause || isRunningModal mt) $ gameState . temporal . runStatus .= AutoPause
 
 -- | The running modals do not autopause the game.
 isRunningModal :: ModalType -> Bool
@@ -104,29 +105,29 @@ isRunningModal = \case
 -- doesn't matter; if we are unpausing, this is critical to
 -- ensure the next frame doesn't think it has to catch up from
 -- whenever the game was paused!
-safeTogglePause :: EventM Name AppState ()
+safeTogglePause :: EventM Name PlayState ()
 safeTogglePause = do
   curTime <- liftIO $ getTime Monotonic
-  playState . uiGameplay . uiTiming . lastFrameTime .= curTime
-  playState . uiGameplay . uiShowDebug .= False
-  p <- playState . gameState . temporal . runStatus Lens.<%= toggleRunStatus
-  when (p == Running) $ zoomGameState finishGameTick
+  uiGameplay . uiTiming . lastFrameTime .= curTime
+  uiGameplay . uiShowDebug .= False
+  p <- gameState . temporal . runStatus Lens.<%= toggleRunStatus
+  when (p == Running) $ zoomGameState' finishGameTick
 
 -- | Only unpause the game if leaving autopaused modal.
 --
 -- Note that the game could have been paused before opening
 -- the modal, in that case, leave the game paused.
-safeAutoUnpause :: EventM Name AppState ()
+safeAutoUnpause :: EventM Name PlayState ()
 safeAutoUnpause = do
-  runs <- use $ playState . gameState . temporal . runStatus
+  runs <- use $ gameState . temporal . runStatus
   when (runs == AutoPause) safeTogglePause
 
-toggleModal :: ModalType -> EventM Name AppState ()
-toggleModal mt = do
-  modal <- use $ playState . uiGameplay . uiDialogs . uiModal
+toggleModal :: Menu -> ModalType -> EventM Name PlayState ()
+toggleModal m mt = do
+  modal <- use $ uiGameplay . uiDialogs . uiModal
   case modal of
-    Nothing -> openModal mt
-    Just _ -> playState . uiGameplay . uiDialogs . uiModal .= Nothing >> safeAutoUnpause
+    Nothing -> openModal m mt
+    Just _ -> uiGameplay . uiDialogs . uiModal .= Nothing >> safeAutoUnpause
 
 setFocus :: FocusablePanel -> EventM Name AppState ()
 setFocus name = playState . uiGameplay . uiFocusRing %= focusSetCurrent (FocusablePanel name)
@@ -165,35 +166,49 @@ hasDebugCapability isCreative s =
     s ^? playState . gameState . to focusedRobot . _Just . robotCapabilities
 
 -- | Resets the viewport scroll position
-resetViewport :: ViewportScroll Name -> EventM Name AppState ()
+resetViewport :: ViewportScroll Name -> EventM Name s ()
 resetViewport n = do
   vScrollToBeginning n
   hScrollToBeginning n
 
 -- | Modifies the game state using a fused-effect state action.
-zoomGameState :: (MonadState AppState m, MonadIO m) => Fused.StateC GameState (TimeIOC (Fused.LiftC IO)) a -> m a
+zoomGameState ::
+  (MonadState AppState m, MonadIO m) =>
+  Fused.StateC GameState (TimeIOC (Fused.LiftC IO)) a ->
+  m a
 zoomGameState f = do
   gs <- use $ playState . gameState
   (gs', a) <- liftIO (Fused.runM (runTimeIO (Fused.runState gs f)))
   playState . gameState .= gs'
   return a
 
-onlyCreative :: (MonadState AppState m) => m () -> m ()
+-- | Modifies the game state using a fused-effect state action.
+zoomGameState' ::
+  (MonadState PlayState m, MonadIO m) =>
+  Fused.StateC GameState (TimeIOC (Fused.LiftC IO)) a ->
+  m a
+zoomGameState' f = do
+  gs <- use gameState
+  (gs', a) <- liftIO (Fused.runM (runTimeIO (Fused.runState gs f)))
+  gameState .= gs'
+  return a
+
+onlyCreative :: (MonadState PlayState m) => m () -> m ()
 onlyCreative a = do
-  c <- use $ playState . gameState . creativeMode
+  c <- use $ gameState . creativeMode
   when c a
 
 -- | Create a list of handlers with embedding events and using pattern matching.
 allHandlers ::
   (Ord e2, Enum e1, Bounded e1) =>
   (e1 -> e2) ->
-  (e1 -> (Text, EventM Name AppState ())) ->
-  [KeyEventHandler e2 (EventM Name AppState)]
+  (e1 -> (Text, EventM Name s ())) ->
+  [KeyEventHandler e2 (EventM Name s)]
 allHandlers eEmbed f = map handleEvent1 enumerate
  where
   handleEvent1 e1 = let (n, a) = f e1 in onEvent (eEmbed e1) n a
 
-runBaseTerm :: (MonadState AppState m) => Maybe TSyntax -> m ()
+runBaseTerm :: (MonadState PlayState m) => Maybe TSyntax -> m ()
 runBaseTerm = mapM_ startBaseProgram
  where
   -- The player typed something at the REPL and hit Enter; this
@@ -201,21 +216,21 @@ runBaseTerm = mapM_ startBaseProgram
   -- input is valid) and sets up the base robot to run it.
   startBaseProgram t = do
     -- Set the REPL status to Working
-    playState . gameState . gameControls . replStatus .= REPLWorking (t ^. sType) Nothing
+    gameState . gameControls . replStatus .= REPLWorking (t ^. sType) Nothing
     -- Set up the robot's CESK machine to evaluate/execute the
     -- given term.
-    playState . gameState . baseRobot . machine %= continue t
+    gameState . baseRobot . machine %= continue t
     -- Finally, be sure to activate the base robot.
-    playState . gameState %= execState (zoomRobots $ activateRobot 0)
+    gameState %= execState (zoomRobots $ activateRobot 0)
 
 -- | Set the REPL to the given text and REPL prompt type.
 modifyResetREPL :: Text -> REPLPrompt -> REPLState -> REPLState
 modifyResetREPL t r = (replPromptText .~ t) . (replPromptType .~ r)
 
 -- | Reset the REPL state to the given text and REPL prompt type.
-resetREPL :: MonadState AppState m => Text -> REPLPrompt -> m ()
-resetREPL t p = playState . uiGameplay . uiREPL %= modifyResetREPL t p
+resetREPL :: MonadState PlayState m => Text -> REPLPrompt -> m ()
+resetREPL t p = uiGameplay . uiREPL %= modifyResetREPL t p
 
 -- | Add an item to the REPL history.
-addREPLHistItem :: MonadState AppState m => REPLHistItem -> m ()
-addREPLHistItem item = playState . uiGameplay . uiREPL . replHistory %= addREPLItem item
+addREPLHistItem :: MonadState PlayState m => REPLHistItem -> m ()
+addREPLHistItem item = uiGameplay . uiREPL . replHistory %= addREPLItem item

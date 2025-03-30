@@ -37,8 +37,18 @@ import System.Clock (Clock (..), TimeSpec (..), getTime)
 mainEventHandlers :: [KeyEventHandler SwarmEvent (EventM Name AppState)]
 mainEventHandlers = allHandlers Main $ \case
   QuitEvent -> ("Open quit game dialog", toggleQuitGameDialog)
-  ViewHelpEvent -> ("View Help screen", toggleModal HelpModal)
-  ViewRobotsEvent -> ("View Robots screen", toggleModal RobotsModal)
+  ViewHelpEvent ->
+    ( "View Help screen"
+    , do
+        m <- use $ uiState . uiMenu
+        Brick.zoom playState $ toggleModal m HelpModal
+    )
+  ViewRobotsEvent ->
+    ( "View Robots screen"
+    , do
+        m <- use $ uiState . uiMenu
+        Brick.zoom playState $ toggleModal m RobotsModal
+    )
   ViewRecipesEvent -> ("View Recipes screen", toggleDiscoveryNotificationModal RecipesModal availableRecipes)
   ViewCommandsEvent -> ("View Commands screen", toggleDiscoveryNotificationModal CommandsModal availableCommands)
   ViewMessagesEvent -> ("View Messages screen", toggleMessagesModal)
@@ -46,7 +56,7 @@ mainEventHandlers = allHandlers Main $ \case
   ViewGoalEvent -> ("View scenario goal description", viewGoal)
   HideRobotsEvent -> ("Hide robots for a few ticks", hideRobots)
   ShowCESKDebugEvent -> ("Show active robot CESK machine debugging line", showCESKDebug)
-  PauseEvent -> ("Pause or unpause the game", whenRunning safeTogglePause)
+  PauseEvent -> ("Pause or unpause the game", whenRunning $ Brick.zoom playState safeTogglePause)
   RunSingleTickEvent -> ("Run game for a single tick", whenRunning runSingleTick)
   IncreaseTpsEvent -> ("Double game speed", whenRunning . modify $ adjustTPS (+))
   DecreaseTpsEvent -> ("Halve game speed", whenRunning . modify $ adjustTPS (-))
@@ -63,16 +73,21 @@ mainEventHandlers = allHandlers Main $ \case
 toggleQuitGameDialog :: EventM Name AppState ()
 toggleQuitGameDialog = do
   s <- get
-  case s ^. playState . gameState . winCondition of
-    WinConditions (Won _ _) _ -> toggleModal $ ScenarioEndModal WinModal
-    WinConditions (Unwinnable _) _ -> toggleModal $ ScenarioEndModal LoseModal
-    _ -> toggleModal QuitModal
+  m <- use $ uiState . uiMenu
+  Brick.zoom playState $ case s ^. playState . gameState . winCondition of
+    WinConditions (Won _ _) _ -> toggleModal m $ ScenarioEndModal WinModal
+    WinConditions (Unwinnable _) _ -> toggleModal m $ ScenarioEndModal LoseModal
+    _ -> toggleModal m QuitModal
 
 toggleGameModal :: Foldable t => ModalType -> Getter GameState (t a) -> EventM Name AppState Bool
 toggleGameModal m l = do
   s <- get
   let nothingToShow = null $ s ^. playState . gameState . l
-  unless nothingToShow $ toggleModal m
+
+  menu <- use $ uiState . uiMenu
+  Brick.zoom playState $
+    unless nothingToShow $
+      toggleModal menu m
   return nothingToShow
 
 toggleStructuresModal :: Foldable t => ModalType -> Lens' Landscape (t a) -> EventM Name AppState ()
@@ -92,8 +107,9 @@ toggleMessagesModal = do
 viewGoal :: EventM Name AppState ()
 viewGoal = do
   s <- get
+  m <- use $ uiState . uiMenu
   if hasAnythingToShow $ s ^. playState . uiGameplay . uiDialogs . uiGoal . goalsContent
-    then toggleModal GoalModal
+    then Brick.zoom playState $ toggleModal m GoalModal
     else continueWithoutRedraw
 
 hideRobots :: EventM Name AppState ()
