@@ -1662,6 +1662,7 @@ execConst runChildProg c vs s k = do
       IgnoreFail -> return ()
       Destroy -> destroyIfNotBase $ \b -> case (b, failureMode) of
         (True, PathLiquid _) -> Just RobotIntoWater -- achievement for drowning
+        (False, _) -> Just AttemptSelfDestructBase
         _ -> Nothing
       ThrowExn -> throwError . cmdExn c $
         case failureMode of
