@@ -44,62 +44,7 @@ runFrameUI forceRedraw = runFrame >> updateAndRedrawUI forceRedraw
 -- | Run the game for a single frame, without updating the UI.
 runFrame :: EventM Name AppState ()
 runFrame = do
-  -- Reset the needsRedraw flag.  While processing the frame and stepping the robots,
-  -- the flag will get set to true if anything changes that requires redrawing the
-  -- world (e.g. a robot moving or disappearing).
-  playState . gameState . needsRedraw .= False
-
-  -- The logic here is taken from https://gafferongames.com/post/fix_your_timestep/ .
-
-  curTime <- liftIO $ getTime Monotonic
-  Brick.zoom (playState . uiGameplay . uiTiming) $ do
-    -- Find out how long the previous frame took, by subtracting the
-    -- previous time from the current time.
-    prevTime <- use lastFrameTime
-    let frameTime = diffTimeSpec curTime prevTime
-
-    -- Remember now as the new previous time.
-    lastFrameTime .= curTime
-
-    -- We now have some additional accumulated time to play with.  The
-    -- idea is to now "catch up" by doing as many ticks as are supposed
-    -- to fit in the accumulated time.  Some accumulated time may be
-    -- left over, but it will roll over to the next frame.  This way we
-    -- deal smoothly with things like a variable frame rate, the frame
-    -- rate not being a nice multiple of the desired ticks per second,
-    -- etc.
-    accumulatedTime += frameTime
-
-  -- Update TPS/FPS counters every second
-  infoUpdateTime <- use (playState . uiGameplay . uiTiming . lastInfoTime)
-  let updateTime = toNanoSecs $ diffTimeSpec curTime infoUpdateTime
-  when (updateTime >= oneSecond) $ do
-    -- Wait for at least one second to have elapsed
-    when (infoUpdateTime /= 0) $ do
-      Brick.zoom (playState . uiGameplay . uiTiming) $ do
-        -- set how much frame got processed per second
-        frames <- use frameCount
-        uiFPS .= fromIntegral (frames * fromInteger oneSecond) / fromIntegral updateTime
-
-        -- set how much ticks got processed per frame
-        uiTicks <- use tickCount
-        uiTPF .= fromIntegral uiTicks / fromIntegral frames
-
-      -- ensure this frame gets drawn
-      playState . gameState . needsRedraw .= True
-
-    Brick.zoom (playState . uiGameplay . uiTiming) $ do
-      -- Reset the counter and wait another seconds for the next update
-      tickCount .= 0
-      frameCount .= 0
-      lastInfoTime .= curTime
-
-  Brick.zoom (playState . uiGameplay . uiTiming) $ do
-    -- Increment the frame count
-    frameCount += 1
-
-    -- Now do as many ticks as we need to catch up.
-    frameTickCount .= 0
+  runFramePlayState
 
   -- Figure out how many ticks per second we're supposed to do,
   -- and compute the timestep `dt` for a single tick.
@@ -111,6 +56,64 @@ runFrame = do
   runFrameTicks (fromNanoSecs dt)
  where
   oneSecond = 1_000_000_000 -- one second = 10^9 nanoseconds
+
+  runFramePlayState = Brick.zoom playState $ do
+    -- Reset the needsRedraw flag.  While processing the frame and stepping the robots,
+    -- the flag will get set to true if anything changes that requires redrawing the
+    -- world (e.g. a robot moving or disappearing).
+    gameState . needsRedraw .= False
+
+    -- The logic here is taken from https://gafferongames.com/post/fix_your_timestep/ .
+
+    curTime <- liftIO $ getTime Monotonic
+    Brick.zoom (uiGameplay . uiTiming) $ do
+      -- Find out how long the previous frame took, by subtracting the
+      -- previous time from the current time.
+      prevTime <- use lastFrameTime
+      let frameTime = diffTimeSpec curTime prevTime
+
+      -- Remember now as the new previous time.
+      lastFrameTime .= curTime
+
+      -- We now have some additional accumulated time to play with.  The
+      -- idea is to now "catch up" by doing as many ticks as are supposed
+      -- to fit in the accumulated time.  Some accumulated time may be
+      -- left over, but it will roll over to the next frame.  This way we
+      -- deal smoothly with things like a variable frame rate, the frame
+      -- rate not being a nice multiple of the desired ticks per second,
+      -- etc.
+      accumulatedTime += frameTime
+
+    -- Update TPS/FPS counters every second
+    infoUpdateTime <- use (uiGameplay . uiTiming . lastInfoTime)
+    let updateTime = toNanoSecs $ diffTimeSpec curTime infoUpdateTime
+    when (updateTime >= oneSecond) $ do
+      -- Wait for at least one second to have elapsed
+      when (infoUpdateTime /= 0) $ do
+        Brick.zoom (uiGameplay . uiTiming) $ do
+          -- set how much frame got processed per second
+          frames <- use frameCount
+          uiFPS .= fromIntegral (frames * fromInteger oneSecond) / fromIntegral updateTime
+
+          -- set how much ticks got processed per frame
+          uiTicks <- use tickCount
+          uiTPF .= fromIntegral uiTicks / fromIntegral frames
+
+        -- ensure this frame gets drawn
+        gameState . needsRedraw .= True
+
+      Brick.zoom (uiGameplay . uiTiming) $ do
+        -- Reset the counter and wait another seconds for the next update
+        tickCount .= 0
+        frameCount .= 0
+        lastInfoTime .= curTime
+
+    Brick.zoom (uiGameplay . uiTiming) $ do
+      -- Increment the frame count
+      frameCount += 1
+
+      -- Now do as many ticks as we need to catch up.
+      frameTickCount .= 0
 
 -- | Do zero or more ticks, with each tick notionally taking the given
 --   timestep, until we have used up all available accumulated time,

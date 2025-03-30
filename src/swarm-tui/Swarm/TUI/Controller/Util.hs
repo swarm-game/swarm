@@ -129,23 +129,23 @@ toggleModal m mt = do
     Nothing -> openModal m mt
     Just _ -> uiGameplay . uiDialogs . uiModal .= Nothing >> safeAutoUnpause
 
-setFocus :: FocusablePanel -> EventM Name AppState ()
-setFocus name = playState . uiGameplay . uiFocusRing %= focusSetCurrent (FocusablePanel name)
+setFocus :: FocusablePanel -> EventM Name PlayState ()
+setFocus name = uiGameplay . uiFocusRing %= focusSetCurrent (FocusablePanel name)
 
-immediatelyRedrawWorld :: EventM Name AppState ()
+immediatelyRedrawWorld :: EventM Name GameState ()
 immediatelyRedrawWorld = do
   invalidateCacheEntry WorldCache
   loadVisibleRegion
 
 -- | Make sure all tiles covering the visible part of the world are
 --   loaded.
-loadVisibleRegion :: EventM Name AppState ()
+loadVisibleRegion :: EventM Name GameState ()
 loadVisibleRegion = do
   mext <- lookupExtent WorldExtent
   forM_ mext $ \(Extent _ _ size) -> do
-    gs <- use $ playState . gameState
-    let vr = viewingRegion (gs ^. robotInfo . viewCenter) (over both fromIntegral size)
-    playState . gameState . landscape . multiWorld %= M.adjust (W.loadRegion (vr ^. planar)) (vr ^. subworld)
+    vc <- use $ robotInfo . viewCenter
+    let vr = viewingRegion vc (over both fromIntegral size)
+    landscape . multiWorld %= M.adjust (W.loadRegion (vr ^. planar)) (vr ^. subworld)
 
 mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe (Cosmic Coords))
 mouseLocToWorldCoords (Brick.Location mouseLoc) = do

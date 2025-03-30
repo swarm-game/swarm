@@ -45,7 +45,7 @@ handleRobotPanelEvent bev = do
     Nothing -> case bev of
       VtyEvent ev@(V.EvKey k m) -> do
         handled <- handleKey keyHandler k m
-        unless handled $ handleInventoryListEvent ev
+        unless handled $ Brick.zoom (playState . uiGameplay) $ handleInventoryListEvent ev
       _ -> continueWithoutRedraw
 
 -- | Handle key events in the robot panel.
@@ -101,20 +101,20 @@ searchInventory :: EventM Name UIInventory ()
 searchInventory = uiInventorySearch .= Just ""
 
 -- | Handle an event to navigate through the inventory list.
-handleInventoryListEvent :: V.Event -> EventM Name AppState ()
+handleInventoryListEvent :: V.Event -> EventM Name UIGameplay ()
 handleInventoryListEvent ev = do
   -- Note, refactoring like this is tempting:
   --
   --   Brick.zoom (uiState . ... . _Just . _2) (handleListEventWithSeparators ev (is _Separator))
   --
   -- However, this does not work since we want to skip redrawing in the no-list case!
-  mList <- preuse $ playState . uiGameplay . uiInventory . uiInventoryList . _Just . _2
+  mList <- preuse $ uiInventory . uiInventoryList . _Just . _2
   case mList of
     Nothing -> continueWithoutRedraw
     Just l -> do
       when (isValidListMovement ev) $ resetViewport infoScroll
       l' <- nestEventM' l (handleListEventWithSeparators ev (is _Separator))
-      playState . uiGameplay . uiInventory . uiInventoryList . _Just . _2 .= l'
+      uiInventory . uiInventoryList . _Just . _2 .= l'
 
 -- ----------------------------------------------
 --               INVENTORY SEARCH
@@ -141,7 +141,7 @@ handleInventorySearchEvent = \case
     zoomInventory $ uiInventorySearch %= fmap (T.dropEnd 1)
   -- Handle any other event as list navigation, so we can look through
   -- the filtered inventory using e.g. arrow keys
-  VtyEvent ev -> handleInventoryListEvent ev
+  VtyEvent ev -> Brick.zoom (playState . uiGameplay) $ handleInventoryListEvent ev
   _ -> continueWithoutRedraw
 
 -- ----------------------------------------------

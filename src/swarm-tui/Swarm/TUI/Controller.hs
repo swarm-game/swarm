@@ -328,51 +328,53 @@ handleMainEvent forceRedraw ev = do
     VtyEvent vev
       | isJust (s ^. playState . uiGameplay . uiDialogs . uiModal) -> handleModalEvent vev
     MouseDown (TerrainListItem pos) V.BLeft _ _ ->
-      playState . uiGameplay . uiWorldEditor . terrainList %= BL.listMoveTo pos
+      Brick.zoom playState $ uiGameplay . uiWorldEditor . terrainList %= BL.listMoveTo pos
     MouseDown (EntityPaintListItem pos) V.BLeft _ _ ->
-      playState . uiGameplay . uiWorldEditor . entityPaintList %= BL.listMoveTo pos
-    MouseDown WorldPositionIndicator _ _ _ -> playState . uiGameplay . uiWorldCursor .= Nothing
+      Brick.zoom playState $ uiGameplay . uiWorldEditor . entityPaintList %= BL.listMoveTo pos
+    MouseDown WorldPositionIndicator _ _ _ ->
+      Brick.zoom playState $ uiGameplay . uiWorldCursor .= Nothing
     MouseDown (FocusablePanel WorldPanel) V.BMiddle _ mouseLoc ->
       -- Eye Dropper tool
-      EC.handleMiddleClick mouseLoc
+      Brick.zoom playState $ EC.handleMiddleClick mouseLoc
     MouseDown (FocusablePanel WorldPanel) V.BRight _ mouseLoc ->
       -- Eraser tool
-      EC.handleRightClick mouseLoc
+      Brick.zoom playState $ EC.handleRightClick mouseLoc
     MouseDown (FocusablePanel WorldPanel) V.BLeft [V.MCtrl] mouseLoc ->
       -- Paint with the World Editor
-      EC.handleCtrlLeftClick mouseLoc
+      Brick.zoom playState $ EC.handleCtrlLeftClick mouseLoc
     MouseDown n _ _ mouseLoc ->
       case n of
-        FocusablePanel WorldPanel -> do
-          mouseCoordsM <- Brick.zoom (playState . gameState) $ mouseLocToWorldCoords mouseLoc
+        FocusablePanel WorldPanel -> Brick.zoom playState $ do
+          mouseCoordsM <- Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
           shouldUpdateCursor <- EC.updateAreaBounds mouseCoordsM
           when shouldUpdateCursor $
-            playState . uiGameplay . uiWorldCursor .= mouseCoordsM
+            uiGameplay . uiWorldCursor .= mouseCoordsM
         REPLInput -> handleREPLEvent ev
         _ -> continueWithoutRedraw
     MouseUp n _ _mouseLoc -> do
-      case n of
-        InventoryListItem pos -> playState . uiGameplay . uiInventory . uiInventoryList . traverse . _2 %= BL.listMoveTo pos
-        x@(WorldEditorPanelControl y) -> do
-          playState . uiGameplay . uiWorldEditor . editorFocusRing %= focusSetCurrent x
-          m <- use $ uiState . uiMenu
-          Brick.zoom playState $ EC.activateWorldEditorFunction m y
-        _ -> return ()
-      flip whenJust setFocus $ case n of
-        -- Adapt click event origin to the right panel.  For the world
-        -- view, we just use 'Brick.Widgets.Core.clickable'.  However,
-        -- the other panels all have a viewport, requiring us to
-        -- explicitly set their focus here.
-        InventoryList -> Just RobotPanel
-        InventoryListItem _ -> Just RobotPanel
-        InfoViewport -> Just InfoPanel
-        REPLViewport -> Just REPLPanel
-        REPLInput -> Just REPLPanel
-        WorldEditorPanelControl _ -> Just WorldEditorPanel
-        _ -> Nothing
-      case n of
-        FocusablePanel x -> setFocus x
-        _ -> return ()
+      m <- use $ uiState . uiMenu
+      Brick.zoom playState $ do
+        case n of
+          InventoryListItem pos -> uiGameplay . uiInventory . uiInventoryList . traverse . _2 %= BL.listMoveTo pos
+          x@(WorldEditorPanelControl y) -> do
+            uiGameplay . uiWorldEditor . editorFocusRing %= focusSetCurrent x
+            EC.activateWorldEditorFunction m y
+          _ -> return ()
+        flip whenJust setFocus $ case n of
+          -- Adapt click event origin to the right panel.  For the world
+          -- view, we just use 'Brick.Widgets.Core.clickable'.  However,
+          -- the other panels all have a viewport, requiring us to
+          -- explicitly set their focus here.
+          InventoryList -> Just RobotPanel
+          InventoryListItem _ -> Just RobotPanel
+          InfoViewport -> Just InfoPanel
+          REPLViewport -> Just REPLPanel
+          REPLInput -> Just REPLPanel
+          WorldEditorPanelControl _ -> Just WorldEditorPanel
+          _ -> Nothing
+        case n of
+          FocusablePanel x -> setFocus x
+          _ -> return ()
     -- dispatch any other events to the focused panel handler
     _ev -> do
       fring <- use $ playState . uiGameplay . uiFocusRing
