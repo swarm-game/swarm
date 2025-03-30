@@ -130,7 +130,7 @@ data REPLStatus
     --   entered.  The @Maybe Value@ starts out as 'Nothing' and gets
     --   filled in with a result once the command completes.
     REPLWorking Polytype (Maybe Value)
-  deriving (Eq, Show, Generic, ToJSON)
+  deriving (Eq, Generic, ToJSON)
 
 data WinStatus
   = -- | There are one or more objectives remaining that the player

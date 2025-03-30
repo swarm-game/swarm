@@ -349,8 +349,9 @@ execConst runChildProg c vs s k = do
         -- Make sure the robot has the thing in its inventory
         e <- hasInInventoryOrFail name
 
-        -- Place the entity and remove it from the inventory
-        updateEntityAt loc (const (Just e))
+        -- Place the entity (if it is not evanescent) and remove it from the inventory
+        unless (Evanescent `S.member` (e ^. entityProperties)) $
+          updateEntityAt loc (const (Just e))
         robotInventory %= delete e
 
         flagRedraw
@@ -1409,8 +1410,6 @@ execConst runChildProg c vs s k = do
   badConstMsg =
     T.unlines
       [ "Bad application of execConst:"
-      , T.pack (show c)
-      , T.pack (show vs)
       , prettyText (Out (VCApp c (reverse vs)) s k)
       ]
 
@@ -1694,6 +1693,7 @@ execConst runChildProg c vs s k = do
       IgnoreFail -> return ()
       Destroy -> destroyIfNotBase $ \b -> case (b, failureMode) of
         (True, PathLiquid _) -> Just RobotIntoWater -- achievement for drowning
+        (False, _) -> Just AttemptSelfDestructBase
         _ -> Nothing
       ThrowExn -> throwError . cmdExn c $
         case failureMode of

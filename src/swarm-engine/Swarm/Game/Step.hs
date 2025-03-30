@@ -392,8 +392,6 @@ hypotheticalWinCheck em g ws oc = do
         T.unwords
           [ "Non boolean value:"
           , prettyValue val
-          , "real:"
-          , T.pack (show val)
           ]
 
   -- Log exceptions in the message queue so we can check for them in tests

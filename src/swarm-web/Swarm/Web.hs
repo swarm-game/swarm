@@ -85,7 +85,6 @@ import Swarm.Pretty (prettyTextLine)
 import Swarm.TUI.Model hiding (SwarmKeyDispatchers (..))
 import Swarm.TUI.Model.Dialog.Goal
 import Swarm.TUI.Model.Repl (REPLHistItem, replHistory, replSeq)
-import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.Util (applyJust)
 import Swarm.Util.RingBuffer
@@ -181,50 +180,50 @@ mkApp state events =
 robotsHandler :: IO AppState -> Handler [Robot]
 robotsHandler appStateRef = do
   appState <- liftIO appStateRef
-  pure $ IM.elems $ appState ^. gameState . robotInfo . robotMap
+  pure $ IM.elems $ appState ^. playState . gameState . robotInfo . robotMap
 
 robotHandler :: IO AppState -> RobotID -> Handler (Maybe Robot)
 robotHandler appStateRef (RobotID rid) = do
   appState <- liftIO appStateRef
-  pure $ IM.lookup rid (appState ^. gameState . robotInfo . robotMap)
+  pure $ IM.lookup rid (appState ^. playState . gameState . robotInfo . robotMap)
 
 prereqsHandler :: IO AppState -> Handler [PrereqSatisfaction]
 prereqsHandler appStateRef = do
   appState <- liftIO appStateRef
-  case appState ^. gameState . winCondition of
+  case appState ^. playState . gameState . winCondition of
     WinConditions _winState oc -> return $ getSatisfaction oc
     _ -> return []
 
 activeGoalsHandler :: IO AppState -> Handler [Objective]
 activeGoalsHandler appStateRef = do
   appState <- liftIO appStateRef
-  case appState ^. gameState . winCondition of
+  case appState ^. playState . gameState . winCondition of
     WinConditions _winState oc -> return $ getActiveObjectives oc
     _ -> return []
 
 goalsGraphHandler :: IO AppState -> Handler (Maybe GraphInfo)
 goalsGraphHandler appStateRef = do
   appState <- liftIO appStateRef
-  return $ case appState ^. gameState . winCondition of
+  return $ case appState ^. playState . gameState . winCondition of
     WinConditions _winState oc -> Just $ makeGraphInfo oc
     _ -> Nothing
 
 goalsRenderHandler :: IO AppState -> Handler T.Text
 goalsRenderHandler appStateRef = do
   appState <- liftIO appStateRef
-  return $ case appState ^. gameState . winCondition of
+  return $ case appState ^. playState . gameState . winCondition of
     WinConditions _winState oc -> T.pack $ renderGoalsGraph oc
     _ -> mempty
 
 uiGoalHandler :: IO AppState -> Handler GoalTracking
 uiGoalHandler appStateRef = do
   appState <- liftIO appStateRef
-  return $ appState ^. uiState . uiGameplay . uiDialogs . uiGoal . goalsContent
+  return $ appState ^. playState . uiGameplay . uiDialogs . uiGoal . goalsContent
 
 goalsHandler :: IO AppState -> Handler WinCondition
 goalsHandler appStateRef = do
   appState <- liftIO appStateRef
-  return $ appState ^. gameState . winCondition
+  return $ appState ^. playState . gameState . winCondition
 
 deriving instance ToJSON (Navigation (M.Map SubworldName) Location)
 
@@ -234,19 +233,19 @@ instance SD.ToSample (Navigation (M.Map SubworldName) Location) where
 navigationHandler :: IO AppState -> Handler (Navigation (M.Map SubworldName) Location)
 navigationHandler appStateRef = do
   appState <- liftIO appStateRef
-  return $ appState ^. gameState . landscape . worldNavigation
+  return $ appState ^. playState . gameState . landscape . worldNavigation
 
 recogLogHandler :: IO AppState -> Handler [SearchLog EntityName]
 recogLogHandler appStateRef = do
   appState <- liftIO appStateRef
   return $
     map (fmap (view entityName)) $
-      appState ^. gameState . discovery . structureRecognition . recognitionLog
+      appState ^. playState . gameState . discovery . structureRecognition . recognitionLog
 
 recogFoundHandler :: IO AppState -> Handler [StructureLocation]
 recogFoundHandler appStateRef = do
   appState <- liftIO appStateRef
-  let registry = appState ^. gameState . discovery . structureRecognition . foundStructures
+  let registry = appState ^. playState . gameState . discovery . structureRecognition . foundStructures
   return
     . map (uncurry StructureLocation)
     . concatMap (\(x, ys) -> map (x,) $ NE.toList ys)
@@ -300,24 +299,24 @@ codeRunHandler chan contents = do
 pathsLogHandler :: IO AppState -> Handler (RingBuffer CacheLogEntry)
 pathsLogHandler appStateRef = do
   appState <- liftIO appStateRef
-  pure $ appState ^. gameState . pathCaching . pathCachingLog
+  pure $ appState ^. playState . gameState . pathCaching . pathCachingLog
 
 replHistHandler :: IO AppState -> Handler [REPLHistItem]
 replHistHandler appStateRef = do
   appState <- liftIO appStateRef
-  let replHistorySeq = appState ^. uiState . uiGameplay . uiREPL . replHistory . replSeq
+  let replHistorySeq = appState ^. playState . uiGameplay . uiREPL . replHistory . replSeq
       items = toList replHistorySeq
   pure items
 
 mapViewHandler :: IO AppState -> AreaDimensions -> Handler GridResponse
 mapViewHandler appStateRef areaSize = do
   appState <- liftIO appStateRef
-  let maybeScenario = fst <$> appState ^. uiState . uiGameplay . scenarioRef
+  let maybeScenario = fst <$> appState ^. playState . uiGameplay . scenarioRef
   pure $ case maybeScenario of
     Just s ->
       GridResponse True
         . Just
-        . getCellGrid s (appState ^. gameState)
+        . getCellGrid s (appState ^. playState . gameState)
         $ areaSize
     Nothing -> GridResponse False Nothing
 

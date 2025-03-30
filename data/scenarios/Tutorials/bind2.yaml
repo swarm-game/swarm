@@ -11,67 +11,57 @@ objectives:
         A pedestal stands conspicuously empty in the center of the room.
         Perhaps its intended contents lie nearby?
       - |
-        Build a robot to retrieve and restore the mystery artifact to its proper place!
+        Build a robot to retrieve and restore the mystery artifact to its proper place
+        in the center of the pedestal!
       - |
-        **NOTE:** If you find yourself stuck, you can select "Start over" from
-        the "Quit" (**Ctrl+Q**) dialog.
-    condition: |
-      try {
-        p <- robotnamed "floorspot";
-        w <- as p {ishere "Hastur"};
-        pure (not w);
-      } { pure false }
-  - goal:
-      - |
-        Your robot obtained the misplaced artifact! Next you need to put it back
-        on the pedestal.  But neither you nor your robot knows the
-        artifact's name.  How can it be placed?
-      - |
-        Every command returns a value.  However, some simple commands, like
-        `move`, do not have any meaningful
-        value to return.  Swarm has a special type, `Unit`{=type}, with only one value,
-        called `()`. Since there is only one possible value of type
-        `Unit`{=type}, returning it does not convey any information.
-        Thus, the type of `move` is `Cmd Unit`{=type}.
-      - |
-        Other commands do return a nontrivial value after executing.
-        For example, `grab` has type `Cmd Text`{=type}, and returns the name of the
-        grabbed entity as a text value.
+        The robot will need to `place "ARTIFACT NAME"`{=snippet}, but you do not know the name yet!
+        Fortunatelly, the `grab` command has type `Cmd Text`{=type}, and returns
+        the name of the grabbed entity as a text value.
       - |
         To use the result of a command later, you need _bind notation_, which
         consists of a variable name and a leftwards-pointing arrow
-        before the command.  For example:
+        before the command. Like this:
       - |
-        ```
-        move; t <- grab; place t
-        ```
+        `move; art <- grab; place art`
       - |
-        In the above example, the result returned by `grab` is assigned
-        to the variable name `t`{=snippet}, which can then be used later.
-        This is useful, for example, if you do not care what you
-        grabbed and just want to move it to another cell, or if you
-        are not sure of the name of the thing being grabbed.
-      - |
-        Reminder: if you need to start over, your previous commands are
-        accessible in the REPL history (up-arrow).
+        **NOTE:** If you find yourself stuck, you can select "Start over" from
+        the "Quit" (**Ctrl+Q**) dialog.
+    prerequisite:
+      not: fail_to_grab
     condition: |
       try {
-        p <- robotnamed "pedestal";
-        w <- as p {ishere "Hastur"};
-        pure w;
+        teleport self (0,3);
+        ishere "Hastur"
       } { pure false }
-    prerequisite: grab_artifact
+  - id: fail_to_grab
+    teaser: Robot stopped
+    hidden: true
+    optional: true
+    goal:
+      - |
+        You sent a robot, but it failed to put the artifact in its rightful place.
+      - |
+        Try again by selecting "Start over" from the "Quit" (**Ctrl+Q**) dialog.
+    condition: |
+      as base {
+        try {
+          r <- robotnumbered 1;
+          reprogram r {};
+          teleport self (0,3);
+          h <- ishere "Hastur";
+          pure (not h)
+        } {
+          pure false
+        }
+      }
 solution: |
   build {
     move; move;
-    turn right;
-    move; move; move; move; move; move;
-    x <- grab;
-    turn left;
-    move;
-    turn left;
-    move; move;
-    place x;
+    turn right; move; move;
+    f <- grab;
+    turn back; move; move;
+    turn right; move;
+    place f
   }
 entities:
   - name: Hastur
@@ -81,6 +71,14 @@ entities:
     description:
       - The Unspeakable One
     properties: [pickable]
+  - name: pedestal
+    display:
+      attr: gold
+      char: '+'
+    description:
+      - A stone pedestal.
+    properties:
+      - boundary
 robots:
   - name: base
     dir: north
@@ -95,19 +93,15 @@ robots:
       - [1, treads]
       - [1, grabber]
       - [1, compass]
-  - name: floorspot
-    system: true
-  - name: pedestal
-    system: true
 world:
   palette:
+    'Ω': [stone, null, base]
     '.': [blank, null]
-    'Ω': [blank, null, base]
-    'x': [dirt, null]
-    'H': [blank, Hastur, floorspot]
-    's': [stone, null, pedestal]
+    'x': [stone, pedestal]
+    's': [stone, null]
+    'H': [blank, Hastur]
     '+': [stone, wall]
-  upperleft: [-1, -3]
+  upperleft: [-5, 6]
   map: |
     +++++++++++
     +.........+
@@ -115,5 +109,5 @@ world:
     +...xsx...+
     +...xxxH..+
     +.........+
-    +Ω+++++++++
-    +++........
+    +++++Ω+++++
+    ....+++....

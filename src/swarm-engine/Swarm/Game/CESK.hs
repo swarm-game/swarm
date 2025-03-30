@@ -164,7 +164,7 @@ data Frame
   | -- | If an exception bubbles all the way up to this frame, then
     --   switch to Suspended mode with this saved top-level context.
     FRestoreEnv Env
-  deriving (Eq, Show, Generic)
+  deriving (Generic)
 
 instance ToJSON Frame where
   toJSON = genericToJSON optionsMinimize
@@ -181,7 +181,7 @@ type Addr = Int
 -- | 'Store' represents a store, /i.e./ memory, indexing integer
 --   locations to 'Value's.
 data Store = Store {next :: Addr, mu :: IntMap Value}
-  deriving (Show, Eq, Generic, ToJSON)
+  deriving (Generic, ToJSON)
 
 emptyStore :: Store
 emptyStore = Store 0 IM.empty
@@ -261,7 +261,7 @@ data CESK
     --   evaluation, and otherwise it is just like 'In' with a hole
     --   for the 'Term' we are going to evaluate.
     Suspended Value Env Store Cont
-  deriving (Eq, Show, Generic)
+  deriving (Generic)
 
 instance ToJSON CESK where
   toJSON = genericToJSON optionsMinimize

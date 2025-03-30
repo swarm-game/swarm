@@ -457,15 +457,15 @@ drawGameUI s =
         ]
   ]
  where
-  uig = s ^. uiState . uiGameplay
+  uig = s ^. playState . uiGameplay
   addCursorPos = bottomLabels . leftLabel ?~ padLeftRight 1 widg
    where
     widg = case uig ^. uiWorldCursor of
-      Nothing -> str $ renderCoordsString $ s ^. gameState . robotInfo . viewCenter
-      Just coord -> clickable WorldPositionIndicator $ drawWorldCursorInfo (uig ^. uiWorldEditor . worldOverdraw) (s ^. gameState) coord
+      Nothing -> str $ renderCoordsString $ s ^. playState . gameState . robotInfo . viewCenter
+      Just coord -> clickable WorldPositionIndicator $ drawWorldCursorInfo (uig ^. uiWorldEditor . worldOverdraw) (s ^. playState . gameState) coord
   -- Add clock display in top right of the world view if focused robot
   -- has a clock equipped
-  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay (uig ^. uiTiming . lgTicksPerSecond) $ s ^. gameState)
+  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay (uig ^. uiTiming . lgTicksPerSecond) $ s ^. playState . gameState)
   fr = uig ^. uiFocusRing
   showREPL = uig ^. uiShowREPL
   rightPanel = if showREPL then worldPanel ++ replPanel else worldPanel ++ minimizedREPL
@@ -483,7 +483,7 @@ drawGameUI s =
             & addCursorPos
             & addClock
         )
-        (drawWorldPane uig (s ^. gameState))
+        (drawWorldPane uig (s ^. playState . gameState))
     , drawKeyMenu s
     ]
   replPanel =
@@ -602,7 +602,7 @@ chooseCursor s locs = case m of
   Nothing -> showFirstCursor s locs
   Just _ -> Nothing
  where
-  m = s ^. uiState . uiGameplay . uiDialogs . uiModal
+  m = s ^. playState . uiGameplay . uiDialogs . uiModal
 
 -- | Draw a dialog window, if one should be displayed right now.
 drawDialog :: AppState -> Widget Name
@@ -613,7 +613,7 @@ drawDialog s = case m of
     _ -> maybeScroll ModalViewport $ drawModal s mt
   Nothing -> emptyWidget
  where
-  m = s ^. uiState . uiGameplay . uiDialogs . uiModal
+  m = s ^. playState . uiGameplay . uiDialogs . uiModal
 
 -- | Draw one of the various types of modal dialog.
 drawModal :: AppState -> ModalType -> Widget Name
@@ -654,8 +654,8 @@ drawModal s = \case
   TerrainPaletteModal -> EV.drawTerrainSelector uig
   EntityPaletteModal -> EV.drawEntityPaintSelector uig
  where
-  gs = s ^. gameState
-  uig = s ^. uiState . uiGameplay
+  gs = s ^. playState . gameState
+  uig = s ^. playState . uiGameplay
 
 helpWidget :: Seed -> Maybe Port -> KeyEventHandlingState -> Widget Name
 helpWidget theSeed mport keyState =
@@ -794,8 +794,8 @@ commandsListWidget gs =
 descriptionWidget :: AppState -> Entity -> Widget Name
 descriptionWidget s e = padLeftRight 1 (explainEntry uig gs e)
  where
-  gs = s ^. gameState
-  uig = s ^. uiState . uiGameplay
+  gs = s ^. playState . gameState
+  uig = s ^. playState . uiGameplay
 
 -- | Draw a widget with messages to the current robot.
 messagesWidget :: GameState -> [Widget Name]
@@ -838,16 +838,16 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
  where
   notificationKey :: Getter GameState (Notifications a) -> SE.MainEvent -> Text -> Maybe (KeyHighlight, Text, Text)
   notificationKey notifLens key name
-    | null (s ^. gameState . notifLens . notificationsContent) = Nothing
+    | null (s ^. playState . gameState . notifLens . notificationsContent) = Nothing
     | otherwise =
         let highlight
-              | s ^. gameState . notifLens . notificationsCount > 0 = Alert
+              | s ^. playState . gameState . notifLens . notificationsCount > 0 = Alert
               | otherwise = NoHighlight
          in Just (highlight, keyM key, name)
 
   -- Hides this key if the recognizable structure list is empty
   structuresKey =
-    if null $ s ^. gameState . landscape . recognizerAutomatons . originalStructureDefinitions
+    if null $ s ^. playState . gameState . landscape . recognizerAutomatons . originalStructureDefinitions
       then Nothing
       else Just (NoHighlight, keyM SE.ViewStructuresEvent, "Structures")
 
@@ -891,8 +891,8 @@ drawKeyMenu s =
       . view uiFocusRing
       $ uig
 
-  uig = s ^. uiState . uiGameplay
-  gs = s ^. gameState
+  uig = s ^. playState . uiGameplay
+  gs = s ^. playState . gameState
 
   isReplWorking = gs ^. gameControls . replWorking
   isPaused = gs ^. temporal . paused
@@ -1045,8 +1045,8 @@ drawRobotPanel s
   -- If the focused robot is too far away to communicate, just leave the panel blank.
   -- There should be no way to tell the difference between a robot that is too far
   -- away and a robot that does not exist.
-  | Just r <- s ^. gameState . to focusedRobot
-  , Just (_, lst) <- s ^. uiState . uiGameplay . uiInventory . uiInventoryList =
+  | Just r <- s ^. playState . gameState . to focusedRobot
+  , Just (_, lst) <- s ^. playState . uiGameplay . uiInventory . uiInventoryList =
       let drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
           details =
             [ txt (r ^. robotName)
@@ -1097,7 +1097,7 @@ drawItem _ _ _ (EquippedEntry e) = drawLabelledEntityName e <+> padLeft Max (str
 --   about the currently focused inventory item.
 drawInfoPanel :: AppState -> Widget Name
 drawInfoPanel s
-  | Just Far <- s ^. gameState . to focusedRange = blank
+  | Just Far <- s ^. playState . gameState . to focusedRange = blank
   | otherwise =
       withVScrollBars OnRight
         . viewport InfoViewport Vertical
@@ -1112,8 +1112,8 @@ explainFocusedItem s = case focusedItem s of
   Just (EquippedEntry e) -> explainEntry uig gs e
   _ -> txt " "
  where
-  gs = s ^. gameState
-  uig = s ^. uiState . uiGameplay
+  gs = s ^. playState . gameState
+  uig = s ^. playState . uiGameplay
 
 explainEntry :: UIGameplay -> GameState -> Entity -> Widget Name
 explainEntry uig gs e =
@@ -1137,6 +1137,7 @@ displayProperties = displayList . mapMaybe showProperty
   showProperty Unwalkable = Just "blocking"
   showProperty Opaque = Just "opaque"
   showProperty Boundary = Just "boundary"
+  showProperty Evanescent = Just "evanescent"
   -- Most things are pickable so we don't show that.
   showProperty Pickable = Nothing
   -- 'Known' is just a technical detail of how we handle some entities
@@ -1477,8 +1478,8 @@ drawREPL s =
     , vBox mayDebug
     ]
  where
-  uig = s ^. uiState . uiGameplay
-  gs = s ^. gameState
+  uig = s ^. playState . uiGameplay
+  gs = s ^. playState . gameState
 
   -- rendered history lines fitting above REPL prompt
   history :: [Widget n]
