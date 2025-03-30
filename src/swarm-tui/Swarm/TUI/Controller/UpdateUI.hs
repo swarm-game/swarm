@@ -23,6 +23,7 @@ import Data.Function (on)
 import Data.List.Extra (enumerate)
 import Data.Map qualified as M
 import Data.Maybe (isNothing)
+import Data.Set (Set)
 import Data.String (fromString)
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -116,21 +117,21 @@ updateUI = do
       -- It did, and returned some other value.  Create new 'it'
       -- variables, pretty-print the result as a REPL output, with its
       -- type, and reset the replStatus.
-      | otherwise -> do
-          itIx <- use (playState . gameState . gameControls . replNextValueIndex)
-          env <- use (playState . gameState . baseEnv)
+      | otherwise -> Brick.zoom playState $ do
+          itIx <- use (gameState . gameControls . replNextValueIndex)
+          env <- use (gameState . baseEnv)
           let finalType = stripCmd (env ^. envTydefs) pty
               itName = fromString $ "it" ++ show itIx
               out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]
           addREPLHistItem (mkREPLOutput out)
-          listener <- use $ playState . gameState . gameControls . replListener
+          listener <- use $ gameState . gameControls . replListener
           liftIO $ listener out
           invalidateCacheEntry REPLHistoryCache
           vScrollToEnd replScroll
-          playState . gameState . gameControls . replStatus .= REPLDone (Just (finalType, v))
-          playState . gameState . baseEnv . at itName .= Just (Typed v finalType mempty)
-          playState . gameState . baseEnv . at "it" .= Just (Typed v finalType mempty)
-          playState . gameState . gameControls . replNextValueIndex %= (+ 1)
+          gameState . gameControls . replStatus .= REPLDone (Just (finalType, v))
+          gameState . baseEnv . at itName .= Just (Typed v finalType mempty)
+          gameState . baseEnv . at "it" .= Just (Typed v finalType mempty)
+          gameState . gameControls . replNextValueIndex %= (+ 1)
           pure True
 
     -- Otherwise, do nothing.
@@ -173,7 +174,8 @@ updateUI = do
 
   newPopups <- generateNotificationPopups
 
-  doRobotListUpdate g
+  dOps <- use $ uiState . uiDebugOptions
+  Brick.zoom playState $ doRobotListUpdate dOps g
 
   let redraw =
         g ^. needsRedraw
@@ -184,10 +186,9 @@ updateUI = do
           || newPopups
   pure redraw
 
-doRobotListUpdate :: GameState -> EventM Name AppState ()
-doRobotListUpdate g = do
-  gp <- use $ playState . uiGameplay
-  dOps <- use $ uiState . uiDebugOptions
+doRobotListUpdate :: Set DebugOption -> GameState -> EventM Name PlayState ()
+doRobotListUpdate dOps g = do
+  gp <- use uiGameplay
 
   let rd =
         mkRobotDisplay $
@@ -205,9 +206,9 @@ doRobotListUpdate g = do
       maybeModificationFunc =
         updateList . BL.listFindBy . ((==) `on` view (robot . robotID)) <$> maybeOldSelected
 
-  playState . uiGameplay . uiDialogs . uiRobot . robotListContent . robotsListWidget .= applyJust maybeModificationFunc rd
+  uiGameplay . uiDialogs . uiRobot . robotListContent . robotsListWidget .= applyJust maybeModificationFunc rd
 
-  Brick.zoom (playState . uiGameplay . uiDialogs . uiRobot) $
+  Brick.zoom (uiGameplay . uiDialogs . uiRobot) $
     forM_ maybeOldSelected updateRobotDetailsPane
 
 updateRobotDetailsPane :: RobotWidgetRow -> EventM Name RobotDisplay ()
@@ -234,6 +235,8 @@ doGoalUpdates = do
   curWinCondition <- use (playState . gameState . winCondition)
   announcementsList <- use (playState . gameState . messageInfo . announcementQueue . to toList)
 
+  menu <- use $ uiState . uiMenu
+
   -- Decide whether we need to update the current goal text and pop
   -- up a modal dialog.
   case curWinCondition of
@@ -241,13 +244,13 @@ doGoalUpdates = do
     WinConditions (Unwinnable False) x -> do
       -- This clears the "flag" that the Lose dialog needs to pop up
       playState . gameState . winCondition .= WinConditions (Unwinnable True) x
-      openModal $ ScenarioEndModal LoseModal
+      Brick.zoom playState $ openModal menu $ ScenarioEndModal LoseModal
       saveScenarioInfoOnFinishNocheat
       return True
     WinConditions (Won False ts) x -> do
       -- This clears the "flag" that the Win dialog needs to pop up
       playState . gameState . winCondition .= WinConditions (Won True ts) x
-      openModal $ ScenarioEndModal WinModal
+      Brick.zoom playState $ openModal menu $ ScenarioEndModal WinModal
       saveScenarioInfoOnFinishNocheat
       -- We do NOT advance the New Game menu to the next item here (we
       -- used to!), because we do not know if the user is going to
@@ -280,7 +283,7 @@ doGoalUpdates = do
         playState . gameState . messageInfo . announcementQueue .= mempty
 
         showObjectives <- use $ playState . uiGameplay . uiAutoShowObjectives
-        when showObjectives $ openModal GoalModal
+        Brick.zoom playState $ when showObjectives $ openModal menu GoalModal
 
       return goalWasUpdated
  where

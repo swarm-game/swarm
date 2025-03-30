@@ -447,7 +447,8 @@ drawGameUI s =
                   fr
                   (FocusablePanel InfoPanel)
                   plainBorder
-                  $ drawInfoPanel s
+                  $ drawInfoPanel
+                  $ s ^. playState
               , hCenter
                   . clickable (FocusablePanel WorldEditorPanel)
                   . EV.drawWorldEditor fr
@@ -1095,9 +1096,9 @@ drawItem _ _ _ (EquippedEntry e) = drawLabelledEntityName e <+> padLeft Max (str
 
 -- | Draw the info panel in the bottom-left corner, which shows info
 --   about the currently focused inventory item.
-drawInfoPanel :: AppState -> Widget Name
+drawInfoPanel :: PlayState -> Widget Name
 drawInfoPanel s
-  | Just Far <- s ^. playState . gameState . to focusedRange = blank
+  | Just Far <- s ^. gameState . to focusedRange = blank
   | otherwise =
       withVScrollBars OnRight
         . viewport InfoViewport Vertical
@@ -1106,14 +1107,14 @@ drawInfoPanel s
 
 -- | Display info about the currently focused inventory entity,
 --   such as its description and relevant recipes.
-explainFocusedItem :: AppState -> Widget Name
+explainFocusedItem :: PlayState -> Widget Name
 explainFocusedItem s = case focusedItem s of
   Just (InventoryEntry _ e) -> explainEntry uig gs e
   Just (EquippedEntry e) -> explainEntry uig gs e
   _ -> txt " "
  where
-  gs = s ^. playState . gameState
-  uig = s ^. playState . uiGameplay
+  gs = s ^. gameState
+  uig = s ^. uiGameplay
 
 explainEntry :: UIGameplay -> GameState -> Entity -> Widget Name
 explainEntry uig gs e =

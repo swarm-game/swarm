@@ -38,12 +38,13 @@ import Swarm.Util (maximum0)
 import Witch (from, into)
 
 -- | Generate a fresh modal window of the requested type.
-generateModal :: AppState -> ModalType -> Modal
-generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth))
+generateModal :: Menu -> PlayState -> ModalType -> Modal
+generateModal m s mt =
+  Modal mt (dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth))
  where
-  currentScenario = s ^. playState . uiGameplay . scenarioRef
-  currentSeed = s ^. playState . gameState . randomness . seed
-  haltingMessage = case s ^. uiState . uiMenu of
+  currentScenario = s ^. uiGameplay . scenarioRef
+  currentSeed = s ^. gameState . randomness . seed
+  haltingMessage = case m of
     NoMenu -> Just "Quit"
     _ -> Nothing
   descriptionWidth = 100
@@ -67,7 +68,7 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
       KeepPlayingModal -> ("", Just (Button CancelButton, [("OK", Button CancelButton, Cancel)]), 80)
       TerrainPaletteModal -> ("Terrain", Nothing, w)
        where
-        tm = s ^. playState . gameState . landscape . terrainAndEntities . terrainMap
+        tm = s ^. gameState . landscape . terrainAndEntities . terrainMap
         wordLength = maximum0 $ map (T.length . getTerrainWord) (M.keys $ terrainByName tm)
         w = wordLength + 6
       EntityPaletteModal -> ("Entity", Nothing, 30)
@@ -77,7 +78,7 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
     , Just
         ( Button NextButton
         , [ (nextMsg, Button NextButton, Next scene)
-          | Just scene <- [nextScenario (s ^. uiState . uiMenu)]
+          | Just scene <- [nextScenario m]
           ]
             ++ [ (stopMsg, Button QuitButton, QuitAction)
                , (continueMsg, Button KeepPlayingButton, KeepPlaying)
@@ -119,10 +120,10 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
             , Just (stopMsg, Button QuitButton, QuitAction)
             ]
         )
-    , T.length (quitMsg (s ^. uiState . uiMenu)) + 4
+    , T.length (quitMsg m) + 4
     )
    where
-    stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName s) ++ " menu") haltingMessage
+    stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName m) ++ " menu") haltingMessage
     maybeStartOver = do
       cs <- currentScenario
       return ("Start over", Button StartOverButton, StartOver currentSeed cs)
@@ -184,8 +185,8 @@ maxModalWindowWidth :: Int
 maxModalWindowWidth = 500
 
 -- | Get the name of the current New Game menu.
-curMenuName :: AppState -> Maybe Text
-curMenuName s = case s ^. uiState . uiMenu of
+curMenuName :: Menu -> Maybe Text
+curMenuName m = case m of
   NewGameMenu (_ :| (parentMenu : _)) ->
     Just (parentMenu ^. BL.listSelectedElementL . to scenarioItemName)
   NewGameMenu _ -> Just "Scenarios"
