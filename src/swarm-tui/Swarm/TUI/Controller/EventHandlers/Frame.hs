@@ -56,7 +56,6 @@ runFrame = do
   runFrameTicks (fromNanoSecs dt)
  where
   oneSecond = 1_000_000_000 -- one second = 10^9 nanoseconds
-
   runFramePlayState = Brick.zoom playState $ do
     -- Reset the needsRedraw flag.  While processing the frame and stepping the robots,
     -- the flag will get set to true if anything changes that requires redrawing the
