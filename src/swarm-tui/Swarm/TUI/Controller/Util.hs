@@ -41,11 +41,10 @@ import Swarm.TUI.Model (
   gameState,
   modalScroll,
   playState,
-  uiState,
+  uiGameplay,
  )
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl (REPLHistItem, REPLPrompt, REPLState, addREPLItem, replHistory, replPromptText, replPromptType)
-import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Util (generateModal)
 import System.Clock (Clock (..), getTime)
@@ -79,7 +78,7 @@ openModal mt = do
   resetViewport modalScroll
   newModal <- gets $ flip generateModal mt
   ensurePause
-  uiState . uiGameplay . uiDialogs . uiModal ?= newModal
+  playState . uiGameplay . uiDialogs . uiModal ?= newModal
   -- Beep
   case mt of
     ScenarioEndModal _ -> do
@@ -108,8 +107,8 @@ isRunningModal = \case
 safeTogglePause :: EventM Name AppState ()
 safeTogglePause = do
   curTime <- liftIO $ getTime Monotonic
-  uiState . uiGameplay . uiTiming . lastFrameTime .= curTime
-  uiState . uiGameplay . uiShowDebug .= False
+  playState . uiGameplay . uiTiming . lastFrameTime .= curTime
+  playState . uiGameplay . uiShowDebug .= False
   p <- playState . gameState . temporal . runStatus Lens.<%= toggleRunStatus
   when (p == Running) $ zoomGameState finishGameTick
 
@@ -124,13 +123,13 @@ safeAutoUnpause = do
 
 toggleModal :: ModalType -> EventM Name AppState ()
 toggleModal mt = do
-  modal <- use $ uiState . uiGameplay . uiDialogs . uiModal
+  modal <- use $ playState . uiGameplay . uiDialogs . uiModal
   case modal of
     Nothing -> openModal mt
-    Just _ -> uiState . uiGameplay . uiDialogs . uiModal .= Nothing >> safeAutoUnpause
+    Just _ -> playState . uiGameplay . uiDialogs . uiModal .= Nothing >> safeAutoUnpause
 
 setFocus :: FocusablePanel -> EventM Name AppState ()
-setFocus name = uiState . uiGameplay . uiFocusRing %= focusSetCurrent (FocusablePanel name)
+setFocus name = playState . uiGameplay . uiFocusRing %= focusSetCurrent (FocusablePanel name)
 
 immediatelyRedrawWorld :: EventM Name AppState ()
 immediatelyRedrawWorld = do
@@ -215,8 +214,8 @@ modifyResetREPL t r = (replPromptText .~ t) . (replPromptType .~ r)
 
 -- | Reset the REPL state to the given text and REPL prompt type.
 resetREPL :: MonadState AppState m => Text -> REPLPrompt -> m ()
-resetREPL t p = uiState . uiGameplay . uiREPL %= modifyResetREPL t p
+resetREPL t p = playState . uiGameplay . uiREPL %= modifyResetREPL t p
 
 -- | Add an item to the REPL history.
 addREPLHistItem :: MonadState AppState m => REPLHistItem -> m ()
-addREPLHistItem item = uiState . uiGameplay . uiREPL . replHistory %= addREPLItem item
+addREPLHistItem item = playState . uiGameplay . uiREPL . replHistory %= addREPLItem item

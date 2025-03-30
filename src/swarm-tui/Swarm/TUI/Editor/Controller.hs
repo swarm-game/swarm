@@ -28,7 +28,6 @@ import Swarm.TUI.Editor.Palette
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Name
-import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.Util (hoistMaybe)
 import Swarm.Util.Erasable (maybeToErasable)
@@ -42,7 +41,7 @@ activateWorldEditorFunction :: WorldEditorFocusable -> EventM Name AppState ()
 activateWorldEditorFunction BrushSelector = openModal TerrainPaletteModal
 activateWorldEditorFunction EntitySelector = openModal EntityPaletteModal
 activateWorldEditorFunction AreaSelector =
-  Brick.zoom (uiState . uiGameplay . uiWorldEditor . editingBounds) $ do
+  Brick.zoom (playState . uiGameplay . uiWorldEditor . editingBounds) $ do
     selectorStage <- use boundsSelectionStep
     case selectorStage of
       SelectionComplete -> boundsSelectionStep .= UpperLeftPending
@@ -52,11 +51,11 @@ activateWorldEditorFunction OutputPathSelector =
   liftIO $ putStrLn "File selection"
 activateWorldEditorFunction MapSaveButton = saveMapFile
 activateWorldEditorFunction ClearEntityButton =
-  uiState . uiGameplay . uiWorldEditor . entityPaintList . BL.listSelectedL .= Nothing
+  playState . uiGameplay . uiWorldEditor . entityPaintList . BL.listSelectedL .= Nothing
 
 handleCtrlLeftClick :: B.Location -> EventM Name AppState ()
 handleCtrlLeftClick mouseLoc = do
-  worldEditor <- use $ uiState . uiGameplay . uiWorldEditor
+  worldEditor <- use $ playState . uiGameplay . uiWorldEditor
   _ <- runMaybeT $ do
     guard $ worldEditor ^. worldOverdraw . isWorldEditorEnabled
     let getSelected x = snd <$> BL.listSelectedElement x
@@ -64,24 +63,24 @@ handleCtrlLeftClick mouseLoc = do
         maybeEntityPaint = getSelected $ worldEditor ^. entityPaintList
     terrain <- hoistMaybe maybeTerrainType
     mouseCoords <- MaybeT $ Brick.zoom (playState . gameState) $ mouseLocToWorldCoords mouseLoc
-    Brick.zoom (uiState . uiGameplay . uiWorldEditor) $ do
+    Brick.zoom (playState . uiGameplay . uiWorldEditor) $ do
       worldOverdraw . paintedTerrain %= M.insert (mouseCoords ^. planar) (terrain, maybeToErasable maybeEntityPaint)
       lastWorldEditorMessage .= Nothing
   immediatelyRedrawWorld
 
 handleRightClick :: B.Location -> EventM Name AppState ()
 handleRightClick mouseLoc = do
-  worldEditor <- use $ uiState . uiGameplay . uiWorldEditor
+  worldEditor <- use $ playState . uiGameplay . uiWorldEditor
   _ <- runMaybeT $ do
     guard $ worldEditor ^. worldOverdraw . isWorldEditorEnabled
     mouseCoords <- MaybeT $ Brick.zoom (playState . gameState) $ mouseLocToWorldCoords mouseLoc
-    uiState . uiGameplay . uiWorldEditor . worldOverdraw . paintedTerrain %= M.delete (mouseCoords ^. planar)
+    playState . uiGameplay . uiWorldEditor . worldOverdraw . paintedTerrain %= M.delete (mouseCoords ^. planar)
   immediatelyRedrawWorld
 
 -- | "Eye Dropper" tool:
 handleMiddleClick :: B.Location -> EventM Name AppState ()
 handleMiddleClick mouseLoc = do
-  worldEditor <- use $ uiState . uiGameplay . uiWorldEditor
+  worldEditor <- use $ playState . uiGameplay . uiWorldEditor
   when (worldEditor ^. worldOverdraw . isWorldEditorEnabled) $ do
     w <- use $ playState . gameState . landscape . multiWorld
     tm <- use $ playState . gameState . landscape . terrainAndEntities . terrainMap
@@ -92,12 +91,12 @@ handleMiddleClick mouseLoc = do
                   (worldEditor ^. worldOverdraw)
                   w
                   coords
-          uiState . uiGameplay . uiWorldEditor . terrainList %= BL.listMoveToElement terrain
+          playState . uiGameplay . uiWorldEditor . terrainList %= BL.listMoveToElement terrain
           forM_ maybeElementPaint $ \elementPaint ->
             let p = case elementPaint of
                   Facade efd -> efd
                   Ref r -> mkFacade r
-             in uiState . uiGameplay . uiWorldEditor . entityPaintList %= BL.listMoveToElement p
+             in playState . uiGameplay . uiWorldEditor . entityPaintList %= BL.listMoveToElement p
 
     mouseCoordsM <- Brick.zoom (playState . gameState) $ mouseLocToWorldCoords mouseLoc
     whenJust mouseCoordsM setTerrainPaint
@@ -105,15 +104,15 @@ handleMiddleClick mouseLoc = do
 -- | Handle user input events in the robot panel.
 handleWorldEditorPanelEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleWorldEditorPanelEvent = \case
-  Key V.KEsc -> uiState . uiGameplay . uiWorldEditor . editingBounds . boundsSelectionStep .= SelectionComplete
+  Key V.KEsc -> playState . uiGameplay . uiWorldEditor . editingBounds . boundsSelectionStep .= SelectionComplete
   Key V.KEnter -> do
-    fring <- use $ uiState . uiGameplay . uiWorldEditor . editorFocusRing
+    fring <- use $ playState . uiGameplay . uiWorldEditor . editorFocusRing
     case focusGetCurrent fring of
       Just (WorldEditorPanelControl x) -> activateWorldEditorFunction x
       _ -> return ()
   ControlChar 's' -> saveMapFile
-  CharKey '\t' -> uiState . uiGameplay . uiWorldEditor . editorFocusRing %= focusNext
-  Key V.KBackTab -> uiState . uiGameplay . uiWorldEditor . editorFocusRing %= focusPrev
+  CharKey '\t' -> playState . uiGameplay . uiWorldEditor . editorFocusRing %= focusNext
+  Key V.KBackTab -> playState . uiGameplay . uiWorldEditor . editorFocusRing %= focusPrev
   _ -> return ()
 
 -- | Return value: whether the cursor position should be updated
@@ -121,16 +120,16 @@ updateAreaBounds :: Maybe (Cosmic Coords) -> EventM Name AppState Bool
 updateAreaBounds = \case
   Nothing -> return True
   Just mouseCoords -> do
-    selectorStage <- use $ uiState . uiGameplay . uiWorldEditor . editingBounds . boundsSelectionStep
+    selectorStage <- use $ playState . uiGameplay . uiWorldEditor . editingBounds . boundsSelectionStep
     case selectorStage of
       UpperLeftPending -> do
-        uiState . uiGameplay . uiWorldEditor . editingBounds . boundsSelectionStep .= LowerRightPending mouseCoords
+        playState . uiGameplay . uiWorldEditor . editingBounds . boundsSelectionStep .= LowerRightPending mouseCoords
         return False
       -- TODO (#1152): Validate that the lower-right click is below and to the right of
       -- the top-left coord and that they are within the same subworld
       LowerRightPending upperLeftMouseCoords -> do
         t <- liftIO $ getTime Monotonic
-        Brick.zoom (uiState . uiGameplay . uiWorldEditor) $ do
+        Brick.zoom (playState . uiGameplay . uiWorldEditor) $ do
           lastWorldEditorMessage .= Nothing
           Brick.zoom editingBounds $ do
             boundsRect .= Just (fmap (,view planar mouseCoords) upperLeftMouseCoords)
@@ -142,7 +141,7 @@ updateAreaBounds = \case
 
 saveMapFile :: EventM Name AppState ()
 saveMapFile = do
-  uig <- use $ uiState . uiGameplay
+  uig <- use $ playState . uiGameplay
   land <- use $ playState . gameState . landscape
   let worldEditor = uig ^. uiWorldEditor
       maybeBounds = uig ^. uiWorldEditor . editingBounds . boundsRect
@@ -158,4 +157,4 @@ saveMapFile = do
 
   liftIO $ Y.encodeFile fp $ constructScenario (fst <$> maybeScenarioPair) mapCellGrid
 
-  uiState . uiGameplay . uiWorldEditor . lastWorldEditorMessage .= Just "Saved."
+  playState . uiGameplay . uiWorldEditor . lastWorldEditorMessage .= Just "Saved."

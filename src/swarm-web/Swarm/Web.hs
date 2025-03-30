@@ -85,7 +85,6 @@ import Swarm.Pretty (prettyTextLine)
 import Swarm.TUI.Model hiding (SwarmKeyDispatchers (..))
 import Swarm.TUI.Model.Dialog.Goal
 import Swarm.TUI.Model.Repl (REPLHistItem, replHistory, replSeq)
-import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.Util (applyJust)
 import Swarm.Util.RingBuffer
@@ -219,7 +218,7 @@ goalsRenderHandler appStateRef = do
 uiGoalHandler :: IO AppState -> Handler GoalTracking
 uiGoalHandler appStateRef = do
   appState <- liftIO appStateRef
-  return $ appState ^. uiState . uiGameplay . uiDialogs . uiGoal . goalsContent
+  return $ appState ^. playState . uiGameplay . uiDialogs . uiGoal . goalsContent
 
 goalsHandler :: IO AppState -> Handler WinCondition
 goalsHandler appStateRef = do
@@ -305,14 +304,14 @@ pathsLogHandler appStateRef = do
 replHistHandler :: IO AppState -> Handler [REPLHistItem]
 replHistHandler appStateRef = do
   appState <- liftIO appStateRef
-  let replHistorySeq = appState ^. uiState . uiGameplay . uiREPL . replHistory . replSeq
+  let replHistorySeq = appState ^. playState . uiGameplay . uiREPL . replHistory . replSeq
       items = toList replHistorySeq
   pure items
 
 mapViewHandler :: IO AppState -> AreaDimensions -> Handler GridResponse
 mapViewHandler appStateRef areaSize = do
   appState <- liftIO appStateRef
-  let maybeScenario = fst <$> appState ^. uiState . uiGameplay . scenarioRef
+  let maybeScenario = fst <$> appState ^. playState . uiGameplay . scenarioRef
   pure $ case maybeScenario of
     Just s ->
       GridResponse True

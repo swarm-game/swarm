@@ -92,12 +92,12 @@ toggleMessagesModal = do
 viewGoal :: EventM Name AppState ()
 viewGoal = do
   s <- get
-  if hasAnythingToShow $ s ^. uiState . uiGameplay . uiDialogs . uiGoal . goalsContent
+  if hasAnythingToShow $ s ^. playState . uiGameplay . uiDialogs . uiGoal . goalsContent
     then toggleModal GoalModal
     else continueWithoutRedraw
 
 hideRobots :: EventM Name AppState ()
-hideRobots = Brick.zoom (uiState . uiGameplay) $ do
+hideRobots = Brick.zoom (playState . uiGameplay) $ do
   t <- liftIO $ getTime Monotonic
   h <- use uiHideRobotsUntil
   case h >= t of
@@ -115,7 +115,7 @@ showCESKDebug = do
   let isCreative = s ^. playState . gameState . creativeMode
   let hasDebug = hasDebugCapability isCreative s
   when (isPaused && hasDebug) $ do
-    debug <- uiState . uiGameplay . uiShowDebug Lens.<%= not
+    debug <- playState . uiGameplay . uiShowDebug Lens.<%= not
     if debug
       then playState . gameState . temporal . gameStep .= RobotStep SBefore
       else zoomGameState finishGameTick >> void updateUI
@@ -127,20 +127,20 @@ runSingleTick = do
 
 -- | Adjust the ticks per second speed.
 adjustTPS :: (Int -> Int -> Int) -> AppState -> AppState
-adjustTPS (+/-) = uiState . uiGameplay . uiTiming . lgTicksPerSecond %~ (+/- 1)
+adjustTPS (+/-) = playState . uiGameplay . uiTiming . lgTicksPerSecond %~ (+/- 1)
 
 toggleCreativeMode :: EventM Name AppState ()
 toggleCreativeMode = playState . gameState . creativeMode %= not
 
 toggleWorldEditor :: EventM Name AppState ()
 toggleWorldEditor = do
-  uiState . uiGameplay . uiWorldEditor . worldOverdraw . isWorldEditorEnabled %= not
+  playState . uiGameplay . uiWorldEditor . worldOverdraw . isWorldEditorEnabled %= not
   setFocus WorldEditorPanel
 
 toggleREPLVisibility :: EventM Name AppState ()
 toggleREPLVisibility = do
   invalidateCacheEntry WorldCache
-  uiState . uiGameplay . uiShowREPL %= not
+  playState . uiGameplay . uiShowREPL %= not
 
 viewBase :: EventM Name AppState ()
 viewBase = do
@@ -148,7 +148,7 @@ viewBase = do
   playState . gameState . robotInfo . viewCenterRule .= VCRobot 0
 
 toggleFPS :: EventM Name AppState ()
-toggleFPS = uiState . uiGameplay . uiTiming . uiShowFPS %= not
+toggleFPS = playState . uiGameplay . uiTiming . uiShowFPS %= not
 
 -- ----------------------------------------------
 --                 HELPER UTILS
@@ -156,7 +156,7 @@ toggleFPS = uiState . uiGameplay . uiTiming . uiShowFPS %= not
 
 isRunning :: EventM Name AppState Bool
 isRunning = do
-  mt <- preuse $ uiState . uiGameplay . uiDialogs . uiModal . _Just . modalType
+  mt <- preuse $ playState . uiGameplay . uiDialogs . uiModal . _Just . modalType
   return $ maybe True isRunningModal mt
 
 whenRunning :: EventM Name AppState () -> EventM Name AppState ()

@@ -65,7 +65,7 @@ module Swarm.TUI.Model (
   runtimeState,
   PlayState (PlayState),
   gameState,
-  somethingState,
+  uiGameplay,
 
   -- ** Initialization
   AppOpts (..),
@@ -156,7 +156,7 @@ logEvent src sev who msg el =
 -- | This encapsulates both game and UI state for an actively-playing scenario.
 data PlayState = PlayState
   { _gameState :: GameState
-  , _somethingState :: ()
+  , _uiGameplay :: UIGameplay
   }
 
 --------------------------------------------------
@@ -167,8 +167,8 @@ makeLensesNoSigs ''PlayState
 -- | The 'GameState' record.
 gameState :: Lens' PlayState GameState
 
--- | The 'UIGameplay' record.
-somethingState :: Lens' PlayState ()
+-- | UI active during live gameplay
+uiGameplay :: Lens' PlayState UIGameplay
 
 -- ----------------------------------------------------------------------------
 --                                   APPSTATE                                --
@@ -358,7 +358,7 @@ runtimeState :: Lens' AppState RuntimeState
 --   info panel (if any).
 focusedItem :: AppState -> Maybe InventoryListEntry
 focusedItem s = do
-  list <- s ^? uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2
+  list <- s ^? playState . uiGameplay . uiInventory . uiInventoryList . _Just . _2
   (_, entry) <- BL.listSelectedElement list
   return entry
 

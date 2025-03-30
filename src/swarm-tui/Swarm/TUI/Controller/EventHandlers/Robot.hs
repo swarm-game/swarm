@@ -31,14 +31,13 @@ import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event
-import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Util (generateModal)
 
 -- | Handle user input events in the robot panel.
 handleRobotPanelEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleRobotPanelEvent bev = do
-  search <- use $ uiState . uiGameplay . uiInventory . uiInventorySearch
+  search <- use $ playState . uiGameplay . uiInventory . uiInventorySearch
   keyHandler <- use $ keyEventHandling . keyDispatchers . to robotDispatcher
   case search of
     Just _ -> handleInventorySearchEvent bev
@@ -70,7 +69,7 @@ showEntityDescription = gets focusedEntity >>= maybe continueWithoutRedraw descr
   descriptionModal e = do
     s <- get
     resetViewport modalScroll
-    uiState . uiGameplay . uiDialogs . uiModal ?= generateModal s (DescriptionModal e)
+    playState . uiGameplay . uiDialogs . uiModal ?= generateModal s (DescriptionModal e)
 
 -- | Attempt to make an entity selected from the inventory, if the
 --   base is not currently busy.
@@ -106,13 +105,13 @@ handleInventoryListEvent ev = do
   --   Brick.zoom (uiState . ... . _Just . _2) (handleListEventWithSeparators ev (is _Separator))
   --
   -- However, this does not work since we want to skip redrawing in the no-list case!
-  mList <- preuse $ uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2
+  mList <- preuse $ playState . uiGameplay . uiInventory . uiInventoryList . _Just . _2
   case mList of
     Nothing -> continueWithoutRedraw
     Just l -> do
       when (isValidListMovement ev) $ resetViewport infoScroll
       l' <- nestEventM' l (handleListEventWithSeparators ev (is _Separator))
-      uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2 .= l'
+      playState . uiGameplay . uiInventory . uiInventoryList . _Just . _2 .= l'
 
 -- ----------------------------------------------
 --               INVENTORY SEARCH
@@ -146,6 +145,6 @@ handleInventorySearchEvent = \case
 -- ----------------------------------------------
 
 zoomInventory :: EventM Name UIInventory () -> EventM Name AppState ()
-zoomInventory act = Brick.zoom (uiState . uiGameplay . uiInventory) $ do
+zoomInventory act = Brick.zoom (playState . uiGameplay . uiInventory) $ do
   uiInventoryShouldUpdate .= True
   act

@@ -74,14 +74,14 @@ updateUI = do
   when (g ^. needsRedraw) $ invalidateCacheEntry WorldCache
 
   -- The hash of the robot whose inventory is currently displayed (if any)
-  listRobotHash <- fmap fst <$> use (uiState . uiGameplay . uiInventory . uiInventoryList)
+  listRobotHash <- fmap fst <$> use (playState . uiGameplay . uiInventory . uiInventoryList)
 
   -- The hash of the focused robot (if any)
   fr <- use (playState . gameState . to focusedRobot)
   let focusedRobotHash = view inventoryHash <$> fr
 
   -- Check if the inventory list needs to be updated.
-  shouldUpdate <- use (uiState . uiGameplay . uiInventory . uiInventoryShouldUpdate)
+  shouldUpdate <- use (playState . uiGameplay . uiInventory . uiInventoryShouldUpdate)
 
   -- Whether the focused robot is too far away to sense, & whether
   -- that has recently changed
@@ -97,7 +97,7 @@ updateUI = do
   inventoryUpdated <-
     if farChanged || (not farChanged && listRobotHash /= focusedRobotHash) || shouldUpdate
       then do
-        Brick.zoom (uiState . uiGameplay . uiInventory) $ do
+        Brick.zoom (playState . uiGameplay . uiInventory) $ do
           populateInventoryList $ if tooFar then Nothing else fr
           uiInventoryShouldUpdate .= False
         pure True
@@ -140,13 +140,13 @@ updateUI = do
   -- isn't currently on the inventory or info panels, attempt to
   -- automatically switch to the logger and scroll all the way down so
   -- the new message can be seen.
-  uiState . uiGameplay . uiScrollToEnd .= False
+  playState . uiGameplay . uiScrollToEnd .= False
   logUpdated <- do
     -- If the inventory or info panels are currently focused, it would
     -- be rude to update them right under the user's nose, so consider
     -- them "sticky".  They will be updated as soon as the player moves
     -- the focus away.
-    fring <- use $ uiState . uiGameplay . uiFocusRing
+    fring <- use $ playState . uiGameplay . uiFocusRing
     let sticky = focusGetCurrent fring `elem` map (Just . FocusablePanel) [RobotPanel, InfoPanel]
 
     -- Check if the robot log was updated and we are allowed to change
@@ -162,11 +162,11 @@ updateUI = do
             isLogger _ = False
             focusLogger = BL.listFindBy isLogger
 
-        uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2 %= focusLogger
+        playState . uiGameplay . uiInventory . uiInventoryList . _Just . _2 %= focusLogger
 
         -- Now inform the UI that it should scroll the info panel to
         -- the very end.
-        uiState . uiGameplay . uiScrollToEnd .= True
+        playState . uiGameplay . uiScrollToEnd .= True
         pure True
 
   goalOrWinUpdated <- doGoalUpdates
@@ -186,7 +186,7 @@ updateUI = do
 
 doRobotListUpdate :: GameState -> EventM Name AppState ()
 doRobotListUpdate g = do
-  gp <- use $ uiState . uiGameplay
+  gp <- use $ playState . uiGameplay
   dOps <- use $ uiState . uiDebugOptions
 
   let rd =
@@ -205,9 +205,9 @@ doRobotListUpdate g = do
       maybeModificationFunc =
         updateList . BL.listFindBy . ((==) `on` view (robot . robotID)) <$> maybeOldSelected
 
-  uiState . uiGameplay . uiDialogs . uiRobot . robotListContent . robotsListWidget .= applyJust maybeModificationFunc rd
+  playState . uiGameplay . uiDialogs . uiRobot . robotListContent . robotsListWidget .= applyJust maybeModificationFunc rd
 
-  Brick.zoom (uiState . uiGameplay . uiDialogs . uiRobot) $
+  Brick.zoom (playState . uiGameplay . uiDialogs . uiRobot) $
     forM_ maybeOldSelected updateRobotDetailsPane
 
 updateRobotDetailsPane :: RobotWidgetRow -> EventM Name RobotDisplay ()
@@ -230,7 +230,7 @@ updateRobotDetailsPane robotPayload =
 -- * shows the player more "optional" goals they can continue to pursue
 doGoalUpdates :: EventM Name AppState Bool
 doGoalUpdates = do
-  curGoal <- use (uiState . uiGameplay . uiDialogs . uiGoal . goalsContent)
+  curGoal <- use (playState . uiGameplay . uiDialogs . uiGoal . goalsContent)
   curWinCondition <- use (playState . gameState . winCondition)
   announcementsList <- use (playState . gameState . messageInfo . announcementQueue . to toList)
 
@@ -259,7 +259,7 @@ doGoalUpdates = do
       return True
     WinConditions _ oc -> do
       showHiddenGoals <- use $ uiState . uiDebugOptions . Lens.contains ShowHiddenGoals
-      currentModal <- preuse $ uiState . uiGameplay . uiDialogs . uiModal . _Just . modalType
+      currentModal <- preuse $ playState . uiGameplay . uiDialogs . uiModal . _Just . modalType
       let newGoalTracking = GoalTracking announcementsList $ constructGoalMap showHiddenGoals oc
           -- The "uiGoal" field is initialized with empty members, so we know that
           -- this will be the first time showing it if it will be nonempty after previously
@@ -273,13 +273,13 @@ doGoalUpdates = do
       when (goalWasUpdated && not isEnding) $ do
         -- The "uiGoal" field is necessary at least to "persist" the data that is needed
         -- if the player chooses to later "recall" the goals dialog with CTRL+g.
-        uiState . uiGameplay . uiDialogs . uiGoal .= goalDisplay newGoalTracking
+        playState . uiGameplay . uiDialogs . uiGoal .= goalDisplay newGoalTracking
 
         -- This clears the "flag" that indicate that the goals dialog needs to be
         -- automatically popped up.
         playState . gameState . messageInfo . announcementQueue .= mempty
 
-        showObjectives <- use $ uiState . uiGameplay . uiAutoShowObjectives
+        showObjectives <- use $ playState . uiGameplay . uiAutoShowObjectives
         when showObjectives $ openModal GoalModal
 
       return goalWasUpdated

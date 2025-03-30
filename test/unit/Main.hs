@@ -13,7 +13,7 @@ import Control.Monad.Except (runExceptT)
 import Data.List (subsequences)
 import Data.Set (Set)
 import Data.Set qualified as S
-import Swarm.TUI.Model (AppState, gameState, runtimeState)
+import Swarm.TUI.Model (AppState, gameState, playState, runtimeState)
 import Swarm.TUI.Model.StateUpdate (classicGame0)
 import Swarm.Util (removeSupersets, smallHittingSet)
 import Test.QuickCheck qualified as QC

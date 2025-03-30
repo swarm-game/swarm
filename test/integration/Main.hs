@@ -76,6 +76,7 @@ import Swarm.TUI.Model (
   debugOptions,
   defaultAppOpts,
   gameState,
+  playState,
   runtimeState,
   userScenario,
  )

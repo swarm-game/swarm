@@ -457,7 +457,7 @@ drawGameUI s =
         ]
   ]
  where
-  uig = s ^. uiState . uiGameplay
+  uig = s ^. playState . uiGameplay
   addCursorPos = bottomLabels . leftLabel ?~ padLeftRight 1 widg
    where
     widg = case uig ^. uiWorldCursor of
@@ -602,7 +602,7 @@ chooseCursor s locs = case m of
   Nothing -> showFirstCursor s locs
   Just _ -> Nothing
  where
-  m = s ^. uiState . uiGameplay . uiDialogs . uiModal
+  m = s ^. playState . uiGameplay . uiDialogs . uiModal
 
 -- | Draw a dialog window, if one should be displayed right now.
 drawDialog :: AppState -> Widget Name
@@ -613,7 +613,7 @@ drawDialog s = case m of
     _ -> maybeScroll ModalViewport $ drawModal s mt
   Nothing -> emptyWidget
  where
-  m = s ^. uiState . uiGameplay . uiDialogs . uiModal
+  m = s ^. playState . uiGameplay . uiDialogs . uiModal
 
 -- | Draw one of the various types of modal dialog.
 drawModal :: AppState -> ModalType -> Widget Name
@@ -655,7 +655,7 @@ drawModal s = \case
   EntityPaletteModal -> EV.drawEntityPaintSelector uig
  where
   gs = s ^. playState . gameState
-  uig = s ^. uiState . uiGameplay
+  uig = s ^. playState . uiGameplay
 
 helpWidget :: Seed -> Maybe Port -> KeyEventHandlingState -> Widget Name
 helpWidget theSeed mport keyState =
@@ -795,7 +795,7 @@ descriptionWidget :: AppState -> Entity -> Widget Name
 descriptionWidget s e = padLeftRight 1 (explainEntry uig gs e)
  where
   gs = s ^. playState . gameState
-  uig = s ^. uiState . uiGameplay
+  uig = s ^. playState . uiGameplay
 
 -- | Draw a widget with messages to the current robot.
 messagesWidget :: GameState -> [Widget Name]
@@ -891,7 +891,7 @@ drawKeyMenu s =
       . view uiFocusRing
       $ uig
 
-  uig = s ^. uiState . uiGameplay
+  uig = s ^. playState . uiGameplay
   gs = s ^. playState . gameState
 
   isReplWorking = gs ^. gameControls . replWorking
@@ -1046,7 +1046,7 @@ drawRobotPanel s
   -- There should be no way to tell the difference between a robot that is too far
   -- away and a robot that does not exist.
   | Just r <- s ^. playState . gameState . to focusedRobot
-  , Just (_, lst) <- s ^. uiState . uiGameplay . uiInventory . uiInventoryList =
+  , Just (_, lst) <- s ^. playState . uiGameplay . uiInventory . uiInventoryList =
       let drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
           details =
             [ txt (r ^. robotName)
@@ -1113,7 +1113,7 @@ explainFocusedItem s = case focusedItem s of
   _ -> txt " "
  where
   gs = s ^. playState . gameState
-  uig = s ^. uiState . uiGameplay
+  uig = s ^. playState . uiGameplay
 
 explainEntry :: UIGameplay -> GameState -> Entity -> Widget Name
 explainEntry uig gs e =
@@ -1478,7 +1478,7 @@ drawREPL s =
     , vBox mayDebug
     ]
  where
-  uig = s ^. uiState . uiGameplay
+  uig = s ^. playState . uiGameplay
   gs = s ^. playState . gameState
 
   -- rendered history lines fitting above REPL prompt
