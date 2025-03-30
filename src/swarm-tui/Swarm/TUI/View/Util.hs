@@ -12,7 +12,7 @@ import Control.Lens hiding (Const, from)
 import Control.Monad.Reader (withReaderT)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map.Strict qualified as M
-import Data.Maybe (catMaybes, fromMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Graphics.Vty qualified as V
@@ -93,7 +93,7 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
   mkLoseModal =
     ( ""
     , Just
-        ( Button QuitButton
+        ( Button $ if isJust currentScenario then StartOverButton else QuitButton
         , catMaybes
             [ Just (stopMsg, Button QuitButton, QuitAction)
             , maybeStartOver
