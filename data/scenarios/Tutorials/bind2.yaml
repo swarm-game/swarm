@@ -16,7 +16,7 @@ objectives:
       - |
         The robot will need to `place "ARTIFACT NAME"`{=snippet}, but you do not know the name yet!
         Fortunatelly, the `grab` command has type `Cmd Text`{=type}, and returns
-        the name of the grabbed entity as a text value. 
+        the name of the grabbed entity as a text value.
       - |
         To use the result of a command later, you need _bind notation_, which
         consists of a variable name and a leftwards-pointing arrow
