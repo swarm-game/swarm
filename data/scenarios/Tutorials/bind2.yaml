@@ -57,14 +57,11 @@ objectives:
 solution: |
   build {
     move; move;
-    turn right;
-    move; move; move; move; move; move;
-    x <- grab;
-    turn left;
-    move;
-    turn left;
-    move; move;
-    place x;
+    turn right; move; move;
+    f <- grab;
+    turn back; move; move;
+    turn right; move;
+    place f
   }
 entities:
   - name: Hastur
