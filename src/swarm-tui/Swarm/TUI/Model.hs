@@ -339,7 +339,7 @@ keyDispatchers :: Lens' KeyEventHandlingState SwarmKeyDispatchers
 
 makeLensesNoSigs ''AppState
 
--- | The 'UIState' record.
+-- | The 'PlayState' record.
 playState :: Lens' AppState PlayState
 
 -- | The 'UIState' record.
