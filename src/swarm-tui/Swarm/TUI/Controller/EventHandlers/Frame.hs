@@ -47,12 +47,12 @@ runFrame = do
   -- Reset the needsRedraw flag.  While processing the frame and stepping the robots,
   -- the flag will get set to true if anything changes that requires redrawing the
   -- world (e.g. a robot moving or disappearing).
-  gameState . needsRedraw .= False
+  playState . gameState . needsRedraw .= False
 
   -- The logic here is taken from https://gafferongames.com/post/fix_your_timestep/ .
 
   curTime <- liftIO $ getTime Monotonic
-  Brick.zoom (uiState . uiGameplay . uiTiming) $ do
+  Brick.zoom (playState . uiGameplay . uiTiming) $ do
     -- Find out how long the previous frame took, by subtracting the
     -- previous time from the current time.
     prevTime <- use lastFrameTime
@@ -71,12 +71,12 @@ runFrame = do
     accumulatedTime += frameTime
 
   -- Update TPS/FPS counters every second
-  infoUpdateTime <- use (uiState . uiGameplay . uiTiming . lastInfoTime)
+  infoUpdateTime <- use (playState . uiGameplay . uiTiming . lastInfoTime)
   let updateTime = toNanoSecs $ diffTimeSpec curTime infoUpdateTime
   when (updateTime >= oneSecond) $ do
     -- Wait for at least one second to have elapsed
     when (infoUpdateTime /= 0) $ do
-      Brick.zoom (uiState . uiGameplay . uiTiming) $ do
+      Brick.zoom (playState . uiGameplay . uiTiming) $ do
         -- set how much frame got processed per second
         frames <- use frameCount
         uiFPS .= fromIntegral (frames * fromInteger oneSecond) / fromIntegral updateTime
@@ -86,15 +86,15 @@ runFrame = do
         uiTPF .= fromIntegral uiTicks / fromIntegral frames
 
       -- ensure this frame gets drawn
-      gameState . needsRedraw .= True
+      playState . gameState . needsRedraw .= True
 
-    Brick.zoom (uiState . uiGameplay . uiTiming) $ do
+    Brick.zoom (playState . uiGameplay . uiTiming) $ do
       -- Reset the counter and wait another seconds for the next update
       tickCount .= 0
       frameCount .= 0
       lastInfoTime .= curTime
 
-  Brick.zoom (uiState . uiGameplay . uiTiming) $ do
+  Brick.zoom (playState . uiGameplay . uiTiming) $ do
     -- Increment the frame count
     frameCount += 1
 
@@ -103,7 +103,7 @@ runFrame = do
 
   -- Figure out how many ticks per second we're supposed to do,
   -- and compute the timestep `dt` for a single tick.
-  lgTPS <- use (uiState . uiGameplay . uiTiming . lgTicksPerSecond)
+  lgTPS <- use (playState . uiGameplay . uiTiming . lgTicksPerSecond)
   let dt
         | lgTPS >= 0 = oneSecond `div` (1 `shiftL` lgTPS)
         | otherwise = oneSecond * (1 `shiftL` abs lgTPS)
@@ -118,7 +118,7 @@ runFrame = do
 --   first.
 runFrameTicks :: TimeSpec -> EventM Name AppState ()
 runFrameTicks dt = do
-  timing <- use $ uiState . uiGameplay . uiTiming
+  timing <- use $ playState . uiGameplay . uiTiming
   let a = timing ^. accumulatedTime
       t = timing ^. frameTickCount
 
@@ -128,7 +128,7 @@ runFrameTicks dt = do
     -- If so, do a tick, count it, subtract dt from the accumulated time,
     -- and loop!
     runGameTick
-    Brick.zoom (uiState . uiGameplay . uiTiming) $ do
+    Brick.zoom (playState . uiGameplay . uiTiming) $ do
       tickCount += 1
       frameTickCount += 1
       accumulatedTime -= dt
@@ -141,7 +141,7 @@ runGameTickUI = runGameTick >> void updateUI
 updateAchievements :: EventM Name AppState ()
 updateAchievements = do
   -- Merge the in-game achievements with the master list in UIState
-  achievementsFromGame <- use $ gameState . discovery . gameAchievements
+  achievementsFromGame <- use $ playState . gameState . discovery . gameAchievements
   let wrappedGameAchievements = M.mapKeys GameplayAchievement achievementsFromGame
 
   oldMasterAchievementsList <- use $ uiState . uiAchievements

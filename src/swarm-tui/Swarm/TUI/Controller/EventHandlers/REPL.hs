@@ -22,7 +22,6 @@ import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event
 import Swarm.TUI.Model.Repl
-import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
 
 -- | Handle a user input key event for the REPL.
@@ -40,23 +39,23 @@ replEventHandlers = allHandlers REPL $ \case
 -- base program no matter what REPL control mode we are in.
 cancelRunningBase :: EventM Name AppState ()
 cancelRunningBase = do
-  working <- use $ gameState . gameControls . replWorking
-  when working $ gameState . baseRobot . machine %= cancel
-  Brick.zoom (uiState . uiGameplay . uiREPL) $ do
+  working <- use $ playState . gameState . gameControls . replWorking
+  when working $ playState . gameState . baseRobot . machine %= cancel
+  Brick.zoom (playState . uiGameplay . uiREPL) $ do
     replPromptType .= CmdPrompt []
     replPromptText .= ""
 
 togglePilotingMode :: EventM Name AppState ()
 togglePilotingMode = do
   s <- get
-  let theRepl = s ^. uiState . uiGameplay . uiREPL
+  let theRepl = s ^. playState . uiGameplay . uiREPL
       uinput = theRepl ^. replPromptText
       curMode = theRepl ^. replControlMode
   case curMode of
-    Piloting -> uiState . uiGameplay . uiREPL . replControlMode .= Typing
+    Piloting -> playState . uiGameplay . uiREPL . replControlMode .= Typing
     _ ->
       if T.null uinput
-        then uiState . uiGameplay . uiREPL . replControlMode .= Piloting
+        then playState . uiGameplay . uiREPL . replControlMode .= Piloting
         else do
           addREPLHistItem $ mkREPLError "Please clear the REPL before engaging pilot mode."
           invalidateCacheEntry REPLHistoryCache
@@ -64,6 +63,6 @@ togglePilotingMode = do
 toggleCustomKeyHandling :: EventM Name AppState ()
 toggleCustomKeyHandling = do
   s <- get
-  when (isJust (s ^. gameState . gameControls . inputHandler)) $ do
-    curMode <- use $ uiState . uiGameplay . uiREPL . replControlMode
-    (uiState . uiGameplay . uiREPL . replControlMode) .= case curMode of Handling -> Typing; _ -> Handling
+  when (isJust (s ^. playState . gameState . gameControls . inputHandler)) $ do
+    curMode <- use $ playState . uiGameplay . uiREPL . replControlMode
+    (playState . uiGameplay . uiREPL . replControlMode) .= case curMode of Handling -> Typing; _ -> Handling
