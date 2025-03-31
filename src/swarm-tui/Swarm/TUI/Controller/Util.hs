@@ -113,7 +113,7 @@ safeTogglePause = do
   uiGameplay . uiTiming . lastFrameTime .= curTime
   uiGameplay . uiShowDebug .= False
   p <- gameState . temporal . runStatus Lens.<%= toggleRunStatus
-  when (p == Running) $ zoomGameState' finishGameTick
+  when (p == Running) $ zoomGameStateFromPlayState finishGameTick
 
 -- | Only unpause the game if leaving autopaused modal.
 --
@@ -174,22 +174,25 @@ resetViewport n = do
   hScrollToBeginning n
 
 -- | Modifies the game state using a fused-effect state action.
-zoomGameState ::
+zoomGameStateFromAppState ::
   (MonadState AppState m, MonadIO m) =>
   Fused.StateC GameState (TimeIOC (Fused.LiftC IO)) a ->
   m a
-zoomGameState f = do
-  gs <- use $ playState . gameState
-  (gs', a) <- liftIO (Fused.runM (runTimeIO (Fused.runState gs f)))
-  playState . gameState .= gs'
+zoomGameStateFromAppState f = do
+  gs <- use z
+  (gs', a) <- liftIO . Fused.runM . runTimeIO $ Fused.runState gs f
+  z .= gs'
   return a
+ where
+  z :: Lens' AppState GameState
+  z = playState . gameState
 
 -- | Modifies the game state using a fused-effect state action.
-zoomGameState' ::
+zoomGameStateFromPlayState ::
   (MonadState PlayState m, MonadIO m) =>
   Fused.StateC GameState (TimeIOC (Fused.LiftC IO)) a ->
   m a
-zoomGameState' f = do
+zoomGameStateFromPlayState f = do
   gs <- use gameState
   (gs', a) <- liftIO (Fused.runM (runTimeIO (Fused.runState gs f)))
   gameState .= gs'

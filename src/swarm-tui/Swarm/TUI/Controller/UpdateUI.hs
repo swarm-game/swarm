@@ -156,7 +156,7 @@ updateUI = do
       False -> pure False
       True -> do
         -- Reset the log updated flag
-        zoomGameState' $ zoomRobots clearFocusedRobotLogUpdated
+        zoomGameStateFromPlayState $ zoomRobots clearFocusedRobotLogUpdated
 
         -- Find and focus an equipped "logger" device in the inventory list.
         let isLogger (EquippedEntry e) = e ^. entityName == "logger"

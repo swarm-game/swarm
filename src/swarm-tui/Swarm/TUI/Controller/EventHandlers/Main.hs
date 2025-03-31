@@ -157,7 +157,7 @@ showCESKDebug = do
     debug <- playState . uiGameplay . uiShowDebug Lens.<%= not
     if debug
       then playState . gameState . temporal . gameStep .= RobotStep SBefore
-      else zoomGameState finishGameTick >> void updateUI
+      else zoomGameStateFromAppState finishGameTick >> void updateUI
 
 runSingleTick :: EventM Name AppState ()
 runSingleTick = do
