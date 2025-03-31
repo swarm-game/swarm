@@ -40,11 +40,11 @@ import Swarm.TUI.Model (
   ModalType (..),
   gameState,
   modalScroll,
-  uiState,
+  playState,
+  uiGameplay,
  )
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl (REPLHistItem, REPLPrompt, REPLState, addREPLItem, replHistory, replPromptText, replPromptType)
-import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Util (generateModal)
 import System.Clock (Clock (..), getTime)
@@ -78,7 +78,7 @@ openModal mt = do
   resetViewport modalScroll
   newModal <- gets $ flip generateModal mt
   ensurePause
-  uiState . uiGameplay . uiDialogs . uiModal ?= newModal
+  playState . uiGameplay . uiDialogs . uiModal ?= newModal
   -- Beep
   case mt of
     ScenarioEndModal _ -> do
@@ -88,8 +88,8 @@ openModal mt = do
  where
   -- Set the game to AutoPause if needed
   ensurePause = do
-    pause <- use $ gameState . temporal . paused
-    unless (pause || isRunningModal mt) $ gameState . temporal . runStatus .= AutoPause
+    pause <- use $ playState . gameState . temporal . paused
+    unless (pause || isRunningModal mt) $ playState . gameState . temporal . runStatus .= AutoPause
 
 -- | The running modals do not autopause the game.
 isRunningModal :: ModalType -> Bool
@@ -107,9 +107,9 @@ isRunningModal = \case
 safeTogglePause :: EventM Name AppState ()
 safeTogglePause = do
   curTime <- liftIO $ getTime Monotonic
-  uiState . uiGameplay . uiTiming . lastFrameTime .= curTime
-  uiState . uiGameplay . uiShowDebug .= False
-  p <- gameState . temporal . runStatus Lens.<%= toggleRunStatus
+  playState . uiGameplay . uiTiming . lastFrameTime .= curTime
+  playState . uiGameplay . uiShowDebug .= False
+  p <- playState . gameState . temporal . runStatus Lens.<%= toggleRunStatus
   when (p == Running) $ zoomGameState finishGameTick
 
 -- | Only unpause the game if leaving autopaused modal.
@@ -118,18 +118,18 @@ safeTogglePause = do
 -- the modal, in that case, leave the game paused.
 safeAutoUnpause :: EventM Name AppState ()
 safeAutoUnpause = do
-  runs <- use $ gameState . temporal . runStatus
+  runs <- use $ playState . gameState . temporal . runStatus
   when (runs == AutoPause) safeTogglePause
 
 toggleModal :: ModalType -> EventM Name AppState ()
 toggleModal mt = do
-  modal <- use $ uiState . uiGameplay . uiDialogs . uiModal
+  modal <- use $ playState . uiGameplay . uiDialogs . uiModal
   case modal of
     Nothing -> openModal mt
-    Just _ -> uiState . uiGameplay . uiDialogs . uiModal .= Nothing >> safeAutoUnpause
+    Just _ -> playState . uiGameplay . uiDialogs . uiModal .= Nothing >> safeAutoUnpause
 
 setFocus :: FocusablePanel -> EventM Name AppState ()
-setFocus name = uiState . uiGameplay . uiFocusRing %= focusSetCurrent (FocusablePanel name)
+setFocus name = playState . uiGameplay . uiFocusRing %= focusSetCurrent (FocusablePanel name)
 
 immediatelyRedrawWorld :: EventM Name AppState ()
 immediatelyRedrawWorld = do
@@ -142,9 +142,9 @@ loadVisibleRegion :: EventM Name AppState ()
 loadVisibleRegion = do
   mext <- lookupExtent WorldExtent
   forM_ mext $ \(Extent _ _ size) -> do
-    gs <- use gameState
+    gs <- use $ playState . gameState
     let vr = viewingRegion (gs ^. robotInfo . viewCenter) (over both fromIntegral size)
-    gameState . landscape . multiWorld %= M.adjust (W.loadRegion (vr ^. planar)) (vr ^. subworld)
+    playState . gameState . landscape . multiWorld %= M.adjust (W.loadRegion (vr ^. planar)) (vr ^. subworld)
 
 mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe (Cosmic Coords))
 mouseLocToWorldCoords (Brick.Location mouseLoc) = do
@@ -162,7 +162,7 @@ mouseLocToWorldCoords (Brick.Location mouseLoc) = do
 hasDebugCapability :: Bool -> AppState -> Bool
 hasDebugCapability isCreative s =
   maybe isCreative (S.member CDebug . getCapabilitySet) $
-    s ^? gameState . to focusedRobot . _Just . robotCapabilities
+    s ^? playState . gameState . to focusedRobot . _Just . robotCapabilities
 
 -- | Resets the viewport scroll position
 resetViewport :: ViewportScroll Name -> EventM Name AppState ()
@@ -173,14 +173,14 @@ resetViewport n = do
 -- | Modifies the game state using a fused-effect state action.
 zoomGameState :: (MonadState AppState m, MonadIO m) => Fused.StateC GameState (TimeIOC (Fused.LiftC IO)) a -> m a
 zoomGameState f = do
-  gs <- use gameState
+  gs <- use $ playState . gameState
   (gs', a) <- liftIO (Fused.runM (runTimeIO (Fused.runState gs f)))
-  gameState .= gs'
+  playState . gameState .= gs'
   return a
 
 onlyCreative :: (MonadState AppState m) => m () -> m ()
 onlyCreative a = do
-  c <- use $ gameState . creativeMode
+  c <- use $ playState . gameState . creativeMode
   when c a
 
 -- | Create a list of handlers with embedding events and using pattern matching.
@@ -201,12 +201,12 @@ runBaseTerm = mapM_ startBaseProgram
   -- input is valid) and sets up the base robot to run it.
   startBaseProgram t = do
     -- Set the REPL status to Working
-    gameState . gameControls . replStatus .= REPLWorking (t ^. sType) Nothing
+    playState . gameState . gameControls . replStatus .= REPLWorking (t ^. sType) Nothing
     -- Set up the robot's CESK machine to evaluate/execute the
     -- given term.
-    gameState . baseRobot . machine %= continue t
+    playState . gameState . baseRobot . machine %= continue t
     -- Finally, be sure to activate the base robot.
-    gameState %= execState (zoomRobots $ activateRobot 0)
+    playState . gameState %= execState (zoomRobots $ activateRobot 0)
 
 -- | Set the REPL to the given text and REPL prompt type.
 modifyResetREPL :: Text -> REPLPrompt -> REPLState -> REPLState
@@ -214,8 +214,8 @@ modifyResetREPL t r = (replPromptText .~ t) . (replPromptType .~ r)
 
 -- | Reset the REPL state to the given text and REPL prompt type.
 resetREPL :: MonadState AppState m => Text -> REPLPrompt -> m ()
-resetREPL t p = uiState . uiGameplay . uiREPL %= modifyResetREPL t p
+resetREPL t p = playState . uiGameplay . uiREPL %= modifyResetREPL t p
 
 -- | Add an item to the REPL history.
 addREPLHistItem :: MonadState AppState m => REPLHistItem -> m ()
-addREPLHistItem item = uiState . uiGameplay . uiREPL . replHistory %= addREPLItem item
+addREPLHistItem item = playState . uiGameplay . uiREPL . replHistory %= addREPLItem item

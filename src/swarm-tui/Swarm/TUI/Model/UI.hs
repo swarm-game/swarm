@@ -12,7 +12,6 @@ module Swarm.TUI.Model.UI (
   uiPlaying,
   uiDebugOptions,
   uiLaunchConfig,
-  uiGameplay,
   uiAchievements,
   uiAttrMap,
   uiPopups,
@@ -35,28 +34,18 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Sequence (Seq)
 import Data.Set (Set)
-import Data.Text qualified as T
 import Swarm.Failure (SystemFailure)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
-import Swarm.ResourceLoading (getSwarmHistoryPath)
-import Swarm.TUI.Editor.Model
-import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep
 import Swarm.TUI.Model.DebugOption (DebugOption)
 import Swarm.TUI.Model.Dialog
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
-import Swarm.TUI.Model.Repl
-import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr (swarmAttrMap)
-import Swarm.TUI.View.Robot
-import Swarm.TUI.View.Robot.Type
-import Swarm.Util
 import Swarm.Util.Lens (makeLensesNoSigs)
-import System.Clock
 
 -- * Toplevel UIState definition
 
@@ -67,7 +56,6 @@ data UIState = UIState
   , _uiLaunchConfig :: LaunchOptions
   , _uiAchievements :: Map CategorizedAchievement Attainment
   , _uiAttrMap :: AttrMap
-  , _uiGameplay :: UIGameplay
   , _uiPopups :: PopupState
   }
 
@@ -97,9 +85,6 @@ uiAchievements :: Lens' UIState (Map CategorizedAchievement Attainment)
 
 -- | Attribute map
 uiAttrMap :: Lens' UIState AttrMap
-
--- | UI active during live gameplay
-uiGameplay :: Lens' UIState UIGameplay
 
 -- | Queue of popups to display
 uiPopups :: Lens' UIState PopupState
@@ -135,9 +120,6 @@ initUIState ::
   UIInitOptions ->
   m UIState
 initUIState UIInitOptions {..} = do
-  historyT <- sendIO $ readFileMayT =<< getSwarmHistoryPath False
-  let history = maybe [] (map mkREPLSubmission . T.lines) historyT
-  startTime <- sendIO $ getTime Monotonic
   achievements <- loadAchievementsInfo
   launchConfigPanel <- sendIO initConfigPanel
   return
@@ -149,51 +131,4 @@ initUIState UIInitOptions {..} = do
       , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
       , _uiAttrMap = swarmAttrMap
       , _uiPopups = initPopupState
-      , _uiGameplay =
-          UIGameplay
-            { _uiFocusRing = initFocusRing
-            , _uiWorldCursor = Nothing
-            , _uiWorldEditor = initialWorldEditor startTime
-            , _uiREPL = initREPLState $ newREPLHistory history
-            , _uiInventory =
-                UIInventory
-                  { _uiInventoryList = Nothing
-                  , _uiInventorySort = defaultSortOptions
-                  , _uiInventorySearch = Nothing
-                  , _uiShowZero = True
-                  , _uiInventoryShouldUpdate = False
-                  }
-            , _uiScrollToEnd = False
-            , _uiDialogs =
-                UIDialogs
-                  { _uiModal = Nothing
-                  , _uiGoal = emptyGoalDisplay
-                  , _uiStructure = emptyStructureDisplay
-                  , _uiRobot =
-                      RobotDisplay
-                        { _robotDetailsFocus = focusRing $ map (RobotsListDialog . SingleRobotDetails) enumerate
-                        , _isDetailsOpened = False
-                        , _robotListContent = emptyRobotDisplay debugOptions
-                        }
-                  }
-            , _uiIsAutoPlay = False
-            , _uiAutoShowObjectives = autoShowObjectives
-            , _uiTiming =
-                UITiming
-                  { _uiShowFPS = False
-                  , _uiTPF = 0
-                  , _uiFPS = 0
-                  , _lgTicksPerSecond = speed
-                  , _lastFrameTime = startTime
-                  , _accumulatedTime = 0
-                  , _lastInfoTime = 0
-                  , _tickCount = 0
-                  , _frameCount = 0
-                  , _frameTickCount = 0
-                  }
-            , _uiShowREPL = True
-            , _uiShowDebug = False
-            , _uiHideRobotsUntil = startTime - 1
-            , _scenarioRef = Nothing
-            }
       }

@@ -42,6 +42,7 @@ import Data.Maybe (fromMaybe, isJust)
 import Data.Sequence (Seq)
 import Data.Set qualified as Set
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Time (getZonedTime)
 import Swarm.Failure (SystemFailure (..))
 import Swarm.Game.Land
@@ -74,6 +75,8 @@ import Swarm.Game.State.Substate
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
 import Swarm.Pretty (prettyText)
+import Swarm.ResourceLoading (getSwarmHistoryPath)
+import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Model qualified as EM
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Inventory.Sorting
@@ -89,7 +92,10 @@ import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr (getWorldAttrName, swarmAttrMap)
 import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
+import Swarm.TUI.View.Robot
+import Swarm.TUI.View.Robot.Type
 import Swarm.TUI.View.Structure qualified as SR
+import Swarm.Util
 import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
 
@@ -150,9 +156,14 @@ constructAppState ::
   AppOpts ->
   m AppState
 constructAppState rs ui key opts@(AppOpts {..}) = do
+  historyT <- sendIO $ readFileMayT =<< getSwarmHistoryPath False
+  let history = maybe [] (map mkREPLSubmission . T.lines) historyT
+  startTime <- sendIO $ getTime Monotonic
+
   let gs = initGameState (rs ^. stdGameConfigInputs)
+      ps = PlayState gs $ initialUiGameplay startTime history
   case skipMenu opts of
-    False -> return $ AppState gs (ui & uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) key rs
+    False -> return $ AppState (ps & uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) ui key rs
     True -> do
       let tem = gs ^. landscape . terrainAndEntities
       (scenario, path) <-
@@ -174,7 +185,55 @@ constructAppState rs ui key opts@(AppOpts {..}) = do
       sendIO $
         execStateT
           (startGameWithSeed (scenario, si) $ LaunchParams (pure userSeed) (pure codeToRun))
-          (AppState gs ui key newRs)
+          (AppState ps ui key newRs)
+ where
+  initialUiGameplay startTime history =
+    UIGameplay
+      { _uiFocusRing = initFocusRing
+      , _uiWorldCursor = Nothing
+      , _uiWorldEditor = initialWorldEditor startTime
+      , _uiREPL = initREPLState $ newREPLHistory history
+      , _uiInventory =
+          UIInventory
+            { _uiInventoryList = Nothing
+            , _uiInventorySort = defaultSortOptions
+            , _uiInventorySearch = Nothing
+            , _uiShowZero = True
+            , _uiInventoryShouldUpdate = False
+            }
+      , _uiScrollToEnd = False
+      , _uiDialogs =
+          UIDialogs
+            { _uiModal = Nothing
+            , _uiGoal = emptyGoalDisplay
+            , _uiStructure = emptyStructureDisplay
+            , _uiRobot =
+                RobotDisplay
+                  { _robotDetailsFocus = focusRing $ map (RobotsListDialog . SingleRobotDetails) enumerate
+                  , _isDetailsOpened = False
+                  , _robotListContent = emptyRobotDisplay debugOptions
+                  }
+            }
+      , _uiIsAutoPlay = False
+      , _uiAutoShowObjectives = autoShowObjectives
+      , _uiTiming =
+          UITiming
+            { _uiShowFPS = False
+            , _uiTPF = 0
+            , _uiFPS = 0
+            , _lgTicksPerSecond = speed
+            , _lastFrameTime = startTime
+            , _accumulatedTime = 0
+            , _lastInfoTime = 0
+            , _tickCount = 0
+            , _frameCount = 0
+            , _frameTickCount = 0
+            }
+      , _uiShowREPL = True
+      , _uiShowDebug = False
+      , _uiHideRobotsUntil = startTime - 1
+      , _scenarioRef = Nothing
+      }
 
 -- | Load a 'Scenario' and start playing the game.
 startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe CodeToRun -> m ()
@@ -216,7 +275,7 @@ startGameWithSeed siPair@(_scene, si) lp = do
   scenarioToAppState siPair lp
   -- Beware: currentScenarioPath must be set so that progress/achievements can be saved.
   -- It has just been cleared in scenarioToAppState.
-  gameState . currentScenarioPath .= Just p
+  playState . gameState . currentScenarioPath .= Just p
 
   -- Warn the user that the use of debugging options means progress
   -- will not be saved.
@@ -237,8 +296,12 @@ scenarioToAppState ::
 scenarioToAppState siPair@(scene, _) lp = do
   rs <- use runtimeState
   gs <- liftIO $ scenarioToGameState scene lp $ rs ^. stdGameConfigInputs
-  gameState .= gs
-  void $ withLensIO uiState $ scenarioToUIState isAutoplaying siPair gs
+  playState . gameState .= gs
+
+  curTime <- liftIO $ getTime Monotonic
+  playState . uiGameplay %= setUIGameplay gs curTime isAutoplaying siPair
+
+  void $ withLensIO uiState $ scenarioToUIState siPair
  where
   isAutoplaying = case fmap (view toRunSource) . runIdentity $ initialCode lp of
     Just ScenarioSuggested -> True
@@ -293,13 +356,10 @@ setUIGameplay gs curTime isAutoplaying siPair@(scenario, _) uig =
 
 -- | Modify the UI state appropriately when starting a new scenario.
 scenarioToUIState ::
-  Bool ->
   ScenarioInfoPair ->
-  GameState ->
   UIState ->
   IO UIState
-scenarioToUIState isAutoplaying siPair gs u = do
-  curTime <- getTime Monotonic
+scenarioToUIState siPair u = do
   return $
     u
       & uiPlaying .~ True
@@ -309,7 +369,6 @@ scenarioToUIState isAutoplaying siPair gs u = do
               fst siPair ^. scenarioLandscape . scenarioAttrs
           )
           swarmAttrMap
-      & uiGameplay %~ setUIGameplay gs curTime isAutoplaying siPair
 
 -- | Create an initial app state for a specific scenario.  Note that
 --   this function is used only for unit tests, integration tests, and

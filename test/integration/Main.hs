@@ -76,6 +76,7 @@ import Swarm.TUI.Model (
   debugOptions,
   defaultAppOpts,
   gameState,
+  playState,
   runtimeState,
   userScenario,
  )
@@ -534,12 +535,12 @@ testScenarioSolutions rs ui key =
     out <- runM . runThrow @SystemFailure $ constructAppState rs ui key $ defaultAppOpts {userScenario = Just p}
     case out of
       Left err -> assertFailure $ prettyString err
-      Right appState -> case appState ^. gameState . winSolution of
+      Right appState -> case appState ^. playState . gameState . winSolution of
         Nothing -> assertFailure "No solution to test!"
         Just sol -> do
           when (shouldCheckBadErrors == CheckForBadErrors) (checkNoRuntimeErrors $ appState ^. runtimeState)
           let gs' =
-                (appState ^. gameState)
+                (appState ^. playState . gameState)
                   & baseRobot . machine .~ initMachine sol
           m <- timeout (time s) (execStateT playUntilWin gs')
           case m of
