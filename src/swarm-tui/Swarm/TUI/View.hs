@@ -441,13 +441,13 @@ drawGameUI s =
                             (txt . (" Search: " <>) . (<> " "))
                             (uig ^. uiInventory . uiInventorySearch)
                     )
-                  $ drawRobotPanel s
+                  $ drawRobotPanel ps
               , panel
                   highlightAttr
                   fr
                   (FocusablePanel InfoPanel)
                   plainBorder
-                  $ drawInfoPanel s
+                  $ drawInfoPanel ps
               , hCenter
                   . clickable (FocusablePanel WorldEditorPanel)
                   . EV.drawWorldEditor fr
@@ -457,18 +457,21 @@ drawGameUI s =
         ]
   ]
  where
-  uig = s ^. playState . uiGameplay
+  ps = s ^. playState
+  gs = ps ^. gameState
+  uig = ps ^. uiGameplay
   addCursorPos = bottomLabels . leftLabel ?~ padLeftRight 1 widg
    where
     widg = case uig ^. uiWorldCursor of
-      Nothing -> str $ renderCoordsString $ s ^. playState . gameState . robotInfo . viewCenter
-      Just coord -> clickable WorldPositionIndicator $ drawWorldCursorInfo (uig ^. uiWorldEditor . worldOverdraw) (s ^. playState . gameState) coord
+      Nothing -> str $ renderCoordsString $ gs ^. robotInfo . viewCenter
+      Just coord -> clickable WorldPositionIndicator $ drawWorldCursorInfo (uig ^. uiWorldEditor . worldOverdraw) gs coord
   -- Add clock display in top right of the world view if focused robot
   -- has a clock equipped
-  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay (uig ^. uiTiming . lgTicksPerSecond) $ s ^. playState . gameState)
+  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay (uig ^. uiTiming . lgTicksPerSecond) gs)
   fr = uig ^. uiFocusRing
   showREPL = uig ^. uiShowREPL
-  rightPanel = if showREPL then worldPanel ++ replPanel else worldPanel ++ minimizedREPL
+  rightPanelBottom = if showREPL then replPanel else minimizedREPL
+  rightPanel = worldPanel ++ rightPanelBottom
   minimizedREPL = case focusGetCurrent fr of
     (Just (FocusablePanel REPLPanel)) -> [separateBorders $ clickable (FocusablePanel REPLPanel) (forceAttr highlightAttr hBorder)]
     _ -> [separateBorders $ clickable (FocusablePanel REPLPanel) hBorder]
@@ -483,7 +486,7 @@ drawGameUI s =
             & addCursorPos
             & addClock
         )
-        (drawWorldPane uig (s ^. playState . gameState))
+        (drawWorldPane uig gs)
     , drawKeyMenu s
     ]
   replPanel =
@@ -641,7 +644,7 @@ drawModal s = \case
         [ "Condolences!"
         , "This scenario is no longer winnable."
         ]
-  DescriptionModal e -> descriptionWidget s e
+  DescriptionModal e -> descriptionWidget (s ^. playState) e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
   GoalModal ->
     GR.renderGoalsDisplay (uig ^. uiDialogs . uiGoal) $
@@ -791,11 +794,11 @@ commandsListWidget gs =
           constCaps cmd
 
 -- | Generate a pop-up widget to display the description of an entity.
-descriptionWidget :: AppState -> Entity -> Widget Name
+descriptionWidget :: PlayState -> Entity -> Widget Name
 descriptionWidget s e = padLeftRight 1 (explainEntry uig gs e)
  where
-  gs = s ^. playState . gameState
-  uig = s ^. playState . uiGameplay
+  gs = s ^. gameState
+  uig = s ^. uiGameplay
 
 -- | Draw a widget with messages to the current robot.
 messagesWidget :: GameState -> [Widget Name]
@@ -836,18 +839,20 @@ colorSeverity = \case
 drawModalMenu :: AppState -> Widget Name
 drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyCmds
  where
+  gs = s ^. playState . gameState
+
   notificationKey :: Getter GameState (Notifications a) -> SE.MainEvent -> Text -> Maybe (KeyHighlight, Text, Text)
   notificationKey notifLens key name
-    | null (s ^. playState . gameState . notifLens . notificationsContent) = Nothing
+    | null (gs ^. notifLens . notificationsContent) = Nothing
     | otherwise =
         let highlight
-              | s ^. playState . gameState . notifLens . notificationsCount > 0 = Alert
+              | gs ^. notifLens . notificationsCount > 0 = Alert
               | otherwise = NoHighlight
          in Just (highlight, keyM key, name)
 
   -- Hides this key if the recognizable structure list is empty
   structuresKey =
-    if null $ s ^. playState . gameState . landscape . recognizerAutomatons . originalStructureDefinitions
+    if null $ gs ^. landscape . recognizerAutomatons . originalStructureDefinitions
       then Nothing
       else Just (NoHighlight, keyM SE.ViewStructuresEvent, "Structures")
 
@@ -893,13 +898,14 @@ drawKeyMenu s =
 
   uig = s ^. playState . uiGameplay
   gs = s ^. playState . gameState
+  uis = s ^. uiState
 
   isReplWorking = gs ^. gameControls . replWorking
   isPaused = gs ^. temporal . paused
-  hasDebug = hasDebugCapability creative s
+  hasDebug = hasDebugCapability creative gs
   creative = gs ^. creativeMode
-  showCreative = s ^. uiState . uiDebugOptions . Lens.contains ToggleCreative
-  showEditor = s ^. uiState . uiDebugOptions . Lens.contains ToggleWorldEditor
+  showCreative = uis ^. uiDebugOptions . Lens.contains ToggleCreative
+  showEditor = uis ^. uiDebugOptions . Lens.contains ToggleWorldEditor
   goal = hasAnythingToShow $ uig ^. uiDialogs . uiGoal . goalsContent
   showZero = uig ^. uiInventory . uiShowZero
   inventorySort = uig ^. uiInventory . uiInventorySort
@@ -1040,13 +1046,13 @@ drawWorldPane ui g =
 -- | Draw info about the currently focused robot, such as its name,
 --   position, orientation, and inventory, as long as it is not too
 --   far away.
-drawRobotPanel :: AppState -> Widget Name
+drawRobotPanel :: PlayState -> Widget Name
 drawRobotPanel s
   -- If the focused robot is too far away to communicate, just leave the panel blank.
   -- There should be no way to tell the difference between a robot that is too far
   -- away and a robot that does not exist.
-  | Just r <- s ^. playState . gameState . to focusedRobot
-  , Just (_, lst) <- s ^. playState . uiGameplay . uiInventory . uiInventoryList =
+  | Just r <- s ^. gameState . to focusedRobot
+  , Just (_, lst) <- s ^. uiGameplay . uiInventory . uiInventoryList =
       let drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
           details =
             [ txt (r ^. robotName)
@@ -1095,9 +1101,9 @@ drawItem _ _ _ (EquippedEntry e) = drawLabelledEntityName e <+> padLeft Max (str
 
 -- | Draw the info panel in the bottom-left corner, which shows info
 --   about the currently focused inventory item.
-drawInfoPanel :: AppState -> Widget Name
+drawInfoPanel :: PlayState -> Widget Name
 drawInfoPanel s
-  | Just Far <- s ^. playState . gameState . to focusedRange = blank
+  | Just Far <- s ^. gameState . to focusedRange = blank
   | otherwise =
       withVScrollBars OnRight
         . viewport InfoViewport Vertical
@@ -1106,14 +1112,14 @@ drawInfoPanel s
 
 -- | Display info about the currently focused inventory entity,
 --   such as its description and relevant recipes.
-explainFocusedItem :: AppState -> Widget Name
+explainFocusedItem :: PlayState -> Widget Name
 explainFocusedItem s = case focusedItem s of
   Just (InventoryEntry _ e) -> explainEntry uig gs e
   Just (EquippedEntry e) -> explainEntry uig gs e
   _ -> txt " "
  where
-  gs = s ^. playState . gameState
-  uig = s ^. playState . uiGameplay
+  gs = s ^. gameState
+  uig = s ^. uiGameplay
 
 explainEntry :: UIGameplay -> GameState -> Entity -> Widget Name
 explainEntry uig gs e =

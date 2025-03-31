@@ -23,6 +23,7 @@ import Data.Function (on)
 import Data.List.Extra (enumerate)
 import Data.Map qualified as M
 import Data.Maybe (isNothing)
+import Data.Set (Set)
 import Data.String (fromString)
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -66,7 +67,7 @@ updateAndRedrawUI forceRedraw = do
 --   game for some number of ticks.
 updateUI :: EventM Name AppState Bool
 updateUI = do
-  loadVisibleRegion
+  Brick.zoom (playState . gameState) loadVisibleRegion
 
   -- If the game state indicates a redraw is needed, invalidate the
   -- world cache so it will be redrawn.
@@ -107,30 +108,30 @@ updateUI = do
   replUpdated <- case g ^. gameControls . replStatus of
     REPLWorking pty (Just v)
       -- It did, and the result was the unit value or an exception.  Just reset replStatus.
-      | v `elem` [VUnit, VExc] -> do
-          listener <- use $ playState . gameState . gameControls . replListener
+      | v `elem` [VUnit, VExc] -> Brick.zoom playState $ do
+          listener <- use $ gameState . gameControls . replListener
           liftIO $ listener ""
-          playState . gameState . gameControls . replStatus .= REPLDone (Just (pty, v))
+          gameState . gameControls . replStatus .= REPLDone (Just (pty, v))
           pure True
 
       -- It did, and returned some other value.  Create new 'it'
       -- variables, pretty-print the result as a REPL output, with its
       -- type, and reset the replStatus.
-      | otherwise -> do
-          itIx <- use (playState . gameState . gameControls . replNextValueIndex)
-          env <- use (playState . gameState . baseEnv)
+      | otherwise -> Brick.zoom playState $ do
+          itIx <- use (gameState . gameControls . replNextValueIndex)
+          env <- use (gameState . baseEnv)
           let finalType = stripCmd (env ^. envTydefs) pty
               itName = fromString $ "it" ++ show itIx
               out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]
           addREPLHistItem (mkREPLOutput out)
-          listener <- use $ playState . gameState . gameControls . replListener
+          listener <- use $ gameState . gameControls . replListener
           liftIO $ listener out
           invalidateCacheEntry REPLHistoryCache
           vScrollToEnd replScroll
-          playState . gameState . gameControls . replStatus .= REPLDone (Just (finalType, v))
-          playState . gameState . baseEnv . at itName .= Just (Typed v finalType mempty)
-          playState . gameState . baseEnv . at "it" .= Just (Typed v finalType mempty)
-          playState . gameState . gameControls . replNextValueIndex %= (+ 1)
+          gameState . gameControls . replStatus .= REPLDone (Just (finalType, v))
+          gameState . baseEnv . at itName .= Just (Typed v finalType mempty)
+          gameState . baseEnv . at "it" .= Just (Typed v finalType mempty)
+          gameState . gameControls . replNextValueIndex %= (+ 1)
           pure True
 
     -- Otherwise, do nothing.
@@ -141,12 +142,12 @@ updateUI = do
   -- automatically switch to the logger and scroll all the way down so
   -- the new message can be seen.
   playState . uiGameplay . uiScrollToEnd .= False
-  logUpdated <- do
+  logUpdated <- Brick.zoom playState $ do
     -- If the inventory or info panels are currently focused, it would
     -- be rude to update them right under the user's nose, so consider
     -- them "sticky".  They will be updated as soon as the player moves
     -- the focus away.
-    fring <- use $ playState . uiGameplay . uiFocusRing
+    fring <- use $ uiGameplay . uiFocusRing
     let sticky = focusGetCurrent fring `elem` map (Just . FocusablePanel) [RobotPanel, InfoPanel]
 
     -- Check if the robot log was updated and we are allowed to change
@@ -155,25 +156,27 @@ updateUI = do
       False -> pure False
       True -> do
         -- Reset the log updated flag
-        zoomGameState $ zoomRobots clearFocusedRobotLogUpdated
+        zoomGameStateFromPlayState $ zoomRobots clearFocusedRobotLogUpdated
 
         -- Find and focus an equipped "logger" device in the inventory list.
         let isLogger (EquippedEntry e) = e ^. entityName == "logger"
             isLogger _ = False
             focusLogger = BL.listFindBy isLogger
 
-        playState . uiGameplay . uiInventory . uiInventoryList . _Just . _2 %= focusLogger
+        uiGameplay . uiInventory . uiInventoryList . _Just . _2 %= focusLogger
 
         -- Now inform the UI that it should scroll the info panel to
         -- the very end.
-        playState . uiGameplay . uiScrollToEnd .= True
+        uiGameplay . uiScrollToEnd .= True
         pure True
 
-  goalOrWinUpdated <- doGoalUpdates
+  menu <- use $ uiState . uiMenu
+  goalOrWinUpdated <- doGoalUpdates menu
 
   newPopups <- generateNotificationPopups
 
-  doRobotListUpdate g
+  dOps <- use $ uiState . uiDebugOptions
+  Brick.zoom playState $ doRobotListUpdate dOps g
 
   let redraw =
         g ^. needsRedraw
@@ -184,10 +187,9 @@ updateUI = do
           || newPopups
   pure redraw
 
-doRobotListUpdate :: GameState -> EventM Name AppState ()
-doRobotListUpdate g = do
-  gp <- use $ playState . uiGameplay
-  dOps <- use $ uiState . uiDebugOptions
+doRobotListUpdate :: Set DebugOption -> GameState -> EventM Name PlayState ()
+doRobotListUpdate dOps g = do
+  gp <- use uiGameplay
 
   let rd =
         mkRobotDisplay $
@@ -205,9 +207,9 @@ doRobotListUpdate g = do
       maybeModificationFunc =
         updateList . BL.listFindBy . ((==) `on` view (robot . robotID)) <$> maybeOldSelected
 
-  playState . uiGameplay . uiDialogs . uiRobot . robotListContent . robotsListWidget .= applyJust maybeModificationFunc rd
+  uiGameplay . uiDialogs . uiRobot . robotListContent . robotsListWidget .= applyJust maybeModificationFunc rd
 
-  Brick.zoom (playState . uiGameplay . uiDialogs . uiRobot) $
+  Brick.zoom (uiGameplay . uiDialogs . uiRobot) $
     forM_ maybeOldSelected updateRobotDetailsPane
 
 updateRobotDetailsPane :: RobotWidgetRow -> EventM Name RobotDisplay ()
@@ -228,8 +230,8 @@ updateRobotDetailsPane robotPayload =
 -- * feedback as to the final goal the player accomplished,
 -- * as a summary of all of the goals of the game
 -- * shows the player more "optional" goals they can continue to pursue
-doGoalUpdates :: EventM Name AppState Bool
-doGoalUpdates = do
+doGoalUpdates :: Menu -> EventM Name AppState Bool
+doGoalUpdates menu = do
   curGoal <- use (playState . uiGameplay . uiDialogs . uiGoal . goalsContent)
   curWinCondition <- use (playState . gameState . winCondition)
   announcementsList <- use (playState . gameState . messageInfo . announcementQueue . to toList)
@@ -239,15 +241,17 @@ doGoalUpdates = do
   case curWinCondition of
     NoWinCondition -> return False
     WinConditions (Unwinnable False) x -> do
-      -- This clears the "flag" that the Lose dialog needs to pop up
-      playState . gameState . winCondition .= WinConditions (Unwinnable True) x
-      openModal $ ScenarioEndModal LoseModal
+      Brick.zoom playState $ do
+        -- This clears the "flag" that the Lose dialog needs to pop up
+        gameState . winCondition .= WinConditions (Unwinnable True) x
+        openModal menu $ ScenarioEndModal LoseModal
       saveScenarioInfoOnFinishNocheat
       return True
     WinConditions (Won False ts) x -> do
-      -- This clears the "flag" that the Win dialog needs to pop up
-      playState . gameState . winCondition .= WinConditions (Won True ts) x
-      openModal $ ScenarioEndModal WinModal
+      Brick.zoom playState $ do
+        -- This clears the "flag" that the Win dialog needs to pop up
+        gameState . winCondition .= WinConditions (Won True ts) x
+        openModal menu $ ScenarioEndModal WinModal
       saveScenarioInfoOnFinishNocheat
       -- We do NOT advance the New Game menu to the next item here (we
       -- used to!), because we do not know if the user is going to
@@ -270,17 +274,17 @@ doGoalUpdates = do
 
       -- Decide whether to show a pop-up modal congratulating the user on
       -- successfully completing the current challenge.
-      when (goalWasUpdated && not isEnding) $ do
+      when (goalWasUpdated && not isEnding) $ Brick.zoom playState $ do
         -- The "uiGoal" field is necessary at least to "persist" the data that is needed
         -- if the player chooses to later "recall" the goals dialog with CTRL+g.
-        playState . uiGameplay . uiDialogs . uiGoal .= goalDisplay newGoalTracking
+        uiGameplay . uiDialogs . uiGoal .= goalDisplay newGoalTracking
 
         -- This clears the "flag" that indicate that the goals dialog needs to be
         -- automatically popped up.
-        playState . gameState . messageInfo . announcementQueue .= mempty
+        gameState . messageInfo . announcementQueue .= mempty
 
-        showObjectives <- use $ playState . uiGameplay . uiAutoShowObjectives
-        when showObjectives $ openModal GoalModal
+        showObjectives <- use $ uiGameplay . uiAutoShowObjectives
+        when showObjectives $ openModal menu GoalModal
 
       return goalWasUpdated
  where

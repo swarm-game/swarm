@@ -44,7 +44,7 @@ handleRobotPanelEvent bev = do
     Nothing -> case bev of
       VtyEvent ev@(V.EvKey k m) -> do
         handled <- handleKey keyHandler k m
-        unless handled $ handleInventoryListEvent ev
+        unless handled $ Brick.zoom (playState . uiGameplay) $ handleInventoryListEvent ev
       _ -> continueWithoutRedraw
 
 -- | Handle key events in the robot panel.
@@ -52,36 +52,36 @@ robotEventHandlers :: [KeyEventHandler SwarmEvent (EventM Name AppState)]
 robotEventHandlers = nonCustomizableHandlers <> customizableHandlers
  where
   nonCustomizableHandlers =
-    [ onKey V.KEnter "Show entity description" showEntityDescription
+    [ onKey V.KEnter "Show entity description" $ playStateWithMenu showEntityDescription
     ]
   customizableHandlers = allHandlers Robot $ \case
-    MakeEntityEvent -> ("Make the selected entity", makeFocusedEntity)
+    MakeEntityEvent -> ("Make the selected entity", Brick.zoom playState makeFocusedEntity)
     ShowZeroInventoryEntitiesEvent -> ("Show entities with zero count in inventory", zoomInventory showZero)
     CycleInventorySortEvent -> ("Cycle inventory sorting type", zoomInventory cycleSort)
     SwitchInventorySortDirection -> ("Switch ascending/descending inventory sort", zoomInventory switchSortDirection)
     SearchInventoryEvent -> ("Start inventory search", zoomInventory searchInventory)
 
 -- | Display a modal window with the description of an entity.
-showEntityDescription :: EventM Name AppState ()
-showEntityDescription = gets focusedEntity >>= maybe continueWithoutRedraw descriptionModal
+showEntityDescription :: Menu -> EventM Name PlayState ()
+showEntityDescription m = gets focusedEntity >>= maybe continueWithoutRedraw descriptionModal
  where
-  descriptionModal :: Entity -> EventM Name AppState ()
+  descriptionModal :: Entity -> EventM Name PlayState ()
   descriptionModal e = do
     s <- get
     resetViewport modalScroll
-    playState . uiGameplay . uiDialogs . uiModal ?= generateModal s (DescriptionModal e)
+    uiGameplay . uiDialogs . uiModal ?= generateModal m s (DescriptionModal e)
 
 -- | Attempt to make an entity selected from the inventory, if the
 --   base is not currently busy.
-makeFocusedEntity :: EventM Name AppState ()
+makeFocusedEntity :: EventM Name PlayState ()
 makeFocusedEntity = gets focusedEntity >>= maybe continueWithoutRedraw makeEntity
  where
-  makeEntity :: Entity -> EventM Name AppState ()
+  makeEntity :: Entity -> EventM Name PlayState ()
   makeEntity e = do
     s <- get
     let name = e ^. entityName
         mkT = [tmQ| make $str:name |]
-    case isActive <$> (s ^? playState . gameState . baseRobot) of
+    case isActive <$> (s ^? gameState . baseRobot) of
       Just False -> runBaseTerm (Just mkT)
       _ -> continueWithoutRedraw
 
@@ -98,20 +98,20 @@ searchInventory :: EventM Name UIInventory ()
 searchInventory = uiInventorySearch .= Just ""
 
 -- | Handle an event to navigate through the inventory list.
-handleInventoryListEvent :: V.Event -> EventM Name AppState ()
+handleInventoryListEvent :: V.Event -> EventM Name UIGameplay ()
 handleInventoryListEvent ev = do
   -- Note, refactoring like this is tempting:
   --
   --   Brick.zoom (uiState . ... . _Just . _2) (handleListEventWithSeparators ev (is _Separator))
   --
   -- However, this does not work since we want to skip redrawing in the no-list case!
-  mList <- preuse $ playState . uiGameplay . uiInventory . uiInventoryList . _Just . _2
+  mList <- preuse $ uiInventory . uiInventoryList . _Just . _2
   case mList of
     Nothing -> continueWithoutRedraw
     Just l -> do
       when (isValidListMovement ev) $ resetViewport infoScroll
       l' <- nestEventM' l (handleListEventWithSeparators ev (is _Separator))
-      playState . uiGameplay . uiInventory . uiInventoryList . _Just . _2 .= l'
+      uiInventory . uiInventoryList . _Just . _2 .= l'
 
 -- ----------------------------------------------
 --               INVENTORY SEARCH
@@ -127,7 +127,7 @@ handleInventorySearchEvent = \case
   -- Enter: return to regular inventory mode, and pop out the selected item
   Key V.KEnter -> do
     zoomInventory $ uiInventorySearch .= Nothing
-    showEntityDescription
+    playStateWithMenu showEntityDescription
   -- Any old character: append to the current search string
   CharKey c -> do
     resetViewport infoScroll
@@ -137,7 +137,7 @@ handleInventorySearchEvent = \case
     zoomInventory $ uiInventorySearch %= fmap (T.dropEnd 1)
   -- Handle any other event as list navigation, so we can look through
   -- the filtered inventory using e.g. arrow keys
-  VtyEvent ev -> handleInventoryListEvent ev
+  VtyEvent ev -> Brick.zoom (playState . uiGameplay) $ handleInventoryListEvent ev
   _ -> continueWithoutRedraw
 
 -- ----------------------------------------------
