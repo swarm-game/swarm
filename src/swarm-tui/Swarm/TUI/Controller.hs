@@ -697,7 +697,12 @@ handleREPLEventTyping m = \case
         uiGameplay . uiREPL . replPromptType %= \case
           CmdPrompt _ -> CmdPrompt [] -- reset completions on any event passed to editor
           SearchPrompt a -> SearchPrompt a
-        modify validateREPLForm
+
+        -- Now re-validate the input, unless only the cursor moved.
+        case ev of
+          Key V.KLeft -> pure ()
+          Key V.KRight -> pure ()
+          _ -> modify validateREPLForm
 
 insertMatchingPair :: Char -> EventM Name (Editor Text Name) ()
 insertMatchingPair c = modify . applyEdit $ TZ.insertChar c >>> TZ.insertChar (close c) >>> TZ.moveLeft
