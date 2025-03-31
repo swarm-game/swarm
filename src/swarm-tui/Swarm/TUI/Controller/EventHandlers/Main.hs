@@ -68,10 +68,10 @@ mainEventHandlers = allHandlers Main $ \case
     )
   HideRobotsEvent -> ("Hide robots for a few ticks", Brick.zoom (playState . uiGameplay) hideRobots)
   ShowCESKDebugEvent -> ("Show active robot CESK machine debugging line", showCESKDebug)
-  PauseEvent -> ("Pause or unpause the game", Brick.zoom playState $ whenRunning' safeTogglePause)
-  RunSingleTickEvent -> ("Run game for a single tick", whenRunning runSingleTick)
-  IncreaseTpsEvent -> ("Double game speed", Brick.zoom playState $ whenRunning' . modify $ adjustTPS (+))
-  DecreaseTpsEvent -> ("Halve game speed", Brick.zoom playState $ whenRunning' . modify $ adjustTPS (-))
+  PauseEvent -> ("Pause or unpause the game", Brick.zoom playState $ whenRunningPlayState safeTogglePause)
+  RunSingleTickEvent -> ("Run game for a single tick", whenRunningAppState runSingleTick)
+  IncreaseTpsEvent -> ("Double game speed", Brick.zoom playState $ whenRunningPlayState . modify $ adjustTPS (+))
+  DecreaseTpsEvent -> ("Halve game speed", Brick.zoom playState $ whenRunningPlayState . modify $ adjustTPS (-))
   FocusWorldEvent -> ("Set focus on the World panel", Brick.zoom playState $ setFocus WorldPanel)
   FocusRobotEvent -> ("Set focus on the Robot panel", Brick.zoom playState $ setFocus RobotPanel)
   FocusREPLEvent -> ("Set focus on the REPL panel", Brick.zoom playState $ setFocus REPLPanel)
@@ -198,11 +198,11 @@ isRunning = do
   mt <- preuse $ uiGameplay . uiDialogs . uiModal . _Just . modalType
   return $ maybe True isRunningModal mt
 
-whenRunning :: EventM Name AppState () -> EventM Name AppState ()
-whenRunning a = Brick.zoom playState isRunning >>= \r -> when r a
+whenRunningAppState :: EventM Name AppState () -> EventM Name AppState ()
+whenRunningAppState a = Brick.zoom playState isRunning >>= \r -> when r a
 
-whenRunning' :: EventM Name PlayState () -> EventM Name PlayState ()
-whenRunning' a = isRunning >>= \r -> when r a
+whenRunningPlayState :: EventM Name PlayState () -> EventM Name PlayState ()
+whenRunningPlayState a = isRunning >>= \r -> when r a
 
 whenDebug :: DebugOption -> EventM Name AppState () -> EventM Name AppState ()
 whenDebug d a = do

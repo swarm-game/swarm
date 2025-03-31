@@ -240,6 +240,8 @@ resetREPL t p = uiGameplay . uiREPL %= modifyResetREPL t p
 addREPLHistItem :: MonadState PlayState m => REPLHistItem -> m ()
 addREPLHistItem item = uiGameplay . uiREPL . replHistory %= addREPLItem item
 
+-- | Run an action that only depends on a 'PlayState'
+-- and read-only access to the 'Menu'.
 playStateWithMenu ::
   (Menu -> EventM Name PlayState ()) ->
   EventM Name AppState ()
