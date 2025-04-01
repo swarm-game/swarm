@@ -842,6 +842,8 @@ colorSeverity = \case
 drawModalMenu :: AppState -> Widget Name
 drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyCmds
  where
+  gs = s ^. playState . gameState
+
   notificationKey :: Getter GameState (Notifications a) -> SE.MainEvent -> Text -> Maybe KeyCmd
   notificationKey notifLens key name
     | null (gs ^. notifLens . notificationsContent) = Nothing

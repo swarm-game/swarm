@@ -7,12 +7,15 @@
 module Swarm.TUI.Controller.EventHandlers.Main (
   mainEventHandlers,
   isRunning,
-  whenRunning,
+  whenRunningAppState,
+  whenRunningPlayState,
   runSingleTick,
   adjustTPS,
   toggleREPLVisibility,
   showCESKDebug,
   hideRobots,
+  toggleDiscoveryNotificationModal,
+  viewGoal
 ) where
 
 import Brick
