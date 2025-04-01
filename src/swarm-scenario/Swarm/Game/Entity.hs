@@ -33,6 +33,7 @@ module Swarm.Game.Entity (
   -- ** Fields
   -- $lenses
   entityDisplay,
+  entityTexel,
   entityName,
   entityPlural,
   entityNameFor,
@@ -131,6 +132,7 @@ import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
 import Swarm.Game.Ingredients
 import Swarm.Game.Location
 import Swarm.Game.Terrain (TerrainType)
+import Swarm.Game.Texel
 import Swarm.Language.Capability
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown (Document, docToText)
@@ -644,6 +646,10 @@ entityHash = to _entityHash
 -- | The 'Display' explaining how to draw this entity in the world display.
 entityDisplay :: Lens' Entity Display
 entityDisplay = hashedLens _entityDisplay (\e x -> e {_entityDisplay = x})
+
+-- | XXX actually render the entity as a Texel
+entityTexel :: Getter Entity Texel
+entityTexel = entityDisplay . to displayToTexel
 
 -- | The name of the entity.
 entityName :: Lens' Entity EntityName
