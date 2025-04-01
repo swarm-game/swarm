@@ -432,14 +432,20 @@ handleModalEvent = \case
       _ -> do
         mdialog <- preuse $ playState . uiGameplay . uiDialogs . uiModal . _Just . modalDialog
         playStateWithMenu $ toggleModal QuitModal
+
+        menu <- use $ uiState . uiMenu
+        let isNoMenu = case menu of
+              NoMenu -> True
+              _ -> False
+
         case dialogSelection =<< mdialog of
-          Just (Button QuitButton, _) -> quitGame
+          Just (Button QuitButton, _) -> quitGame isNoMenu
           Just (Button KeepPlayingButton, _) -> playStateWithMenu $ toggleModal KeepPlayingModal
           Just (Button StartOverButton, StartOver currentSeed siPair) -> do
             invalidateCache
             restartGame currentSeed siPair
           Just (Button NextButton, Next siPair) -> do
-            quitGame
+            quitGame isNoMenu
             invalidateCache
             startGame siPair Nothing
           _ -> return ()
@@ -497,15 +503,15 @@ handleModalEvent = \case
 -- * saves current scenario status (InProgress/Completed)
 -- * advances the menu to the next scenario IF the current one was won
 -- * returns to the previous menu
-quitGame :: EventM Name AppState ()
-quitGame = do
+quitGame :: Bool -> EventM Name AppState ()
+quitGame isNoMenu = do
   -- Write out REPL history.
   history <- use $ playState . uiGameplay . uiREPL . replHistory
   let hist = mapMaybe getREPLSubmitted $ getLatestREPLHistoryItems maxBound history
   liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
 
   -- Save scenario status info.
-  saveScenarioInfoOnQuit
+  saveScenarioInfoOnQuit isNoMenu
 
   -- Automatically advance the menu to the next scenario iff the
   -- player has won the current one.
@@ -517,10 +523,9 @@ quitGame = do
   -- Either quit the entire app (if the scenario was chosen directly
   -- from the command line) or return to the menu (if the scenario was
   -- chosen from the menu).
-  menu <- use $ uiState . uiMenu
-  case menu of
-    NoMenu -> halt
-    _ -> uiState . uiPlaying .= False
+  if isNoMenu
+    then halt
+    else uiState . uiPlaying .= False
 
 ------------------------------------------------------------
 -- REPL events
