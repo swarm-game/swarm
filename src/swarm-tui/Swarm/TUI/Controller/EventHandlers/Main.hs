@@ -15,7 +15,7 @@ module Swarm.TUI.Controller.EventHandlers.Main (
   showCESKDebug,
   hideRobots,
   toggleDiscoveryNotificationModal,
-  viewGoal
+  viewGoal,
 ) where
 
 import Brick
