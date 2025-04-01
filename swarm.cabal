@@ -643,6 +643,7 @@ library swarm-scenario
     Swarm.Game.State.Config
     Swarm.Game.State.Landscape
     Swarm.Game.Terrain
+    Swarm.Game.Texel
     Swarm.Game.World
     Swarm.Game.World.Abstract
     Swarm.Game.World.Compile

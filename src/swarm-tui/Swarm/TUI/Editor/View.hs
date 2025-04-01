@@ -23,7 +23,7 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.Panel
 import Swarm.TUI.View.Attribute.Attr
-import Swarm.TUI.View.CellDisplay (renderDisplay)
+import Swarm.TUI.View.CellDisplay (renderTexel)
 import Swarm.TUI.View.Util qualified as VU
 import Swarm.Util (applyWhen)
 
@@ -141,10 +141,10 @@ drawWorldEditor toplevelFocusRing uig =
   statusBox = maybe emptyWidget str $ worldEditor ^. lastWorldEditorMessage
 
 drawLabeledEntitySwatch :: EntityFacade -> Widget Name
-drawLabeledEntitySwatch (EntityFacade eName eDisplay) =
+drawLabeledEntitySwatch (EntityFacade eName eTexel) =
   tile <+> txt eName
  where
-  tile = padRight (Pad 1) $ renderDisplay eDisplay
+  tile = padRight (Pad 1) $ renderTexel eTexel
 
 drawTerrainSelector :: UIGameplay -> Widget Name
 drawTerrainSelector uig =

@@ -11,11 +11,12 @@ import Control.Lens hiding (from, (.=), (<.>))
 import Data.List.Extra (enumerate)
 import Data.Map qualified as M
 import Data.Vector qualified as V
-import Swarm.Game.Display (Display)
+import Swarm.Game.Display (Attribute)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainType)
+import Swarm.Game.Texel (Texel)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.TUI.Model.Name
@@ -32,9 +33,9 @@ data EntityPaint
   | Ref E.Entity
   deriving (Eq)
 
-getDisplay :: EntityPaint -> Display
-getDisplay (Facade (EntityFacade _ d)) = d
-getDisplay (Ref e) = e ^. E.entityDisplay
+renderEntityPaint :: EntityPaint -> Texel Attribute
+renderEntityPaint (Facade (EntityFacade _ d)) = d
+renderEntityPaint (Ref e) = E.renderEntity (const False) e
 
 toFacade :: EntityPaint -> EntityFacade
 toFacade = \case

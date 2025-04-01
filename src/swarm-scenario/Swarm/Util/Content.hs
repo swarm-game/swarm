@@ -6,7 +6,6 @@
 module Swarm.Util.Content where
 
 import Control.Applicative ((<|>))
-import Control.Lens ((^.))
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Swarm.Game.Display
@@ -15,6 +14,7 @@ import Swarm.Game.Scenario.Topography.Cell (PCell (..))
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Terrain (TerrainMap, TerrainType, getTerrainWord)
+import Swarm.Game.Texel (getTexelAttr)
 import Swarm.Game.Universe
 import Swarm.Game.World
 import Swarm.Game.World.Coords
@@ -52,6 +52,9 @@ getMapRectangle paintTransform contentFunc coords =
 
   renderRow rowIndex = map (drawCell paintTransform rowIndex) [xLeft .. xRight]
 
+-- XXX Better to just turn a cell into a `Texel` and then turn a
+--  `Texel` into a single color, which will automatically handle stuff
+--  about entities vs terrain etc.
 -- | Get the color used to render a single cell
 getTerrainEntityColor ::
   M.Map WorldAttr PreservableColor ->
@@ -61,6 +64,6 @@ getTerrainEntityColor aMap (Cell terr cellEnt _) =
   (entityColor =<< erasableToMaybe cellEnt) <|> terrainFallback
  where
   terrainFallback = M.lookup (WorldAttr $ T.unpack $ getTerrainWord terr) aMap
-  entityColor (EntityFacade _ d) = case d ^. displayAttr of
-    AWorld n -> M.lookup (WorldAttr $ T.unpack n) aMap
+  entityColor (EntityFacade _ d) = case getTexelAttr d of
+    Just (AWorld n) -> M.lookup (WorldAttr $ T.unpack n) aMap
     _ -> Nothing

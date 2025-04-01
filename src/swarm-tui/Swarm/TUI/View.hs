@@ -58,7 +58,6 @@ import Data.List.NonEmpty qualified as NE
 import Data.List.Split (chunksOf)
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
-import Data.Semigroup (sconcat)
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -295,7 +294,7 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
     tm = s ^. scenarioLandscape . scenarioTerrainAndEntities . terrainMap
     ri = RenderingInput theWorlds entIsKnown tm
 
-    renderCoord = renderDisplay . displayLocRaw (WorldOverdraw False mempty) ri []
+    renderCoord = renderTexel . renderBaseLoc (WorldOverdraw False mempty) ri
     worldPeek = worldWidget renderCoord vc
 
     firstRow =
@@ -534,16 +533,17 @@ drawGameUI s =
           )
     ]
 
+-- XXX what is this doing? Seems to duplicate some code from CellDisplay.
 drawWorldCursorInfo :: WorldOverdraw -> GameState -> Cosmic Coords -> Widget Name
 drawWorldCursorInfo worldEditor g cCoords =
   case getStatic g coords of
-    Just s -> renderDisplay $ displayStatic s
+    Just s -> renderTexel $ renderStatic s
     Nothing -> hBox $ tileMemberWidgets ++ [coordsWidget]
  where
   Cosmic _ coords = cCoords
   coordsWidget = str $ renderCoordsString $ fmap coordsToLoc cCoords
 
-  tileMembers = terrain : mapMaybe merge [entity, r]
+  tileMembers = [terrain, entity, r]  -- XXX filter out empty ones?
   tileMemberWidgets =
     map (padRight $ Pad 1)
       . concat
@@ -551,7 +551,7 @@ drawWorldCursorInfo worldEditor g cCoords =
       . zipWith f tileMembers
       $ ["at", "on", "with"]
    where
-    f cell preposition = [renderDisplay cell, txt preposition]
+    f cell preposition = [renderTexel cell, txt preposition]
 
   ri =
     RenderingInput
@@ -559,11 +559,12 @@ drawWorldCursorInfo worldEditor g cCoords =
       (getEntityIsKnown $ mkEntityKnowledge g)
       (g ^. landscape . terrainAndEntities . terrainMap)
 
-  terrain = displayTerrainCell worldEditor ri cCoords
-  entity = displayEntityCell worldEditor ri cCoords
-  r = displayRobotCell g cCoords
+  terrain = renderTerrainCell worldEditor ri cCoords
+  entity = renderEntityCell worldEditor ri cCoords
+  r = renderRobotCell g cCoords
 
-  merge = fmap sconcat . NE.nonEmpty . filter (not . (^. invisible))
+  -- XXX do we need this??
+  -- merge = fmap sconcat . NE.nonEmpty . filter (not . (^. invisible))
 
 -- | Format the clock display to be shown in the upper right of the
 --   world panel.
@@ -1100,7 +1101,7 @@ drawRobotPanel s
           details =
             [ txt (r ^. robotName)
             , padLeft (Pad 2) . str . renderCoordsString $ r ^. robotLocation
-            , padLeft (Pad 2) $ renderDisplay (r ^. robotDisplay)
+            , padLeft (Pad 2) $ renderTexel (renderRobot r)
             ]
        in padBottom Max $
             vBox

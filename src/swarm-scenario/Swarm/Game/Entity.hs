@@ -59,6 +59,9 @@ module Swarm.Game.Entity (
   lookupEntityName,
   devicesForCap,
 
+  -- ** Rendering
+  renderEntity,
+
   -- * Inventories
   Inventory,
 
@@ -131,8 +134,10 @@ import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
 import Swarm.Game.Ingredients
 import Swarm.Game.Location
 import Swarm.Game.Terrain (TerrainType)
+import Swarm.Game.Texel (Texel)
 import Swarm.Language.Capability
 import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Language.Text.Markdown (Document, docToText)
 import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util (binTuples, failT, findDup, plural, quote, (?))
@@ -710,6 +715,10 @@ entityBiomes = hashedLens _entityBiomes (\e x -> e {_entityBiomes = x})
 -- | The inventory of other entities carried by this entity.
 entityInventory :: Lens' Entity Inventory
 entityInventory = hashedLens _entityInventory (\e x -> e {_entityInventory = x})
+
+-- | XXX
+renderEntity :: (AbsoluteDir -> Bool) -> Entity -> Texel Attribute
+renderEntity boundaryCheck e = renderDisplay ((e ^. entityOrientation) >>= toDirection) boundaryCheck . view entityDisplay $ e
 
 ------------------------------------------------------------
 -- Inventory

@@ -190,8 +190,8 @@ drawLabeledTerrainSwatch tm a =
  where
   tile =
     padRight (Pad 1)
-      . renderDisplay
-      . maybe mempty terrainDisplay
+      . renderTexel
+      . maybe mempty terrainTexel
       $ M.lookup a (terrainByName tm)
 
   materialName = init $ show a
@@ -272,7 +272,7 @@ maybeScroll vpName contents =
 drawLabelledEntityName :: Entity -> Widget n
 drawLabelledEntityName e =
   hBox
-    [ padRight (Pad 2) (renderDisplay (e ^. entityDisplay))
+    [ padRight (Pad 2) (renderTexel (E.renderEntity (const False) e))
     , txt (e ^. entityName)
     ]
 

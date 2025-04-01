@@ -19,7 +19,7 @@ import Data.Map.Strict qualified as M
 import Data.Set qualified as Set
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Swarm.Game.Entity (Entity, entityDisplay)
+import Swarm.Game.Entity (Entity, renderEntity)
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Structure.Named qualified as Structure
@@ -118,7 +118,7 @@ structureWidget gs s =
   theName = Structure.name theNamedGrid
   cells = getRows $ Grid $ entityProcessedGrid s
 
-  renderOneCell = maybe (txt " ") (renderDisplay . view entityDisplay)
+  renderOneCell = maybe (txt " ") (renderTexel . renderEntity (const False))
 
 makeListWidget :: [StructureInfo b a] -> BL.List Name (StructureInfo b a)
 makeListWidget structureDefinitions =

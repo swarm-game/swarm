@@ -269,7 +269,7 @@ drawRobotGridCell t g _foc (WdthD widthDef) ctx rid =
   nameWidget :: Robot -> Widget Name
   nameWidget r =
     hBox
-      [ renderDisplay (r ^. robotDisplay)
+      [ renderTexel (renderRobot r)
       , highlightSystem r . txt $ " " <> r ^. robotName
       ]
 

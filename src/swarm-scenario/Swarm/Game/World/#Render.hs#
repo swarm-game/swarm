@@ -31,6 +31,7 @@ import Data.Tuple.Extra (both)
 import GHC.Generics (Generic)
 import Linear (V2 (..))
 import Swarm.Failure (SystemFailure, simpleErrorHandle)
+import Swarm.Game.Display (defaultChar)
 import Swarm.Game.Entity.Cosmetic
 import Swarm.Game.Land
 import Swarm.Game.Location
@@ -45,7 +46,7 @@ import Swarm.Game.Scenario.Topography.Rasterize
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.State.Landscape
-import Swarm.Game.Texel (getTexelChar)
+import Swarm.Game.Tex
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Gen (Seed)
@@ -102,10 +103,10 @@ data RenderOpts = RenderOpts
   , failureMode :: FailureMode
   }
 
-getCellChar :: PCell EntityFacade -> Char
-getCellChar = fromMaybe ' ' . (>>= facadeChar) . erasableToMaybe . cellEntity
+getDisplayChar :: PCell EntityFacade -> Char
+getDisplayChar = maybe ' ' facadeChar . erasableToMaybe . cellEntity
  where
-  facadeChar (EntityFacade _ d) = getTexelChar d
+  facadeChar (EntityFacade _ d) = view getTexelChar d
 
 -- | When output size is not explicitly provided,
 -- uses natural map bounds (if a map exists).
@@ -190,7 +191,7 @@ doRenderCmd opts@(RenderOpts _ asPng _ _) mapPath =
 renderScenarioMap :: RenderOpts -> FilePath -> IO [String]
 renderScenarioMap opts fp = simpleErrorHandle $ do
   ThumbnailRenderContext grid _ <- getRenderableGridFromPath opts fp
-  return $ getRows $ getCellChar <$> grid
+  return $ getRows $ getDisplayChar <$> grid
 
 data ThumbnailRenderContext
   = ThumbnailRenderContext

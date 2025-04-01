@@ -13,7 +13,8 @@ module Swarm.Game.Scenario.Topography.EntityFacade where
 
 import Control.Lens ((^.))
 import Data.Yaml as Y (ToJSON (toJSON))
-import Swarm.Game.Display (Display)
+import Swarm.Game.Display (Attribute)
+import Swarm.Game.Texel (Texel)
 import Swarm.Game.Entity qualified as E
 
 -- | This datatype is a lightweight stand-in for the
@@ -21,15 +22,15 @@ import Swarm.Game.Entity qualified as E
 -- of its other fields.
 -- It contains the bare minimum display information
 -- for rendering.
-data EntityFacade = EntityFacade E.EntityName Display
+data EntityFacade = EntityFacade E.EntityName (Texel Attribute)
   deriving (Eq)
 
 -- Note: This instance is used only for the purpose of WorldPalette
 instance ToJSON EntityFacade where
-  toJSON (EntityFacade eName _display) = toJSON eName
+  toJSON (EntityFacade eName _texel) = toJSON eName
 
 mkFacade :: E.Entity -> EntityFacade
 mkFacade e =
   EntityFacade
     (e ^. E.entityName)
-    (e ^. E.entityDisplay)
+    (E.renderEntity (const False) e)

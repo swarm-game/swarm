@@ -21,24 +21,17 @@ module Swarm.Game.Display (
   -- ** Fields
   defaultChar,
   orientationMap,
-  curOrientation,
-  boundaryOverride,
   displayAttr,
   displayPriority,
   invisible,
   childInheritance,
 
-  -- ** Rendering
-  displayChar,
-  hidden,
-
-  -- ** Neighbor-based boundary rendering
-  getBoundaryDisplay,
-
   -- ** Construction
-  defaultTerrainDisplay,
   defaultEntityDisplay,
   defaultRobotDisplay,
+
+  -- ** Rendering
+  renderDisplay,
 ) where
 
 import Control.Applicative ((<|>))
@@ -49,20 +42,19 @@ import Data.List.Extra (enumerate)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
+import Data.Semigroup (Arg (..), Max (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Graphics.Text.Width
+import Swarm.Game.Texel
 import Swarm.Language.Syntax.Direction (AbsoluteDir (..), Direction (..))
-import Swarm.Util (applyWhen, maxOn, quote)
+import Swarm.Util (applyWhen, quote)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE)
 
--- | Display priority.  Entities with higher priority will be drawn on
---   top of entities with lower priority.
-type Priority = Int
-
+-- XXX move this to another module??
 -- | An internal attribute name.
 data Attribute = ADefault | ARobot | AEntity | AWorld Text
   deriving (Eq, Ord, Show, Generic, Hashable)
@@ -90,24 +82,16 @@ data ChildInheritance
   | DefaultDisplay
   deriving (Eq, Ord, Show, Generic, Hashable)
 
--- | A record explaining how to display an entity in the TUI.
+-- | A record explaining how to display a robot or entity in the TUI.
 data Display = Display
   { _defaultChar :: Char
   , _orientationMap :: Map AbsoluteDir Char
-  , _curOrientation :: Maybe Direction
-  , _boundaryOverride :: Maybe Char
   , _displayAttr :: Attribute
   , _displayPriority :: Priority
   , _invisible :: Bool
   , _childInheritance :: ChildInheritance
   }
   deriving (Eq, Ord, Show, Generic, Hashable)
-
-instance Semigroup Display where
-  d1 <> d2
-    | _invisible d1 = d2
-    | _invisible d2 = d1
-    | otherwise = maxOn _displayPriority d1 d2
 
 makeLensesNoSigs ''Display
 
@@ -119,13 +103,6 @@ defaultChar :: Lens' Display Char
 --   different orientations.  If an orientation is not in the map,
 --   the 'defaultChar' will be used.
 orientationMap :: Lens' Display (Map AbsoluteDir Char)
-
--- | The display caches the current orientation of the entity, so we
---   know which character to use from the orientation map.
-curOrientation :: Lens' Display (Maybe Direction)
-
--- | The display character to substitute when neighbor boundaries are present
-boundaryOverride :: Lens' Display (Maybe Char)
 
 -- | The attribute to use for display.
 displayAttr :: Lens' Display Attribute
@@ -156,9 +133,7 @@ instance FromJSONE Display Display where
 
     liftE $ do
       let _defaultChar = c
-          _boundaryOverride = Nothing
       _orientationMap <- v .:? "orientationMap" .!= dOM
-      _curOrientation <- v .:? "curOrientation" .!= (defD ^. curOrientation)
       _displayAttr <- (v .:? "attr") .!= (defD ^. displayAttr)
       _displayPriority <- v .:? "priority" .!= (defD ^. displayPriority)
       _invisible <- v .:? "invisible" .!= (defD ^. invisible)
@@ -188,27 +163,6 @@ instance ToJSON Display where
         ++ ["orientationMap" .= (d ^. orientationMap) | not (M.null (d ^. orientationMap))]
         ++ ["invisible" .= (d ^. invisible) | d ^. invisible]
 
--- | Look up the character that should be used for a display.
-displayChar :: Display -> Char
-displayChar disp =
-  fromMaybe (disp ^. defaultChar) $
-    disp ^. boundaryOverride <|> do
-      DAbsolute d <- disp ^. curOrientation
-      M.lookup d (disp ^. orientationMap)
-
--- | Modify a display to use a @?@ character for entities that are
---   hidden/unknown.
-hidden :: Display -> Display
-hidden = (defaultChar .~ '?') . (curOrientation .~ Nothing)
-
--- | The default way to display some terrain using the given character
---   and attribute, with priority 0.
-defaultTerrainDisplay :: Attribute -> Display
-defaultTerrainDisplay attr =
-  defaultEntityDisplay ' '
-    & displayPriority .~ 0
-    & displayAttr .~ attr
-
 -- | Construct a default display for an entity that uses only a single
 --   display character, the default entity attribute, and priority 1.
 defaultEntityDisplay :: Char -> Display
@@ -216,8 +170,6 @@ defaultEntityDisplay c =
   Display
     { _defaultChar = c
     , _orientationMap = M.empty
-    , _curOrientation = Nothing
-    , _boundaryOverride = Nothing
     , _displayAttr = AEntity
     , _displayPriority = 1
     , _invisible = False
@@ -241,16 +193,11 @@ defaultRobotDisplay =
           , (DSouth, 'v')
           , (DNorth, '^')
           ]
-    , _boundaryOverride = Nothing
-    , _curOrientation = Nothing
     , _displayAttr = ARobot
     , _displayPriority = 10
     , _invisible = False
     , _childInheritance = Inherit
     }
-
-instance Monoid Display where
-  mempty = defaultEntityDisplay ' ' & invisible .~ True
 
 -- * Boundary rendering
 
@@ -309,3 +256,15 @@ glyphForNeighbors = \case
 
 getBoundaryDisplay :: (AbsoluteDir -> Bool) -> Maybe Char
 getBoundaryDisplay = glyphForNeighbors . computeNeighborPresence
+
+-- * Rendering
+
+-- | XXX Turn a Display into a concrete 'Texel', taking into account
+--   orientation, boundaries, etc.
+renderDisplay :: Maybe Direction -> (AbsoluteDir -> Bool) -> Display -> Texel Attribute
+renderDisplay mdir boundaryCheck disp = Texel (Just (Max (Arg (disp ^. displayPriority) (c, disp ^. displayAttr)))) Nothing  -- XXX
+  where
+    c = fromMaybe (disp ^. defaultChar) $
+        getBoundaryDisplay boundaryCheck <|> do
+          DAbsolute d <- mdir
+          M.lookup d (disp ^. orientationMap)
