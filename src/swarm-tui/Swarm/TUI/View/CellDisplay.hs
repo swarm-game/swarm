@@ -59,9 +59,16 @@ import Swarm.Util.Content (getContentAt)
 import Witch (from)
 import Witch.Encoding qualified as Encoding
 
--- | Render a display as a UI widget.
-renderDisplay :: Display -> Widget n
-renderDisplay disp = withAttr (disp ^. displayAttr . to toAttrName) $ str [displayChar disp]
+-- | Render a texel as a UI widget.
+renderTexel :: Texel -> Widget n
+renderTexel t =
+  let (mfg, mbg) = getTexelData t
+      displayChar = maybe ' ' fst mfg
+      setFG = maybe id (withAttr . toAttrName . snd) mfg
+      setBG = maybe id (\c -> modifyDefAttr (`V.withBackColor` c)) mbg
+  setBG . setFG $ str [displayChar]
+
+-- https://hackage.haskell.org/package/vty-6.4/docs/Graphics-Vty-Attributes.html#t:Attr
 
 -- | Render the 'Display' for a specific location.
 drawLoc :: UIGameplay -> GameState -> Cosmic Coords -> Widget Name
