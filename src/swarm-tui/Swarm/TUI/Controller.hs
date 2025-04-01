@@ -334,7 +334,7 @@ handleMainEvent forceRedraw ev = do
         (UIShortcut "unpause") -> whenRunning safeTogglePause
         (UIShortcut "step") -> whenRunning runSingleTick
         (UIShortcut "speed-up") -> whenRunning . modify $ adjustTPS (+)
-        (UIShortcut "speed-down") -> whenRunning . modify $ adjustTPS (+)
+        (UIShortcut "speed-down") -> whenRunning . modify $ adjustTPS (-)
         (UIShortcut "hide REPL") -> toggleREPLVisibility
         (UIShortcut "show REPL") -> toggleREPLVisibility
         (UIShortcut "debug") -> showCESKDebug

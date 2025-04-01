@@ -146,8 +146,7 @@ import Text.Printf
 import Text.Wrap
 import Witch (into)
 
--- | (keyhightlight, key, cmd)
--- | (h, [(key, cmd)], cmd) where the array has sub commands
+-- | The 2nd case is for key commands that have more than one btn in the ui
 type KeyCmd = Either (KeyHighlight, Text, Text) (KeyHighlight, [(Text, Text)], Text)
 
 -- | The main entry point for drawing the entire UI.
@@ -1010,7 +1009,7 @@ drawKeyCmd keycmd =
           , txt cmd
           ]
     Right (h, keyArr, cmd) ->
-      hBox $ map (createCmd h) keyArr ++ [txt cmd]
+      hBox $ intersperse (txt "/") (map (createCmd h) keyArr) ++ [txt cmd]
  where
   createCmd h (key, cmd) = clickable (UIShortcut cmd) $ withAttr (attr h) (txt $ brackets key)
   attr h = case h of
