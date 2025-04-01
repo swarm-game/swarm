@@ -49,13 +49,14 @@ import Data.List.Extra (enumerate)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
+import Data.Semigroup (First(..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Graphics.Text.Width
 import Swarm.Language.Syntax.Direction (AbsoluteDir (..), Direction (..))
-import Swarm.Util (applyWhen, maxOn, quote)
+import Swarm.Util (applyWhen, quote)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE)
 
@@ -90,7 +91,7 @@ data ChildInheritance
   | DefaultDisplay
   deriving (Eq, Ord, Show, Generic, Hashable)
 
--- | A record explaining how to display an entity in the TUI.
+-- | A record explaining how to display something in the TUI.
 data Display = Display
   { _defaultChar :: Char
   , _orientationMap :: Map AbsoluteDir Char
@@ -102,12 +103,6 @@ data Display = Display
   , _childInheritance :: ChildInheritance
   }
   deriving (Eq, Ord, Show, Generic, Hashable)
-
-instance Semigroup Display where
-  d1 <> d2
-    | _invisible d1 = d2
-    | _invisible d2 = d1
-    | otherwise = maxOn _displayPriority d1 d2
 
 makeLensesNoSigs ''Display
 
@@ -249,9 +244,6 @@ defaultRobotDisplay =
     , _childInheritance = Inherit
     }
 
-instance Monoid Display where
-  mempty = defaultEntityDisplay ' ' & invisible .~ True
-
 -- * Boundary rendering
 
 -- | This type is isomorphic to 'Bool' but
@@ -309,3 +301,27 @@ glyphForNeighbors = \case
 
 getBoundaryDisplay :: (AbsoluteDir -> Bool) -> Maybe Char
 getBoundaryDisplay = glyphForNeighbors . computeNeighborPresence
+
+------------------------------------------------------------
+
+newtype Prioritized a = Prioritized (Priority, a)
+
+-- XXX combines things so higher priority come first
+instance Semigroup a => Semigroup (Prioritized a) where
+  Prioritized (p1, a1) <> Prioritized (p2, a2) =
+    Prioritized (max p1 p2, if p1 >= p2 then a1 <> a2 else a2 <> a1)
+
+-- XXX
+data Texel = Texel
+  { _texelFG :: Maybe (Prioritized (First (Char, Attribute)))
+  , _texelBG :: Maybe (Prioritized (First Attribute))
+  }
+
+instance Semigroup Texel where
+  Texel f1 b1 <> Texel f2 b2 = Texel (f1 <> f2) (b1 <> b2)
+
+instance Monoid Texel where
+  mempty = Texel mempty mempty
+
+renderDisplay :: Display -> Texel
+renderDisplay = undefined
