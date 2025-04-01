@@ -9,7 +9,8 @@
 module Swarm.Language.Syntax.Loc (
   SrcLoc (..),
   LocVar (..),
-  srcLocBefore,
+  srcLocStartsBefore,
+  srcLocEndsBefore,
 ) where
 
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
@@ -33,9 +34,11 @@ data SrcLoc
 
 instance ToJSON SrcLoc where
   toJSON = genericToJSON optionsUntagged
+  omitField = (== NoLoc)
 
 instance FromJSON SrcLoc where
   parseJSON = genericParseJSON optionsUntagged
+  omittedField = Just NoLoc
 
 -- | @x <> y@ is the smallest 'SrcLoc' that subsumes both @x@ and @y@.
 instance Semigroup SrcLoc where
@@ -48,12 +51,19 @@ instance Semigroup SrcLoc where
 instance Monoid SrcLoc where
   mempty = NoLoc
 
--- | Check whether one @SrcLoc@ starts at or before another one,
+-- | Check whether one @SrcLoc@ starts before another one,
 --   /i.e./ compare their starting indices to see if the first is @<=@
 --   the second.
-srcLocBefore :: SrcLoc -> SrcLoc -> Bool
-srcLocBefore (SrcLoc a _) (SrcLoc b _) = a <= b
-srcLocBefore _ _ = False
+srcLocStartsBefore :: SrcLoc -> SrcLoc -> Bool
+srcLocStartsBefore (SrcLoc a _) (SrcLoc b _) = a <= b
+srcLocStartsBefore _ _ = False
+
+-- | Check whether the first @SrcLoc@ ends before the second, /i.e./
+--   compare their ending indices to see if the first is @<=@ the
+--   second.
+srcLocEndsBefore :: SrcLoc -> SrcLoc -> Bool
+srcLocEndsBefore (SrcLoc _ a) (SrcLoc _ b) = a <= b
+srcLocEndsBefore _ _ = False
 
 -- | A variable with associated source location, used for variable
 --   binding sites. (Variable occurrences are a bare TVar which gets

@@ -134,7 +134,8 @@ validateTerrainAttrRefs validAttrs rawTerrains =
   forM rawTerrains $ \(TerrainItem n a d) -> do
     unless (Set.member (WorldAttr $ T.unpack a) validAttrs)
       . throwError
-      . CustomMessage
+      . SystemFailure
+      . CustomFailure
       $ T.unwords
         [ "Nonexistent attribute"
         , quote a

@@ -38,6 +38,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Map.NonEmpty qualified as NEM
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
+import Data.MonoidMap qualified as MM
 import Data.Ord (Down (Down))
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
@@ -106,7 +107,8 @@ import Text.Megaparsec (runParser)
 import Witch (From (from), into)
 import Prelude hiding (Applicative (..), lookup)
 
--- | How to handle failure, for example when moving to blocked location
+-- | How to handle failure, for example when moving into liquid or
+--   attempting to move to a blocked location
 data RobotFailure = ThrowExn | Destroy | IgnoreFail
 
 -- | How to handle different types of failure when moving/teleporting
@@ -347,8 +349,9 @@ execConst runChildProg c vs s k = do
         -- Make sure the robot has the thing in its inventory
         e <- hasInInventoryOrFail name
 
-        -- Place the entity and remove it from the inventory
-        updateEntityAt loc (const (Just e))
+        -- Place the entity (if it is not evanescent) and remove it from the inventory
+        unless (Evanescent `S.member` (e ^. entityProperties)) $
+          updateEntityAt loc (const (Just e))
         robotInventory %= delete e
 
         flagRedraw
@@ -416,9 +419,33 @@ execConst runChildProg c vs s k = do
       [VText itemName] -> do
         item <- ensureEquipped itemName
         myID <- use robotID
+
+        -- Speculatively unequip the item
         focusedID <- use $ robotInfo . focusedRobotID
         equippedDevices %= delete item
         robotInventory %= insert item
+
+        -- Now check whether being on the current cell would still be
+        -- allowed.
+        loc <- use robotLocation
+        mfail <- checkMoveFailure loc
+        forM_ mfail \case
+          PathBlockedBy _ -> do
+            -- If unequipping the device would somehow result in the
+            -- path being blocked, don't allow it; re-equip the device
+            -- and throw an exception.
+            robotInventory %= delete item
+            equippedDevices %= insert item
+            throwError . cmdExn Unequip $
+              ["You can't unequip the", item ^. entityName, "right now!"]
+          PathLiquid _ -> do
+            -- Unequipping a device that gives the Float capability in
+            -- the middle of liquid results in drowning, EVEN for
+            -- base!  This is currently the only (known) way to get
+            -- the `DestroyedBase` achievement.
+            selfDestruct .= True
+            when (myID == 0) $ grantAchievementForRobot DestroyedBase
+
         -- Flag the UI for a redraw if we are currently showing our inventory
         when (focusedID == myID) flagRedraw
         return $ mkReturn ()
@@ -509,8 +536,8 @@ execConst runChildProg c vs s k = do
              where
               excludeSelf = (`IS.difference` IS.singleton selfRid)
               botsHere (Cosmic swName loc) =
-                M.findWithDefault mempty loc $
-                  M.findWithDefault mempty swName botsByLocs
+                MM.get loc $
+                  MM.get swName botsByLocs
               botIsVisible = maybe False canSee . (`IM.lookup` rMap)
               canSee = not . (^. robotDisplay . invisible)
 
@@ -749,34 +776,16 @@ execConst runChildProg c vs s k = do
       [VText msg] -> do
         isPrivileged <- isPrivilegedBot
         loc <- use robotLocation
-
         -- current robot will be inserted into the robot set, so it needs the log
         m <- traceLog Said Info msg
         emitMessage m
-        let measureToLog robLoc = \case
-              RobotLog _ _ logLoc -> cosmoMeasure manhattan robLoc logLoc
-              SystemLog -> Measurable 0
-            addLatestClosest rl = \case
-              Seq.Empty -> Seq.singleton m
-              es Seq.:|> e
-                | e `isEarlierThan` m -> es |> e |> m
-                | e `isFartherThan` m -> es |> m
-                | otherwise -> es |> e
-             where
-              isEarlierThan = (<) `on` (^. leTime)
-              isFartherThan = (>) `on` (measureToLog rl . view leSource)
         let addToRobotLog :: (Has (State GameState) sgn m) => Robot -> m ()
-            addToRobotLog r = do
-              maybeRidLoc <- evalState r $ do
-                hasLog <- hasCapability $ CExecute Log
-                hasListen <- hasCapability $ CExecute Listen
-                loc' <- use robotLocation
-                rid <- use robotID
-                return $ do
-                  guard $ hasLog && hasListen
-                  Just (rid, loc')
-              forM_ maybeRidLoc $ \(rid, loc') ->
-                robotInfo . robotMap . at rid . _Just . robotLog %= addLatestClosest loc'
+            addToRobotLog r = evalState r $ do
+              hasLog <- hasCapability $ CExecute Log
+              hasListen <- hasCapability $ CExecute Listen
+              rid <- use robotID
+              when (hasLog && hasListen) $
+                robotInfo . robotMap . at rid . _Just . robotLog %= (|> m)
         robotsAround <-
           zoomRobots $
             if isPrivileged
@@ -1400,8 +1409,6 @@ execConst runChildProg c vs s k = do
   badConstMsg =
     T.unlines
       [ "Bad application of execConst:"
-      , T.pack (show c)
-      , T.pack (show vs)
       , prettyText (Out (VCApp c (reverse vs)) s k)
       ]
 
@@ -1659,6 +1666,9 @@ execConst runChildProg c vs s k = do
     selfDestruct .= True
     forM_ (mAch True) grantAchievementForRobot
 
+  -- Try to move the current robot once cell in a specific direction,
+  -- checking for and applying any relevant effects (e.g. throwing an
+  -- exception if blocked, drowning in water, etc.)
   moveInDirection :: (HasRobotStepState sig m, Has (Lift IO) sig m) => Heading -> m CESK
   moveInDirection orientation = do
     -- Figure out where we're going
@@ -1670,6 +1680,8 @@ execConst runChildProg c vs s k = do
     updateRobotLocation loc nextLoc
     return $ mkReturn ()
 
+  -- Given a possible movement failure, apply a movement failure
+  -- handler to generate the appropriate effect.
   applyMoveFailureEffect ::
     (HasRobotStepState sig m, Has (Lift IO) sig m) =>
     Maybe MoveFailureMode ->
@@ -1680,6 +1692,7 @@ execConst runChildProg c vs s k = do
       IgnoreFail -> return ()
       Destroy -> destroyIfNotBase $ \b -> case (b, failureMode) of
         (True, PathLiquid _) -> Just RobotIntoWater -- achievement for drowning
+        (False, _) -> Just AttemptSelfDestructBase
         _ -> Nothing
       ThrowExn -> throwError . cmdExn c $
         case failureMode of
@@ -1688,7 +1701,8 @@ execConst runChildProg c vs s k = do
             Nothing -> ["There is nothing to travel on!"]
           PathLiquid e -> ["There is a dangerous liquid", e ^. entityName, "in the way!"]
 
-  -- Determine the move failure mode and apply the corresponding effect.
+  -- Check whether there is any failure in moving to the given
+  -- location, and apply the corresponding effect if so.
   checkMoveAhead ::
     (HasRobotStepState sig m, Has (Lift IO) sig m) =>
     Cosmic Location ->

@@ -102,6 +102,12 @@ scenarioPath :: Lens' ScenarioInfo FilePath
 -- | The status of the scenario.
 scenarioStatus :: Lens' ScenarioInfo ScenarioStatus
 
+-- | Check if a given scenario has been completed.
+scenarioIsCompleted :: ScenarioInfo -> Bool
+scenarioIsCompleted (ScenarioInfo _ (Played _ _ best)) =
+  best ^. scenarioBestByTime . metricProgress == Completed
+scenarioIsCompleted _ = False
+
 -- | Update the current 'ScenarioInfo' record when quitting a game.
 --
 -- Note that when comparing \"best\" times, shorter is not always better!

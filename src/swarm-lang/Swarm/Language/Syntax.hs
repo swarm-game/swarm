@@ -31,7 +31,8 @@ module Swarm.Language.Syntax (
 
   -- * SrcLoc
   SrcLoc (..),
-  srcLocBefore,
+  srcLocStartsBefore,
+  srcLocEndsBefore,
   noLoc,
 
   -- * Comments
@@ -70,6 +71,7 @@ module Swarm.Language.Syntax (
   pattern TProj,
   pattern TAnnotate,
   pattern TSuspend,
+  pattern TParens,
 
   -- * Terms
   Var,

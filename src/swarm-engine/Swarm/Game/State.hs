@@ -90,6 +90,7 @@ import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.MonoidMap qualified as MM
 import Data.Sequence (Seq ((:<|)))
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
@@ -171,6 +172,22 @@ parseCodeFile filepath = do
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
+--
+--   To answer the question of what belongs in the `GameState` and
+--   what belongs in the `UIState`, ask yourself the question: is this
+--   something specific to a particular UI, or is it something
+--   inherent to the game which would be needed even if we put a
+--   different UI on top (web-based, GUI-based, etc.)? For example,
+--   tracking whether the game is paused needs to be in the
+--   `GameState`: especially if we want to have the game running in
+--   one thread and the UI running in another thread, then the game
+--   itself needs to keep track of whether it is currently paused, so
+--   that it can know whether to step independently of the UI telling
+--   it so. For example, the game may run for several ticks during a
+--   single frame, but if an objective is completed during one of
+--   those ticks, the game needs to immediately auto-pause without
+--   waiting for the UI to tell it that it should do so, which could
+--   come several ticks late.
 data GameState = GameState
   { _creativeMode :: Bool
   , _temporal :: TemporalState
@@ -212,9 +229,9 @@ winSolution :: Lens' GameState (Maybe TSyntax)
 robotsAtLocation :: Cosmic Location -> GameState -> [Robot]
 robotsAtLocation loc gs =
   mapMaybe (`IM.lookup` (gs ^. robotInfo . robotMap))
-    . maybe [] IS.toList
-    . M.lookup (loc ^. planar)
-    . M.findWithDefault mempty (loc ^. subworld)
+    . IS.toList
+    . MM.get (loc ^. planar)
+    . MM.get (loc ^. subworld)
     . view (robotInfo . robotsByLocation)
     $ gs
 
@@ -229,9 +246,10 @@ robotsInArea (Cosmic subworldName o) d rs = mapMaybe (rm IM.!?) rids
   rm = rs ^. robotMap
   rl = rs ^. robotsByLocation
   rids =
-    concatMap IS.elems $
-      getElemsInArea o d $
-        M.findWithDefault mempty subworldName rl
+    concatMap IS.elems
+      . getElemsInArea o d
+      . MM.toMap
+      $ MM.get subworldName rl
 
 -- | The base robot, if it exists.
 baseRobot :: Traversal' GameState Robot

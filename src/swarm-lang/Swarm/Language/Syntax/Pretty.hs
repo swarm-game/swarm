@@ -20,6 +20,7 @@ module Swarm.Language.Syntax.Pretty (
 
 ) where
 
+import Control.Lens ((&), (<>~))
 import Control.Lens.Empty (pattern Empty)
 import Data.Bool (bool)
 import Data.Foldable qualified as F
@@ -31,7 +32,7 @@ import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Loc
-import Swarm.Language.Syntax.Pattern (pattern STerm)
+import Swarm.Language.Syntax.Pattern (sComments, pattern STerm)
 import Swarm.Language.Syntax.Util (erase, unTuple)
 import Swarm.Language.Types
 import Swarm.Pretty (PrettyPrec (..), encloseWithIndent, pparens, ppr, prettyEquality)
@@ -42,10 +43,9 @@ instance PrettyPrec (Syntax' ty) where
   prettyPrec p (Syntax' _ t (Comments before after) _) = case before of
     Empty -> t'
     _ ->
-      -- Print out any comments before the node, with a blank line before
+      -- Print out any comments before the node
       mconcat
-        [ hardline
-        , vsep (map ppr (F.toList before))
+        [ vsep (map ppr (F.toList before))
         , hardline
         , t'
         ]
@@ -83,8 +83,10 @@ instance PrettyPrec (Term' ty) where
     t@SLam {} ->
       pparens (p > 9) $
         prettyLambdas t
-    -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3
-    SApp t@(Syntax' _ (SApp (Syntax' _ (TConst c) _ _) l) _ _) r ->
+    -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3.
+    -- Note a comment right after the operator will end up attached to
+    -- the application of the operator to the first argument.
+    SApp t@(Syntax' _ (SApp op@(Syntax' _ (TConst c) _ _) l) opcom _) r ->
       let ci = constInfo c
           pC = fixity ci
        in case constMeta ci of
@@ -92,7 +94,8 @@ instance PrettyPrec (Term' ty) where
               pparens (p > pC) $
                 hsep
                   [ prettyPrec (pC + fromEnum (assoc == R)) l
-                  , ppr c
+                  , -- pretty-print the operator with comments reattached
+                    ppr (op {_sComments = opcom})
                   , prettyPrec (pC + fromEnum (assoc == L)) r
                   ]
             _ -> prettyPrecApp p t r
@@ -136,6 +139,7 @@ instance PrettyPrec (Term' ty) where
     SSuspend t ->
       pparens (p > 10) $
         "suspend" <+> prettyPrec 11 t
+    SParens t -> pparens True (ppr t)
     TType ty -> prettyPrec p ty
 
 prettyDefinition :: Doc ann -> Var -> Maybe (Poly q Type) -> Syntax' ty -> Doc ann
@@ -173,7 +177,9 @@ prettyLambdas t = hsep (prettyLambda <$> lms) <> softline <> ppr rest
 
 unchainLambdas :: Syntax' ty -> (Syntax' ty, [(Var, Maybe Type)])
 unchainLambdas = \case
-  Syntax' _ (SLam (LV _ x) mty body) _ _ -> ((x, mty) :) <$> unchainLambdas body
+  -- Peel off consecutive lambdas, being sure to accumulate any
+  -- attached comments along the way so they attach to the body
+  Syntax' _ (SLam (LV _ x) mty body) coms _ -> ((x, mty) :) <$> unchainLambdas (body & sComments <>~ coms)
   body -> (body, [])
 
 prettyLambda :: (Pretty a1, PrettyPrec a2) => (a1, Maybe a2) -> Doc ann

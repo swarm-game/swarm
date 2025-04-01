@@ -62,12 +62,10 @@ import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
 import Data.List (partition)
-import Data.List.NonEmpty qualified as NE
-import Data.Map (Map)
-import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.MonoidMap (MonoidMap)
+import Data.MonoidMap qualified as MM
 import Data.Set qualified as S
-import Data.Tuple (swap)
 import GHC.Generics (Generic)
 import Swarm.Game.CESK (CESK (Waiting))
 import Swarm.Game.Location
@@ -77,7 +75,7 @@ import Swarm.Game.State.Config
 import Swarm.Game.Tick
 import Swarm.Game.Universe as U
 import Swarm.ResourceLoading (NameGenerator)
-import Swarm.Util (binTuples, surfaceEmpty, (<+=), (<<.=))
+import Swarm.Util ((<+=), (<<.=))
 import Swarm.Util.Lens (makeLensesExcluding)
 
 -- | The 'ViewCenterRule' specifies how to determine the center of the
@@ -120,13 +118,13 @@ data Robots = Robots
     -- 'wakeUpRobotsDoneSleeping'.
     -- Waiting robots for a given time are a list because it is cheaper to
     -- prepend to a list than insert into a 'Set'.
-    _waitingRobots :: Map TickNumber [RID]
+    _waitingRobots :: MonoidMap TickNumber [RID]
   , _currentTickWakeableBots :: [RID]
-  , _robotsByLocation :: Map SubworldName (Map Location IntSet)
+  , _robotsByLocation :: MonoidMap SubworldName (MonoidMap Location IntSet)
   , -- This member exists as an optimization so
     -- that we do not have to iterate over all "waiting" robots,
     -- since there may be many.
-    _robotsWatching :: Map (Cosmic Location) IntSet
+    _robotsWatching :: MonoidMap (Cosmic Location) IntSet
   , _robotNaming :: RobotNaming
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter :: Cosmic Location
@@ -153,7 +151,7 @@ activeRobots = internalActiveRobots
 -- | The names of the robots that are currently sleeping, indexed by wake up
 --   time. Note that this may not include all sleeping robots, particularly
 --   those that are only taking a short nap (e.g. @wait 1@).
-waitingRobots :: Getter Robots (Map TickNumber [RID])
+waitingRobots :: Getter Robots (MonoidMap TickNumber [RID])
 waitingRobots = internalWaitingRobots
 
 -- | Get a list of all the robots that are \"watching\" by location.
@@ -168,10 +166,10 @@ currentTickWakeableBots :: Lens' Robots [RID]
 --   location of a robot changes, or a robot is created or destroyed.
 --   Fortunately, there are relatively few ways for these things to
 --   happen.
-robotsByLocation :: Lens' Robots (Map SubworldName (Map Location IntSet))
+robotsByLocation :: Lens' Robots (MonoidMap SubworldName (MonoidMap Location IntSet))
 
 -- | Get a list of all the robots that are \"watching\" by location.
-robotsWatching :: Lens' Robots (Map (Cosmic Location) IntSet)
+robotsWatching :: Lens' Robots (MonoidMap (Cosmic Location) IntSet)
 
 -- | State and data for assigning identifiers to robots
 robotNaming :: Lens' Robots RobotNaming
@@ -200,9 +198,9 @@ initRobots gsc =
   Robots
     { _robotMap = IM.empty
     , _activeRobots = IS.empty
-    , _waitingRobots = M.empty
+    , _waitingRobots = mempty
     , _currentTickWakeableBots = mempty
-    , _robotsByLocation = M.empty
+    , _robotsByLocation = mempty
     , _robotsWatching = mempty
     , _robotNaming =
         RobotNaming
@@ -267,17 +265,14 @@ addRobot r = do
 addRobotToLocation :: (Has (State Robots) sig m) => RID -> Cosmic Location -> m ()
 addRobotToLocation rid rLoc =
   robotsByLocation
-    %= M.insertWith
-      (M.unionWith IS.union)
-      (rLoc ^. subworld)
-      (M.singleton (rLoc ^. planar) (IS.singleton rid))
+    %= MM.adjust (MM.adjust (IS.insert rid) (rLoc ^. planar)) (rLoc ^. subworld)
 
 -- | Takes a robot out of the 'activeRobots' set and puts it in the 'waitingRobots'
 --   queue.
 sleepUntil :: (Has (State Robots) sig m) => RID -> TickNumber -> m ()
 sleepUntil rid time = do
   internalActiveRobots %= IS.delete rid
-  internalWaitingRobots . at time . non [] %= (rid :)
+  internalWaitingRobots %= MM.adjust (rid :) time
 
 -- | Takes a robot out of the 'activeRobots' set.
 sleepForever :: (Has (State Robots) sig m) => RID -> m ()
@@ -301,20 +296,18 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 -- * 'internalActiveRobots' (aka 'activeRobots')
 wakeUpRobotsDoneSleeping :: (Has (State Robots) sig m) => TickNumber -> m ()
 wakeUpRobotsDoneSleeping time = do
-  mrids <- internalWaitingRobots . at time <<.= Nothing
-  forM_ mrids $ \rids -> do
-    robots <- use robotMap
-    let robotIdSet = IM.keysSet robots
-        wakeableRIDsSet = IS.fromList rids
+  robotIdSet <- IM.keysSet <$> use robotMap
+  wakeableRIDsSet <- IS.fromList . MM.get time <$> use internalWaitingRobots
+  internalWaitingRobots %= MM.nullify time
 
-        -- Limit ourselves to the robots that have not expired in their sleep
-        newlyAlive = IS.intersection robotIdSet wakeableRIDsSet
+  -- Limit ourselves to the robots that have not expired in their sleep
+  let newlyAlive = IS.intersection robotIdSet wakeableRIDsSet
 
-    internalActiveRobots %= IS.union newlyAlive
+  internalActiveRobots %= IS.union newlyAlive
 
-    -- These robots' wake times may have been moved "forward"
-    -- by 'wakeWatchingRobots'.
-    clearWatchingRobots wakeableRIDsSet
+  -- These robots' wake times may have been moved "forward"
+  -- by 'wakeWatchingRobots'.
+  clearWatchingRobots wakeableRIDsSet
 
 -- | Clear the "watch" state of all of the
 -- awakened robots
@@ -323,7 +316,7 @@ clearWatchingRobots ::
   IntSet ->
   m ()
 clearWatchingRobots rids = do
-  robotsWatching %= M.map (`IS.difference` rids)
+  robotsWatching %= MM.map (`IS.difference` rids)
 
 -- | Iterates through all of the currently @wait@-ing robots,
 -- and moves forward the wake time of the ones that are @watch@-ing this location.
@@ -344,25 +337,22 @@ wakeWatchingRobots myID currentTick loc = do
       botsWatchingThisLoc =
         mapMaybe (`IM.lookup` rMap) $
           IS.toList $
-            M.findWithDefault mempty loc watchingMap
+            MM.get loc watchingMap
 
       -- Step 2: Get the target wake time for each of these robots
       wakeTimes :: [(RID, TickNumber)]
       wakeTimes = mapMaybe (sequenceA . (view robotID &&& waitingUntil)) botsWatchingThisLoc
 
-      wakeTimesToPurge :: Map TickNumber (S.Set RID)
-      wakeTimesToPurge = M.fromListWith (<>) $ map (fmap S.singleton . swap) wakeTimes
+      wakeTimesToPurge :: MonoidMap TickNumber (S.Set RID)
+      wakeTimesToPurge = foldr (uncurry (MM.adjust . S.insert)) mempty wakeTimes
 
       -- Step 3: Take these robots out of their time-indexed slot in "waitingRobots".
       -- To preserve performance, this should be done without iterating over the
       -- entire "waitingRobots" map.
-      filteredWaiting = foldr f waitingMap $ M.toList wakeTimesToPurge
+      filteredWaiting :: MonoidMap TickNumber [RID]
+      filteredWaiting = MM.foldrWithKey f waitingMap wakeTimesToPurge
        where
-        -- Note: some of the map values may become empty lists.
-        -- But we shall not worry about cleaning those up here;
-        -- they will be "garbage collected" as a matter of course
-        -- when their tick comes up in "wakeUpRobotsDoneSleeping".
-        f (k, botsToRemove) = M.adjust (filter (`S.notMember` botsToRemove)) k
+        f k botsToRemove = MM.adjust (filter (`S.notMember` botsToRemove)) k
 
       -- Step 4: Re-add the watching bots to be awakened ASAP:
       wakeableBotIds = map fst wakeTimes
@@ -376,7 +366,7 @@ wakeWatchingRobots myID currentTick loc = do
         [ (currentTick, currTickWakeable)
         , (addTicks 1 currentTick, nextTickWakeable)
         ]
-      newInsertions = M.filter (not . null) $ M.fromList wakeTimeGroups
+      newInsertions = MM.fromList wakeTimeGroups
 
   -- Contract: This must be emptied immediately
   -- in 'iterateRobots'
@@ -387,7 +377,7 @@ wakeWatchingRobots myID currentTick loc = do
   -- 2. In each robot, via the CESK machine state
 
   -- 1. Update the game state
-  internalWaitingRobots .= M.unionWith (<>) filteredWaiting newInsertions
+  internalWaitingRobots .= filteredWaiting <> newInsertions
 
   -- 2. Update the machine of each robot
   forM_ wakeTimeGroups $ \(newWakeTime, wakeableBots) ->
@@ -414,12 +404,8 @@ removeRobotFromLocationMap ::
   RID ->
   m ()
 removeRobotFromLocationMap (Cosmic oldSubworld oldPlanar) rid =
-  robotsByLocation %= M.update (tidyDelete rid) oldSubworld
- where
-  deleteOne x = surfaceEmpty IS.null . IS.delete x
-
-  tidyDelete robID =
-    surfaceEmpty M.null . M.update (deleteOne robID) oldPlanar
+  robotsByLocation
+    %= MM.adjust (MM.adjust (IS.delete rid) oldPlanar) oldSubworld
 
 setRobotInfo :: RID -> [Robot] -> Robots -> Robots
 setRobotInfo baseID robotList rState =
@@ -430,19 +416,16 @@ setRobotList :: [Robot] -> Robots -> Robots
 setRobotList robotList rState =
   rState
     & robotMap .~ IM.fromList (map (view robotID &&& id) robotList)
-    & robotsByLocation .~ M.map (groupRobotsByPlanarLocation . NE.toList) (groupRobotsBySubworld robotList)
+    & robotsByLocation .~ groupRobotsByLocation robotList
     & internalActiveRobots .~ setOf (traverse . robotID) robotList
     & robotNaming . gensym .~ initGensym
  where
   initGensym = length robotList - 1
 
-  groupRobotsBySubworld =
-    binTuples . map (view (robotLocation . subworld) &&& id)
-
-  groupRobotsByPlanarLocation rs =
-    M.fromListWith
-      IS.union
-      (map (view (robotLocation . planar) &&& (IS.singleton . view robotID)) rs)
+  groupRobotsByLocation = foldr f mempty
+   where
+    f r = MM.adjust (g r) (r ^. (robotLocation . subworld))
+    g r = MM.adjust (IS.insert (r ^. robotID)) (r ^. (robotLocation . planar))
 
 -- | Modify the 'viewCenter' by applying an arbitrary function to the
 --   current value.  Note that this also modifies the 'viewCenterRule'

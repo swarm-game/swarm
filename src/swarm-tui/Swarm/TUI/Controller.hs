@@ -36,17 +36,18 @@ import Brick.Widgets.Edit (Editor, applyEdit, editContentsL, handleEditorEvent)
 import Brick.Widgets.List (handleListEvent)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.TabularList.Mixed
-import Control.Applicative (pure)
+import Control.Applicative (pure, (<|>))
 import Control.Category ((>>>))
 import Control.Lens as Lens
 import Control.Monad (forM_, unless, void, when)
 import Control.Monad.Extra (whenJust)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execState)
+import Data.List (find)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, listToMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
@@ -61,6 +62,9 @@ import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec, FSuspend))
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Land
 import Swarm.Game.Robot.Concrete
+import Swarm.Game.Scenario (scenarioMetadata, scenarioName)
+import Swarm.Game.Scenario.Scoring.Best (scenarioBestByTime)
+import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
@@ -96,7 +100,7 @@ import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep (prepareLaunchDialog)
 import Swarm.TUI.List
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Dialog
+import Swarm.TUI.Model.Dialog hiding (Completed)
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
@@ -176,24 +180,41 @@ handleMainMenuEvent menu = \case
         ss <- use $ runtimeState . scenarios
         uiState . uiMenu .= NewGameMenu (pure $ mkScenarioList ss)
       Tutorial -> do
-        -- Set up the menu stack as if the user had chosen "New Game > Tutorials"
         ss <- use $ runtimeState . scenarios
+
+        -- Extract the first unsolved tutorial challenge
         let tutorialCollection = getTutorials ss
-            topMenu =
+            tutorials = scOrder tutorialCollection
+            -- Find first unsolved tutorial, or first tutorial if all are solved
+            firstUnsolved :: Maybe FilePath
+            firstUnsolved = (tutorials >>= find unsolved) <|> (tutorials >>= listToMaybe)
+            unsolved t = case M.lookup t (scMap tutorialCollection) of
+              Just (SISingle (_, si)) -> case si ^. scenarioStatus of
+                Played _ _ best
+                  | Metric Completed _ <- best ^. scenarioBestByTime -> False
+                  | otherwise -> True
+                _ -> True
+              _ -> False
+            firstUnsolvedInfo = case firstUnsolved >>= (scMap tutorialCollection M.!?) of
+              Just (SISingle siPair) -> siPair
+              _ -> error "No first tutorial found!"
+            firstUnsolvedName = firstUnsolvedInfo ^. _1 . scenarioMetadata . scenarioName
+
+        -- Now set up the menu stack as if the user had chosen "New Game > Tutorials > t"
+        -- where t is the tutorial scenario we identified as the first unsolved one
+        let topMenu =
               BL.listFindBy
                 ((== tutorialsDirname) . T.unpack . scenarioItemName)
                 (mkScenarioList ss)
-            tutorialMenu = mkScenarioList tutorialCollection
+            tutorialMenu =
+              BL.listFindBy
+                ((== firstUnsolvedName) . scenarioItemName)
+                (mkScenarioList tutorialCollection)
             menuStack = tutorialMenu :| pure topMenu
-        uiState . uiMenu .= NewGameMenu menuStack
 
-        -- Extract the first tutorial challenge and run it
-        let firstTutorial = case scOrder tutorialCollection of
-              Just (t : _) -> case M.lookup t (scMap tutorialCollection) of
-                Just (SISingle siPair) -> siPair
-                _ -> error "No first tutorial found!"
-              _ -> error "No first tutorial found!"
-        startGame firstTutorial Nothing
+        -- Finally, set the menu stack, and start the scenario!
+        uiState . uiMenu .= NewGameMenu menuStack
+        startGame firstUnsolvedInfo Nothing
       Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
       Messages -> do
         runtimeState . eventLog . notificationsCount .= 0
@@ -287,45 +308,47 @@ handleMainEvent forceRedraw ev = do
     AppEvent ae -> case ae of
       -- If the game is paused, don't run any game ticks, but do redraw if needed.
       Frame ->
-        if s ^. gameState . temporal . paused
+        if s ^. playState . gameState . temporal . paused
           then updateAndRedrawUI forceRedraw
           else runFrameUI forceRedraw
-      Web (RunWebCode e r) -> runBaseWebCode e r
+      Web (RunWebCode e r) -> Brick.zoom playState $ runBaseWebCode e r
       UpstreamVersion _ -> error "version event should be handled by top-level handler"
     VtyEvent (V.EvResize _ _) -> invalidateCache
     EscapeKey
-      | Just m <- s ^. uiState . uiGameplay . uiDialogs . uiModal ->
-          if s ^. uiState . uiGameplay . uiDialogs . uiRobot . isDetailsOpened
-            then uiState . uiGameplay . uiDialogs . uiRobot . isDetailsOpened .= False
-            else closeModal m
+      | Just m <- s ^. playState . uiGameplay . uiDialogs . uiModal ->
+          Brick.zoom playState $
+            if s ^. playState . uiGameplay . uiDialogs . uiRobot . isDetailsOpened
+              then uiGameplay . uiDialogs . uiRobot . isDetailsOpened .= False
+              else closeModal m
     -- Pass to key handler (allows users to configure bindings)
     -- See Note [how Swarm event handlers work]
     VtyEvent (V.EvKey k m)
       | isJust (B.lookupVtyEvent k m keyHandler) -> void $ B.handleKey keyHandler k m
     -- pass keys on to modal event handler if a modal is open
     VtyEvent vev
-      | isJust (s ^. uiState . uiGameplay . uiDialogs . uiModal) -> handleModalEvent vev
+      | isJust (s ^. playState . uiGameplay . uiDialogs . uiModal) -> handleModalEvent vev
     MouseDown (TerrainListItem pos) V.BLeft _ _ ->
-      uiState . uiGameplay . uiWorldEditor . terrainList %= BL.listMoveTo pos
+      playState . uiGameplay . uiWorldEditor . terrainList %= BL.listMoveTo pos
     MouseDown (EntityPaintListItem pos) V.BLeft _ _ ->
-      uiState . uiGameplay . uiWorldEditor . entityPaintList %= BL.listMoveTo pos
-    MouseDown WorldPositionIndicator _ _ _ -> uiState . uiGameplay . uiWorldCursor .= Nothing
+      playState . uiGameplay . uiWorldEditor . entityPaintList %= BL.listMoveTo pos
+    MouseDown WorldPositionIndicator _ _ _ ->
+      playState . uiGameplay . uiWorldCursor .= Nothing
     MouseDown (FocusablePanel WorldPanel) V.BMiddle _ mouseLoc ->
       -- Eye Dropper tool
-      EC.handleMiddleClick mouseLoc
+      Brick.zoom playState $ EC.handleMiddleClick mouseLoc
     MouseDown (FocusablePanel WorldPanel) V.BRight _ mouseLoc ->
       -- Eraser tool
-      EC.handleRightClick mouseLoc
+      Brick.zoom playState $ EC.handleRightClick mouseLoc
     MouseDown (FocusablePanel WorldPanel) V.BLeft [V.MCtrl] mouseLoc ->
       -- Paint with the World Editor
-      EC.handleCtrlLeftClick mouseLoc
+      Brick.zoom playState $ EC.handleCtrlLeftClick mouseLoc
     MouseDown n _ _ mouseLoc ->
       case n of
-        FocusablePanel WorldPanel -> do
+        FocusablePanel WorldPanel -> Brick.zoom playState $ do
           mouseCoordsM <- Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
           shouldUpdateCursor <- EC.updateAreaBounds mouseCoordsM
           when shouldUpdateCursor $
-            uiState . uiGameplay . uiWorldCursor .= mouseCoordsM
+            uiGameplay . uiWorldCursor .= mouseCoordsM
         REPLInput -> handleREPLEvent ev
         (UIShortcut "Help") -> toggleModal HelpModal
         (UIShortcut "Robots") -> toggleModal RobotsModal
@@ -340,31 +363,32 @@ handleMainEvent forceRedraw ev = do
         (UIShortcut "debug") -> showCESKDebug
         (UIShortcut "hide robots") -> hideRobots
         _ -> continueWithoutRedraw
-    MouseUp n _ _mouseLoc -> do
-      case n of
-        InventoryListItem pos -> uiState . uiGameplay . uiInventory . uiInventoryList . traverse . _2 %= BL.listMoveTo pos
-        x@(WorldEditorPanelControl y) -> do
-          uiState . uiGameplay . uiWorldEditor . editorFocusRing %= focusSetCurrent x
-          EC.activateWorldEditorFunction y
-        _ -> return ()
-      flip whenJust setFocus $ case n of
-        -- Adapt click event origin to the right panel.  For the world
-        -- view, we just use 'Brick.Widgets.Core.clickable'.  However,
-        -- the other panels all have a viewport, requiring us to
-        -- explicitly set their focus here.
-        InventoryList -> Just RobotPanel
-        InventoryListItem _ -> Just RobotPanel
-        InfoViewport -> Just InfoPanel
-        REPLViewport -> Just REPLPanel
-        REPLInput -> Just REPLPanel
-        WorldEditorPanelControl _ -> Just WorldEditorPanel
-        _ -> Nothing
-      case n of
-        FocusablePanel x -> setFocus x
-        _ -> return ()
+    MouseUp n _ _mouseLoc ->
+      playStateWithMenu $ \m -> do
+        case n of
+          InventoryListItem pos -> uiGameplay . uiInventory . uiInventoryList . traverse . _2 %= BL.listMoveTo pos
+          x@(WorldEditorPanelControl y) -> do
+            uiGameplay . uiWorldEditor . editorFocusRing %= focusSetCurrent x
+            EC.activateWorldEditorFunction m y
+          _ -> return ()
+        flip whenJust setFocus $ case n of
+          -- Adapt click event origin to the right panel.  For the world
+          -- view, we just use 'Brick.Widgets.Core.clickable'.  However,
+          -- the other panels all have a viewport, requiring us to
+          -- explicitly set their focus here.
+          InventoryList -> Just RobotPanel
+          InventoryListItem _ -> Just RobotPanel
+          InfoViewport -> Just InfoPanel
+          REPLViewport -> Just REPLPanel
+          REPLInput -> Just REPLPanel
+          WorldEditorPanelControl _ -> Just WorldEditorPanel
+          _ -> Nothing
+        case n of
+          FocusablePanel x -> setFocus x
+          _ -> return ()
     -- dispatch any other events to the focused panel handler
     _ev -> do
-      fring <- use $ uiState . uiGameplay . uiFocusRing
+      fring <- use $ playState . uiGameplay . uiFocusRing
       case focusGetCurrent fring of
         Just (FocusablePanel x) -> case x of
           REPLPanel -> handleREPLEvent ev
@@ -374,15 +398,15 @@ handleMainEvent forceRedraw ev = do
             wh <- use $ keyEventHandling . keyDispatchers . to worldDispatcher
             void $ B.handleKey wh k m
           WorldPanel | otherwise -> continueWithoutRedraw
-          WorldEditorPanel -> EC.handleWorldEditorPanelEvent ev
+          WorldEditorPanel -> playStateWithMenu $ EC.handleWorldEditorPanelEvent ev
           RobotPanel -> handleRobotPanelEvent ev
           InfoPanel -> handleInfoPanelEvent infoScroll ev
         _ -> continueWithoutRedraw
 
-closeModal :: Modal -> EventM Name AppState ()
+closeModal :: Modal -> EventM Name PlayState ()
 closeModal m = do
   safeAutoUnpause
-  uiState . uiGameplay . uiDialogs . uiModal .= Nothing
+  uiGameplay . uiDialogs . uiModal .= Nothing
   -- message modal is not autopaused, so update notifications when leaving it
   when ((m ^. modalType) == MessagesModal) $ do
     t <- use $ gameState . temporal . ticks
@@ -392,22 +416,22 @@ closeModal m = do
 handleModalEvent :: V.Event -> EventM Name AppState ()
 handleModalEvent = \case
   V.EvKey V.KEnter [] -> do
-    modal <- preuse $ uiState . uiGameplay . uiDialogs . uiModal . _Just . modalType
+    modal <- preuse $ playState . uiGameplay . uiDialogs . uiModal . _Just . modalType
     case modal of
       Just RobotsModal -> do
-        robotDialog <- use $ uiState . uiGameplay . uiDialogs . uiRobot
+        robotDialog <- use $ playState . uiGameplay . uiDialogs . uiRobot
         unless (robotDialog ^. isDetailsOpened) $ do
           let widget = robotDialog ^. robotListContent . robotsListWidget
           forM_ (BL.listSelectedElement $ getList widget) $ \x -> do
-            Brick.zoom (uiState . uiGameplay . uiDialogs . uiRobot) $ do
+            Brick.zoom (playState . uiGameplay . uiDialogs . uiRobot) $ do
               isDetailsOpened .= True
               updateRobotDetailsPane $ snd x
       _ -> do
-        mdialog <- preuse $ uiState . uiGameplay . uiDialogs . uiModal . _Just . modalDialog
-        toggleModal QuitModal
+        mdialog <- preuse $ playState . uiGameplay . uiDialogs . uiModal . _Just . modalDialog
+        playStateWithMenu $ toggleModal QuitModal
         case dialogSelection =<< mdialog of
           Just (Button QuitButton, _) -> quitGame
-          Just (Button KeepPlayingButton, _) -> toggleModal KeepPlayingModal
+          Just (Button KeepPlayingButton, _) -> playStateWithMenu $ toggleModal KeepPlayingModal
           Just (Button StartOverButton, StartOver currentSeed siPair) -> do
             invalidateCache
             restartGame currentSeed siPair
@@ -416,37 +440,37 @@ handleModalEvent = \case
             invalidateCache
             startGame siPair Nothing
           _ -> return ()
-  ev -> do
-    Brick.zoom (uiState . uiGameplay . uiDialogs . uiModal . _Just . modalDialog) (handleDialogEvent ev)
-    modal <- preuse $ uiState . uiGameplay . uiDialogs . uiModal . _Just . modalType
+  ev -> Brick.zoom playState $ do
+    Brick.zoom (uiGameplay . uiDialogs . uiModal . _Just . modalDialog) (handleDialogEvent ev)
+    modal <- preuse $ uiGameplay . uiDialogs . uiModal . _Just . modalType
     case modal of
       Just TerrainPaletteModal ->
-        refreshList $ uiState . uiGameplay . uiWorldEditor . terrainList
+        refreshList $ uiGameplay . uiWorldEditor . terrainList
       Just EntityPaletteModal -> do
-        refreshList $ uiState . uiGameplay . uiWorldEditor . entityPaintList
+        refreshList $ uiGameplay . uiWorldEditor . entityPaintList
       Just GoalModal -> case ev of
-        V.EvKey (V.KChar '\t') [] -> uiState . uiGameplay . uiDialogs . uiGoal . focus %= focusNext
+        V.EvKey (V.KChar '\t') [] -> uiGameplay . uiDialogs . uiGoal . focus %= focusNext
         _ -> do
-          focused <- use $ uiState . uiGameplay . uiDialogs . uiGoal . focus
+          focused <- use $ uiGameplay . uiDialogs . uiGoal . focus
           case focusGetCurrent focused of
             Just (GoalWidgets w) -> case w of
               ObjectivesList -> do
-                lw <- use $ uiState . uiGameplay . uiDialogs . uiGoal . listWidget
+                lw <- use $ uiGameplay . uiDialogs . uiGoal . listWidget
                 newList <- refreshGoalList lw
-                uiState . uiGameplay . uiDialogs . uiGoal . listWidget .= newList
+                uiGameplay . uiDialogs . uiGoal . listWidget .= newList
               GoalSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
             _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       Just StructuresModal -> case ev of
-        V.EvKey (V.KChar '\t') [] -> uiState . uiGameplay . uiDialogs . uiStructure . structurePanelFocus %= focusNext
+        V.EvKey (V.KChar '\t') [] -> uiGameplay . uiDialogs . uiStructure . structurePanelFocus %= focusNext
         _ -> do
-          focused <- use $ uiState . uiGameplay . uiDialogs . uiStructure . structurePanelFocus
+          focused <- use $ uiGameplay . uiDialogs . uiStructure . structurePanelFocus
           case focusGetCurrent focused of
             Just (StructureWidgets w) -> case w of
               StructuresList ->
-                refreshList $ uiState . uiGameplay . uiDialogs . uiStructure . structurePanelListWidget
+                refreshList $ uiGameplay . uiDialogs . uiStructure . structurePanelListWidget
               StructureSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
             _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
-      Just RobotsModal -> Brick.zoom (uiState . uiGameplay . uiDialogs . uiRobot) $ case ev of
+      Just RobotsModal -> Brick.zoom (uiGameplay . uiDialogs . uiRobot) $ case ev of
         V.EvKey (V.KChar '\t') [] -> robotDetailsFocus %= focusNext
         _ -> do
           isInDetailsMode <- use isDetailsOpened
@@ -473,7 +497,7 @@ handleModalEvent = \case
 quitGame :: EventM Name AppState ()
 quitGame = do
   -- Write out REPL history.
-  history <- use $ uiState . uiGameplay . uiREPL . replHistory
+  history <- use $ playState . uiGameplay . uiREPL . replHistory
   let hist = mapMaybe getREPLSubmitted $ getLatestREPLHistoryItems maxBound history
   liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
 
@@ -482,7 +506,7 @@ quitGame = do
 
   -- Automatically advance the menu to the next scenario iff the
   -- player has won the current one.
-  wc <- use $ gameState . winCondition
+  wc <- use $ playState . gameState . winCondition
   case wc of
     WinConditions (Won _ _) _ -> uiState . uiMenu %= advanceMenu
     _ -> return ()
@@ -503,8 +527,9 @@ quitGame = do
 handleREPLEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleREPLEvent x = do
   s <- get
-  let controlMode = s ^. uiState . uiGameplay . uiREPL . replControlMode
+  let controlMode = s ^. playState . uiGameplay . uiREPL . replControlMode
   let keyHandler = s ^. keyEventHandling . keyDispatchers . to replDispatcher
+  let menu = s ^. uiState . uiMenu
   case x of
     -- Pass to key handler (allows users to configure bindings)
     -- See Note [how Swarm event handlers work]
@@ -513,17 +538,17 @@ handleREPLEvent x = do
           void $ B.handleKey keyHandler k m
     -- Handle other events in a way appropriate to the current REPL
     -- control mode.
-    _ -> case controlMode of
-      Typing -> handleREPLEventTyping x
-      Piloting -> handleREPLEventPiloting x
+    _ -> Brick.zoom playState $ case controlMode of
+      Typing -> handleREPLEventTyping menu x
+      Piloting -> handleREPLEventPiloting menu x
       Handling -> case x of
         -- Handle keypresses using the custom installed handler
         VtyEvent (V.EvKey k mods) -> runInputHandler (mkKeyCombo mods k)
         -- Handle all other events normally
-        _ -> handleREPLEventTyping x
+        _ -> handleREPLEventTyping menu x
 
 -- | Run the installed input handler on a key combo entered by the user.
-runInputHandler :: KeyCombo -> EventM Name AppState ()
+runInputHandler :: KeyCombo -> EventM Name PlayState ()
 runInputHandler kc = do
   mhandler <- use $ gameState . gameControls . inputHandler
   forM_ mhandler $ \(_, handler) -> do
@@ -545,8 +570,8 @@ runInputHandler kc = do
 -- | Handle a user "piloting" input event for the REPL.
 --
 -- TODO: #2010 Finish porting Controller to KeyEventHandlers
-handleREPLEventPiloting :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleREPLEventPiloting x = case x of
+handleREPLEventPiloting :: Menu -> BrickEvent Name AppEvent -> EventM Name PlayState ()
+handleREPLEventPiloting m x = case x of
   Key V.KUp -> inputCmd "move"
   Key V.KDown -> inputCmd "turn back"
   Key V.KLeft -> inputCmd "turn left"
@@ -567,16 +592,16 @@ handleREPLEventPiloting x = case x of
   _ -> inputCmd "noop"
  where
   inputCmd cmdText = do
-    uiState . uiGameplay . uiREPL %= setCmd (cmdText <> ";")
+    uiGameplay . uiREPL %= setCmd (cmdText <> ";")
     modify validateREPLForm
-    handleREPLEventTyping $ Key V.KEnter
+    handleREPLEventTyping m $ Key V.KEnter
 
   setCmd nt theRepl =
     theRepl
       & replPromptText .~ nt
       & replPromptType .~ CmdPrompt []
 
-runBaseWebCode :: (MonadState AppState m, MonadIO m) => T.Text -> (WebInvocationState -> IO ()) -> m ()
+runBaseWebCode :: (MonadState PlayState m, MonadIO m) => T.Text -> (WebInvocationState -> IO ()) -> m ()
 runBaseWebCode uinput ureply = do
   s <- get
   if s ^. gameState . gameControls . replWorking
@@ -588,14 +613,14 @@ runBaseWebCode uinput ureply = do
           Left err -> Rejected . ParseError $ T.unpack err
           Right () -> InProgress
 
-runBaseCode :: (MonadState AppState m) => T.Text -> m (Either Text ())
+runBaseCode :: (MonadState PlayState m) => T.Text -> m (Either Text ())
 runBaseCode uinput = do
   addREPLHistItem (mkREPLSubmission uinput)
   resetREPL "" (CmdPrompt [])
   env <- use $ gameState . baseEnv
   case processTerm' env uinput of
     Right mt -> do
-      uiState . uiGameplay . uiREPL . replHistory . replHasExecutedManualInput .= True
+      uiGameplay . uiREPL . replHistory . replHasExecutedManualInput .= True
       runBaseTerm mt
       return (Right ())
     Left err -> do
@@ -605,8 +630,8 @@ runBaseCode uinput = do
 -- | Handle a user input event for the REPL.
 --
 -- TODO: #2010 Finish porting Controller to KeyEventHandlers
-handleREPLEventTyping :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleREPLEventTyping = \case
+handleREPLEventTyping :: Menu -> BrickEvent Name AppEvent -> EventM Name PlayState ()
+handleREPLEventTyping m = \case
   -- Scroll the REPL on PageUp or PageDown
   Key V.KPageUp -> vScrollPage replScroll Brick.Up
   Key V.KPageDown -> vScrollPage replScroll Brick.Down
@@ -616,7 +641,7 @@ handleREPLEventTyping = \case
     case k of
       Key V.KEnter -> do
         s <- get
-        let theRepl = s ^. uiState . uiGameplay . uiREPL
+        let theRepl = s ^. uiGameplay . uiREPL
             uinput = theRepl ^. replPromptText
 
         if not $ s ^. gameState . gameControls . replWorking
@@ -635,7 +660,7 @@ handleREPLEventTyping = \case
           else continueWithoutRedraw
       Key V.KUp -> modify $ adjReplHistIndex Older
       Key V.KDown -> do
-        repl <- use $ uiState . uiGameplay . uiREPL
+        repl <- use $ uiGameplay . uiREPL
         let hist = repl ^. replHistory
             uinput = repl ^. replPromptText
         case repl ^. replPromptType of
@@ -650,7 +675,7 @@ handleREPLEventTyping = \case
           -- Otherwise, just move around in the history as normal.
           _ -> modify $ adjReplHistIndex Newer
       ControlChar 'r' ->
-        Brick.zoom (uiState . uiGameplay . uiREPL) $ do
+        Brick.zoom (uiGameplay . uiREPL) $ do
           uir <- get
           let uinput = uir ^. replPromptText
           case uir ^. replPromptType of
@@ -660,31 +685,36 @@ handleREPLEventTyping = \case
       CharKey '\t' -> do
         s <- get
         let names = s ^.. gameState . baseEnv . envTypes . to assocs . traverse . _1
-        uiState . uiGameplay . uiREPL %= tabComplete (CompletionContext (s ^. gameState . creativeMode)) names (s ^. gameState . landscape . terrainAndEntities . entityMap)
+        uiGameplay . uiREPL %= tabComplete (CompletionContext (s ^. gameState . creativeMode)) names (s ^. gameState . landscape . terrainAndEntities . entityMap)
         modify validateREPLForm
       EscapeKey -> do
-        formSt <- use $ uiState . uiGameplay . uiREPL . replPromptType
+        formSt <- use $ uiGameplay . uiREPL . replPromptType
         case formSt of
           CmdPrompt {} -> continueWithoutRedraw
           SearchPrompt _ -> resetREPL "" (CmdPrompt [])
       ControlChar 'd' -> do
-        text <- use $ uiState . uiGameplay . uiREPL . replPromptText
+        text <- use $ uiGameplay . uiREPL . replPromptText
         if text == T.empty
-          then toggleModal QuitModal
+          then toggleModal QuitModal m
           else continueWithoutRedraw
       MetaKey V.KBS ->
-        uiState . uiGameplay . uiREPL . replPromptEditor %= applyEdit TZ.deletePrevWord
+        uiGameplay . uiREPL . replPromptEditor %= applyEdit TZ.deletePrevWord
       -- finally if none match pass the event to the editor
       ev -> do
-        Brick.zoom (uiState . uiGameplay . uiREPL . replPromptEditor) $ case ev of
+        Brick.zoom (uiGameplay . uiREPL . replPromptEditor) $ case ev of
           CharKey c
             | c `elem` ("([{" :: String) -> insertMatchingPair c
             | c `elem` (")]}" :: String) -> insertOrMovePast c
           _ -> handleEditorEvent ev
-        uiState . uiGameplay . uiREPL . replPromptType %= \case
+        uiGameplay . uiREPL . replPromptType %= \case
           CmdPrompt _ -> CmdPrompt [] -- reset completions on any event passed to editor
           SearchPrompt a -> SearchPrompt a
-        modify validateREPLForm
+
+        -- Now re-validate the input, unless only the cursor moved.
+        case ev of
+          Key V.KLeft -> pure ()
+          Key V.KRight -> pure ()
+          _ -> modify validateREPLForm
 
 insertMatchingPair :: Char -> EventM Name (Editor Text Name) ()
 insertMatchingPair c = modify . applyEdit $ TZ.insertChar c >>> TZ.insertChar (close c) >>> TZ.moveLeft
@@ -786,13 +816,13 @@ tabComplete CompletionContext {..} names em theRepl = case theRepl ^. replPrompt
 
 -- | Validate the REPL input when it changes: see if it parses and
 --   typechecks, and set the color accordingly.
-validateREPLForm :: AppState -> AppState
+validateREPLForm :: PlayState -> PlayState
 validateREPLForm s =
   case replPrompt of
     CmdPrompt _
       | T.null uinput ->
           let theType = s ^. gameState . gameControls . replStatus . replActiveType
-           in s & uiState . uiGameplay . uiREPL . replType .~ theType
+           in s & uiGameplay . uiREPL . replType .~ theType
     CmdPrompt _
       | otherwise ->
           let env = s ^. gameState . baseEnv
@@ -805,18 +835,18 @@ validateREPLForm s =
                   Right t -> (Just (t ^. sType), Right ())
                   Left err -> (Nothing, Left (cteSrcLoc err))
            in s
-                & uiState . uiGameplay . uiREPL . replValid .~ errSrcLoc
-                & uiState . uiGameplay . uiREPL . replType .~ theType
+                & uiGameplay . uiREPL . replValid .~ errSrcLoc
+                & uiGameplay . uiREPL . replType .~ theType
     SearchPrompt _ -> s
  where
-  uinput = s ^. uiState . uiGameplay . uiREPL . replPromptText
-  replPrompt = s ^. uiState . uiGameplay . uiREPL . replPromptType
+  uinput = s ^. uiGameplay . uiREPL . replPromptText
+  replPrompt = s ^. uiGameplay . uiREPL . replPromptType
 
 -- | Update our current position in the REPL history.
-adjReplHistIndex :: TimeDir -> AppState -> AppState
+adjReplHistIndex :: TimeDir -> PlayState -> PlayState
 adjReplHistIndex d s =
   s
-    & uiState . uiGameplay . uiREPL %~ moveREPL
+    & uiGameplay . uiREPL %~ moveREPL
     & validateREPLForm
  where
   moveREPL :: REPLState -> REPLState
@@ -843,7 +873,7 @@ adjReplHistIndex d s =
 -- | Handle user events in the info panel (just scrolling).
 --
 -- TODO: #2010 Finish porting Controller to KeyEventHandlers
-handleInfoPanelEvent :: ViewportScroll Name -> BrickEvent Name AppEvent -> EventM Name AppState ()
+handleInfoPanelEvent :: ViewportScroll Name -> BrickEvent Name AppEvent -> EventM Name s ()
 handleInfoPanelEvent vs = \case
   Key V.KDown -> vScrollBy vs 1
   Key V.KUp -> vScrollBy vs (-1)

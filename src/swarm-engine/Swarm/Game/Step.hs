@@ -392,8 +392,6 @@ hypotheticalWinCheck em g ws oc = do
         T.unwords
           [ "Non boolean value:"
           , prettyValue val
-          , "real:"
-          , T.pack (show val)
           ]
 
   -- Log exceptions in the message queue so we can check for them in tests
@@ -698,6 +696,8 @@ stepCESK cesk = case cesk of
   -- If we see a primitive application of suspend, package it up as
   -- a value until it's time to execute.
   In (TSuspend t) e s k -> return $ Out (VSuspend t e) s k
+  -- Ignore explicit parens.
+  In (TParens t) e s k -> return $ In t e s k
   ------------------------------------------------------------
   -- Execution
 

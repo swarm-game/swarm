@@ -381,7 +381,6 @@ world:
   dsl: |
     {dirt}
   upperleft: [0, 0]
-  offset: false
   palette:
     '.': [grass]
     '*': [stone]

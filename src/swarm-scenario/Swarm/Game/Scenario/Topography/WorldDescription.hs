@@ -54,8 +54,7 @@ import Swarm.Util.Yaml
 -- This type is parameterized to accommodate Cells that
 -- utilize a less stateful Entity type.
 data PWorldDescription e = WorldDescription
-  { offsetOrigin :: Bool
-  , scrollable :: Bool
+  { scrollable :: Bool
   , palette :: WorldPalette e
   , area :: PositionedGrid (Maybe (PCell e))
   , navigation :: Navigation Identity WaypointName
@@ -122,7 +121,6 @@ instance FromJSONE WorldParseDependencies WorldDescription where
                 check CNil (TTyWorld TTyCell) wexp
         either (fail . prettyString) return checkResult
 
-      offsetOrigin <- v .:? "offset" .!= False
       scrollable <- v .:? "scrollable" .!= True
       let placedStructures =
             map (offsetLoc $ coerce ul) staticStructurePlacements
@@ -141,8 +139,7 @@ type WorldDescriptionPaint = PWorldDescription EntityFacade
 instance ToJSON WorldDescriptionPaint where
   toJSON w =
     object
-      [ "offset" .= offsetOrigin w
-      , "palette" .= Y.toJSON paletteKeymap
+      [ "palette" .= Y.toJSON paletteKeymap
       , "upperleft" .= gridPosition (area w)
       , "map" .= Y.toJSON mapText
       ]

@@ -79,7 +79,6 @@ world:
       , mask (x < -80 || x > 80 || y < -60 || y > 60) (overlay [{water}])
       ]
   upperleft: [-4, 4]
-  offset: false
   palette:
     'B': [grass, erase, Horton]
     '.': [grass, erase]

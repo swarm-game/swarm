@@ -478,14 +478,14 @@
     char: ' '
   description:
     - Liquid dihydrogen monoxide, which seems to be plentiful on this planet.
-  properties: [pickable, infinite, liquid]
+  properties: [pickable, infinite, liquid, evanescent]
 - name: wavy water
   display:
     attr: water
     char: '~'
   description:
     - A wavy section of water.  The same as normal water, but with more waves.
-  properties: [pickable, infinite, liquid]
+  properties: [pickable, infinite, liquid, evanescent]
   yields: water
 - name: boat
   display:
@@ -658,80 +658,6 @@
   description:
     - A wall
   properties: [unwalkable, known, boundary]
-# following are "legacy" walls that do not connect automatically,
-# but require explicitly placing each one - this can be used for
-# precise control, but in most cases the simple 'wall' is better
-# because the 'boundary' updates it to look nice
-- name: upper left corner
-  display:
-    attr: entity
-    char: '┌'
-  description:
-    - Upper left corner.
-  properties: [unwalkable, known]
-- name: upper right corner
-  display:
-    attr: entity
-    char: '┐'
-  description:
-    - An upper right corner wall.
-  properties: [unwalkable, known]
-- name: lower left corner
-  display:
-    attr: entity
-    char: '└'
-  description:
-    - A lower left corner wall.
-  properties: [unwalkable, known]
-- name: lower right corner
-  display:
-    attr: entity
-    char: '┘'
-  description:
-    - A lower right corner wall.
-  properties: [unwalkable, known]
-- name: down and horizontal wall
-  display:
-    attr: entity
-    char: '┬'
-  description:
-    - A down and horizontal wall.
-  properties: [unwalkable, known]
-- name: up and horizontal wall
-  display:
-    attr: entity
-    char: '┴'
-  description:
-    - A up and horizontal wall.
-  properties: [unwalkable, known]
-- name: left and vertical wall
-  display:
-    attr: entity
-    char: '┤'
-  description:
-    - A left and vertical wall.
-  properties: [unwalkable, known]
-- name: right and vertical wall
-  display:
-    attr: entity
-    char: '├'
-  description:
-    - A right and vertical wall.
-  properties: [unwalkable, known]
-- name: horizontal wall
-  display:
-    attr: entity
-    char: '─'
-  description:
-    - A horizontal wall.
-  properties: [unwalkable, known]
-- name: vertical wall
-  display:
-    attr: entity
-    char: '│'
-  description:
-    - A vertical wall.
-  properties: [unwalkable, known]
 ############################################################
 ### Devices ################################################
 ############################################################

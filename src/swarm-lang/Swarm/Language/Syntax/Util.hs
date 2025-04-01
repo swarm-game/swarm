@@ -49,15 +49,13 @@ import Swarm.Language.Syntax.Pattern
 
 -- | Make an infix operation (e.g. @2 + 3@) a curried function
 --   application (e.g. @((+) 2) 3@).
-mkOp :: Const -> Syntax -> Syntax -> Syntax
-mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
+mkOp :: Const -> (SrcLoc, t) -> Syntax -> Syntax -> Syntax
+mkOp c (opLoc, _) s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
  where
-  -- The new syntax span both terms
-  newLoc = l1 <> l2
-  -- We don't assign a source location for the operator since it is
-  -- usually provided as-is and it is not likely to be useful.
-  sop = noLoc (TConst c)
-  newTerm = SApp (Syntax l1 $ SApp sop s1) s2
+  -- The new syntax spans all terms
+  newLoc = l1 <> opLoc <> l2
+  sop = Syntax opLoc (TConst c)
+  newTerm = SApp (Syntax (l1 <> opLoc) $ SApp sop s1) s2
 
 -- | Make an infix operation, discarding any location information
 mkOp' :: Const -> Term -> Term -> Term
@@ -73,13 +71,20 @@ unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
   Syntax' _ (SApp s1 s2) _ _ -> (s2, Just s1)
   s -> (s, Nothing)
 
--- | Create a nested tuple out of a list of syntax nodes.
-mkTuple :: [Syntax] -> Syntax
-mkTuple [] = Syntax NoLoc TUnit -- should never happen
-mkTuple [x] = x
-mkTuple (x : xs) = let r = mkTuple xs in loc x r $ SPair x r
- where
-  loc a b = Syntax $ (a ^. sLoc) <> (b ^. sLoc)
+-- | Create an appropriate `Term` out of a list of syntax nodes which
+--   were enclosed with parentheses (and separated by commas).
+mkTuple :: [Syntax] -> Term
+-- () = TUnit
+mkTuple [] = TUnit
+-- (x) = x, but record the fact that it was explicitly parenthesized,
+-- for better source location tracking
+mkTuple [x] = SParens x
+-- (x,y) = SPair
+mkTuple [x, y] = SPair x y
+-- (x,y,...) = recursively nested pairs.  Note that we do not assign
+-- source spans to the nested tuples since they don't really come from
+-- a specific place in the source.
+mkTuple (x : r) = SPair x (Syntax NoLoc (mkTuple r))
 
 -- | Decompose a nested tuple into a list of components.
 unTuple :: Syntax' ty -> [Syntax' ty]
@@ -145,6 +150,7 @@ freeVarsS f = go S.empty
     SProj s1 x -> rewrap $ SProj <$> go bound s1 <*> pure x
     SAnnotate s1 pty -> rewrap $ SAnnotate <$> go bound s1 <*> pure pty
     SSuspend s1 -> rewrap $ SSuspend <$> go bound s1
+    SParens s1 -> rewrap $ SParens <$> go bound s1
     TType {} -> pure s
    where
     rewrap s' = Syntax' l <$> s' <*> pure ty <*> pure cmts

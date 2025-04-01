@@ -38,7 +38,6 @@ entities:
     properties: [known, pickable]
 robots:
   - name: base
-    system: true
     display:
       char: 'Ω'
       attr: robot
@@ -72,8 +71,8 @@ robots:
         } {log "Something bad happened!"}
       }
 seed: 0
+creative: true
 world:
-  offset: true
   scrollable: false
   dsl: |
     "classic"

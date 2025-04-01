@@ -59,10 +59,13 @@ module Swarm.TUI.Model (
 
   -- * App state
   AppState (AppState),
-  gameState,
   uiState,
+  playState,
   keyEventHandling,
   runtimeState,
+  PlayState (PlayState),
+  gameState,
+  uiGameplay,
 
   -- ** Initialization
   AppOpts (..),
@@ -150,19 +153,22 @@ logEvent src sev who msg el =
  where
   l = LogEntry (TickNumber 0) src sev who msg
 
-data KeyEventHandlingState = KeyEventHandlingState
-  { _keyConfig :: KeyConfig SwarmEvent
-  , _keyDispatchers :: SwarmKeyDispatchers
+-- | This encapsulates both game and UI state for an actively-playing scenario.
+data PlayState = PlayState
+  { _gameState :: GameState
+  , _uiGameplay :: UIGameplay
   }
 
-type SwarmKeyDispatcher = KeyDispatcher SwarmEvent (EventM Name AppState)
+--------------------------------------------------
+-- Lenses for PlayState
 
-data SwarmKeyDispatchers = SwarmKeyDispatchers
-  { mainGameDispatcher :: SwarmKeyDispatcher
-  , replDispatcher :: SwarmKeyDispatcher
-  , worldDispatcher :: SwarmKeyDispatcher
-  , robotDispatcher :: SwarmKeyDispatcher
-  }
+makeLensesNoSigs ''PlayState
+
+-- | The 'GameState' record.
+gameState :: Lens' PlayState GameState
+
+-- | UI active during live gameplay
+uiGameplay :: Lens' PlayState UIGameplay
 
 -- ----------------------------------------------------------------------------
 --                                   APPSTATE                                --
@@ -174,10 +180,26 @@ data SwarmKeyDispatchers = SwarmKeyDispatchers
 -- or updating the UI. Also consider that GameState can change when loading
 -- a new scenario - if the state should persist games, use RuntimeState.
 data AppState = AppState
-  { _gameState :: GameState
+  { _playState :: PlayState
   , _uiState :: UIState
   , _keyEventHandling :: KeyEventHandlingState
   , _runtimeState :: RuntimeState
+  }
+
+------------------------------------------------------------
+
+type SwarmKeyDispatcher = KeyDispatcher SwarmEvent (EventM Name AppState)
+
+data SwarmKeyDispatchers = SwarmKeyDispatchers
+  { mainGameDispatcher :: SwarmKeyDispatcher
+  , replDispatcher :: SwarmKeyDispatcher
+  , worldDispatcher :: SwarmKeyDispatcher
+  , robotDispatcher :: SwarmKeyDispatcher
+  }
+
+data KeyEventHandlingState = KeyEventHandlingState
+  { _keyConfig :: KeyConfig SwarmEvent
+  , _keyDispatchers :: SwarmKeyDispatchers
   }
 
 ------------------------------------------------------------
@@ -317,8 +339,8 @@ keyDispatchers :: Lens' KeyEventHandlingState SwarmKeyDispatchers
 
 makeLensesNoSigs ''AppState
 
--- | The 'GameState' record.
-gameState :: Lens' AppState GameState
+-- | The 'PlayState' record.
+playState :: Lens' AppState PlayState
 
 -- | The 'UIState' record.
 uiState :: Lens' AppState UIState
@@ -334,16 +356,16 @@ runtimeState :: Lens' AppState RuntimeState
 
 -- | Get the currently focused 'InventoryListEntry' from the robot
 --   info panel (if any).
-focusedItem :: AppState -> Maybe InventoryListEntry
+focusedItem :: PlayState -> Maybe InventoryListEntry
 focusedItem s = do
-  list <- s ^? uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2
+  list <- s ^? uiGameplay . uiInventory . uiInventoryList . _Just . _2
   (_, entry) <- BL.listSelectedElement list
   return entry
 
 -- | Get the currently focused entity from the robot info panel (if
 --   any).  This is just like 'focusedItem' but forgets the
 --   distinction between plain inventory items and equipped devices.
-focusedEntity :: AppState -> Maybe Entity
+focusedEntity :: PlayState -> Maybe Entity
 focusedEntity =
   focusedItem >=> \case
     Separator _ -> Nothing

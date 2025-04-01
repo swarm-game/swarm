@@ -58,6 +58,7 @@ data-files:
   scenarios/**/*.txt
   scenarios/**/*.yaml
   test/language-snippets/**/*.sw
+  test/saves/*.yaml
   test/standalone-topography/*.png
   test/standalone-topography/*.yaml
   worlds/*.world
@@ -195,7 +196,7 @@ common exceptions
   build-depends: exceptions >=0.10 && <0.11
 
 common extra
-  build-depends: extra >=1.7 && <1.8
+  build-depends: extra >=1.8 && <1.9
 
 common filepath
   build-depends: filepath >=1.4 && <1.6
@@ -240,7 +241,7 @@ common linear
   build-depends: linear >=1.21.6 && <1.24
 
 common lsp
-  build-depends: lsp >=2.4 && <2.7
+  build-depends: lsp >=2.4 && <2.8
 
 common megaparsec
   build-depends: megaparsec >=9.6.1 && <9.7
@@ -253,6 +254,12 @@ common MissingH
 
 common monad-logger
   build-depends: monad-logger >=0.3.0 && <0.4.0
+
+common monoidmap
+  build-depends: monoidmap >=0.0.3.0 && <0.1
+
+common monoidmap-aeson
+  build-depends: monoidmap-aeson >=0.0.0.1 && <0.1
 
 common mtl
   build-depends: mtl >=2.2.2 && <2.4
@@ -307,9 +314,6 @@ common servant-JuicyPixels
 
 common servant-server
   build-depends: servant-server >=0.19 && <0.22
-
-common simple-enumeration
-  build-depends: simple-enumeration >=0.2 && <0.3
 
 common split
   build-depends: split >=0.2.3 && <0.3
@@ -584,6 +588,8 @@ library swarm-scenario
     linear,
     megaparsec,
     monad-logger,
+    monoidmap,
+    monoidmap-aeson,
     mtl,
     murmur3,
     palette,
@@ -591,7 +597,6 @@ library swarm-scenario
     prettyprinter,
     random,
     servant-docs,
-    simple-enumeration,
     tagged,
     text,
     vector,
@@ -679,6 +684,7 @@ library swarm-engine
     lens,
     linear,
     megaparsec,
+    monoidmap,
     mtl,
     nonempty-containers,
     prettyprinter,
@@ -1284,7 +1290,10 @@ test-suite swarm-integration
     yaml,
 
   main-is: Main.hs
-  other-modules: TestRecipeCoverage
+  other-modules:
+    TestFormat
+    TestRecipeCoverage
+
   type: exitcode-stdio-1.0
   build-depends:
     swarm:swarm-doc,

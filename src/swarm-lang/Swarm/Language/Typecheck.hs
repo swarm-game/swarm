@@ -57,7 +57,7 @@ import Control.Effect.Reader
 import Control.Effect.Throw
 import Control.Lens (view, (^.))
 import Control.Lens.Indexed (itraverse)
-import Control.Monad (forM_, void, when, (<=<), (>=>))
+import Control.Monad (forM, forM_, void, when, (<=<), (>=>))
 import Control.Monad.Free qualified as Free
 import Data.Data (Data, gmapM)
 import Data.Foldable (fold, traverse_)
@@ -300,7 +300,7 @@ substU m =
   ucata
     (\v -> fromMaybe (Free.Pure v) (M.lookup (Right v) m))
     ( \case
-        TyVarF v -> fromMaybe (UTyVar v) (M.lookup (Left v) m)
+        TyVarF o v -> fromMaybe (UTyVar' o v) (M.lookup (Left v) m)
         f -> Free.Free f
     )
 
@@ -319,7 +319,7 @@ noSkolems l skolems (unPoly -> (xs, upty)) = do
   let tyvs =
         ucata
           (const S.empty)
-          (\case TyVarF v -> S.singleton v; f -> fold f)
+          (\case TyVarF _ v -> S.singleton v; f -> fold f)
           upty'
       freeTyvs = tyvs `S.difference` S.fromList xs
       escapees = freeTyvs `S.intersection` S.fromList skolems
@@ -402,9 +402,11 @@ instantiate (unPoly -> (xs, uty)) = do
 --   Skolem variables, along with the substituted type.
 skolemize :: (Has Unification sig m, Has (Reader TVCtx) sig m) => UPolytype -> m (Ctx UType, UType)
 skolemize (unPoly -> (xs, uty)) = do
-  skolemNames <- mapM (fmap (mkVarName "s") . const U.freshIntVar) xs
+  skolemNames <- forM xs $ \x -> do
+    s <- mkVarName "s" <$> U.freshIntVar
+    pure (x, s)
   boundSubst <- ask @TVCtx
-  let xs' = map UTyVar skolemNames
+  let xs' = map (uncurry UTyVar') skolemNames
       newSubst = M.fromList $ zip xs xs'
       s = M.mapKeys Left (newSubst `M.union` unCtx boundSubst)
   pure (Ctx.fromMap newSubst, substU s uty)
@@ -977,6 +979,9 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     m' <- itraverse (\x -> infer . fromMaybe (STerm (TVar x))) m
     return $ Syntax' l (SRcd (Just <$> m')) cs (UTyRcd (fmap (^. sType) m'))
 
+  -- Once we're typechecking, we don't need to keep around explicit
+  -- parens any more
+  SParens t1 -> infer t1
   -- To infer a type-annotated term, switch into checking mode.
   -- However, we must be careful to deal properly with polymorphic
   -- type annotations.
@@ -1142,6 +1147,9 @@ check ::
   UType ->
   m (Syntax' UType)
 check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
+  -- Once we're typechecking, we don't need to keep around explicit
+  -- parens any more
+  SParens t1 -> check t1 expected
   -- If t : ty, then  {t} : {ty}.
   SDelay s1 -> do
     ty1 <- decomposeDelayTy s (Expected, expected)
@@ -1411,10 +1419,11 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- executed.
   TConst If :$: tst :$: thn :$: els ->
     (+) <$> analyzeAtomic locals tst <*> (max <$> analyzeAtomic locals thn <*> analyzeAtomic locals els)
-  -- Pairs, application, and delay are simple: just recurse and sum the results.
+  -- Pairs, application, delay, and parens are simple: just recurse and sum the results.
   SPair s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic locals s2
   SApp s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic locals s2
   SDelay s1 -> analyzeAtomic locals s1
+  SParens s1 -> analyzeAtomic locals s1
   -- Bind is similarly simple except that we have to keep track of a local variable
   -- bound in the RHS.
   SBind mx _ _ _ s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id (S.insert . lvVar) mx locals) s2

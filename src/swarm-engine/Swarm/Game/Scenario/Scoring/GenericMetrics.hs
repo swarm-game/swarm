@@ -1,15 +1,27 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Data types and functions applicable across different
 -- scoring methods.
-module Swarm.Game.Scenario.Scoring.GenericMetrics where
+module Swarm.Game.Scenario.Scoring.GenericMetrics (
+  Progress (..),
+  Metric (Metric),
+  metricProgress,
+  metricData,
+  chooseBetter,
+) where
 
+import Control.Applicative ((<|>))
+import Control.Lens
 import Data.Aeson
+import Data.List.Extra (dropPrefix)
 import Data.Ord (Down (Down))
 import GHC.Generics (Generic)
 import Swarm.Util (maxOn)
-import Swarm.Util.JSON (optionsUntagged)
+import Swarm.Util.JSON (optionsMinimize, optionsUntagged)
+import Swarm.Util.Lens (makeLensesNoSigs)
 
 -- | This is a subset of the "ScenarioStatus" type
 -- that excludes the "NotStarted" case.
@@ -24,11 +36,30 @@ instance FromJSON Progress where
 instance ToJSON Progress where
   toJSON = genericToJSON optionsUntagged
 
-data Metric a = Metric Progress a
-  deriving (Eq, Ord, Show, Read, Generic, FromJSON, ToJSON)
+data Metric a = Metric
+  { _metricProgress :: Progress
+  , _metricData :: a
+  }
+  deriving (Eq, Ord, Show, Read, Generic)
 
-getMetric :: Metric a -> a
-getMetric (Metric _ x) = x
+metricSerializeOptions :: Options
+metricSerializeOptions = optionsMinimize {fieldLabelModifier = camelTo2 '_' . dropPrefix "_metric"}
+
+instance FromJSON a => FromJSON (Metric a) where
+  parseJSON v =
+    (uncurry Metric <$> parseJSON v) -- parse saves from time when metric did not have named fields
+      <|> genericParseJSON metricSerializeOptions v
+
+instance ToJSON a => ToJSON (Metric a) where
+  toJSON = genericToJSON metricSerializeOptions
+
+makeLensesNoSigs ''Metric
+
+-- | The player progress, so that we know if this game was completed.
+metricProgress :: Lens' (Metric a) Progress
+
+-- | Metric data, for example start and end time.
+metricData :: Lens' (Metric a) a
 
 -- | This encodes the notion of "more play is better"
 -- for incomplete games (rationale: more play = more fun),

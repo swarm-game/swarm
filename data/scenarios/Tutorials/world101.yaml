@@ -57,9 +57,8 @@ robots:
       - [100, solar panel]
       - [50, scanner]
       - [5, toolkit]
-seed: 0
+seed: 2
 world:
-  offset: true
   scrollable: false
   dsl: |
     "classic"

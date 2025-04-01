@@ -497,7 +497,7 @@ testEval g =
   evaluatesTo :: Text -> Value -> Assertion
   evaluatesTo tm val = do
     result <- evaluate tm
-    assertEqual "" (Right val) (fst <$> result)
+    assertBool "" $ Right val == (fst <$> result)
 
   evaluatesToV :: Valuable v => Text -> v -> Assertion
   evaluatesToV tm val = tm `evaluatesTo` asValue val
@@ -505,7 +505,7 @@ testEval g =
   evaluatesToP :: Text -> Value -> Property
   evaluatesToP tm val = ioProperty $ do
     result <- evaluate tm
-    return $ Right val === (fst <$> result)
+    return . property $ Right val == (fst <$> result)
 
   evaluatesToInAtMost :: Text -> (Value, Int) -> Assertion
   evaluatesToInAtMost tm (val, maxSteps) = do
@@ -513,7 +513,7 @@ testEval g =
     case result of
       Left err -> assertFailure ("Evaluation failed: " ++ from @Text @String err)
       Right (v, steps) -> do
-        assertEqual "" val v
+        assertBool "Values are not equal" (val == v)
         assertBool ("Took more than " ++ show maxSteps ++ " steps!") (steps <= maxSteps)
 
   evaluate :: Text -> IO (Either Text (Value, Int))

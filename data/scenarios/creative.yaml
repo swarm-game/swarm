@@ -11,6 +11,5 @@ robots:
       char: Ω
       attr: robot
 world:
-  offset: true
   dsl: |
     "classic"

@@ -41,7 +41,7 @@ loadKeybindingConfig = do
     else do
       loadedCustomBindings <- sendIO $ keybindingsFromFile swarmEvents "keybindings" ini
       case loadedCustomBindings of
-        Left e -> throwError $ AssetNotLoaded Keybindings ini (CustomMessage $ T.pack e)
+        Left e -> throwError $ AssetNotLoaded Keybindings ini (SystemFailure . CustomFailure $ T.pack e)
         Right bs -> pure $ fromMaybe [] bs
 
 initKeyHandlingState ::

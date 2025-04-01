@@ -30,7 +30,6 @@ known: [water, tree]
 world:
   dsl: |
     {grass}
-  offset: false
   palette:
     'B': [stone, erase, base]
     '.': [stone]

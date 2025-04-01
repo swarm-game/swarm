@@ -312,7 +312,7 @@ unifyF t1 t2 = case (t1, t2) of
   (TyConF {}, _) -> unifyErr
   -- Note that *type variables* are not the same as *unification variables*.
   -- Type variables must match exactly.
-  (TyVarF v1, TyVarF v2) -> case v1 == v2 of
+  (TyVarF _ v1, TyVarF _ v2) -> case v1 == v2 of
     True -> pure t1
     False -> unifyErr
   (TyVarF {}, _) -> unifyErr

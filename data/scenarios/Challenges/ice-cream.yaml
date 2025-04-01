@@ -215,7 +215,6 @@ world:
   dsl: |
     {grass}
   upperleft: [0, 0]
-  offset: false
   palette:
     '.': [grass]
     ':': [stone]

@@ -101,7 +101,7 @@ tyRec x = TyRec x . ($ NZ) . foldFix s
   s :: TypeF (Nat -> Type) -> Nat -> Type
   s = \case
     TyRecF y ty -> Fix . TyRecF y . ty . NS
-    TyVarF y
+    TyVarF orig y
       | x == y -> Fix . TyRecVarF
-      | otherwise -> const (Fix (TyVarF y))
+      | otherwise -> const (Fix (TyVarF orig y))
     fty -> \i -> Fix (fmap ($ i) fty)

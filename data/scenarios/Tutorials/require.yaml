@@ -52,18 +52,13 @@ world:
     '.': [grass]
     '~': [ice, water]
     '*': [grass, periwinkle]
-    '┌': [stone, upper left corner]
-    '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
-    '│': [stone, vertical wall]
+    '+': [stone, wall]
   upperleft: [-1, 3]
   map: |
-    ┌──────┐
-    │..~~..│
-    │..~~..│
-    │Ω.~~.*│
-    │..~~..│
-    │..~~..│
-    └──────┘
+    ++++++++
+    +..~~..+
+    +..~~..+
+    +Ω.~~.*+
+    +..~~..+
+    +..~~..+
+    ++++++++

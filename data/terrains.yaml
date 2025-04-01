@@ -14,3 +14,7 @@
   attr: ice
   description: |
     Cold, solid, and slippery.
+- name: burnt
+  attr: burnt
+  description: |
+    Scorched ground

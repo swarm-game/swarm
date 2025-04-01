@@ -106,7 +106,6 @@ world:
   dsl: |
     {water}
   upperleft: [-1, -1]
-  offset: false
   palette:
     '.': [grass, erase]
     '$': [grass, bitcoin]

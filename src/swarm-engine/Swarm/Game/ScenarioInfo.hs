@@ -47,7 +47,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Char (isSpace)
 import Data.Either (partitionEithers)
 import Data.Either.Extra (fromRight')
-import Data.List (intercalate, isPrefixOf, stripPrefix, (\\))
+import Data.List (intercalate, isPrefixOf, partition, stripPrefix, (\\))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -64,6 +64,8 @@ import Swarm.ResourceLoading (getDataDirSafe, getSwarmSavePath)
 import Swarm.Util.Effect (warn, withThrow)
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
+import System.IO (readFile')
+import System.IO.Error (catchIOError)
 import Witch (into)
 
 -- ----------------------------------------------------------------------------
@@ -164,69 +166,72 @@ orderFileName = "00-ORDER.txt"
 testingDirectory :: FilePath
 testingDirectory = "Testing"
 
-readOrderFile :: (Has (Lift IO) sig m) => FilePath -> m [String]
-readOrderFile orderFile =
-  filter (not . null) . lines <$> sendIO (readFile orderFile)
+readOrderFile :: FilePath -> IO (Maybe [String])
+readOrderFile orderFile = fmap nonEmptyLines <$> readFileMaybe orderFile
+ where
+  nonEmptyLines :: String -> [String]
+  nonEmptyLines = filter (not . null) . lines
+  readFileMaybe :: FilePath -> IO (Maybe String)
+  readFileMaybe path = (Just <$> readFile' path) `catchIOError` (\_ -> return Nothing)
 
--- | Recursively load all scenarios from a particular directory, and also load
---   the 00-ORDER file (if any) giving the order for the scenarios.
 loadScenarioDir ::
+  forall m sig.
   (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
   ScenarioInputs ->
   Bool ->
   FilePath ->
   m ScenarioCollection
 loadScenarioDir scenarioInputs loadTestScenarios dir = do
-  let orderFile = dir </> orderFileName
-      dirName = takeBaseName dir
-  orderExists <- sendIO $ doesFileExist orderFile
-  morder <- case orderExists of
-    False -> do
-      when (dirName /= testingDirectory) . warn $
-        OrderFileWarning (dirName </> orderFileName) NoOrderFile
-      return Nothing
-    True -> Just <$> readOrderFile orderFile
-  itemPaths <- sendIO $ keepYamlOrPublicDirectory dir =<< listDirectory dir
-
-  forM_ morder $ \order -> do
-    let missing = itemPaths \\ order
-        dangling = order \\ itemPaths
-
-    forM_ (NE.nonEmpty missing) $
-      warn
-        . OrderFileWarning (dirName </> orderFileName)
-        . MissingFiles
-
-    forM_ (NE.nonEmpty dangling) $
-      warn
-        . OrderFileWarning (dirName </> orderFileName)
-        . DanglingFiles
-
-  -- Only keep the files from 00-ORDER.txt that actually exist.
-  let morder' = filter (`elem` itemPaths) <$> morder
-      loadItem filepath = do
-        item <- loadScenarioItem scenarioInputs loadTestScenarios (dir </> filepath)
-        return (filepath, item)
-  scenarios <- mapM (runThrow @SystemFailure . loadItem) itemPaths
-  let (failures, successes) = partitionEithers scenarios
-      scenarioMap = M.fromList successes
-      -- Now only keep the files that successfully parsed.
-      morder'' = filter (`M.member` scenarioMap) <$> morder'
-      collection = SC morder'' scenarioMap
-  add (Seq.fromList failures) -- Register failed individual scenarios as warnings
-  return collection
+  itemPaths <- sendIO $ filterM (isYamlOrPublicDirectory dir) =<< listDirectory dir
+  scenarioMap <- loadItems itemPaths
+  sendIO (readOrderFile orderFile) >>= \case
+    Nothing -> loadUnorderedScenarioDir scenarioMap
+    Just order -> loadOrderedScenarioDir order scenarioMap
  where
-  -- Keep only files which are .yaml files or directories that start
-  -- with something other than an underscore.
-  keepYamlOrPublicDirectory = filterM . isCatalogEntry
+  dirName, orderFile, orderFileShortPath :: FilePath
+  dirName = takeBaseName dir
+  orderFile = dir </> orderFileName
+  orderFileShortPath = dirName </> orderFileName
 
-  -- Whether the directory or file should be included in the scenario catalog.
-  isCatalogEntry d f = do
+  -- The function for individual directory items either warns about SystemFailure,
+  -- or has thrown SystemFailure. The following code just adds that thrown failure to others.
+  loadItems :: [FilePath] -> m (Map FilePath ScenarioItem)
+  loadItems items = do
+    let loadItem f = runThrow @SystemFailure $ (f,) <$> loadScenarioItem scenarioInputs loadTestScenarios (dir </> f)
+    (scenarioFailures, okScenarios) <- partitionEithers <$> mapM loadItem items
+    add (Seq.fromList scenarioFailures)
+    return $ M.fromList okScenarios
+
+  isHiddenDir :: String -> Bool
+  isHiddenDir f = not loadTestScenarios && f == testingDirectory
+
+  -- Keep only files which are .yaml files or directories not strting with an underscore.
+  -- Marked directories contain scenarios that can't be parsed (failure tests) or only script solutions.
+  isYamlOrPublicDirectory :: FilePath -> String -> IO Bool
+  isYamlOrPublicDirectory d f = do
     isDir <- doesDirectoryExist $ d </> f
     return $
       if isDir
-        then not ("_" `isPrefixOf` f) && (loadTestScenarios || f /= testingDirectory)
+        then not ("_" `isPrefixOf` f || isHiddenDir f)
         else takeExtensions f == ".yaml"
+
+  -- warn that the ORDER file is missing
+  loadUnorderedScenarioDir :: Map FilePath ScenarioItem -> m ScenarioCollection
+  loadUnorderedScenarioDir scenarioMap = do
+    when (dirName /= testingDirectory) (warn $ OrderFileWarning orderFileShortPath NoOrderFile)
+    pure $ SC Nothing scenarioMap
+
+  -- warn if the ORDER file does not match directory contents
+  loadOrderedScenarioDir :: [String] -> Map FilePath ScenarioItem -> m ScenarioCollection
+  loadOrderedScenarioDir order scenarioMap = do
+    let missing = M.keys scenarioMap \\ order
+        (loaded, notPresent) = partition (`M.member` scenarioMap) order
+        dangling = filter (not . isHiddenDir) notPresent
+
+    forM_ (NE.nonEmpty missing) (warn . OrderFileWarning orderFileShortPath . MissingFiles)
+    forM_ (NE.nonEmpty dangling) (warn . OrderFileWarning orderFileShortPath . DanglingFiles)
+
+    pure $ SC (Just loaded) scenarioMap
 
 -- | How to transform scenario path to save path.
 scenarioPathToSavePath :: FilePath -> FilePath -> FilePath

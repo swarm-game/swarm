@@ -58,7 +58,6 @@ world:
   dsl: |
     {blank}
   upperleft: [-6, 2]
-  offset: false
   palette:
     '.': [grass, erase]
     'd': [dirt, erase]

@@ -144,7 +144,6 @@ recipes:
 known: []
 world:
   upperleft: [-1, 1]
-  offset: false
   palette:
     B: [blank, null, base]
     z: [blank, null, judge]

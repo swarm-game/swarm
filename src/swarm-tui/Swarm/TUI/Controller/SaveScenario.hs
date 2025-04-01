@@ -17,22 +17,22 @@ import Control.Monad.State (MonadState)
 import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Time (getZonedTime)
 import Swarm.Game.Achievement.Definitions
-import Swarm.Game.Scenario.Status (updateScenarioInfoOnFinish)
+import Swarm.Game.Scenario.Status (scenarioIsCompleted, updateScenarioInfoOnFinish)
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Achievements (attainAchievement')
+import Swarm.TUI.Model.Achievements (attainAchievement, attainAchievement')
 import Swarm.TUI.Model.Repl
-import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI (uiDebugOptions, uiMenu)
 import Swarm.TUI.Model.UI.Gameplay
 import System.FilePath (splitDirectories)
 
 getNormalizedCurrentScenarioPath :: (MonadIO m, MonadState AppState m) => m (Maybe FilePath)
 getNormalizedCurrentScenarioPath =
   -- the path should be normalized and good to search in scenario collection
-  use (gameState . currentScenarioPath) >>= \case
+  use (playState . gameState . currentScenarioPath) >>= \case
     Nothing -> return Nothing
     Just p' -> do
       gs <- use $ runtimeState . scenarios
@@ -40,14 +40,14 @@ getNormalizedCurrentScenarioPath =
 
 saveScenarioInfoOnFinish :: (MonadIO m, MonadState AppState m) => FilePath -> m (Maybe ScenarioInfo)
 saveScenarioInfoOnFinish p = do
-  initialRunCode <- use $ gameState . gameControls . initiallyRunCode
+  initialRunCode <- use $ playState . gameState . gameControls . initiallyRunCode
   t <- liftIO getZonedTime
-  wc <- use $ gameState . winCondition
+  wc <- use $ playState . gameState . winCondition
   let won = case wc of
         WinConditions (Won _ _) _ -> True
         _ -> False
-  ts <- use $ gameState . temporal . ticks
-  saved <- use $ gameState . completionStatsSaved
+  ts <- use $ playState . gameState . temporal . ticks
+  saved <- use $ playState . gameState . completionStatsSaved
 
   -- NOTE: This traversal is apparently not the same one as used by
   -- the scenario selection menu, so the menu needs to be updated separately.
@@ -55,7 +55,7 @@ saveScenarioInfoOnFinish p = do
   let currentScenarioInfo :: Traversal' AppState ScenarioInfo
       currentScenarioInfo = runtimeState . scenarios . scenarioItemByPath p . _SISingle . _2
 
-  replHist <- use $ uiState . uiGameplay . uiREPL . replHistory
+  replHist <- use $ playState . uiGameplay . uiREPL . replHistory
   let determinator = CodeSizeDeterminators initialRunCode $ replHist ^. replHasExecutedManualInput
 
   -- Don't update scenario statistics if we have previously saved
@@ -71,7 +71,18 @@ saveScenarioInfoOnFinish p = do
           GlobalAchievement CompletedSingleTutorial
     liftIO $ saveScenarioInfo p si
 
-  gameState . completionStatsSaved .= won
+  -- Check if all tutorials have been completed
+  tutorialMap <- use $ runtimeState . scenarios . to getTutorials . to scMap
+  let isComplete (SISingle (_, s)) = scenarioIsCompleted s
+      -- There are not currently any subcollections within the
+      -- tutorials, but checking subcollections recursively just seems
+      -- like the right thing to do
+      isComplete (SICollection _ (SC _ m)) = all isComplete m
+  when (all isComplete tutorialMap) $
+    attainAchievement $
+      GlobalAchievement CompletedAllTutorials
+
+  playState . gameState . completionStatsSaved .= won
 
   return status
 
@@ -79,7 +90,7 @@ saveScenarioInfoOnFinish p = do
 unlessCheating :: MonadState AppState m => m () -> m ()
 unlessCheating a = do
   debugging <- use $ uiState . uiDebugOptions
-  isAuto <- use $ uiState . uiGameplay . uiIsAutoPlay
+  isAuto <- use $ playState . uiGameplay . uiIsAutoPlay
   when (null debugging && not isAuto) a
 
 -- | Write the @ScenarioInfo@ out to disk when finishing a game (i.e. on winning or exit).

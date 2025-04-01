@@ -31,11 +31,11 @@ let
        Boolean value associated to each coordinate.
     */
     big = pn0 > 0.0,  // 'big' is true for coordinates where pn0 > 0.0, and false otherwise
-    hard = pn1 > 0.0, // etc.
-    artificial = pn2 > 0.0,
+    soft = pn1 > 0.0, // etc.
+    natural = pn2 > 0.0,
     small = not big,
-    soft = not hard,
-    natural = not artificial
+    hard = not soft,
+    artificial = not natural
 in
 /* The world is built up by a series of layers, with each layer thought of as a function
    from coordinates to cell values.  The first layer is bottommost.
@@ -98,6 +98,11 @@ overlay
     [ {grass}
     , mask (hash % 10 == 0)
         (if (x + y) % 2 == 0 then {grass, bit (0)} else {grass, bit (1)})
+    , mask (hash % 50 == 0)
+        let i = (x - y) % 3 in
+        if (i == 0) then {stone, pixel (R)}
+        else if (i == 1) then {stone, pixel (G)}
+        else {stone, pixel (B)}
     ]
   )
 , mask (big && soft && artificial)
@@ -110,12 +115,12 @@ overlay
 , mask (small && hard && artificial)
   ( overlay
     [ {stone}
-    , mask (hash % 50 == 0)
-        let i = (x - y) % 3 in
-        if (i == 0) then {stone, pixel (R)}
-        else if (i == 1) then {stone, pixel (G)}
-        else {stone, pixel (B)}
-    , mask (hash % 120 == 1) {stone, lambda}
+    , mask (hash % 2 == 0) {grass}
+    , mask (hash % 120 == 1) {grass, lambda}
+    , mask (hash % 80 == 2) {stone, copper ore}
+    , mask (hash % 80 == 3) {grass, tree}
+    , mask (hash % 80 == 4) {grass, rock}
     ]
   )
+, mask (x*x + 4*y*y <= 25) {burnt, erase}
 ]

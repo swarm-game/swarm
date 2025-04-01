@@ -20,6 +20,7 @@ import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw
 import Control.Lens (view, (^.))
+import Control.Monad.Extra (guarded)
 import Control.Monad.Logger
 import Control.Monad.Trans (MonadIO)
 import Data.Aeson
@@ -49,7 +50,7 @@ import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Pretty (prettyText)
-import Swarm.Util (failT, surfaceEmpty)
+import Swarm.Util (failT)
 import Swarm.Util.Content
 import Swarm.Util.Erasable (erasableToMaybe)
 import Swarm.Util.Yaml
@@ -131,7 +132,7 @@ getBoundingBox vc scenarioWorld maybeSize =
   mapAreaDims = getGridDimensions worldArea
   areaDims@(AreaDimensions w h) =
     fromMaybe (AreaDimensions 20 10) $
-      maybeSize <|> surfaceEmpty isEmpty mapAreaDims
+      maybeSize <|> guarded (not . isEmpty) mapAreaDims
 
 getDisplayGrid ::
   Location ->

@@ -120,6 +120,7 @@ narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
   SProj s1 _ -> d s1
   SAnnotate s _ -> d s
   SRequirements _ s -> d s
+  SParens s -> d s
   -- atoms - return their position and end recursion
   TUnit -> Nothing
   TConst {} -> Nothing
@@ -205,6 +206,7 @@ explain trm = case trm ^. sTerm of
   SProj {} -> literal "A record projection."
   STydef {} -> literal "A type synonym definition."
   TType {} -> literal "A type literal."
+  SParens s -> explain s
   -- type ascription
   SAnnotate lhs typeAnn ->
     Node

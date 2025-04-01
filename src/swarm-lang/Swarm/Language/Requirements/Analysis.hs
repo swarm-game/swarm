@@ -160,6 +160,7 @@ requirements tdCtx ctx =
     TProj t _ -> add (singletonCap CRecord) *> go t
     -- A type ascription doesn't change requirements
     TAnnotate t ty -> go t *> polytypeRequirements ty
+    TParens t -> go t
 
 polytypeRequirements ::
   (Has (Accum Requirements) sig m, Has (Reader TDCtx) sig m) =>
@@ -176,7 +177,7 @@ typeRequirements = go
   go (Fix tyF) = goF tyF
 
   goF = \case
-    TyVarF _ -> pure ()
+    TyVarF _ _ -> pure ()
     TyConF (TCUser u) tys -> do
       mapM_ go tys
       ty' <- expandTydef u tys
