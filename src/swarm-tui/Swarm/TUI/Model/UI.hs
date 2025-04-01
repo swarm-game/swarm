@@ -49,6 +49,9 @@ import Swarm.Util.Lens (makeLensesNoSigs)
 
 -- * Toplevel UIState definition
 
+-- | UI state independent of an actively-playing scenario.
+-- Compare to 'UIGameplay', which contains UI state for an
+-- active scenario.
 data UIState = UIState
   { _uiMenu :: Menu
   , _uiPlaying :: Bool

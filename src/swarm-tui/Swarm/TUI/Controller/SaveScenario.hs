@@ -29,14 +29,13 @@ import Swarm.TUI.Model.UI (uiDebugOptions, uiMenu)
 import Swarm.TUI.Model.UI.Gameplay
 import System.FilePath (splitDirectories)
 
-getNormalizedCurrentScenarioPath :: (MonadIO m, MonadState AppState m) => m (Maybe FilePath)
-getNormalizedCurrentScenarioPath =
+getNormalizedCurrentScenarioPath ::
+  (MonadIO m, MonadState AppState m) =>
+  ScenarioCollection ->
+  m (Maybe FilePath)
+getNormalizedCurrentScenarioPath sc =
   -- the path should be normalized and good to search in scenario collection
-  use (playState . gameState . currentScenarioPath) >>= \case
-    Nothing -> return Nothing
-    Just p' -> do
-      gs <- use $ runtimeState . scenarios
-      Just <$> liftIO (normalizeScenarioPath gs p')
+  use (playState . gameState . currentScenarioPath) >>= traverse (liftIO . normalizeScenarioPath sc)
 
 saveScenarioInfoOnFinish :: (MonadIO m, MonadState AppState m) => FilePath -> m (Maybe ScenarioInfo)
 saveScenarioInfoOnFinish p = do
@@ -86,7 +85,7 @@ saveScenarioInfoOnFinish p = do
 
   return status
 
--- | Don't save progress for developers and cheaters.
+-- | Don't save progress for developers or cheaters.
 unlessCheating :: MonadState AppState m => m () -> m ()
 unlessCheating a = do
   debugging <- use $ uiState . uiDebugOptions
@@ -95,16 +94,18 @@ unlessCheating a = do
 
 -- | Write the @ScenarioInfo@ out to disk when finishing a game (i.e. on winning or exit).
 saveScenarioInfoOnFinishNocheat :: (MonadIO m, MonadState AppState m) => m ()
-saveScenarioInfoOnFinishNocheat =
+saveScenarioInfoOnFinishNocheat = do
+  sc <- use $ runtimeState . scenarios
   unlessCheating $
     -- the path should be normalized and good to search in scenario collection
-    getNormalizedCurrentScenarioPath >>= mapM_ saveScenarioInfoOnFinish
+    getNormalizedCurrentScenarioPath sc >>= mapM_ saveScenarioInfoOnFinish
 
 -- | Write the @ScenarioInfo@ out to disk when exiting a game.
 saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()
-saveScenarioInfoOnQuit =
+saveScenarioInfoOnQuit = do
+  sc <- use $ runtimeState . scenarios
   unlessCheating $
-    getNormalizedCurrentScenarioPath >>= mapM_ go
+    getNormalizedCurrentScenarioPath sc >>= mapM_ go
  where
   go p = do
     maybeSi <- saveScenarioInfoOnFinish p

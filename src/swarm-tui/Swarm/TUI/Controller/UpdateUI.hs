@@ -235,6 +235,7 @@ doGoalUpdates menu = do
   curGoal <- use (playState . uiGameplay . uiDialogs . uiGoal . goalsContent)
   curWinCondition <- use (playState . gameState . winCondition)
   announcementsList <- use (playState . gameState . messageInfo . announcementQueue . to toList)
+  showHiddenGoals <- use $ uiState . uiDebugOptions . Lens.contains ShowHiddenGoals
 
   -- Decide whether we need to update the current goal text and pop
   -- up a modal dialog.
@@ -262,7 +263,6 @@ doGoalUpdates menu = do
       -- advance the menu at that point.
       return True
     WinConditions _ oc -> do
-      showHiddenGoals <- use $ uiState . uiDebugOptions . Lens.contains ShowHiddenGoals
       currentModal <- preuse $ playState . uiGameplay . uiDialogs . uiModal . _Just . modalType
       let newGoalTracking = GoalTracking announcementsList $ constructGoalMap showHiddenGoals oc
           -- The "uiGoal" field is initialized with empty members, so we know that

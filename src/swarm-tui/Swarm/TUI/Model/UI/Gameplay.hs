@@ -193,8 +193,11 @@ uiStructure :: Lens' UIDialogs StructureDisplay
 -- | Definition and status of a recognizable structure
 uiRobot :: Lens' UIDialogs RobotDisplay
 
--- | The main record holding the gameplay UI state.  For access to the fields,
--- see the lenses below.
+-- | UI state specific to an actively-playing scenario.
+-- Compare to 'UIState', which contains UI state independent of an
+-- active scenario.
+--
+-- For access to the fields, see the lenses below.
 data UIGameplay = UIGameplay
   { _uiFocusRing :: FocusRing Name
   , _uiWorldCursor :: Maybe (Cosmic Coords)
