@@ -350,6 +350,21 @@ handleMainEvent forceRedraw ev = do
           when shouldUpdateCursor $
             uiGameplay . uiWorldCursor .= mouseCoordsM
         REPLInput -> handleREPLEvent ev
+        (UIShortcut "Help") -> playStateWithMenu $ toggleModal HelpModal
+        (UIShortcut "Robots") -> playStateWithMenu $ toggleModal RobotsModal
+        (UIShortcut "Commands") -> playStateWithMenu $ toggleDiscoveryNotificationModal CommandsModal availableCommands
+        (UIShortcut "Recipes") -> playStateWithMenu $ toggleDiscoveryNotificationModal RecipesModal availableRecipes
+        (UIShortcut "Messages") -> playStateWithMenu toggleMessagesModal
+        (UIShortcut "pause") -> Brick.zoom playState $ whenRunningPlayState safeTogglePause
+        (UIShortcut "unpause") -> Brick.zoom playState $ whenRunningPlayState safeTogglePause
+        (UIShortcut "step") -> whenRunningAppState runSingleTick
+        (UIShortcut "speed-up") -> Brick.zoom playState $ whenRunningPlayState . modify $ adjustTPS (+)
+        (UIShortcut "speed-down") -> Brick.zoom playState $ whenRunningPlayState . modify $ adjustTPS (-)
+        (UIShortcut "hide REPL") -> Brick.zoom playState toggleREPLVisibility
+        (UIShortcut "show REPL") -> Brick.zoom playState toggleREPLVisibility
+        (UIShortcut "debug") -> showCESKDebug
+        (UIShortcut "hide robots") -> Brick.zoom (playState . uiGameplay) hideRobots
+        (UIShortcut "goal") -> playStateWithMenu viewGoal
         _ -> continueWithoutRedraw
     MouseUp n _ _mouseLoc ->
       playStateWithMenu $ \m -> do

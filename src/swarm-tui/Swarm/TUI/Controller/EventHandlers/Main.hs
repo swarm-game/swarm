@@ -6,6 +6,17 @@
 -- Here is the main player configurable key event handler while playing the game.
 module Swarm.TUI.Controller.EventHandlers.Main (
   mainEventHandlers,
+  isRunning,
+  whenRunningAppState,
+  whenRunningPlayState,
+  runSingleTick,
+  adjustTPS,
+  toggleREPLVisibility,
+  showCESKDebug,
+  hideRobots,
+  toggleDiscoveryNotificationModal,
+  viewGoal,
+  toggleMessagesModal,
 ) where
 
 import Brick
