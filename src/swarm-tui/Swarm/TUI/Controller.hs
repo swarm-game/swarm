@@ -353,6 +353,8 @@ handleMainEvent forceRedraw ev = do
         (UIShortcut "Help") -> playStateWithMenu $ toggleModal HelpModal
         (UIShortcut "Robots") -> playStateWithMenu $ toggleModal RobotsModal
         (UIShortcut "Commands") -> playStateWithMenu $ toggleDiscoveryNotificationModal CommandsModal availableCommands
+        (UIShortcut "Recipes") -> playStateWithMenu $ toggleDiscoveryNotificationModal RecipesModal availableRecipes
+        (UIShortcut "Messages") -> playStateWithMenu toggleMessagesModal
         (UIShortcut "pause") -> Brick.zoom playState $ whenRunningPlayState safeTogglePause
         (UIShortcut "unpause") -> Brick.zoom playState $ whenRunningPlayState safeTogglePause
         (UIShortcut "step") -> whenRunningAppState runSingleTick
