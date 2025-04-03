@@ -729,7 +729,7 @@ testLanguagePipeline =
             "missing end"
             ( process
                 "def tL = turn left \ndef tR = turn right \n"
-                --"def tL = turn left end\n"
+                -- "def tL = turn left end\n"
                 "something"
             )
         ]
@@ -762,12 +762,17 @@ roundTripTerm txt = do
     Right x -> x
   term = fromMaybe (error "empty document") $ either (error . T.unpack) id $ readTerm txt
 
-
 baseTestPath = "data/test/language-snippets/errors"
 baseTestPath :: FilePath
 
-checkFile :: FilePath -> Text -> IO ()
-  checkFile filename expectedError = do
+checkFile ::
+  FilePath ->
+  Text ->
+  IO
+    ()
+    checkFile
+    filename
+    expectedError = do
     content <- TIO.readFile fullPath
     let actualWarnings = getWarnings content
     assertEqual "failed" expectedWarnings actualWarnings
