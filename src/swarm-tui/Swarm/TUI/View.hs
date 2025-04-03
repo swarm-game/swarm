@@ -1334,8 +1334,7 @@ drawRecipe me inv (Recipe ins outs reqs time _weight) =
     hBox
       [ padRight (Pad 1) $ str (show n) -- how many?
       , fmtEntityName missing ingr -- name of the input
-      , padLeft (Pad 1) $ -- a connecting line:   ─────┬ -- a connecting line:   ─────┬
-           -- a connecting line:   ─────┬
+      , padLeft (Pad 1) $ -- a connecting line:   ─────┬
           hBorder
             <+> ( joinableBorder (Edges (i /= 0) (i /= inLen - 1) True False) -- ...maybe plus vert ext:   │
                     <=> if i /= inLen - 1
