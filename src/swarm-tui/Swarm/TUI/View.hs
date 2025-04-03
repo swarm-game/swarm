@@ -146,8 +146,9 @@ import Text.Printf
 import Text.Wrap
 import Witch (into)
 
-data KeyCmd = SingleButton KeyHighlight Text Text
-            | MultiButton KeyHighlight [(Text, Text)] Text
+data KeyCmd
+  = SingleButton KeyHighlight Text Text
+  | MultiButton KeyHighlight [(Text, Text)] Text
 
 -- | The main entry point for drawing the entire UI.
 drawUI :: AppState -> [Widget Name]
@@ -947,7 +948,7 @@ drawKeyMenu s =
       , may
           (isPaused && hasDebug)
           ( SingleButton
-              ( if uig ^. uiShowDebug then Alert else NoHighlight)
+              (if uig ^. uiShowDebug then Alert else NoHighlight)
               (keyM SE.ShowCESKDebugEvent)
               "debug"
           )
@@ -960,7 +961,7 @@ drawKeyMenu s =
           )
       , Just
           ( SingleButton
-              ( if uig ^. uiShowRobots then NoHighlight else Alert)
+              (if uig ^. uiShowRobots then NoHighlight else Alert)
               (keyM SE.HideRobotsEvent)
               "hide robots"
           )
