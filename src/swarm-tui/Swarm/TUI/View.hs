@@ -952,8 +952,7 @@ drawKeyMenu s =
               , "debug"
               )
           )
-      , -- , Just (Left (NoHighlight, keyM SE.IncreaseTpsEvent <> "/" <> keyM SE.DecreaseTpsEvent, "speed"))
-        Just (Right (NoHighlight, [(keyM SE.IncreaseTpsEvent, "speed-up"), (keyM SE.DecreaseTpsEvent, "speed-down")], "speed"))
+      , Just (Right (NoHighlight, [(keyM SE.IncreaseTpsEvent, "speed-up"), (keyM SE.DecreaseTpsEvent, "speed-down")], "speed"))
       , Just
           ( Left
               ( NoHighlight
