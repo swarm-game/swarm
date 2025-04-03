@@ -16,7 +16,7 @@ module Swarm.TUI.Controller.EventHandlers.Main (
   hideRobots,
   toggleDiscoveryNotificationModal,
   viewGoal,
-  toggleMessagesModal
+  toggleMessagesModal,
 ) where
 
 import Brick
