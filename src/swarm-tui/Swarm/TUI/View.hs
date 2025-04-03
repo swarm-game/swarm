@@ -146,8 +146,8 @@ import Text.Printf
 import Text.Wrap
 import Witch (into)
 
--- | The 2nd case is for key commands that have more than one btn in the ui
-type KeyCmd = Either (KeyHighlight, Text, Text) (KeyHighlight, [(Text, Text)], Text)
+data KeyCmd = SingleButton KeyHighlight Text Text
+            | MultiButton KeyHighlight [(Text, Text)] Text
 
 -- | The main entry point for drawing the entire UI.
 drawUI :: AppState -> [Widget Name]
@@ -851,18 +851,18 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
         let highlight
               | gs ^. notifLens . notificationsCount > 0 = Alert
               | otherwise = NoHighlight
-         in Just (Left (highlight, keyM key, name))
+         in Just (SingleButton highlight (keyM key) name)
 
   -- Hides this key if the recognizable structure list is empty
   structuresKey =
     if null $ gs ^. landscape . recognizerAutomatons . originalStructureDefinitions
       then Nothing
-      else Just (Left (NoHighlight, keyM SE.ViewStructuresEvent, "Structures"))
+      else Just (SingleButton NoHighlight (keyM SE.ViewStructuresEvent) "Structures")
 
   globalKeyCmds =
     catMaybes
-      [ Just (Left (NoHighlight, keyM SE.ViewHelpEvent, "Help"))
-      , Just (Left (NoHighlight, keyM SE.ViewRobotsEvent, "Robots"))
+      [ Just (SingleButton NoHighlight (keyM SE.ViewHelpEvent) "Help")
+      , Just (SingleButton NoHighlight (keyM SE.ViewRobotsEvent) "Robots")
       , notificationKey (discovery . availableRecipes) SE.ViewRecipesEvent "Recipes"
       , notificationKey (discovery . availableCommands) SE.ViewCommandsEvent "Commands"
       , notificationKey messageNotifications SE.ViewMessagesEvent "Messages"
@@ -939,38 +939,35 @@ drawKeyMenu s =
   globalKeyCmds :: [KeyCmd]
   globalKeyCmds =
     catMaybes
-      [ may goal (Left (NoHighlight, keyM SE.ViewGoalEvent, "goal"))
-      , may showCreative (Left (NoHighlight, keyM SE.ToggleCreativeModeEvent, "creative"))
-      , may showEditor (Left (NoHighlight, keyM SE.ToggleWorldEditorEvent, "editor"))
-      , Just (Left (NoHighlight, keyM SE.PauseEvent, if isPaused then "unpause" else "pause"))
-      , may isPaused (Left (NoHighlight, keyM SE.RunSingleTickEvent, "step"))
+      [ may goal (SingleButton NoHighlight (keyM SE.ViewGoalEvent) "goal")
+      , may showCreative (SingleButton NoHighlight (keyM SE.ToggleCreativeModeEvent) "creative")
+      , may showEditor (SingleButton NoHighlight (keyM SE.ToggleWorldEditorEvent) "editor")
+      , Just (SingleButton NoHighlight (keyM SE.PauseEvent) (if isPaused then "unpause" else "pause"))
+      , may isPaused (SingleButton NoHighlight (keyM SE.RunSingleTickEvent) "step")
       , may
           (isPaused && hasDebug)
-          ( Left
-              ( if uig ^. uiShowDebug then Alert else NoHighlight
-              , keyM SE.ShowCESKDebugEvent
-              , "debug"
-              )
+          ( SingleButton
+              ( if uig ^. uiShowDebug then Alert else NoHighlight)
+              (keyM SE.ShowCESKDebugEvent)
+              "debug"
           )
-      , Just (Right (NoHighlight, [(keyM SE.IncreaseTpsEvent, "speed-up"), (keyM SE.DecreaseTpsEvent, "speed-down")], "speed"))
+      , Just (MultiButton NoHighlight [(keyM SE.IncreaseTpsEvent, "speed-up"), (keyM SE.DecreaseTpsEvent, "speed-down")] "speed")
       , Just
-          ( Left
-              ( NoHighlight
-              , keyM SE.ToggleREPLVisibilityEvent
-              , if uig ^. uiShowREPL then "hide REPL" else "show REPL"
-              )
+          ( SingleButton
+              NoHighlight
+              (keyM SE.ToggleREPLVisibilityEvent)
+              (if uig ^. uiShowREPL then "hide REPL" else "show REPL")
           )
       , Just
-          ( Left
-              ( if uig ^. uiShowRobots then NoHighlight else Alert
-              , keyM SE.HideRobotsEvent
-              , "hide robots"
-              )
+          ( SingleButton
+              ( if uig ^. uiShowRobots then NoHighlight else Alert)
+              (keyM SE.HideRobotsEvent)
+              "hide robots"
           )
       ]
   may b = if b then Just else const Nothing
 
-  highlightKeyCmds (k, n) = Left (PanelSpecific, k, n)
+  highlightKeyCmds (k, n) = SingleButton PanelSpecific k n
 
   keyCmdsFor (Just (FocusablePanel WorldEditorPanel)) =
     [("^s", "save map")]
@@ -1010,13 +1007,13 @@ data KeyHighlight = NoHighlight | Alert | PanelSpecific
 drawKeyCmd :: KeyCmd -> Widget Name
 drawKeyCmd keycmd =
   case keycmd of
-    Left (h, key, cmd) ->
+    (SingleButton h key cmd) ->
       clickable (UIShortcut cmd) $
         hBox
           [ withAttr (attr h) (txt $ brackets key)
           , txt cmd
           ]
-    Right (h, keyArr, cmd) ->
+    (MultiButton h keyArr cmd) ->
       hBox $ intersperse (txt "/") (map (createCmd h) keyArr) ++ [txt cmd]
  where
   createCmd h (key, cmd) = clickable (UIShortcut cmd) $ withAttr (attr h) (txt $ brackets key)
@@ -1337,7 +1334,8 @@ drawRecipe me inv (Recipe ins outs reqs time _weight) =
     hBox
       [ padRight (Pad 1) $ str (show n) -- how many?
       , fmtEntityName missing ingr -- name of the input
-      , padLeft (Pad 1) $ -- a connecting line:   ─────┬
+      , padLeft (Pad 1) $ -- a connecting line:   ─────┬ -- a connecting line:   ─────┬
+           -- a connecting line:   ─────┬
           hBorder
             <+> ( joinableBorder (Edges (i /= 0) (i /= inLen - 1) True False) -- ...maybe plus vert ext:   │
                     <=> if i /= inLen - 1
