@@ -1,4 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -47,20 +49,24 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Char (isSpace)
 import Data.Either (partitionEithers)
 import Data.Either.Extra (fromRight')
-import Data.List (intercalate, isPrefixOf, partition, stripPrefix, (\\))
+import Data.List (intercalate, isPrefixOf, stripPrefix, (\\))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Map.Ordered (OMap)
+import Data.Map.Ordered qualified as OM
 import Data.Maybe (isJust)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
+import Data.Tuple.Extra (dupe)
 import Data.Yaml as Y
 import Swarm.Failure
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Status
 import Swarm.ResourceLoading (getDataDirSafe, getSwarmSavePath)
+import Swarm.Util (lookupEither)
 import Swarm.Util.Effect (warn, withThrow)
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
@@ -86,10 +92,19 @@ scenarioItemName (SICollection name _) = name
 --
 --   /Invariant:/ every item in the
 --   'scOrder' exists as a key in the 'scMap'.
-data ScenarioCollection = SC
-  { scOrder :: Maybe [FilePath]
-  , scMap :: Map FilePath ScenarioItem
+newtype ScenarioCollection = SC
+  { scMap :: OMap FilePath ScenarioItem
   }
+
+type instance Index (OMap k a) = k
+type instance IxValue (OMap k a) = a
+
+-- | Adapted from:
+-- https://hackage.haskell.org/package/lens-5.3.4/docs/src/Control.Lens.At.html#line-319
+instance Ord k => Ixed (OMap k a) where
+  ix k f m = case OM.lookup k m of
+    Just v -> f v <&> \v' -> OM.alter (const $ Just v') k m
+    Nothing -> pure m
 
 -- | Access and modify 'ScenarioItem's in collection based on their path.
 scenarioItemByPath :: FilePath -> Traversal' ScenarioCollection ScenarioItem
@@ -98,8 +113,8 @@ scenarioItemByPath path = ixp ps
   ps = splitDirectories path
   ixp :: (Applicative f) => [String] -> (ScenarioItem -> f ScenarioItem) -> ScenarioCollection -> f ScenarioCollection
   ixp [] _ col = pure col
-  ixp [s] f (SC n m) = SC n <$> ix s f m
-  ixp (d : xs) f (SC n m) = SC n <$> ix d inner m
+  ixp [s] f (SC m) = SC <$> ix s f m
+  ixp (d : xs) f (SC m) = SC <$> ix d inner m
    where
     inner si = case si of
       SISingle {} -> pure si
@@ -112,7 +127,7 @@ tutorialsDirname = "Tutorials"
 -- | Extract just the collection of tutorial scenarios from the entire
 --   scenario collection.
 getTutorials :: ScenarioCollection -> ScenarioCollection
-getTutorials sc = case M.lookup tutorialsDirname (scMap sc) of
+getTutorials sc = case OM.lookup tutorialsDirname (scMap sc) of
   Just (SICollection _ c) -> c
   _ -> error "No tutorials exist"
 
@@ -128,8 +143,8 @@ normalizeScenarioPath col p =
         then return path
         else liftIO $ do
           canonPath <- canonicalizePath path
-          eitherDdir <- runM . runThrow @SystemFailure $ getDataDirSafe Scenarios "." -- no way we got this far without data directory
-          d <- canonicalizePath $ fromRight' eitherDdir
+          eitherDataDir <- runM . runThrow @SystemFailure $ getDataDirSafe Scenarios "." -- no way we got this far without data directory
+          d <- canonicalizePath $ fromRight' eitherDataDir
           let n =
                 stripPrefix (d </> "scenarios") canonPath
                   & maybe canonPath (dropWhile (== pathSeparator))
@@ -137,8 +152,7 @@ normalizeScenarioPath col p =
 
 -- | Convert a scenario collection to a list of scenario items.
 scenarioCollectionToList :: ScenarioCollection -> [ScenarioItem]
-scenarioCollectionToList (SC Nothing m) = M.elems m
-scenarioCollectionToList (SC (Just order) m) = (m M.!) <$> order
+scenarioCollectionToList (SC xs) = map snd $ OM.assocs xs
 
 flatten :: ScenarioItem -> [ScenarioInfoPair]
 flatten (SISingle p) = [p]
@@ -155,7 +169,7 @@ loadScenarios scenarioInputs loadTestScenarios = do
   case res of
     Left err -> do
       warn err
-      return $ SC mempty mempty
+      return $ SC OM.empty
     Right dataDir -> loadScenarioDir scenarioInputs loadTestScenarios dataDir
 
 -- | The name of the special file which indicates the order of
@@ -205,7 +219,7 @@ loadScenarioDir scenarioInputs loadTestScenarios dir = do
   isHiddenDir :: String -> Bool
   isHiddenDir f = not loadTestScenarios && f == testingDirectory
 
-  -- Keep only files which are .yaml files or directories not strting with an underscore.
+  -- Keep only files which are .yaml files or directories not starting with an underscore.
   -- Marked directories contain scenarios that can't be parsed (failure tests) or only script solutions.
   isYamlOrPublicDirectory :: FilePath -> String -> IO Bool
   isYamlOrPublicDirectory d f = do
@@ -219,19 +233,20 @@ loadScenarioDir scenarioInputs loadTestScenarios dir = do
   loadUnorderedScenarioDir :: Map FilePath ScenarioItem -> m ScenarioCollection
   loadUnorderedScenarioDir scenarioMap = do
     when (dirName /= testingDirectory) (warn $ OrderFileWarning orderFileShortPath NoOrderFile)
-    pure $ SC Nothing scenarioMap
+    pure . SC . OM.fromList $ M.toList scenarioMap
 
   -- warn if the ORDER file does not match directory contents
   loadOrderedScenarioDir :: [String] -> Map FilePath ScenarioItem -> m ScenarioCollection
   loadOrderedScenarioDir order scenarioMap = do
     let missing = M.keys scenarioMap \\ order
-        (loaded, notPresent) = partition (`M.member` scenarioMap) order
+        loadedEithers = map (traverse (`lookupEither` scenarioMap) . dupe) order
+        (notPresent, loaded) = partitionEithers loadedEithers
         dangling = filter (not . isHiddenDir) notPresent
 
     forM_ (NE.nonEmpty missing) (warn . OrderFileWarning orderFileShortPath . MissingFiles)
     forM_ (NE.nonEmpty dangling) (warn . OrderFileWarning orderFileShortPath . DanglingFiles)
 
-    pure $ SC (Just loaded) scenarioMap
+    pure $ SC $ OM.fromList loaded
 
 -- | How to transform scenario path to save path.
 scenarioPathToSavePath :: FilePath -> FilePath -> FilePath
@@ -243,7 +258,7 @@ loadScenarioInfo ::
   FilePath ->
   m ScenarioInfo
 loadScenarioInfo p = do
-  path <- sendIO $ normalizeScenarioPath (SC Nothing mempty) p
+  path <- sendIO $ normalizeScenarioPath (SC OM.empty) p
   infoPath <- sendIO $ scenarioPathToSavePath path <$> getSwarmSavePath False
   hasInfo <- sendIO $ doesFileExist infoPath
   if not hasInfo
