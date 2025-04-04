@@ -85,17 +85,16 @@ checkInventoryUpdated fr = do
   -- (either because which robot (or whether any robot) is focused
   -- changed, or the focused robot's inventory changed), or the
   -- inventory was flagged to be updated, regenerate the inventory list.
-
-  if farChanged || (not farChanged && listRobotHash /= focusedRobotHash) || shouldUpdate
-    then do
-      Brick.zoom (uiGameplay . uiInventory) $ do
-        populateInventoryList $ if tooFar then Nothing else fr
-        uiInventoryShouldUpdate .= False
-      pure True
-    else pure False
+  let shouldRegenerateInventory = farChanged || listRobotHash /= focusedRobotHash || shouldUpdate
+  when shouldRegenerateInventory $
+    Brick.zoom (uiGameplay . uiInventory) $ do
+      populateInventoryList $ if tooFar then Nothing else fr
+      uiInventoryShouldUpdate .= False
+  return shouldRegenerateInventory
 
 checkReplUpdated :: GameState -> EventM Name PlayState Bool
 checkReplUpdated g = case g ^. gameControls . replStatus of
+  -- Now check if the base finished running a program entered at the REPL.
   REPLWorking pty (Just v)
     -- It did, and the result was the unit value or an exception.  Just reset replStatus.
     | v `elem` [VUnit, VExc] -> do
