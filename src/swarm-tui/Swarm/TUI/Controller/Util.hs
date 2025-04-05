@@ -12,7 +12,7 @@ import Brick.Keybindings
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens as Lens
-import Control.Monad (forM_, unless, when, forM)
+import Control.Monad (forM, forM_, unless, when)
 import Control.Monad.IO.Class (MonadIO (liftIO), liftIO)
 import Control.Monad.State (MonadState, execState)
 import Data.List.Extra (enumerate)
