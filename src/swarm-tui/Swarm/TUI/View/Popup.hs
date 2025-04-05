@@ -14,7 +14,7 @@ import Control.Lens ((^.))
 import Swarm.Game.Achievement.Definitions (title)
 import Swarm.Game.Achievement.Description (describe)
 import Swarm.Language.Syntax (constInfo, syntax)
-import Swarm.TUI.Model (AppState, uiState)
+import Swarm.TUI.Model (AppState, keyConfig, keyEventHandling, uiState)
 import Swarm.TUI.Model.Dialog.Popup (Popup (..), currentPopup, popupFrames)
 import Swarm.TUI.Model.Event qualified as SE
 import Swarm.TUI.Model.Name
@@ -46,7 +46,7 @@ drawPopup s = \case
   RecipesPopup ->
     hBox
       [ withAttr notifAttr (txt "New recipes unlocked! ")
-      , txt $ bindingText s (SE.Main SE.ViewRecipesEvent) <> " to view."
+      , txt $ bindingText keyConf (SE.Main SE.ViewRecipesEvent) <> " to view."
       ]
   CommandsPopup cmds ->
     vBox
@@ -54,13 +54,15 @@ drawPopup s = \case
           [ withAttr notifAttr (txt "New commands unlocked: ")
           , txt . commaList $ map (squote . syntax . constInfo) cmds
           ]
-      , txt $ "Hit " <> bindingText s (SE.Main SE.ViewCommandsEvent) <> " to view all available commands."
+      , txt $ "Hit " <> bindingText keyConf (SE.Main SE.ViewCommandsEvent) <> " to view all available commands."
       ]
   DebugWarningPopup ->
     hBox
       [ withAttr notifAttr (txt "Warning: ")
       , txt "No progress will be saved, since debugging flags are in use."
       ]
+ where
+  keyConf = s ^. keyEventHandling . keyConfig
 
 -- | Compute the number of rows of the notification popup we should be
 --   showing, based on the number of frames the popup has existed.

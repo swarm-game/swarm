@@ -29,16 +29,19 @@ import Swarm.TUI.Model.UI (uiDebugOptions, uiMenu)
 import Swarm.TUI.Model.UI.Gameplay
 import System.FilePath (splitDirectories)
 
-getNormalizedCurrentScenarioPath :: (MonadIO m, MonadState AppState m) => m (Maybe FilePath)
-getNormalizedCurrentScenarioPath =
+getNormalizedCurrentScenarioPath ::
+  MonadIO m =>
+  GameState ->
+  ScenarioCollection ->
+  m (Maybe FilePath)
+getNormalizedCurrentScenarioPath gs sc = do
   -- the path should be normalized and good to search in scenario collection
-  use (playState . gameState . currentScenarioPath) >>= \case
-    Nothing -> return Nothing
-    Just p' -> do
-      gs <- use $ runtimeState . scenarios
-      Just <$> liftIO (normalizeScenarioPath gs p')
+  traverse (liftIO . normalizeScenarioPath sc) $ gs ^. currentScenarioPath
 
-saveScenarioInfoOnFinish :: (MonadIO m, MonadState AppState m) => FilePath -> m (Maybe ScenarioInfo)
+saveScenarioInfoOnFinish ::
+  (MonadIO m, MonadState AppState m) =>
+  FilePath ->
+  m (Maybe ScenarioInfo)
 saveScenarioInfoOnFinish p = do
   initialRunCode <- use $ playState . gameState . gameControls . initiallyRunCode
   t <- liftIO getZonedTime
@@ -63,6 +66,7 @@ saveScenarioInfoOnFinish p = do
   unless saved $
     currentScenarioInfo
       %= updateScenarioInfoOnFinish determinator t ts won
+
   status <- preuse currentScenarioInfo
   forM_ status $ \si -> do
     forM_ (listToMaybe $ splitDirectories p) $ \firstDir -> do
@@ -78,6 +82,7 @@ saveScenarioInfoOnFinish p = do
       -- tutorials, but checking subcollections recursively just seems
       -- like the right thing to do
       isComplete (SICollection _ (SC _ m)) = all isComplete m
+
   when (all isComplete tutorialMap) $
     attainAchievement $
       GlobalAchievement CompletedAllTutorials
@@ -86,7 +91,7 @@ saveScenarioInfoOnFinish p = do
 
   return status
 
--- | Don't save progress for developers and cheaters.
+-- | Don't save progress for developers or cheaters.
 unlessCheating :: MonadState AppState m => m () -> m ()
 unlessCheating a = do
   debugging <- use $ uiState . uiDebugOptions
@@ -95,16 +100,20 @@ unlessCheating a = do
 
 -- | Write the @ScenarioInfo@ out to disk when finishing a game (i.e. on winning or exit).
 saveScenarioInfoOnFinishNocheat :: (MonadIO m, MonadState AppState m) => m ()
-saveScenarioInfoOnFinishNocheat =
+saveScenarioInfoOnFinishNocheat = do
+  sc <- use $ runtimeState . scenarios
+  gs <- use $ playState . gameState
   unlessCheating $
     -- the path should be normalized and good to search in scenario collection
-    getNormalizedCurrentScenarioPath >>= mapM_ saveScenarioInfoOnFinish
+    getNormalizedCurrentScenarioPath gs sc >>= mapM_ saveScenarioInfoOnFinish
 
 -- | Write the @ScenarioInfo@ out to disk when exiting a game.
-saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()
-saveScenarioInfoOnQuit =
+saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => Bool -> m ()
+saveScenarioInfoOnQuit isNoMenu = do
+  sc <- use $ runtimeState . scenarios
+  gs <- use $ playState . gameState
   unlessCheating $
-    getNormalizedCurrentScenarioPath >>= mapM_ go
+    getNormalizedCurrentScenarioPath gs sc >>= mapM_ go
  where
   go p = do
     maybeSi <- saveScenarioInfoOnFinish p
@@ -128,15 +137,12 @@ saveScenarioInfoOnQuit =
     -- currentScenarioPath or it might be different.
     curPath <- preuse $ uiState . uiMenu . _NewGameMenu . ix 0 . BL.listSelectedElementL . _SISingle . _2 . scenarioPath
 
-    menu <- use $ uiState . uiMenu
-    case menu of
-      -- If the menu is NoMenu, it means we skipped showing the
-      -- menu at startup, so leave it alone; we simply want to
-      -- exit the entire app.
-      NoMenu -> pure ()
-      -- Otherwise, rebuild the NewGameMenu so it gets the updated
-      -- ScenarioInfo, being sure to preserve the same focused
-      -- scenario.
-      _ -> do
-        sc <- use $ runtimeState . scenarios
-        forM_ (mkNewGameMenu sc (fromMaybe p curPath)) (uiState . uiMenu .=)
+    -- If the menu is NoMenu, it means we skipped showing the
+    -- menu at startup, so leave it alone; we simply want to
+    -- exit the entire app.
+    -- Otherwise, rebuild the NewGameMenu so it gets the updated
+    -- ScenarioInfo, being sure to preserve the same focused
+    -- scenario.
+    unless isNoMenu $ do
+      sc <- use $ runtimeState . scenarios
+      forM_ (mkNewGameMenu sc (fromMaybe p curPath)) (uiState . uiMenu .=)

@@ -5,7 +5,7 @@
 module Swarm.TUI.View.Util where
 
 import Brick hiding (Direction, Location)
-import Brick.Keybindings (Binding (..), firstActiveBinding, ppBinding)
+import Brick.Keybindings (Binding (..), KeyConfig, firstActiveBinding, ppBinding)
 import Brick.Widgets.Dialog
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
@@ -43,9 +43,10 @@ generateModal m s mt =
  where
   currentScenario = s ^. uiGameplay . scenarioRef
   currentSeed = s ^. gameState . randomness . seed
-  haltingMessage = case m of
-    NoMenu -> Just "Quit"
-    _ -> Nothing
+  haltingMessage =
+    if isNoMenu
+      then Just "Quit"
+      else Nothing
   descriptionWidth = 100
   (title, buttons, requiredWidth) =
     case mt of
@@ -109,6 +110,10 @@ generateModal m s mt =
       cs <- currentScenario
       return ("Start over", Button StartOverButton, StartOver currentSeed cs)
 
+  isNoMenu = case m of
+    NoMenu -> True
+    _ -> False
+
   mkQuitModal =
     ( ""
     , Just
@@ -119,7 +124,7 @@ generateModal m s mt =
             , Just (stopMsg, Button QuitButton, QuitAction)
             ]
         )
-    , T.length (quitMsg m) + 4
+    , T.length (quitMsg isNoMenu) + 4
     )
    where
     stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName m) ++ " menu") haltingMessage
@@ -191,12 +196,13 @@ curMenuName m = case m of
   NewGameMenu _ -> Just "Scenarios"
   _ -> Nothing
 
-quitMsg :: Menu -> Text
-quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress on this scenario will be lost!"
+quitMsg :: Bool -> Text
+quitMsg isNoMenu = "Are you sure you want to " <> quitAction <> "? All progress on this scenario will be lost!"
  where
-  quitAction = case m of
-    NoMenu -> "quit"
-    _ -> "return to the menu"
+  quitAction =
+    if isNoMenu
+      then "quit"
+      else "return to the menu"
 
 -- | Display a list of text-wrapped paragraphs with one blank line after each.
 displayParagraphs :: [Text] -> Widget Name
@@ -251,11 +257,10 @@ drawLabelledEntityName e =
     ]
 
 -- | Render the keybinding bound to a specific event.
-bindingText :: AppState -> SwarmEvent -> Text
-bindingText s e = maybe "" ppBindingShort b
+bindingText :: KeyConfig SwarmEvent -> SwarmEvent -> Text
+bindingText keyConf e = maybe "" ppBindingShort b
  where
-  conf = s ^. keyEventHandling . keyConfig
-  b = firstActiveBinding conf e
+  b = firstActiveBinding keyConf e
   ppBindingShort = \case
     Binding V.KUp m | null m -> "↑"
     Binding V.KDown m | null m -> "↓"

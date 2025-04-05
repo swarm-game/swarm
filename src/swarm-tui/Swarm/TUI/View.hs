@@ -33,6 +33,7 @@ module Swarm.TUI.View (
 import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Forms
+import Brick.Keybindings (KeyConfig)
 import Brick.Widgets.Border (
   hBorder,
   hBorderWithLabel,
@@ -61,6 +62,7 @@ import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
 import Data.Semigroup (sconcat)
 import Data.Sequence qualified as Seq
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -429,7 +431,7 @@ drawAboutMenuUI (Just t) = centerLayer . vBox . map (hCenter . txt . nonblank) $
 --   main layer and a layer for a floating dialog that can be on top.
 drawGameUI :: AppState -> [Widget Name]
 drawGameUI s =
-  [ joinBorders $ drawDialog s
+  [ joinBorders $ drawDialog h isNoMenu ps
   , joinBorders $
       hBox
         [ hLimitPercent 25 $
@@ -461,9 +463,21 @@ drawGameUI s =
         ]
   ]
  where
+  debugOpts = s ^. uiState . uiDebugOptions
+  keyConf = s ^. keyEventHandling . keyConfig
   ps = s ^. playState
   gs = ps ^. gameState
   uig = ps ^. uiGameplay
+
+  h =
+    ToplevelConfigurationHelp
+      (s ^. runtimeState . webPort)
+      keyConf
+
+  isNoMenu = case s ^. uiState . uiMenu of
+    NoMenu -> True
+    _ -> False
+
   addCursorPos = bottomLabels . leftLabel ?~ padLeftRight 1 widg
    where
     widg = case uig ^. uiWorldCursor of
@@ -486,12 +500,12 @@ drawGameUI s =
         (FocusablePanel WorldPanel)
         ( plainBorder
             & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS $ uig ^. uiTiming)
-            & topLabels . leftLabel ?~ drawModalMenu s
+            & topLabels . leftLabel ?~ drawModalMenu gs keyConf
             & addCursorPos
             & addClock
         )
         (drawWorldPane uig gs)
-    , drawKeyMenu s
+    , drawKeyMenu ps keyConf debugOpts
     ]
   replPanel =
     [ clickable (FocusablePanel REPLPanel) $
@@ -505,7 +519,7 @@ drawGameUI s =
           ( vLimit replHeight
               . padBottom Max
               . padLeft (Pad 1)
-              $ drawREPL s
+              $ drawREPL ps
           )
     ]
 
@@ -605,36 +619,43 @@ replHeight = 10
 
 -- | Hide the cursor when a modal is set
 chooseCursor :: AppState -> [CursorLocation n] -> Maybe (CursorLocation n)
-chooseCursor s locs = case m of
-  Nothing -> showFirstCursor s locs
-  Just _ -> Nothing
+chooseCursor s locs = do
+  guard $ null m
+  showFirstCursor s locs
  where
   m = s ^. playState . uiGameplay . uiDialogs . uiModal
 
 -- | Draw a dialog window, if one should be displayed right now.
-drawDialog :: AppState -> Widget Name
-drawDialog s = case m of
-  Just (Modal mt d) -> renderDialog d $ case mt of
-    GoalModal -> drawModal s mt
-    RobotsModal -> drawModal s mt
-    _ -> maybeScroll ModalViewport $ drawModal s mt
-  Nothing -> emptyWidget
+drawDialog ::
+  ToplevelConfigurationHelp ->
+  Bool ->
+  PlayState ->
+  Widget Name
+drawDialog h isNoMenu ps =
+  maybe emptyWidget go m
  where
-  m = s ^. playState . uiGameplay . uiDialogs . uiModal
+  m = ps ^. uiGameplay . uiDialogs . uiModal
+  go (Modal mt d) = renderDialog d $ case mt of
+    GoalModal -> draw
+    RobotsModal -> draw
+    _ -> maybeScroll ModalViewport draw
+   where
+    draw = drawModal h ps isNoMenu mt
 
 -- | Draw one of the various types of modal dialog.
-drawModal :: AppState -> ModalType -> Widget Name
-drawModal s = \case
-  HelpModal ->
-    helpWidget
-      (gs ^. randomness . seed)
-      (s ^. runtimeState . webPort)
-      (s ^. keyEventHandling)
+drawModal ::
+  ToplevelConfigurationHelp ->
+  PlayState ->
+  Bool ->
+  ModalType ->
+  Widget Name
+drawModal h ps isNoMenu = \case
+  HelpModal -> helpWidget h $ gs ^. randomness . seed
   RobotsModal -> drawRobotsModal $ uig ^. uiDialogs . uiRobot
   RecipesModal -> availableListWidget gs RecipeList
   CommandsModal -> commandsListWidget gs
   MessagesModal -> availableListWidget gs MessageList
-  StructuresModal -> SR.renderStructuresDisplay gs (uig ^. uiDialogs . uiStructure)
+  StructuresModal -> SR.renderStructuresDisplay gs $ uig ^. uiDialogs . uiStructure
   ScenarioEndModal outcome ->
     padBottom (Pad 1) $
       vBox $
@@ -648,8 +669,8 @@ drawModal s = \case
         [ "Condolences!"
         , "This scenario is no longer winnable."
         ]
-  DescriptionModal e -> descriptionWidget (s ^. playState) e
-  QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
+  DescriptionModal e -> descriptionWidget ps e
+  QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg isNoMenu)
   GoalModal ->
     GR.renderGoalsDisplay (uig ^. uiDialogs . uiGoal) $
       view (scenarioOperation . scenarioDescription) . fst <$> uig ^. scenarioRef
@@ -661,11 +682,16 @@ drawModal s = \case
   TerrainPaletteModal -> EV.drawTerrainSelector uig
   EntityPaletteModal -> EV.drawEntityPaintSelector uig
  where
-  gs = s ^. playState . gameState
-  uig = s ^. playState . uiGameplay
+  gs = ps ^. gameState
+  uig = ps ^. uiGameplay
 
-helpWidget :: Seed -> Maybe Port -> KeyEventHandlingState -> Widget Name
-helpWidget theSeed mport keyState =
+data ToplevelConfigurationHelp = ToplevelConfigurationHelp
+  { _helpPort :: Maybe Port
+  , _helpKeyConf :: KeyConfig SE.SwarmEvent
+  }
+
+helpWidget :: ToplevelConfigurationHelp -> Seed -> Widget Name
+helpWidget (ToplevelConfigurationHelp mport keyConf) theSeed =
   padLeftRight 2 . vBox $
     padTop (Pad 1)
       <$> [ info
@@ -718,7 +744,7 @@ helpWidget theSeed mport keyState =
     , padLeftRight 1 $ txtFilled maxK k
     , padLeft (Pad 1) $ txtFilled maxD d
     ]
-  keyHandlerToText = handlerNameKeysDescription (keyState ^. keyConfig)
+  keyHandlerToText = handlerNameKeysDescription keyConf
   -- Get maximum width of the table columns so it all neatly aligns
   txtFilled n t = padRight (Pad $ max 0 (n - textWidth t)) $ txt t
   (maxN, maxK, maxD) = map3 (maximum0 . map textWidth) . unzip3 $ keyHandlerToText <$> allEventHandlers
@@ -840,11 +866,9 @@ colorSeverity = \case
   Critical -> redAttr
 
 -- | Draw the F-key modal menu. This is displayed in the top left world corner.
-drawModalMenu :: AppState -> Widget Name
-drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyCmds
+drawModalMenu :: GameState -> KeyConfig SE.SwarmEvent -> Widget Name
+drawModalMenu gs keyConf = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyCmds
  where
-  gs = s ^. playState . gameState
-
   notificationKey :: Getter GameState (Notifications a) -> SE.MainEvent -> Text -> Maybe KeyCmd
   notificationKey notifLens key name
     | null (gs ^. notifLens . notificationsContent) = Nothing
@@ -869,15 +893,19 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
       , notificationKey messageNotifications SE.ViewMessagesEvent "Messages"
       , structuresKey
       ]
-  keyM = VU.bindingText s . SE.Main
+  keyM = VU.bindingText keyConf . SE.Main
 
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as one or two lines in
 --   between the world panel and the REPL.
 --
 -- This excludes the F-key modals that are shown elsewhere.
-drawKeyMenu :: AppState -> Widget Name
-drawKeyMenu s =
+drawKeyMenu ::
+  PlayState ->
+  KeyConfig SE.SwarmEvent ->
+  Set DebugOption ->
+  Widget Name
+drawKeyMenu ps keyConf debugOpts =
   vLimit 2 $
     hBox
       [ padBottom Max $
@@ -900,16 +928,15 @@ drawKeyMenu s =
       . view uiFocusRing
       $ uig
 
-  uig = s ^. playState . uiGameplay
-  gs = s ^. playState . gameState
-  uis = s ^. uiState
+  uig = ps ^. uiGameplay
+  gs = ps ^. gameState
 
   isReplWorking = gs ^. gameControls . replWorking
   isPaused = gs ^. temporal . paused
   hasDebug = hasDebugCapability creative gs
   creative = gs ^. creativeMode
-  showCreative = uis ^. uiDebugOptions . Lens.contains ToggleCreative
-  showEditor = uis ^. uiDebugOptions . Lens.contains ToggleWorldEditor
+  showCreative = debugOpts ^. Lens.contains ToggleCreative
+  showEditor = debugOpts ^. Lens.contains ToggleWorldEditor
   goal = hasAnythingToShow $ uig ^. uiDialogs . uiGoal . goalsContent
   showZero = uig ^. uiInventory . uiShowZero
   inventorySort = uig ^. uiInventory . uiInventorySort
@@ -997,10 +1024,10 @@ drawKeyMenu s =
           ]
   keyCmdsFor (Just (FocusablePanel InfoPanel)) = []
   keyCmdsFor _ = []
-  keyM = VU.bindingText s . SE.Main
-  keyR = VU.bindingText s . SE.REPL
-  keyE = VU.bindingText s . SE.Robot
-  keyW = VU.bindingText s . SE.World
+  keyM = VU.bindingText keyConf . SE.Main
+  keyR = VU.bindingText keyConf . SE.REPL
+  keyE = VU.bindingText keyConf . SE.Robot
+  keyW = VU.bindingText keyConf . SE.World
 
 data KeyHighlight = NoHighlight | Alert | PanelSpecific
 
@@ -1489,8 +1516,8 @@ renderREPLPrompt focus theRepl = ps1 <+> replE
       replEditor
 
 -- | Draw the REPL.
-drawREPL :: AppState -> Widget Name
-drawREPL s =
+drawREPL :: PlayState -> Widget Name
+drawREPL ps =
   vBox
     [ withLeftPaddedVScrollBars
         . viewport REPLViewport Vertical
@@ -1499,8 +1526,8 @@ drawREPL s =
     , vBox mayDebug
     ]
  where
-  uig = s ^. playState . uiGameplay
-  gs = s ^. playState . gameState
+  uig = ps ^. uiGameplay
+  gs = ps ^. gameState
 
   -- rendered history lines fitting above REPL prompt
   history :: [Widget n]
