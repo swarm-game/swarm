@@ -81,7 +81,7 @@ saveScenarioInfoOnFinish p = do
       -- There are not currently any subcollections within the
       -- tutorials, but checking subcollections recursively just seems
       -- like the right thing to do
-      isComplete (SICollection _ (SC _ m)) = all isComplete m
+      isComplete (SICollection _ (SC m)) = all isComplete m
 
   when (all isComplete tutorialMap) $
     attainAchievement $

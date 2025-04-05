@@ -45,7 +45,7 @@ instance Data ty => Plated (Syntax' ty) where
 
 -- | A @let@ expression can be written either as @let x = e1 in e2@ or
 --   as @def x = e1 end; e2@. This enumeration simply records which it
---   was so that we can pretty-print appropriatly.
+--   was so that we can pretty-print appropriately.
 data LetSyntax = LSLet | LSDef
   deriving (Eq, Ord, Show, Bounded, Enum, Generic, Data, Hashable, ToJSON, FromJSON)
 

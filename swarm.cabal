@@ -276,6 +276,9 @@ common nonempty-containers
 common optparse-applicative
   build-depends: optparse-applicative >=0.16 && <0.19
 
+common ordered-containers
+  build-depends: ordered-containers >=0.2.4 && <0.2.5
+
 common palette
   build-depends: palette >=0.3 && <0.4
 
@@ -687,6 +690,7 @@ library swarm-engine
     monoidmap,
     mtl,
     nonempty-containers,
+    ordered-containers,
     prettyprinter,
     random,
     servant-docs,
@@ -1013,6 +1017,7 @@ library swarm-tui
     murmur3,
     natural-sort,
     nonempty-containers,
+    ordered-containers,
     palette,
     servant-docs,
     split,
