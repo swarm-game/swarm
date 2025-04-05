@@ -12,7 +12,7 @@ import Brick.Keybindings
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens as Lens
-import Control.Monad (forM_, unless, when)
+import Control.Monad (forM_, unless, when, forM)
 import Control.Monad.IO.Class (MonadIO (liftIO), liftIO)
 import Control.Monad.State (MonadState, execState)
 import Data.List.Extra (enumerate)
@@ -152,15 +152,13 @@ loadVisibleRegion = do
 mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe (Cosmic Coords))
 mouseLocToWorldCoords (Brick.Location mouseLoc) = do
   mext <- lookupExtent WorldExtent
-  case mext of
-    Nothing -> pure Nothing
-    Just ext -> do
-      region <- gets $ flip viewingRegion (bimap fromIntegral fromIntegral (extentSize ext)) . view (robotInfo . viewCenter)
-      let regionStart = unCoords (fst $ region ^. planar)
-          mouseLoc' = bimap fromIntegral fromIntegral mouseLoc
-          mx = snd mouseLoc' + fst regionStart
-          my = fst mouseLoc' + snd regionStart
-       in pure . Just $ Cosmic (region ^. subworld) $ Coords (mx, my)
+  forM mext $ \ext -> do
+    region <- gets $ flip viewingRegion (bimap fromIntegral fromIntegral (extentSize ext)) . view (robotInfo . viewCenter)
+    let regionStart = unCoords (fst $ region ^. planar)
+        mouseLoc' = bimap fromIntegral fromIntegral mouseLoc
+        mx = snd mouseLoc' + fst regionStart
+        my = fst mouseLoc' + snd regionStart
+     in pure $ Cosmic (region ^. subworld) $ Coords (mx, my)
 
 hasDebugCapability :: Bool -> GameState -> Bool
 hasDebugCapability isCreative s =
