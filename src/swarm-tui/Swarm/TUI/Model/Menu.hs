@@ -17,7 +17,7 @@ import Control.Lens hiding (from, (<.>))
 import Data.List.Extra (enumerate)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
-import Data.Map qualified as M
+import Data.Map.Ordered qualified as OM
 import Data.Text (Text)
 import Data.Vector qualified as V
 import Swarm.Game.Achievement.Definitions
@@ -125,7 +125,7 @@ mkNewGameMenu sc path = fmap NewGameMenu $ NE.nonEmpty =<< go (Just sc) (splitPa
 
     lst = BL.listFindBy hasName (mkScenarioList curSC)
 
-    nextSC = case M.lookup (dropTrailingPathSeparator thing) (scMap curSC) of
+    nextSC = case OM.lookup (dropTrailingPathSeparator thing) (scMap curSC) of
       Just (SICollection _ c) -> Just c
       _ -> Nothing
 

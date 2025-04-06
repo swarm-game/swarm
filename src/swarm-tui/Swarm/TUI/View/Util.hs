@@ -80,7 +80,7 @@ generateModal m s mt =
         , [ (nextMsg, Button NextButton, Next scene)
           | Just scene <- [nextScenario m]
           ]
-            ++ [ (stopMsg, Button QuitButton, QuitAction)
+            ++ [ (stopMsg, Button QuitButton, QuitAction) -- TODO(#2376) QuitAction is not used
                , (continueMsg, Button KeepPlayingButton, KeepPlaying)
                ]
         )

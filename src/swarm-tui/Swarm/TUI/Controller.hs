@@ -184,18 +184,18 @@ handleMainMenuEvent menu = \case
 
         -- Extract the first unsolved tutorial challenge
         let tutorialCollection = getTutorials ss
-            tutorials = scOrder tutorialCollection
+            tutorials = scenarioCollectionToList tutorialCollection
             -- Find first unsolved tutorial, or first tutorial if all are solved
-            firstUnsolved :: Maybe FilePath
-            firstUnsolved = (tutorials >>= find unsolved) <|> (tutorials >>= listToMaybe)
-            unsolved t = case M.lookup t (scMap tutorialCollection) of
-              Just (SISingle (_, si)) -> case si ^. scenarioStatus of
+            firstUnsolved :: Maybe ScenarioItem
+            firstUnsolved = find unsolved tutorials <|> listToMaybe tutorials
+            unsolved = \case
+              SISingle (_, si) -> case si ^. scenarioStatus of
                 Played _ _ best
                   | Metric Completed _ <- best ^. scenarioBestByTime -> False
                   | otherwise -> True
                 _ -> True
               _ -> False
-            firstUnsolvedInfo = case firstUnsolved >>= (scMap tutorialCollection M.!?) of
+            firstUnsolvedInfo = case firstUnsolved of
               Just (SISingle siPair) -> siPair
               _ -> error "No first tutorial found!"
             firstUnsolvedName = firstUnsolvedInfo ^. _1 . scenarioMetadata . scenarioName

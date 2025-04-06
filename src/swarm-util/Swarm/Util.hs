@@ -28,6 +28,7 @@ module Swarm.Util (
   tails1,
   prependList,
   deleteKeys,
+  lookupEither,
   applyWhen,
   applyJust,
   hoistMaybe,
@@ -89,6 +90,7 @@ import Control.Monad (filterM, unless)
 import Control.Monad.Trans.Maybe (MaybeT (..))
 import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum, toLower)
+import Data.Either.Extra (maybeToEither)
 import Data.Either.Validation
 import Data.Foldable (Foldable (..))
 import Data.Foldable qualified as Foldable
@@ -242,6 +244,11 @@ allEqual (x : xs) = all (== x) xs
 -- https://hackage.haskell.org/package/ghc-9.8.1/docs/GHC-Data-FiniteMap.html#v:deleteList
 deleteKeys :: Ord key => [key] -> Map key elt -> Map key elt
 deleteKeys ks m = foldl' (flip M.delete) m ks
+
+-- | Convenience function to indicate which key
+-- was not found in the map.
+lookupEither :: Ord k => k -> Map k v -> Either k v
+lookupEither k = maybeToEither k . M.lookup k
 
 ------------------------------------------------------------
 -- Backported functions
