@@ -59,7 +59,6 @@ import Data.Maybe (isJust)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
-import Data.Tuple.Extra (dupe)
 import Data.Yaml as Y
 import Swarm.Failure
 import Swarm.Game.Scenario
@@ -73,6 +72,37 @@ import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExten
 import System.IO (readFile')
 import System.IO.Error (catchIOError)
 import Witch (into)
+
+------------------------------------------------------------
+
+-- * Utilities
+
+-- | Given an ordered list of keys and a map, return a partition consisting of:
+-- * Left: the keys that were not present
+-- * Right: the retrievable key-value pairs in corresponding order to the provided keys
+lookupInOrder :: Ord k => Map k v -> [k] -> ([k], [(k, v)])
+lookupInOrder m = partitionEithers . map produceKeyValuePair
+ where
+  produceKeyValuePair k = sequenceA (k, lookupEither k m)
+
+-- ** Ordered Map utilities
+
+type instance Index (OMap k a) = k
+type instance IxValue (OMap k a) = a
+
+-- | Adapted from:
+-- https://hackage.haskell.org/package/lens-5.3.4/docs/src/Control.Lens.At.html#line-319
+instance Ord k => Ixed (OMap k a) where
+  ix k f m = case OM.lookup k m of
+    Just v -> f v <&> \v' -> OM.alter (const $ Just v') k m
+    Nothing -> pure m
+
+-- | Strangely, an 'elems' function is missing from the 'OMap' API.
+orderedElems :: OMap k a -> [a]
+orderedElems = map snd . OM.assocs
+
+fromMapOM :: Ord k => Map k a -> OMap k a
+fromMapOM = OM.fromList . M.toList
 
 -- ----------------------------------------------------------------------------
 -- Scenario Item
@@ -95,16 +125,6 @@ scenarioItemName (SICollection name _) = name
 newtype ScenarioCollection = SC
   { scMap :: OMap FilePath ScenarioItem
   }
-
-type instance Index (OMap k a) = k
-type instance IxValue (OMap k a) = a
-
--- | Adapted from:
--- https://hackage.haskell.org/package/lens-5.3.4/docs/src/Control.Lens.At.html#line-319
-instance Ord k => Ixed (OMap k a) where
-  ix k f m = case OM.lookup k m of
-    Just v -> f v <&> \v' -> OM.alter (const $ Just v') k m
-    Nothing -> pure m
 
 -- | Access and modify 'ScenarioItem's in collection based on their path.
 scenarioItemByPath :: FilePath -> Traversal' ScenarioCollection ScenarioItem
@@ -152,7 +172,7 @@ normalizeScenarioPath col p =
 
 -- | Convert a scenario collection to a list of scenario items.
 scenarioCollectionToList :: ScenarioCollection -> [ScenarioItem]
-scenarioCollectionToList (SC xs) = map snd $ OM.assocs xs
+scenarioCollectionToList (SC xs) = orderedElems xs
 
 flatten :: ScenarioItem -> [ScenarioInfoPair]
 flatten (SISingle p) = [p]
@@ -233,14 +253,13 @@ loadScenarioDir scenarioInputs loadTestScenarios dir = do
   loadUnorderedScenarioDir :: Map FilePath ScenarioItem -> m ScenarioCollection
   loadUnorderedScenarioDir scenarioMap = do
     when (dirName /= testingDirectory) (warn $ OrderFileWarning orderFileShortPath NoOrderFile)
-    pure . SC . OM.fromList $ M.toList scenarioMap
+    pure . SC $ fromMapOM scenarioMap
 
   -- warn if the ORDER file does not match directory contents
   loadOrderedScenarioDir :: [String] -> Map FilePath ScenarioItem -> m ScenarioCollection
   loadOrderedScenarioDir order scenarioMap = do
     let missing = M.keys scenarioMap \\ order
-        loadedEithers = map (traverse (`lookupEither` scenarioMap) . dupe) order
-        (notPresent, loaded) = partitionEithers loadedEithers
+        (notPresent, loaded) = lookupInOrder scenarioMap order
         dangling = filter (not . isHiddenDir) notPresent
 
     forM_ (NE.nonEmpty missing) (warn . OrderFileWarning orderFileShortPath . MissingFiles)
