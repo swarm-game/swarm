@@ -38,13 +38,13 @@ ticksPerFrameCap = 30
 --   this may involve stepping the game any number of ticks (including
 --   zero).
 runFrameUI :: Bool -> EventM Name AppState ()
-runFrameUI forceRedraw = runFrame >> updateAndRedrawUI forceRedraw
+runFrameUI forceRedraw = Brick.zoom playState runFrame >> updateAndRedrawUI forceRedraw
 
 oneSecond :: Integer
 oneSecond = 1_000_000_000 -- one second = 10^9 nanoseconds
 
-runFramePlayState :: EventM Name AppState ()
-runFramePlayState = Brick.zoom (playState . scenarioState) $ do
+runFramePlayState :: EventM Name PlayState ()
+runFramePlayState = Brick.zoom scenarioState $ do
   -- Reset the needsRedraw flag.  While processing the frame and stepping the robots,
   -- the flag will get set to true if anything changes that requires redrawing the
   -- world (e.g. a robot moving or disappearing).
@@ -102,13 +102,13 @@ runFramePlayState = Brick.zoom (playState . scenarioState) $ do
     frameTickCount .= 0
 
 -- | Run the game for a single frame, without updating the UI.
-runFrame :: EventM Name AppState ()
+runFrame :: EventM Name PlayState ()
 runFrame = do
   runFramePlayState
 
   -- Figure out how many ticks per second we're supposed to do,
   -- and compute the timestep `dt` for a single tick.
-  lgTPS <- use (playState . scenarioState . uiGameplay . uiTiming . lgTicksPerSecond)
+  lgTPS <- use (scenarioState . uiGameplay . uiTiming . lgTicksPerSecond)
   let dt
         | lgTPS >= 0 = oneSecond `div` (1 `shiftL` lgTPS)
         | otherwise = oneSecond * (1 `shiftL` abs lgTPS)
@@ -120,9 +120,9 @@ runFrame = do
 --   timestep, until we have used up all available accumulated time,
 --   OR until we have hit the cap on ticks per frame, whichever comes
 --   first.
-runFrameTicks :: TimeSpec -> EventM Name AppState ()
+runFrameTicks :: TimeSpec -> EventM Name PlayState ()
 runFrameTicks dt = do
-  timing <- use $ playState . scenarioState . uiGameplay . uiTiming
+  timing <- use $ scenarioState . uiGameplay . uiTiming
   let a = timing ^. accumulatedTime
       t = timing ^. frameTickCount
 
@@ -132,7 +132,7 @@ runFrameTicks dt = do
     -- If so, do a tick, count it, subtract dt from the accumulated time,
     -- and loop!
     runGameTick
-    Brick.zoom (playState . scenarioState . uiGameplay . uiTiming) $ do
+    Brick.zoom (scenarioState . uiGameplay . uiTiming) $ do
       tickCount += 1
       frameTickCount += 1
       accumulatedTime -= dt
@@ -140,20 +140,20 @@ runFrameTicks dt = do
 
 -- | Run the game for a single tick, and update the UI.
 runGameTickUI :: EventM Name AppState ()
-runGameTickUI = runGameTick >> void updateUI
+runGameTickUI = Brick.zoom playState runGameTick >> void updateUI
 
-updateAchievements :: EventM Name AppState ()
+updateAchievements :: EventM Name PlayState ()
 updateAchievements = do
   -- Merge the in-game achievements with the master list in UIState
-  achievementsFromGame <- use $ playState . scenarioState . gameState . discovery . gameAchievements
+  achievementsFromGame <- use $ scenarioState . gameState . discovery . gameAchievements
   let wrappedGameAchievements = M.mapKeys GameplayAchievement achievementsFromGame
 
-  oldMasterAchievementsList <- use $ playState . progression . attainedAchievements
-  playState . progression . attainedAchievements %= M.unionWith (<>) wrappedGameAchievements
+  oldMasterAchievementsList <- use $ progression . attainedAchievements
+  progression . attainedAchievements %= M.unionWith (<>) wrappedGameAchievements
 
   -- Don't save to disk unless there was a change in the attainment list.
   let incrementalAchievements = wrappedGameAchievements `M.difference` oldMasterAchievementsList
-  unless (null incrementalAchievements) $ Brick.zoom (playState . progression) $ do
+  unless (null incrementalAchievements) $ Brick.zoom progression $ do
     mapM_ (popupAchievement . view achievement) incrementalAchievements
 
     newAchievements <- use attainedAchievements
@@ -163,7 +163,7 @@ updateAchievements = do
 --   Every robot is given a certain amount of maximum computation to
 --   perform a single world action (like moving, turning, grabbing,
 --   etc.).
-runGameTick :: EventM Name AppState ()
+runGameTick :: EventM Name PlayState ()
 runGameTick = do
-  ticked <- zoomGameStateFromAppState gameTick
+  ticked <- zoomGameStateFromPlayState gameTick
   when ticked updateAchievements

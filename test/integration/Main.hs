@@ -81,7 +81,7 @@ import Swarm.TUI.Model (
   userScenario,
  )
 import Swarm.TUI.Model.DebugOption (DebugOption (LoadTestingScenarios))
-import Swarm.TUI.Model.StateUpdate (constructAppState, initPersistentState, PersistentState(..))
+import Swarm.TUI.Model.StateUpdate (PersistentState (..), constructAppState, initPersistentState)
 import Swarm.Util (applyWhen, findAllWithExt)
 import Swarm.Util.RingBuffer qualified as RB
 import Swarm.Util.Yaml (decodeFileEitherE)
