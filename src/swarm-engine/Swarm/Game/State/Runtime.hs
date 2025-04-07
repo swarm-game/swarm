@@ -20,7 +20,7 @@ module Swarm.Game.State.Runtime (
   scenarios,
   appData,
   stdGameConfigInputs,
-  uiAchievements,
+  attainedAchievements,
 
   -- ** Utility
   initScenarioInputs,
@@ -59,13 +59,13 @@ import Swarm.Util.Lens (makeLensesNoSigs)
 -- we progress through scenarios.
 data ProgressionState = ProgressionState
   { _scenarios :: ScenarioCollection
-  , _uiAchievements :: Map CategorizedAchievement Attainment
+  , _attainedAchievements :: Map CategorizedAchievement Attainment
   }
 
 makeLensesNoSigs ''ProgressionState
 
 -- | Map of achievements that were attained
-uiAchievements :: Lens' ProgressionState (Map CategorizedAchievement Attainment)
+attainedAchievements :: Lens' ProgressionState (Map CategorizedAchievement Attainment)
 
 -- | The collection of scenarios that comes with the game.
 scenarios :: Lens' ProgressionState ScenarioCollection
@@ -144,7 +144,7 @@ initRuntimeState opts = do
       , _progression =
           ProgressionState
             { _scenarios = s
-            , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
+            , _attainedAchievements = M.fromList $ map (view achievement &&& id) achievements
             }
       }
 

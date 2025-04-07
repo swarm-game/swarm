@@ -149,15 +149,15 @@ updateAchievements = do
   achievementsFromGame <- use $ playState . gameState . discovery . gameAchievements
   let wrappedGameAchievements = M.mapKeys GameplayAchievement achievementsFromGame
 
-  oldMasterAchievementsList <- use $ runtimeState . progression . uiAchievements
-  runtimeState . progression . uiAchievements %= M.unionWith (<>) wrappedGameAchievements
+  oldMasterAchievementsList <- use $ runtimeState . progression . attainedAchievements
+  runtimeState . progression . attainedAchievements %= M.unionWith (<>) wrappedGameAchievements
 
   -- Don't save to disk unless there was a change in the attainment list.
   let incrementalAchievements = wrappedGameAchievements `M.difference` oldMasterAchievementsList
   unless (null incrementalAchievements) $ do
     mapM_ (popupAchievement . view achievement) incrementalAchievements
 
-    newAchievements <- use $ runtimeState . progression . uiAchievements
+    newAchievements <- use $ runtimeState . progression . attainedAchievements
     liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
 -- | Run the game for a single tick (/without/ updating the UI).
