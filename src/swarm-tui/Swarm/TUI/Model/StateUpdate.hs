@@ -282,7 +282,7 @@ startGameWithSeed siPair@(_scene, si) lp = do
   -- will not be saved.
   debugging <- use $ uiState . uiDebugOptions
   unless (null debugging) $
-    uiState . uiPopups %= addPopup DebugWarningPopup
+    runtimeState . progression . uiPopups %= addPopup DebugWarningPopup
  where
   prevBest t = case si ^. scenarioStatus of
     NotStarted -> emptyBest t

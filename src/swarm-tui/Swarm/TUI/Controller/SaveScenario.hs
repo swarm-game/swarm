@@ -9,11 +9,12 @@ module Swarm.TUI.Controller.SaveScenario (
 ) where
 
 -- See Note [liftA2 re-export from Prelude]
+
+import Brick
 import Brick.Widgets.List qualified as BL
 import Control.Lens as Lens
 import Control.Monad (forM_, unless, when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.State (MonadState)
 import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Time (ZonedTime, getZonedTime)
 import Swarm.Game.Achievement.Definitions
@@ -39,11 +40,10 @@ getNormalizedCurrentScenarioPath gs sc = do
   traverse (liftIO . normalizeScenarioPath sc) $ gs ^. currentScenarioPath
 
 applyCompletionAchievements ::
-  (MonadIO m, MonadState AppState m) =>
   Bool ->
   ZonedTime ->
   FilePath ->
-  m ()
+  EventM n ProgressionState ()
 applyCompletionAchievements won t p = do
   forM_ (listToMaybe $ splitDirectories p) $ \firstDir -> do
     when (won && firstDir == tutorialsDirname) $
@@ -51,7 +51,7 @@ applyCompletionAchievements won t p = do
         GlobalAchievement CompletedSingleTutorial
 
   -- Check if all tutorials have been completed
-  tutorialMap <- use $ runtimeState . progression . scenarios . to getTutorials . to scMap
+  tutorialMap <- use $ scenarios . to getTutorials . to scMap
   let isComplete (SISingle (_, s)) = scenarioIsCompleted s
       -- There are not currently any subcollections within the
       -- tutorials, but checking subcollections recursively just seems
@@ -63,9 +63,8 @@ applyCompletionAchievements won t p = do
       GlobalAchievement CompletedAllTutorials
 
 saveScenarioInfoOnFinish ::
-  (MonadIO m, MonadState AppState m) =>
   FilePath ->
-  m (Maybe ScenarioInfo)
+  EventM n AppState (Maybe ScenarioInfo)
 saveScenarioInfoOnFinish p = do
   initialRunCode <- use $ playState . gameState . gameControls . initiallyRunCode
   t <- liftIO getZonedTime
@@ -94,21 +93,21 @@ saveScenarioInfoOnFinish p = do
   status <- preuse currentScenarioInfo
   forM_ status $ \si -> do
     liftIO $ saveScenarioInfo p si
-    applyCompletionAchievements won t p
+    Brick.zoom (runtimeState . progression) $ applyCompletionAchievements won t p
 
   playState . gameState . completionStatsSaved .= won
 
   return status
 
 -- | Don't save progress for developers or cheaters.
-unlessCheating :: MonadState AppState m => m () -> m ()
+unlessCheating :: EventM n AppState () -> EventM n AppState ()
 unlessCheating a = do
   debugging <- use $ uiState . uiDebugOptions
   isAuto <- use $ playState . uiGameplay . uiIsAutoPlay
   when (null debugging && not isAuto) a
 
 -- | Write the @ScenarioInfo@ out to disk when finishing a game (i.e. on winning or exit).
-saveScenarioInfoOnFinishNocheat :: (MonadIO m, MonadState AppState m) => m ()
+saveScenarioInfoOnFinishNocheat :: EventM n AppState ()
 saveScenarioInfoOnFinishNocheat = do
   sc <- use $ runtimeState . progression . scenarios
   gs <- use $ playState . gameState
@@ -117,7 +116,7 @@ saveScenarioInfoOnFinishNocheat = do
     getNormalizedCurrentScenarioPath gs sc >>= mapM_ saveScenarioInfoOnFinish
 
 -- | Write the @ScenarioInfo@ out to disk when exiting a game.
-saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => Bool -> m ()
+saveScenarioInfoOnQuit :: Bool -> EventM n AppState ()
 saveScenarioInfoOnQuit isNoMenu = do
   sc <- use $ runtimeState . progression . scenarios
   gs <- use $ playState . gameState
