@@ -77,26 +77,26 @@ mainEventHandlers = allHandlers Main $ \case
     ( "View scenario goal description"
     , playStateWithMenu viewGoal
     )
-  HideRobotsEvent -> ("Hide robots for a few ticks", Brick.zoom (playState . uiGameplay) hideRobots)
+  HideRobotsEvent -> ("Hide robots for a few ticks", Brick.zoom (playState . scenarioState . uiGameplay) hideRobots)
   ShowCESKDebugEvent -> ("Show active robot CESK machine debugging line", showCESKDebug)
-  PauseEvent -> ("Pause or unpause the game", Brick.zoom playState $ whenRunningPlayState safeTogglePause)
+  PauseEvent -> ("Pause or unpause the game", Brick.zoom (playState . scenarioState) $ whenRunningPlayState safeTogglePause)
   RunSingleTickEvent -> ("Run game for a single tick", whenRunningAppState runSingleTick)
-  IncreaseTpsEvent -> ("Double game speed", Brick.zoom playState $ whenRunningPlayState . modify $ adjustTPS (+))
-  DecreaseTpsEvent -> ("Halve game speed", Brick.zoom playState $ whenRunningPlayState . modify $ adjustTPS (-))
-  FocusWorldEvent -> ("Set focus on the World panel", Brick.zoom playState $ setFocus WorldPanel)
-  FocusRobotEvent -> ("Set focus on the Robot panel", Brick.zoom playState $ setFocus RobotPanel)
-  FocusREPLEvent -> ("Set focus on the REPL panel", Brick.zoom playState $ setFocus REPLPanel)
-  FocusInfoEvent -> ("Set focus on the Info panel", Brick.zoom playState $ setFocus InfoPanel)
-  ToggleCreativeModeEvent -> ("Toggle creative mode", whenDebug ToggleCreative $ Brick.zoom playState toggleCreativeMode)
-  ToggleWorldEditorEvent -> ("Toggle world editor mode", whenDebug ToggleWorldEditor $ Brick.zoom playState toggleWorldEditor)
-  ToggleREPLVisibilityEvent -> ("Collapse/Expand REPL panel", Brick.zoom playState toggleREPLVisibility)
-  ViewBaseEvent -> ("View the base robot", Brick.zoom playState viewBase)
-  ToggleFPSEvent -> ("Toggle the FPS display", Brick.zoom playState toggleFPS)
+  IncreaseTpsEvent -> ("Double game speed", Brick.zoom (playState . scenarioState) $ whenRunningPlayState . modify $ adjustTPS (+))
+  DecreaseTpsEvent -> ("Halve game speed", Brick.zoom (playState . scenarioState) $ whenRunningPlayState . modify $ adjustTPS (-))
+  FocusWorldEvent -> ("Set focus on the World panel", Brick.zoom (playState . scenarioState) $ setFocus WorldPanel)
+  FocusRobotEvent -> ("Set focus on the Robot panel", Brick.zoom (playState . scenarioState) $ setFocus RobotPanel)
+  FocusREPLEvent -> ("Set focus on the REPL panel", Brick.zoom (playState . scenarioState) $ setFocus REPLPanel)
+  FocusInfoEvent -> ("Set focus on the Info panel", Brick.zoom (playState . scenarioState) $ setFocus InfoPanel)
+  ToggleCreativeModeEvent -> ("Toggle creative mode", whenDebug ToggleCreative $ Brick.zoom (playState . scenarioState) toggleCreativeMode)
+  ToggleWorldEditorEvent -> ("Toggle world editor mode", whenDebug ToggleWorldEditor $ Brick.zoom (playState . scenarioState) toggleWorldEditor)
+  ToggleREPLVisibilityEvent -> ("Collapse/Expand REPL panel", Brick.zoom (playState . scenarioState) toggleREPLVisibility)
+  ViewBaseEvent -> ("View the base robot", Brick.zoom (playState . scenarioState) viewBase)
+  ToggleFPSEvent -> ("Toggle the FPS display", Brick.zoom (playState . scenarioState) toggleFPS)
 
 toggleQuitGameDialog :: EventM Name AppState ()
 toggleQuitGameDialog = do
   s <- get
-  let whichModal = case s ^. playState . gameState . winCondition of
+  let whichModal = case s ^. playState . scenarioState . gameState . winCondition of
         WinConditions (Won _ _) _ -> ScenarioEndModal WinModal
         WinConditions (Unwinnable _) _ -> ScenarioEndModal LoseModal
         _ -> QuitModal
@@ -107,7 +107,7 @@ toggleGameModal ::
   Menu ->
   ModalType ->
   Getter GameState (t a) ->
-  EventM Name PlayState Bool
+  EventM Name ScenarioState Bool
 toggleGameModal menu m l = do
   s <- get
   let nothingToShow = null $ s ^. gameState . l
@@ -121,25 +121,25 @@ toggleStructuresModal ::
   ModalType ->
   Lens' Landscape (t a) ->
   Menu ->
-  EventM Name PlayState ()
+  EventM Name ScenarioState ()
 toggleStructuresModal m l menu = void $ toggleGameModal menu m (landscape . l)
 
 toggleDiscoveryNotificationModal ::
   ModalType ->
   Lens' Discovery (Notifications a) ->
   Menu ->
-  EventM Name PlayState ()
+  EventM Name ScenarioState ()
 toggleDiscoveryNotificationModal m l menu = do
   nothingToShow <- toggleGameModal menu m (discovery . l . notificationsContent)
   unless nothingToShow $ gameState . discovery . l . notificationsCount .= 0
 
-toggleMessagesModal :: Menu -> EventM Name PlayState ()
+toggleMessagesModal :: Menu -> EventM Name ScenarioState ()
 toggleMessagesModal menu = do
   s <- get
   nothingToShow <- toggleGameModal menu MessagesModal (messageNotifications . notificationsContent)
   unless nothingToShow $ gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . temporal . ticks
 
-viewGoal :: Menu -> EventM Name PlayState ()
+viewGoal :: Menu -> EventM Name ScenarioState ()
 viewGoal m = do
   s <- get
   if hasAnythingToShow $ s ^. uiGameplay . uiDialogs . uiGoal . goalsContent
@@ -161,58 +161,58 @@ hideRobots = do
 showCESKDebug :: EventM Name AppState ()
 showCESKDebug = do
   s <- get
-  let isPaused = s ^. playState . gameState . temporal . paused
-  let isCreative = s ^. playState . gameState . creativeMode
-  let hasDebug = hasDebugCapability isCreative $ s ^. playState . gameState
+  let isPaused = s ^. playState . scenarioState . gameState . temporal . paused
+  let isCreative = s ^. playState . scenarioState . gameState . creativeMode
+  let hasDebug = hasDebugCapability isCreative $ s ^. playState . scenarioState . gameState
   when (isPaused && hasDebug) $ do
-    debug <- playState . uiGameplay . uiShowDebug Lens.<%= not
+    debug <- playState . scenarioState . uiGameplay . uiShowDebug Lens.<%= not
     if debug
-      then playState . gameState . temporal . gameStep .= RobotStep SBefore
+      then playState . scenarioState . gameState . temporal . gameStep .= RobotStep SBefore
       else zoomGameStateFromAppState finishGameTick >> void updateUI
 
 runSingleTick :: EventM Name AppState ()
 runSingleTick = do
-  playState . gameState . temporal . runStatus .= ManualPause
+  playState . scenarioState . gameState . temporal . runStatus .= ManualPause
   runGameTickUI
 
 -- | Adjust the ticks per second speed.
-adjustTPS :: (Int -> Int -> Int) -> PlayState -> PlayState
+adjustTPS :: (Int -> Int -> Int) -> ScenarioState -> ScenarioState
 adjustTPS (+/-) = uiGameplay . uiTiming . lgTicksPerSecond %~ (+/- 1)
 
-toggleCreativeMode :: EventM Name PlayState ()
+toggleCreativeMode :: EventM Name ScenarioState ()
 toggleCreativeMode = gameState . creativeMode %= not
 
-toggleWorldEditor :: EventM Name PlayState ()
+toggleWorldEditor :: EventM Name ScenarioState ()
 toggleWorldEditor = do
   uiGameplay . uiWorldEditor . worldOverdraw . isWorldEditorEnabled %= not
   setFocus WorldEditorPanel
 
-toggleREPLVisibility :: EventM Name PlayState ()
+toggleREPLVisibility :: EventM Name ScenarioState ()
 toggleREPLVisibility = do
   invalidateCacheEntry WorldCache
   uiGameplay . uiShowREPL %= not
 
-viewBase :: EventM Name PlayState ()
+viewBase :: EventM Name ScenarioState ()
 viewBase = do
   invalidateCacheEntry WorldCache
   gameState . robotInfo . viewCenterRule .= VCRobot 0
 
-toggleFPS :: EventM Name PlayState ()
+toggleFPS :: EventM Name ScenarioState ()
 toggleFPS = uiGameplay . uiTiming . uiShowFPS %= not
 
 -- ----------------------------------------------
 --                 HELPER UTILS
 -- ----------------------------------------------
 
-isRunning :: EventM Name PlayState Bool
+isRunning :: EventM Name ScenarioState Bool
 isRunning = do
   mt <- preuse $ uiGameplay . uiDialogs . uiModal . _Just . modalType
   return $ maybe True isRunningModal mt
 
 whenRunningAppState :: EventM Name AppState () -> EventM Name AppState ()
-whenRunningAppState a = Brick.zoom playState isRunning >>= \r -> when r a
+whenRunningAppState a = Brick.zoom (playState . scenarioState) isRunning >>= \r -> when r a
 
-whenRunningPlayState :: EventM Name PlayState () -> EventM Name PlayState ()
+whenRunningPlayState :: EventM Name ScenarioState () -> EventM Name ScenarioState ()
 whenRunningPlayState a = isRunning >>= \r -> when r a
 
 whenDebug :: DebugOption -> EventM Name AppState () -> EventM Name AppState ()

@@ -45,7 +45,7 @@ oneSecond :: Integer
 oneSecond = 1_000_000_000 -- one second = 10^9 nanoseconds
 
 runFramePlayState :: EventM Name AppState ()
-runFramePlayState = Brick.zoom playState $ do
+runFramePlayState = Brick.zoom (playState . scenarioState) $ do
   -- Reset the needsRedraw flag.  While processing the frame and stepping the robots,
   -- the flag will get set to true if anything changes that requires redrawing the
   -- world (e.g. a robot moving or disappearing).
@@ -109,7 +109,7 @@ runFrame = do
 
   -- Figure out how many ticks per second we're supposed to do,
   -- and compute the timestep `dt` for a single tick.
-  lgTPS <- use (playState . uiGameplay . uiTiming . lgTicksPerSecond)
+  lgTPS <- use (playState . scenarioState . uiGameplay . uiTiming . lgTicksPerSecond)
   let dt
         | lgTPS >= 0 = oneSecond `div` (1 `shiftL` lgTPS)
         | otherwise = oneSecond * (1 `shiftL` abs lgTPS)
@@ -123,7 +123,7 @@ runFrame = do
 --   first.
 runFrameTicks :: TimeSpec -> EventM Name AppState ()
 runFrameTicks dt = do
-  timing <- use $ playState . uiGameplay . uiTiming
+  timing <- use $ playState . scenarioState . uiGameplay . uiTiming
   let a = timing ^. accumulatedTime
       t = timing ^. frameTickCount
 
@@ -133,7 +133,7 @@ runFrameTicks dt = do
     -- If so, do a tick, count it, subtract dt from the accumulated time,
     -- and loop!
     runGameTick
-    Brick.zoom (playState . uiGameplay . uiTiming) $ do
+    Brick.zoom (playState . scenarioState . uiGameplay . uiTiming) $ do
       tickCount += 1
       frameTickCount += 1
       accumulatedTime -= dt
@@ -146,7 +146,7 @@ runGameTickUI = runGameTick >> void updateUI
 updateAchievements :: EventM Name AppState ()
 updateAchievements = do
   -- Merge the in-game achievements with the master list in UIState
-  achievementsFromGame <- use $ playState . gameState . discovery . gameAchievements
+  achievementsFromGame <- use $ playState . scenarioState . gameState . discovery . gameAchievements
   let wrappedGameAchievements = M.mapKeys GameplayAchievement achievementsFromGame
 
   oldMasterAchievementsList <- use $ runtimeState . progression . attainedAchievements
