@@ -79,7 +79,7 @@ saveScenarioInfoOnFinish p = do
   -- the scenario selection menu, so the menu needs to be updated separately.
   -- See Note [scenario menu update]
   let currentScenarioInfo :: Traversal' AppState ScenarioInfo
-      currentScenarioInfo = runtimeState . progression . scenarios . scenarioItemByPath p . _SISingle . _2
+      currentScenarioInfo = playState . progression . scenarios . scenarioItemByPath p . _SISingle . _2
 
   replHist <- use $ playState . scenarioState . uiGameplay . uiREPL . replHistory
   let determinator = CodeSizeDeterminators initialRunCode $ replHist ^. replHasExecutedManualInput
@@ -93,7 +93,7 @@ saveScenarioInfoOnFinish p = do
   status <- preuse currentScenarioInfo
   forM_ status $ \si -> do
     liftIO $ saveScenarioInfo p si
-    Brick.zoom (runtimeState . progression) $ applyCompletionAchievements won t p
+    Brick.zoom (playState . progression) $ applyCompletionAchievements won t p
 
   playState . scenarioState . gameState . completionStatsSaved .= won
 
@@ -109,7 +109,7 @@ unlessCheating a = do
 -- | Write the @ScenarioInfo@ out to disk when finishing a game (i.e. on winning or exit).
 saveScenarioInfoOnFinishNocheat :: EventM n AppState ()
 saveScenarioInfoOnFinishNocheat = do
-  sc <- use $ runtimeState . progression . scenarios
+  sc <- use $ playState . progression . scenarios
   gs <- use $ playState . scenarioState . gameState
   unlessCheating $
     -- the path should be normalized and good to search in scenario collection
@@ -118,7 +118,7 @@ saveScenarioInfoOnFinishNocheat = do
 -- | Write the @ScenarioInfo@ out to disk when exiting a game.
 saveScenarioInfoOnQuit :: Bool -> EventM n AppState ()
 saveScenarioInfoOnQuit isNoMenu = do
-  sc <- use $ runtimeState . progression . scenarios
+  sc <- use $ playState . progression . scenarios
   gs <- use $ playState . scenarioState . gameState
   unlessCheating $
     getNormalizedCurrentScenarioPath gs sc >>= mapM_ go
@@ -152,5 +152,5 @@ saveScenarioInfoOnQuit isNoMenu = do
     -- ScenarioInfo, being sure to preserve the same focused
     -- scenario.
     unless isNoMenu $ do
-      sc <- use $ runtimeState . progression . scenarios
+      sc <- use $ playState . progression . scenarios
       forM_ (mkNewGameMenu sc (fromMaybe p curPath)) (uiState . uiMenu .=)

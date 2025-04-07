@@ -136,7 +136,7 @@ handleEvent e = do
       -- quitting a game, moving around the menu, the popup
       -- display will continue as normal.
       upd <- case e of
-        AppEvent Frame -> Brick.zoom (runtimeState . progression . uiPopups) progressPopups
+        AppEvent Frame -> Brick.zoom (playState . progression . uiPopups) progressPopups
         _ -> pure False
       if playing
         then handleMainEvent upd e
@@ -177,10 +177,10 @@ handleMainMenuEvent menu = \case
   Key V.KEnter ->
     forM_ (snd <$> BL.listSelectedElement menu) $ \case
       NewGame -> do
-        ss <- use $ runtimeState . progression . scenarios
+        ss <- use $ playState . progression . scenarios
         uiState . uiMenu .= NewGameMenu (pure $ mkScenarioList ss)
       Tutorial -> do
-        ss <- use $ runtimeState . progression . scenarios
+        ss <- use $ playState . progression . scenarios
 
         -- Extract the first unsolved tutorial challenge
         let tutorialCollection = getTutorials ss
@@ -221,7 +221,7 @@ handleMainMenuEvent menu = \case
         uiState . uiMenu .= MessagesMenu
       About -> do
         uiState . uiMenu .= AboutMenu
-        Brick.zoom (runtimeState . progression) $
+        Brick.zoom (playState . progression) $
           attainAchievement $
             GlobalAchievement LookedAtAboutScreen
       Quit -> halt

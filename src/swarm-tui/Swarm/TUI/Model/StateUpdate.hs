@@ -15,12 +15,14 @@ module Swarm.TUI.Model.StateUpdate (
   attainAchievement,
   attainAchievement',
   scenarioToAppState,
+  PersistentState (..),
 ) where
 
 import Brick.AttrMap (applyAttrMappings)
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Applicative ((<|>))
+import Control.Arrow ((&&&))
 import Control.Carrier.Accum.FixedStrict (runAccum)
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
@@ -45,6 +47,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (getZonedTime)
 import Swarm.Failure (SystemFailure (..))
+import Swarm.Game.Achievement.Attainment
+import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Land
 import Swarm.Game.Scenario (
   ScenarioInputs (..),
@@ -63,6 +67,7 @@ import Swarm.Game.Scenario.Status
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (originalStructureDefinitions)
 import Swarm.Game.ScenarioInfo (
   loadScenarioInfo,
+  loadScenarios,
   normalizeScenarioPath,
   scenarioItemByPath,
   _SISingle,
@@ -105,8 +110,8 @@ initAppState ::
   AppOpts ->
   m AppState
 initAppState opts = do
-  (rs, ui, keyHandling) <- initPersistentState opts
-  constructAppState rs ui keyHandling opts
+  persistentState <- initPersistentState opts
+  constructAppState persistentState opts
 
 -- | Add some system failures to the list of messages in the
 --   'RuntimeState'.
@@ -122,6 +127,21 @@ skipMenu AppOpts {..} = isJust userScenario || isRunningInitialProgram || isJust
  where
   isRunningInitialProgram = isJust scriptToRun || autoPlay
 
+mkRuntimeOptions :: AppOpts -> RuntimeOptions
+mkRuntimeOptions AppOpts {..} =
+  RuntimeOptions
+    { startPaused = pausedAtStart
+    , pauseOnObjectiveCompletion = autoShowObjectives
+    , loadTestScenarios = Set.member LoadTestingScenarios debugOptions
+    }
+
+data PersistentState
+  = PersistentState
+      RuntimeState
+      UIState
+      KeyEventHandlingState
+      ProgressionState
+
 -- | Initialize the more persistent parts of the app state, /i.e./ the
 --   'RuntimeState' and 'UIState'.  This is split out into a separate
 --   function so that in the integration test suite we can call this
@@ -129,39 +149,52 @@ skipMenu AppOpts {..} = isJust userScenario || isRunningInitialProgram || isJust
 initPersistentState ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   AppOpts ->
-  m (RuntimeState, UIState, KeyEventHandlingState)
+  m PersistentState
 initPersistentState opts@(AppOpts {..}) = do
-  (warnings :: Seq SystemFailure, (initRS, initUI, initKs)) <- runAccum mempty $ do
-    rs <-
-      initRuntimeState
-        RuntimeOptions
-          { startPaused = pausedAtStart
-          , pauseOnObjectiveCompletion = autoShowObjectives
-          , loadTestScenarios = Set.member LoadTestingScenarios debugOptions
-          }
+  (warnings :: Seq SystemFailure, PersistentState initRS initUI initKs initProg) <- runAccum mempty $ do
+    rs <- initRuntimeState $ mkRuntimeOptions opts
     let showMainMenu = not (skipMenu opts)
     ui <- initUIState UIInitOptions {..}
     ks <- initKeyHandlingState
-    return (rs, ui, ks)
+
+    s <-
+      loadScenarios
+        (gsiScenarioInputs $ initState $ rs ^. stdGameConfigInputs)
+        (loadTestScenarios $ mkRuntimeOptions opts)
+    achievements <- loadAchievementsInfo
+
+    let progState =
+          ProgressionState
+            { _scenarios = s
+            , _attainedAchievements = M.fromList $ map (view achievement &&& id) achievements
+            , _uiPopups = initPopupState
+            }
+    return $ PersistentState rs ui ks progState
   let initRS' = addWarnings initRS (F.toList warnings)
-  return (initRS', initUI, initKs)
+  return $ PersistentState initRS' initUI initKs initProg
 
 -- | Construct an 'AppState' from an already-loaded 'RuntimeState' and
 --   'UIState', given the 'AppOpts' the app was started with.
 constructAppState ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  RuntimeState ->
-  UIState ->
-  KeyEventHandlingState ->
+  ( Has (Throw SystemFailure) sig m
+  , Has (Lift IO) sig m
+  ) =>
+  PersistentState ->
   AppOpts ->
   m AppState
-constructAppState rs ui key opts@(AppOpts {..}) = do
+constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) = do
   historyT <- sendIO $ readFileMayT =<< getSwarmHistoryPath False
   let history = maybe [] (map mkREPLSubmission . T.lines) historyT
   startTime <- sendIO $ getTime Monotonic
 
-  let gs = initGameState (rs ^. stdGameConfigInputs)
-      ps = PlayState $ ScenarioState gs $ initialUiGameplay startTime history
+  let gsc = rs ^. stdGameConfigInputs
+      gs = initGameState gsc
+      ps =
+        PlayState
+          { _scenarioState = ScenarioState gs $ initialUiGameplay startTime history
+          , _progression = progState
+          }
+
   case skipMenu opts of
     False -> return $ AppState (ps & scenarioState . uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) ui key rs
     True -> do
@@ -260,9 +293,9 @@ startGameWithSeed ::
   m ()
 startGameWithSeed siPair@(_scene, si) lp = do
   t <- liftIO getZonedTime
-  ss <- use $ runtimeState . progression . scenarios
+  ss <- use $ playState . progression . scenarios
   p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
-  runtimeState
+  playState
     . progression
     . scenarios
     . scenarioItemByPath p
@@ -282,7 +315,7 @@ startGameWithSeed siPair@(_scene, si) lp = do
   -- will not be saved.
   debugging <- use $ uiState . uiDebugOptions
   unless (null debugging) $
-    runtimeState . progression . uiPopups %= addPopup DebugWarningPopup
+    playState . progression . uiPopups %= addPopup DebugWarningPopup
  where
   prevBest t = case si ^. scenarioStatus of
     NotStarted -> emptyBest t
