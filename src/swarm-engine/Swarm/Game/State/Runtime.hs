@@ -21,6 +21,7 @@ module Swarm.Game.State.Runtime (
   appData,
   stdGameConfigInputs,
   attainedAchievements,
+  uiPopups,
 
   -- ** Utility
   initScenarioInputs,
@@ -42,6 +43,7 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Land
+import Swarm.Game.Popup
 import Swarm.Game.Recipe (loadRecipes)
 import Swarm.Game.Scenario (GameStateInputs (..), ScenarioInputs (..))
 import Swarm.Game.ScenarioInfo (ScenarioCollection, ScenarioInfo, loadScenarios)
@@ -60,6 +62,7 @@ import Swarm.Util.Lens (makeLensesNoSigs)
 data ProgressionState = ProgressionState
   { _scenarios :: ScenarioCollection ScenarioInfo
   , _attainedAchievements :: Map CategorizedAchievement Attainment
+  , _uiPopups :: PopupState
   }
 
 makeLensesNoSigs ''ProgressionState
@@ -69,6 +72,9 @@ attainedAchievements :: Lens' ProgressionState (Map CategorizedAchievement Attai
 
 -- | The collection of scenarios that comes with the game.
 scenarios :: Lens' ProgressionState (ScenarioCollection ScenarioInfo)
+
+-- | Queue of popups to display
+uiPopups :: Lens' ProgressionState PopupState
 
 data RuntimeState = RuntimeState
   { _webPort :: Maybe Int
@@ -145,6 +151,7 @@ initRuntimeState opts = do
           ProgressionState
             { _scenarios = s
             , _attainedAchievements = M.fromList $ map (view achievement &&& id) achievements
+            , _uiPopups = initPopupState
             }
       }
 

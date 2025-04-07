@@ -10,12 +10,13 @@ module Swarm.TUI.Controller.SaveScenario (
 
 -- See Note [liftA2 re-export from Prelude]
 
+import Brick
+
 import Control.Lens as Lens
 import Control.Monad (forM_, unless, when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.State (MonadState)
 import Data.Maybe (listToMaybe)
-import Data.Time (getZonedTime)
+import Data.Time (ZonedTime, getZonedTime)
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo
@@ -38,10 +39,32 @@ getNormalizedCurrentScenarioPath gs sc = do
   -- the path should be normalized and good to search in scenario collection
   traverse (liftIO . normalizeScenarioPath sc . getScenarioPath) $ gs ^. currentScenarioPath
 
-saveScenarioInfoOnFinish ::
-  (MonadIO m, MonadState AppState m) =>
+applyCompletionAchievements ::
+  Bool ->
+  ZonedTime ->
   FilePath ->
-  m ()
+  EventM n ProgressionState ()
+applyCompletionAchievements won t p = do
+  forM_ (listToMaybe $ splitDirectories p) $ \firstDir -> do
+    when (won && firstDir == tutorialsDirname) $
+      attainAchievement' t (Just $ ScenarioPath p) $
+        GlobalAchievement CompletedSingleTutorial
+
+  -- Check if all tutorials have been completed
+  tutorialMap <- use $ scenarios . to getTutorials . to scMap
+  let isComplete (SISingle (ScenarioWith _ s)) = scenarioIsCompleted s
+      -- There are not currently any subcollections within the
+      -- tutorials, but checking subcollections recursively just seems
+      -- like the right thing to do
+      isComplete (SICollection _ (SC m)) = all isComplete m
+
+  when (all isComplete tutorialMap) $
+    attainAchievement $
+      GlobalAchievement CompletedAllTutorials
+
+saveScenarioInfoOnFinish ::
+  FilePath ->
+  EventM n AppState ()
 saveScenarioInfoOnFinish p = do
   initialRunCode <- use $ playState . gameState . gameControls . initiallyRunCode
   t <- liftIO getZonedTime
@@ -66,35 +89,20 @@ saveScenarioInfoOnFinish p = do
 
   status <- preuse currentScenarioInfo
   forM_ status $ \si -> do
-    forM_ (listToMaybe $ splitDirectories p) $ \firstDir -> do
-      when (won && firstDir == tutorialsDirname) $
-        attainAchievement' t (Just $ ScenarioPath p) $
-          GlobalAchievement CompletedSingleTutorial
     liftIO $ saveScenarioInfo p si
-
-  -- Check if all tutorials have been completed
-  tutorialMap <- use $ runtimeState . progression . scenarios . to getTutorials . to scMap
-  let isComplete (SISingle (ScenarioWith _ s)) = scenarioIsCompleted s
-      -- There are not currently any subcollections within the
-      -- tutorials, but checking subcollections recursively just seems
-      -- like the right thing to do
-      isComplete (SICollection _ (SC m)) = all isComplete m
-
-  when (all isComplete tutorialMap) $
-    attainAchievement $
-      GlobalAchievement CompletedAllTutorials
+    Brick.zoom (runtimeState . progression) $ applyCompletionAchievements won t p
 
   playState . gameState . completionStatsSaved .= won
 
 -- | Don't save progress for developers or cheaters.
-unlessCheating :: MonadState AppState m => m () -> m ()
+unlessCheating :: EventM n AppState () -> EventM n AppState ()
 unlessCheating a = do
   debugging <- use $ uiState . uiDebugOptions
   isAuto <- use $ playState . uiGameplay . uiIsAutoPlay
   when (null debugging && not isAuto) a
 
 -- | Write the @ScenarioInfo@ out to disk when finishing a game (i.e. on winning or exit).
-saveScenarioInfoOnFinishNocheat :: (MonadIO m, MonadState AppState m) => m ()
+saveScenarioInfoOnFinishNocheat :: EventM n AppState ()
 saveScenarioInfoOnFinishNocheat = do
   sc <- use $ runtimeState . progression . scenarios
   gs <- use $ playState . gameState
@@ -103,7 +111,7 @@ saveScenarioInfoOnFinishNocheat = do
     getNormalizedCurrentScenarioPath gs sc >>= mapM_ saveScenarioInfoOnFinish
 
 -- | Write the @ScenarioInfo@ out to disk when exiting a game.
-saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()
+saveScenarioInfoOnQuit :: EventM n AppState ()
 saveScenarioInfoOnQuit = do
   sc <- use $ runtimeState . progression . scenarios
   gs <- use $ playState . gameState

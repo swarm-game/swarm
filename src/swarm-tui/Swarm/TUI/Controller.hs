@@ -137,7 +137,7 @@ handleEvent e = do
       -- quitting a game, moving around the menu, the popup
       -- display will continue as normal.
       upd <- case e of
-        AppEvent Frame -> Brick.zoom (uiState . uiPopups) progressPopups
+        AppEvent Frame -> Brick.zoom (runtimeState . progression . uiPopups) progressPopups
         _ -> pure False
       if playing
         then handleMainEvent upd e
@@ -222,7 +222,9 @@ handleMainMenuEvent menu = \case
         uiState . uiMenu .= MessagesMenu
       About -> do
         uiState . uiMenu .= AboutMenu
-        attainAchievement $ GlobalAchievement LookedAtAboutScreen
+        Brick.zoom (runtimeState . progression) $
+          attainAchievement $
+            GlobalAchievement LookedAtAboutScreen
       Quit -> halt
   CharKey 'q' -> halt
   ControlChar 'q' -> halt

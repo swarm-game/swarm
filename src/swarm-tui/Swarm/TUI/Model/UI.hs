@@ -13,7 +13,6 @@ module Swarm.TUI.Model.UI (
   uiDebugOptions,
   uiLaunchConfig,
   uiAttrMap,
-  uiPopups,
 
   -- ** Initialization
   initFocusRing,
@@ -34,7 +33,6 @@ import Swarm.Failure (SystemFailure)
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep
 import Swarm.TUI.Model.DebugOption (DebugOption)
-import Swarm.TUI.Model.Dialog
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Attribute.Attr (swarmAttrMap)
@@ -51,7 +49,6 @@ data UIState = UIState
   , _uiDebugOptions :: Set DebugOption
   , _uiLaunchConfig :: LaunchOptions
   , _uiAttrMap :: AttrMap
-  , _uiPopups :: PopupState
   }
 
 -- * Lenses for UIState
@@ -77,9 +74,6 @@ uiLaunchConfig :: Lens' UIState LaunchOptions
 
 -- | Attribute map
 uiAttrMap :: Lens' UIState AttrMap
-
--- | Queue of popups to display
-uiPopups :: Lens' UIState PopupState
 
 -- * UIState initialization
 
@@ -120,5 +114,4 @@ initUIState UIInitOptions {..} = do
       , _uiDebugOptions = debugOptions
       , _uiLaunchConfig = launchConfigPanel
       , _uiAttrMap = swarmAttrMap
-      , _uiPopups = initPopupState
       }

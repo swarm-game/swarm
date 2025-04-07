@@ -154,10 +154,10 @@ updateAchievements = do
 
   -- Don't save to disk unless there was a change in the attainment list.
   let incrementalAchievements = wrappedGameAchievements `M.difference` oldMasterAchievementsList
-  unless (null incrementalAchievements) $ do
+  unless (null incrementalAchievements) $ Brick.zoom (runtimeState . progression) $ do
     mapM_ (popupAchievement . view achievement) incrementalAchievements
 
-    newAchievements <- use $ runtimeState . progression . attainedAchievements
+    newAchievements <- use attainedAchievements
     liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
 -- | Run the game for a single tick (/without/ updating the UI).

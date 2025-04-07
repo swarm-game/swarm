@@ -8,6 +8,7 @@ module Swarm.TUI.Model.Achievements (
   popupAchievement,
 ) where
 
+import Brick (EventM)
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -18,35 +19,34 @@ import Data.Time (ZonedTime, getZonedTime)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
+import Swarm.Game.Popup (Popup (AchievementPopup), addPopup)
 import Swarm.Game.Scenario.Status (ScenarioPath (..))
 import Swarm.Game.State.Runtime
-import Swarm.TUI.Model
-import Swarm.TUI.Model.Dialog.Popup (Popup (AchievementPopup), addPopup)
-import Swarm.TUI.Model.UI
 
-attainAchievement :: (MonadIO m, MonadState AppState m) => CategorizedAchievement -> m ()
+attainAchievement ::
+  CategorizedAchievement ->
+  EventM n ProgressionState ()
 attainAchievement a = do
   currentTime <- liftIO getZonedTime
   attainAchievement' currentTime Nothing a
 
 attainAchievement' ::
-  (MonadIO m, MonadState AppState m) =>
   ZonedTime ->
   Maybe ScenarioPath ->
   CategorizedAchievement ->
-  m ()
+  EventM n ProgressionState ()
 attainAchievement' t p a = do
-  mAttainment <- use $ runtimeState . progression . attainedAchievements . at a
+  mAttainment <- use $ attainedAchievements . at a
   when (isNothing mAttainment) $ popupAchievement a
 
-  (runtimeState . progression . attainedAchievements)
+  attainedAchievements
     %= M.insertWith
       (<>)
       a
       (Attainment a (getScenarioPath <$> p) t)
-  newAchievements <- use $ runtimeState . progression . attainedAchievements
+  newAchievements <- use attainedAchievements
   liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
 -- | Generate a popup for an achievement.
-popupAchievement :: MonadState AppState m => CategorizedAchievement -> m ()
-popupAchievement ach = uiState . uiPopups %= addPopup (AchievementPopup ach)
+popupAchievement :: MonadState ProgressionState m => CategorizedAchievement -> m ()
+popupAchievement ach = uiPopups %= addPopup (AchievementPopup ach)
