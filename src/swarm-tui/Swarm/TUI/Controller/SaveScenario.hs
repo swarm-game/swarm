@@ -66,22 +66,22 @@ saveScenarioInfoOnFinish ::
   FilePath ->
   EventM n AppState (Maybe ScenarioInfo)
 saveScenarioInfoOnFinish p = do
-  initialRunCode <- use $ playState . gameState . gameControls . initiallyRunCode
+  initialRunCode <- use $ playState . scenarioState . gameState . gameControls . initiallyRunCode
   t <- liftIO getZonedTime
-  wc <- use $ playState . gameState . winCondition
+  wc <- use $ playState . scenarioState . gameState . winCondition
   let won = case wc of
         WinConditions (Won _ _) _ -> True
         _ -> False
-  ts <- use $ playState . gameState . temporal . ticks
-  saved <- use $ playState . gameState . completionStatsSaved
+  ts <- use $ playState . scenarioState . gameState . temporal . ticks
+  saved <- use $ playState . scenarioState . gameState . completionStatsSaved
 
   -- NOTE: This traversal is apparently not the same one as used by
   -- the scenario selection menu, so the menu needs to be updated separately.
   -- See Note [scenario menu update]
   let currentScenarioInfo :: Traversal' AppState ScenarioInfo
-      currentScenarioInfo = runtimeState . progression . scenarios . scenarioItemByPath p . _SISingle . _2
+      currentScenarioInfo = playState . progression . scenarios . scenarioItemByPath p . _SISingle . _2
 
-  replHist <- use $ playState . uiGameplay . uiREPL . replHistory
+  replHist <- use $ playState . scenarioState . uiGameplay . uiREPL . replHistory
   let determinator = CodeSizeDeterminators initialRunCode $ replHist ^. replHasExecutedManualInput
 
   -- Don't update scenario statistics if we have previously saved
@@ -93,9 +93,9 @@ saveScenarioInfoOnFinish p = do
   status <- preuse currentScenarioInfo
   forM_ status $ \si -> do
     liftIO $ saveScenarioInfo p si
-    Brick.zoom (runtimeState . progression) $ applyCompletionAchievements won t p
+    Brick.zoom (playState . progression) $ applyCompletionAchievements won t p
 
-  playState . gameState . completionStatsSaved .= won
+  playState . scenarioState . gameState . completionStatsSaved .= won
 
   return status
 
@@ -103,14 +103,14 @@ saveScenarioInfoOnFinish p = do
 unlessCheating :: EventM n AppState () -> EventM n AppState ()
 unlessCheating a = do
   debugging <- use $ uiState . uiDebugOptions
-  isAuto <- use $ playState . uiGameplay . uiIsAutoPlay
+  isAuto <- use $ playState . scenarioState . uiGameplay . uiIsAutoPlay
   when (null debugging && not isAuto) a
 
 -- | Write the @ScenarioInfo@ out to disk when finishing a game (i.e. on winning or exit).
 saveScenarioInfoOnFinishNocheat :: EventM n AppState ()
 saveScenarioInfoOnFinishNocheat = do
-  sc <- use $ runtimeState . progression . scenarios
-  gs <- use $ playState . gameState
+  sc <- use $ playState . progression . scenarios
+  gs <- use $ playState . scenarioState . gameState
   unlessCheating $
     -- the path should be normalized and good to search in scenario collection
     getNormalizedCurrentScenarioPath gs sc >>= mapM_ saveScenarioInfoOnFinish
@@ -118,8 +118,8 @@ saveScenarioInfoOnFinishNocheat = do
 -- | Write the @ScenarioInfo@ out to disk when exiting a game.
 saveScenarioInfoOnQuit :: Bool -> EventM n AppState ()
 saveScenarioInfoOnQuit isNoMenu = do
-  sc <- use $ runtimeState . progression . scenarios
-  gs <- use $ playState . gameState
+  sc <- use $ playState . progression . scenarios
+  gs <- use $ playState . scenarioState . gameState
   unlessCheating $
     getNormalizedCurrentScenarioPath gs sc >>= mapM_ go
  where
@@ -152,5 +152,5 @@ saveScenarioInfoOnQuit isNoMenu = do
     -- ScenarioInfo, being sure to preserve the same focused
     -- scenario.
     unless isNoMenu $ do
-      sc <- use $ runtimeState . progression . scenarios
+      sc <- use $ playState . progression . scenarios
       forM_ (mkNewGameMenu sc (fromMaybe p curPath)) (uiState . uiMenu .=)

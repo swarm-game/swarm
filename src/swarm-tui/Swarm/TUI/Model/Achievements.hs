@@ -20,7 +20,7 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Popup (Popup (AchievementPopup), addPopup)
-import Swarm.Game.State.Runtime
+import Swarm.TUI.Model
 
 attainAchievement ::
   CategorizedAchievement ->
