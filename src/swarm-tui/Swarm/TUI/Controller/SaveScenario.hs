@@ -11,7 +11,6 @@ module Swarm.TUI.Controller.SaveScenario (
 -- See Note [liftA2 re-export from Prelude]
 
 import Brick
-
 import Control.Lens as Lens
 import Control.Monad (forM_, unless, when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
