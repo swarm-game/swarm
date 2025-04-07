@@ -15,7 +15,7 @@ import Control.Monad (forM_, unless, when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState)
 import Data.Maybe (fromMaybe, listToMaybe)
-import Data.Time (getZonedTime)
+import Data.Time (ZonedTime, getZonedTime)
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Scenario.Status (scenarioIsCompleted, updateScenarioInfoOnFinish)
 import Swarm.Game.ScenarioInfo
@@ -37,6 +37,30 @@ getNormalizedCurrentScenarioPath ::
 getNormalizedCurrentScenarioPath gs sc = do
   -- the path should be normalized and good to search in scenario collection
   traverse (liftIO . normalizeScenarioPath sc) $ gs ^. currentScenarioPath
+
+applyCompletionAchievements ::
+  (MonadIO m, MonadState AppState m) =>
+  Bool ->
+  ZonedTime ->
+  FilePath ->
+  m ()
+applyCompletionAchievements won t p = do
+  forM_ (listToMaybe $ splitDirectories p) $ \firstDir -> do
+    when (won && firstDir == tutorialsDirname) $
+      attainAchievement' t (Just p) $
+        GlobalAchievement CompletedSingleTutorial
+
+  -- Check if all tutorials have been completed
+  tutorialMap <- use $ runtimeState . progression . scenarios . to getTutorials . to scMap
+  let isComplete (SISingle (_, s)) = scenarioIsCompleted s
+      -- There are not currently any subcollections within the
+      -- tutorials, but checking subcollections recursively just seems
+      -- like the right thing to do
+      isComplete (SICollection _ (SC m)) = all isComplete m
+
+  when (all isComplete tutorialMap) $
+    attainAchievement $
+      GlobalAchievement CompletedAllTutorials
 
 saveScenarioInfoOnFinish ::
   (MonadIO m, MonadState AppState m) =>
@@ -69,23 +93,8 @@ saveScenarioInfoOnFinish p = do
 
   status <- preuse currentScenarioInfo
   forM_ status $ \si -> do
-    forM_ (listToMaybe $ splitDirectories p) $ \firstDir -> do
-      when (won && firstDir == tutorialsDirname) $
-        attainAchievement' t (Just p) $
-          GlobalAchievement CompletedSingleTutorial
     liftIO $ saveScenarioInfo p si
-
-  -- Check if all tutorials have been completed
-  tutorialMap <- use $ runtimeState . progression . scenarios . to getTutorials . to scMap
-  let isComplete (SISingle (_, s)) = scenarioIsCompleted s
-      -- There are not currently any subcollections within the
-      -- tutorials, but checking subcollections recursively just seems
-      -- like the right thing to do
-      isComplete (SICollection _ (SC m)) = all isComplete m
-
-  when (all isComplete tutorialMap) $
-    attainAchievement $
-      GlobalAchievement CompletedAllTutorials
+    applyCompletionAchievements won t p
 
   playState . gameState . completionStatsSaved .= won
 
