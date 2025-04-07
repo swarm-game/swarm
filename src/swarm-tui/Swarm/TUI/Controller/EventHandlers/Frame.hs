@@ -20,7 +20,6 @@ import Swarm.Game.Achievement.Attainment (achievement)
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.State
-import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Step (gameTick)
 import Swarm.TUI.Controller.UpdateUI
@@ -149,12 +148,12 @@ updateAchievements = do
   achievementsFromGame <- use $ playState . scenarioState . gameState . discovery . gameAchievements
   let wrappedGameAchievements = M.mapKeys GameplayAchievement achievementsFromGame
 
-  oldMasterAchievementsList <- use $ runtimeState . progression . attainedAchievements
-  runtimeState . progression . attainedAchievements %= M.unionWith (<>) wrappedGameAchievements
+  oldMasterAchievementsList <- use $ playState . progression . attainedAchievements
+  playState . progression . attainedAchievements %= M.unionWith (<>) wrappedGameAchievements
 
   -- Don't save to disk unless there was a change in the attainment list.
   let incrementalAchievements = wrappedGameAchievements `M.difference` oldMasterAchievementsList
-  unless (null incrementalAchievements) $ Brick.zoom (runtimeState . progression) $ do
+  unless (null incrementalAchievements) $ Brick.zoom (playState . progression) $ do
     mapM_ (popupAchievement . view achievement) incrementalAchievements
 
     newAchievements <- use attainedAchievements

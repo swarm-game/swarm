@@ -20,7 +20,6 @@ import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
-import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievements (attainAchievement, attainAchievement')
@@ -75,7 +74,7 @@ saveScenarioInfoOnFinish p = do
   saved <- use $ playState . scenarioState . gameState . completionStatsSaved
 
   let currentScenarioInfo :: Traversal' AppState ScenarioInfo
-      currentScenarioInfo = runtimeState . progression . scenarios . scenarioItemByPath p . _SISingle . getScenarioInfo
+      currentScenarioInfo = playState . progression . scenarios . scenarioItemByPath p . _SISingle . getScenarioInfo
 
   replHist <- use $ playState . scenarioState . uiGameplay . uiREPL . replHistory
   let determinator = CodeSizeDeterminators initialRunCode $ replHist ^. replHasExecutedManualInput
@@ -89,7 +88,7 @@ saveScenarioInfoOnFinish p = do
   status <- preuse currentScenarioInfo
   forM_ status $ \si -> do
     liftIO $ saveScenarioInfo p si
-    Brick.zoom (runtimeState . progression) $ applyCompletionAchievements won t p
+    Brick.zoom (playState . progression) $ applyCompletionAchievements won t p
 
   playState . scenarioState . gameState . completionStatsSaved .= won
 
@@ -103,7 +102,7 @@ unlessCheating a = do
 -- | Write the @ScenarioInfo@ out to disk when finishing a game (i.e. on winning or exit).
 saveScenarioInfoOnFinishNocheat :: EventM n AppState ()
 saveScenarioInfoOnFinishNocheat = do
-  sc <- use $ runtimeState . progression . scenarios
+  sc <- use $ playState . progression . scenarios
   gs <- use $ playState . scenarioState . gameState
   unlessCheating $
     -- the path should be normalized and good to search in scenario collection
@@ -112,7 +111,7 @@ saveScenarioInfoOnFinishNocheat = do
 -- | Write the @ScenarioInfo@ out to disk when exiting a game.
 saveScenarioInfoOnQuit :: EventM n AppState ()
 saveScenarioInfoOnQuit = do
-  sc <- use $ runtimeState . progression . scenarios
+  sc <- use $ playState . progression . scenarios
   gs <- use $ playState . scenarioState . gameState
   unlessCheating $
     getNormalizedCurrentScenarioPath gs sc >>= mapM_ saveScenarioInfoOnFinish

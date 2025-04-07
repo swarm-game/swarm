@@ -65,8 +65,13 @@ module Swarm.TUI.Model (
   ScenarioState (ScenarioState),
   gameState,
   uiGameplay,
-  PlayState (PlayState),
+  PlayState (..),
   scenarioState,
+  progression,
+  ProgressionState (..),
+  scenarios,
+  attainedAchievements,
+  uiPopups,
 
   -- ** Initialization
   AppOpts (..),
@@ -89,6 +94,7 @@ import Control.Monad ((>=>))
 import Control.Monad.State (MonadState)
 import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Text (Text)
@@ -96,11 +102,14 @@ import Data.Vector qualified as V
 import GitHash (GitInfo)
 import Graphics.Vty (ColorMode (..))
 import Network.Wai.Handler.Warp (Port)
+import Swarm.Game.Achievement.Attainment
+import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Entity as E
 import Swarm.Game.Ingredients
+import Swarm.Game.Popup
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Status
-import Swarm.Game.ScenarioInfo (_SISingle)
+import Swarm.Game.ScenarioInfo (ScenarioCollection, _SISingle)
 import Swarm.Game.State
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
@@ -172,10 +181,34 @@ gameState :: Lens' ScenarioState GameState
 -- | UI active during live gameplay
 uiGameplay :: Lens' ScenarioState UIGameplay
 
+-- | State that can evolve as the user progresses through scenarios.
+-- This includes achievements and completion records.
+--
+-- Note that scenario completion/achievements are serialized to disk storage,
+-- but we also persist in memory since we don't reload data from disk as
+-- we progress through scenarios.
+data ProgressionState = ProgressionState
+  { _scenarios :: ScenarioCollection ScenarioInfo
+  , _attainedAchievements :: Map CategorizedAchievement Attainment
+  , _uiPopups :: PopupState
+  }
+
+makeLensesNoSigs ''ProgressionState
+
+-- | Map of achievements that were attained
+attainedAchievements :: Lens' ProgressionState (Map CategorizedAchievement Attainment)
+
+-- | The collection of scenarios that comes with the game.
+scenarios :: Lens' ProgressionState (ScenarioCollection ScenarioInfo)
+
+-- | Queue of popups to display
+uiPopups :: Lens' ProgressionState PopupState
+
 -- | This encapsulates both game and UI state for an actively-playing scenario, as well
 -- as state that evolves as a result of playing a scenario.
-newtype PlayState = PlayState
+data PlayState = PlayState
   { _scenarioState :: ScenarioState
+  , _progression :: ProgressionState
   }
 
 --------------------------------------------------
@@ -185,6 +218,9 @@ makeLensesNoSigs ''PlayState
 
 -- | The 'ScenarioState' record.
 scenarioState :: Lens' PlayState ScenarioState
+
+-- | State that can evolve as the user progresses through scenarios.
+progression :: Lens' PlayState ProgressionState
 
 -- ----------------------------------------------------------------------------
 --                                   APPSTATE                                --
