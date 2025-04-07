@@ -187,7 +187,7 @@ constructAppState rs ui key opts@(AppOpts {..}) = do
             return $ CodeToRun ScenarioSuggested soln
           codeToRun = maybeAutoplay <|> maybeRunScript
 
-      let si = getScenarioInfoFromPath (rs ^. scenarios) path
+      let si = getScenarioInfoFromPath (rs ^. progression . scenarios) path
 
       sendIO $
         execStateT
@@ -249,7 +249,7 @@ startGame ::
   Maybe CodeToRun ->
   m ()
 startGame (ScenarioWith s (ScenarioPath p)) c = do
-  ss <- use $ runtimeState . scenarios
+  ss <- use $ runtimeState . progression . scenarios
   let si = getScenarioInfoFromPath ss p
   startGameWithSeed (ScenarioWith s si) . LaunchParams (pure Nothing) $ pure c
 
@@ -268,7 +268,7 @@ restartGame ::
   ScenarioWith ScenarioPath ->
   m ()
 restartGame currentSeed (ScenarioWith s (ScenarioPath p)) = do
-  ss <- use $ runtimeState . scenarios
+  ss <- use $ runtimeState . progression . scenarios
   let si = getScenarioInfoFromPath ss p
   startGameWithSeed (ScenarioWith s si) $ LaunchParams (pure (Just currentSeed)) (pure Nothing)
 
@@ -281,10 +281,11 @@ startGameWithSeed ::
   m ()
 startGameWithSeed siPair@(ScenarioWith _scene si) lp = do
   t <- liftIO getZonedTime
-  ss <- use $ runtimeState . scenarios
+  ss <- use $ runtimeState . progression . scenarios
   p <- liftIO $ normalizeScenarioPath ss $ si ^. scenarioPath
 
   runtimeState
+    . progression
     . scenarios
     . scenarioItemByPath p
     . _SISingle

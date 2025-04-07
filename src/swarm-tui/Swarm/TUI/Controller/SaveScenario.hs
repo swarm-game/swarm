@@ -53,7 +53,7 @@ saveScenarioInfoOnFinish p = do
   saved <- use $ playState . gameState . completionStatsSaved
 
   let currentScenarioInfo :: Traversal' AppState ScenarioInfo
-      currentScenarioInfo = runtimeState . scenarios . scenarioItemByPath p . _SISingle . getScenarioInfo
+      currentScenarioInfo = runtimeState . progression . scenarios . scenarioItemByPath p . _SISingle . getScenarioInfo
 
   replHist <- use $ playState . uiGameplay . uiREPL . replHistory
   let determinator = CodeSizeDeterminators initialRunCode $ replHist ^. replHasExecutedManualInput
@@ -73,7 +73,7 @@ saveScenarioInfoOnFinish p = do
     liftIO $ saveScenarioInfo p si
 
   -- Check if all tutorials have been completed
-  tutorialMap <- use $ runtimeState . scenarios . to getTutorials . to scMap
+  tutorialMap <- use $ runtimeState . progression . scenarios . to getTutorials . to scMap
   let isComplete (SISingle (ScenarioWith _ s)) = scenarioIsCompleted s
       -- There are not currently any subcollections within the
       -- tutorials, but checking subcollections recursively just seems
@@ -96,7 +96,7 @@ unlessCheating a = do
 -- | Write the @ScenarioInfo@ out to disk when finishing a game (i.e. on winning or exit).
 saveScenarioInfoOnFinishNocheat :: (MonadIO m, MonadState AppState m) => m ()
 saveScenarioInfoOnFinishNocheat = do
-  sc <- use $ runtimeState . scenarios
+  sc <- use $ runtimeState . progression . scenarios
   gs <- use $ playState . gameState
   unlessCheating $
     -- the path should be normalized and good to search in scenario collection
@@ -105,7 +105,7 @@ saveScenarioInfoOnFinishNocheat = do
 -- | Write the @ScenarioInfo@ out to disk when exiting a game.
 saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()
 saveScenarioInfoOnQuit = do
-  sc <- use $ runtimeState . scenarios
+  sc <- use $ runtimeState . progression . scenarios
   gs <- use $ playState . gameState
   unlessCheating $
     getNormalizedCurrentScenarioPath gs sc >>= mapM_ saveScenarioInfoOnFinish

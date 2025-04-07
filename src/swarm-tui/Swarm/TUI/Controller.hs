@@ -178,10 +178,10 @@ handleMainMenuEvent menu = \case
   Key V.KEnter ->
     forM_ (snd <$> BL.listSelectedElement menu) $ \case
       NewGame -> do
-        ss <- use $ runtimeState . scenarios
+        ss <- use $ runtimeState . progression . scenarios
         uiState . uiMenu .= NewGameMenu (pure $ mkScenarioList $ pathifyCollection ss)
       Tutorial -> do
-        ss <- use $ runtimeState . scenarios
+        ss <- use $ runtimeState . progression . scenarios
 
         -- Extract the first unsolved tutorial challenge
         let tutorialCollection = getTutorials ss
@@ -286,7 +286,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
  where
   showLaunchDialog = case snd <$> BL.listSelectedElement curMenu of
     Just (SISingle (ScenarioWith s (ScenarioPath p))) -> do
-      ss <- use $ runtimeState . scenarios
+      ss <- use $ runtimeState . progression . scenarios
       let si = getScenarioInfoFromPath ss p
       Brick.zoom (uiState . uiLaunchConfig) $ prepareLaunchDialog $ ScenarioWith s si
     _ -> pure ()

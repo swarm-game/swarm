@@ -44,7 +44,7 @@ drawAchievementsMenuUI s l =
           ]
     ]
  where
-  attainedMap = s ^. runtimeState . progression . uiAchievements
+  attainedMap = s ^. runtimeState . progression . attainedAchievements
 
 drawAchievementListItem ::
   Map CategorizedAchievement Attainment ->

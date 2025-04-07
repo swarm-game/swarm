@@ -20,7 +20,7 @@ module Swarm.Game.State.Runtime (
   scenarios,
   appData,
   stdGameConfigInputs,
-  uiAchievements,
+  attainedAchievements,
 
   -- ** Utility
   initScenarioInputs,
@@ -57,20 +57,23 @@ import Swarm.Util.Lens (makeLensesNoSigs)
 -- Note that these things are also serialized to disk storage, but
 -- we also persist in memory since we don't reload data from disk as
 -- we progress through scenarios.
-newtype ProgressionState = ProgressionState
-  { _uiAchievements :: Map CategorizedAchievement Attainment
+data ProgressionState = ProgressionState
+  { _scenarios :: ScenarioCollection ScenarioInfo
+  , _attainedAchievements :: Map CategorizedAchievement Attainment
   }
 
 makeLensesNoSigs ''ProgressionState
 
 -- | Map of achievements that were attained
-uiAchievements :: Lens' ProgressionState (Map CategorizedAchievement Attainment)
+attainedAchievements :: Lens' ProgressionState (Map CategorizedAchievement Attainment)
+
+-- | The collection of scenarios that comes with the game.
+scenarios :: Lens' ProgressionState (ScenarioCollection ScenarioInfo)
 
 data RuntimeState = RuntimeState
   { _webPort :: Maybe Int
   , _upstreamRelease :: Either (Severity, Text) String
   , _eventLog :: Notifications LogEntry
-  , _scenarios :: ScenarioCollection ScenarioInfo
   , _stdGameConfigInputs :: GameStateConfig
   , _appData :: Map Text Text
   , _progression :: ProgressionState
@@ -128,7 +131,7 @@ initRuntimeState ::
   m RuntimeState
 initRuntimeState opts = do
   gsc <- initGameStateConfig opts
-  scenarios <- loadScenarios (gsiScenarioInputs $ initState gsc) (loadTestScenarios opts)
+  s <- loadScenarios (gsiScenarioInputs $ initState gsc) (loadTestScenarios opts)
 
   achievements <- loadAchievementsInfo
   return $
@@ -136,12 +139,12 @@ initRuntimeState opts = do
       { _webPort = Nothing
       , _upstreamRelease = Left (Info, "No upstream release found.")
       , _eventLog = mempty
-      , _scenarios = scenarios
       , _appData = initAppDataMap gsc
       , _stdGameConfigInputs = gsc
       , _progression =
           ProgressionState
-            { _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
+            { _scenarios = s
+            , _attainedAchievements = M.fromList $ map (view achievement &&& id) achievements
             }
       }
 
@@ -159,9 +162,6 @@ upstreamRelease :: Lens' RuntimeState (Either (Severity, Text) String)
 -- If some error happens before a game is even selected, this is the
 -- place to log it.
 eventLog :: Lens' RuntimeState (Notifications LogEntry)
-
--- | The collection of scenarios that comes with the game.
-scenarios :: Lens' RuntimeState (ScenarioCollection ScenarioInfo)
 
 -- | State that can evolve as the user progresses through scenarios.
 progression :: Lens' RuntimeState ProgressionState

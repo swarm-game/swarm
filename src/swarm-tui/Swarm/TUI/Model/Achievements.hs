@@ -36,15 +36,15 @@ attainAchievement' ::
   CategorizedAchievement ->
   m ()
 attainAchievement' t p a = do
-  mAttainment <- use $ runtimeState . progression . uiAchievements . at a
+  mAttainment <- use $ runtimeState . progression . attainedAchievements . at a
   when (isNothing mAttainment) $ popupAchievement a
 
-  (runtimeState . progression . uiAchievements)
+  (runtimeState . progression . attainedAchievements)
     %= M.insertWith
       (<>)
       a
       (Attainment a (getScenarioPath <$> p) t)
-  newAchievements <- use $ runtimeState . progression . uiAchievements
+  newAchievements <- use $ runtimeState . progression . attainedAchievements
   liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
 -- | Generate a popup for an achievement.
