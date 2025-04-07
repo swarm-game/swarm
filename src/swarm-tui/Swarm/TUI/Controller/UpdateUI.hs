@@ -24,6 +24,7 @@ import Data.List.Extra (enumerate)
 import Data.Map qualified as M
 import Data.Maybe (isNothing)
 import Data.Set (Set)
+import Data.Set qualified as S
 import Data.String (fromString)
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -183,15 +184,12 @@ updateUI = do
   logUpdated <- Brick.zoom (playState . scenarioState) $ checkLogUpdated fr
 
   menu <- use $ uiState . uiMenu
-  goalOrWinUpdated <- doGoalUpdates menu
+  dOps <- use $ uiState . uiDebugOptions
+  goalOrWinUpdated <- doGoalUpdates dOps menu
 
-  newPopups <- generateNotificationPopups
+  newPopups <- Brick.zoom playState generateNotificationPopups
 
-  -- Update the robots modal only when it is enabled.  See #2370.
-  curModal <- use $ playState . scenarioState . uiGameplay . uiDialogs . uiModal
-  when ((view modalType <$> curModal) == Just RobotsModal) $ do
-    dOps <- use $ uiState . uiDebugOptions
-    Brick.zoom (playState . scenarioState) $ doRobotListUpdate dOps g
+  Brick.zoom (playState . scenarioState) $ doRobotListUpdate dOps g
 
   let redraw =
         g ^. needsRedraw
@@ -245,12 +243,12 @@ updateRobotDetailsPane robotPayload =
 -- * feedback as to the final goal the player accomplished,
 -- * as a summary of all of the goals of the game
 -- * shows the player more "optional" goals they can continue to pursue
-doGoalUpdates :: Menu -> EventM Name AppState Bool
-doGoalUpdates menu = do
+doGoalUpdates :: Set DebugOption -> Menu -> EventM Name AppState Bool
+doGoalUpdates dOpts menu = do
   curGoal <- use (playState . scenarioState . uiGameplay . uiDialogs . uiGoal . goalsContent)
   curWinCondition <- use (playState . scenarioState . gameState . winCondition)
   announcementsList <- use (playState . scenarioState . gameState . messageInfo . announcementQueue . to toList)
-  showHiddenGoals <- use $ uiState . uiDebugOptions . Lens.contains ShowHiddenGoals
+  let showHiddenGoals = ShowHiddenGoals `S.member` dOpts
 
   -- Decide whether we need to update the current goal text and pop
   -- up a modal dialog.
@@ -325,20 +323,20 @@ doGoalUpdates menu = do
     _ -> False
 
 -- | Pops up notifications when new recipes or commands are unlocked.
-generateNotificationPopups :: EventM Name AppState Bool
+generateNotificationPopups :: EventM Name PlayState Bool
 generateNotificationPopups = do
-  rs <- use $ playState . scenarioState . gameState . discovery . availableRecipes
+  rs <- use $ scenarioState . gameState . discovery . availableRecipes
   let newRecipes = rs ^. notificationsShouldAlert
   when newRecipes $ do
-    playState . progression . uiPopups %= addPopup RecipesPopup
-    playState . scenarioState . gameState . discovery . availableRecipes . notificationsShouldAlert .= False
+    progression . uiPopups %= addPopup RecipesPopup
+    scenarioState . gameState . discovery . availableRecipes . notificationsShouldAlert .= False
 
-  cs <- use $ playState . scenarioState . gameState . discovery . availableCommands
+  cs <- use $ scenarioState . gameState . discovery . availableCommands
   let alertCommands = cs ^. notificationsShouldAlert
   when alertCommands $ do
     let newCommands = take (cs ^. notificationsCount) (cs ^. notificationsContent)
-    playState . progression . uiPopups %= addPopup (CommandsPopup newCommands)
-    playState . scenarioState . gameState . discovery . availableCommands . notificationsShouldAlert .= False
+    progression . uiPopups %= addPopup (CommandsPopup newCommands)
+    scenarioState . gameState . discovery . availableCommands . notificationsShouldAlert .= False
 
   return $ newRecipes || alertCommands
 

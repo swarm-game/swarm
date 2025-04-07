@@ -37,6 +37,7 @@ import Swarm.Language.Capability (Capability (CDebug))
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.TUI.Model (
   AppState,
+  PlayState,
   ScenarioState,
   gameState,
   modalScroll,
@@ -195,6 +196,17 @@ zoomGameStateFromScenarioState f = do
   gs <- use gameState
   (gs', a) <- liftIO (Fused.runM (runTimeIO (Fused.runState gs f)))
   gameState .= gs'
+  return a
+
+-- | Modifies the game state using a fused-effect state action.
+zoomGameStateFromPlayState ::
+  (MonadState PlayState m, MonadIO m) =>
+  Fused.StateC GameState (TimeIOC (Fused.LiftC IO)) a ->
+  m a
+zoomGameStateFromPlayState f = do
+  gs <- use $ scenarioState . gameState
+  (gs', a) <- liftIO (Fused.runM (runTimeIO (Fused.runState gs f)))
+  scenarioState . gameState .= gs'
   return a
 
 onlyCreative :: (MonadState ScenarioState m) => m () -> m ()
