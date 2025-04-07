@@ -20,13 +20,13 @@ import Swarm.Game.Achievement.Attainment (achievement)
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.State
+import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Step (gameTick)
 import Swarm.TUI.Controller.UpdateUI
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievements (popupAchievement)
-import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
 import System.Clock
 
@@ -149,15 +149,15 @@ updateAchievements = do
   achievementsFromGame <- use $ playState . gameState . discovery . gameAchievements
   let wrappedGameAchievements = M.mapKeys GameplayAchievement achievementsFromGame
 
-  oldMasterAchievementsList <- use $ uiState . uiAchievements
-  uiState . uiAchievements %= M.unionWith (<>) wrappedGameAchievements
+  oldMasterAchievementsList <- use $ runtimeState . progression . uiAchievements
+  runtimeState . progression . uiAchievements %= M.unionWith (<>) wrappedGameAchievements
 
   -- Don't save to disk unless there was a change in the attainment list.
   let incrementalAchievements = wrappedGameAchievements `M.difference` oldMasterAchievementsList
   unless (null incrementalAchievements) $ do
     mapM_ (popupAchievement . view achievement) incrementalAchievements
 
-    newAchievements <- use $ uiState . uiAchievements
+    newAchievements <- use $ runtimeState . progression . uiAchievements
     liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
 -- | Run the game for a single tick (/without/ updating the UI).

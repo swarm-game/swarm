@@ -18,6 +18,7 @@ import Data.Time (ZonedTime, getZonedTime)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
+import Swarm.Game.State.Runtime
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Dialog.Popup (Popup (AchievementPopup), addPopup)
 import Swarm.TUI.Model.UI
@@ -34,15 +35,15 @@ attainAchievement' ::
   CategorizedAchievement ->
   m ()
 attainAchievement' t p a = do
-  mAttainment <- use $ uiState . uiAchievements . at a
+  mAttainment <- use $ runtimeState . progression . uiAchievements . at a
   when (isNothing mAttainment) $ popupAchievement a
 
-  (uiState . uiAchievements)
+  (runtimeState . progression . uiAchievements)
     %= M.insertWith
       (<>)
       a
       (Attainment a p t)
-  newAchievements <- use $ uiState . uiAchievements
+  newAchievements <- use $ runtimeState . progression . uiAchievements
   liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
 -- | Generate a popup for an achievement.

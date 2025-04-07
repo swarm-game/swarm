@@ -385,6 +385,7 @@ app unitTestFileserver appData =
         -- files there.
         -- Instead, we manually stub the paths that are used as redirects
         -- so that the web API invocation does not 404 when looking for them.
+
           serveDirectoryEmbedded
             [ (TL.unpack defaultRedirectPage, "Hello World!")
             , (TL.unpack defaultSolutionSubmissionRedirectPage, "Hello World!")
