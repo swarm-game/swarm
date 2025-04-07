@@ -15,6 +15,7 @@ import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
+import Data.Text.IO qualified as TIO
 import Swarm.Language.JSON ()
 import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ (tyQ)
