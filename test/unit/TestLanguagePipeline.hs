@@ -762,20 +762,3 @@ roundTripTerm txt = do
     Left e -> error $ "Decoding of " <> from (T.decodeUtf8 (from v)) <> " failed with: " <> from e
     Right x -> x
   term = fromMaybe (error "empty document") $ either (error . T.unpack) id $ readTerm txt
-
-baseTestPath = "data/test/language-snippets/errors"
-baseTestPath :: FilePath
-
-checkFile ::
-  FilePath ->
-  Text ->
-  IO
-    ()
-    checkFile
-    filename
-    expectedError = do
-    content <- TIO.readFile fullPath
-    let actualWarnings = getWarnings content
-    assertEqual "failed" expectedWarnings actualWarnings
-   where
-    fullPath = baseTestPath </> filename
