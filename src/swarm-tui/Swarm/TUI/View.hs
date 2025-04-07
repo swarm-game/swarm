@@ -477,7 +477,7 @@ drawGameUI s =
  where
   debugOpts = s ^. uiState . uiDebugOptions
   keyConf = s ^. keyEventHandling . keyConfig
-  ps = s ^. playState
+  ps = s ^. playState . scenarioState
   gs = ps ^. gameState
   uig = ps ^. uiGameplay
 
@@ -635,13 +635,13 @@ chooseCursor s locs = do
   guard $ null m
   showFirstCursor s locs
  where
-  m = s ^. playState . uiGameplay . uiDialogs . uiModal
+  m = s ^. playState . scenarioState . uiGameplay . uiDialogs . uiModal
 
 -- | Draw a dialog window, if one should be displayed right now.
 drawDialog ::
   ToplevelConfigurationHelp ->
   Bool ->
-  PlayState ->
+  ScenarioState ->
   Widget Name
 drawDialog h isNoMenu ps =
   maybe emptyWidget go m
@@ -657,7 +657,7 @@ drawDialog h isNoMenu ps =
 -- | Draw one of the various types of modal dialog.
 drawModal ::
   ToplevelConfigurationHelp ->
-  PlayState ->
+  ScenarioState ->
   Bool ->
   ModalType ->
   Widget Name
@@ -836,7 +836,7 @@ commandsListWidget gs =
           constCaps cmd
 
 -- | Generate a pop-up widget to display the description of an entity.
-descriptionWidget :: PlayState -> Entity -> Widget Name
+descriptionWidget :: ScenarioState -> Entity -> Widget Name
 descriptionWidget s e = padLeftRight 1 (explainEntry uig gs e)
  where
   gs = s ^. gameState
@@ -913,7 +913,7 @@ drawModalMenu gs keyConf = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) g
 --
 -- This excludes the F-key modals that are shown elsewhere.
 drawKeyMenu ::
-  PlayState ->
+  ScenarioState ->
   KeyConfig SE.SwarmEvent ->
   Set DebugOption ->
   Widget Name
@@ -1100,7 +1100,7 @@ drawWorldPane ui g =
 -- | Draw info about the currently focused robot, such as its name,
 --   position, orientation, and inventory, as long as it is not too
 --   far away.
-drawRobotPanel :: PlayState -> Widget Name
+drawRobotPanel :: ScenarioState -> Widget Name
 drawRobotPanel s
   -- If the focused robot is too far away to communicate, just leave the panel blank.
   -- There should be no way to tell the difference between a robot that is too far
@@ -1155,7 +1155,7 @@ drawItem _ _ _ (EquippedEntry e) = drawLabelledEntityName e <+> padLeft Max (str
 
 -- | Draw the info panel in the bottom-left corner, which shows info
 --   about the currently focused inventory item.
-drawInfoPanel :: PlayState -> Widget Name
+drawInfoPanel :: ScenarioState -> Widget Name
 drawInfoPanel s
   | Just Far <- s ^. gameState . to focusedRange = blank
   | otherwise =
@@ -1166,7 +1166,7 @@ drawInfoPanel s
 
 -- | Display info about the currently focused inventory entity,
 --   such as its description and relevant recipes.
-explainFocusedItem :: PlayState -> Widget Name
+explainFocusedItem :: ScenarioState -> Widget Name
 explainFocusedItem s = case focusedItem s of
   Just (InventoryEntry _ e) -> explainEntry uig gs e
   Just (EquippedEntry e) -> explainEntry uig gs e
@@ -1528,7 +1528,7 @@ renderREPLPrompt focus theRepl = ps1 <+> replE
       replEditor
 
 -- | Draw the REPL.
-drawREPL :: PlayState -> Widget Name
+drawREPL :: ScenarioState -> Widget Name
 drawREPL ps =
   vBox
     [ withLeftPaddedVScrollBars

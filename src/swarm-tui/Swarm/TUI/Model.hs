@@ -62,9 +62,11 @@ module Swarm.TUI.Model (
   playState,
   keyEventHandling,
   runtimeState,
-  PlayState (PlayState),
+  ScenarioState (ScenarioState),
   gameState,
   uiGameplay,
+  PlayState (PlayState),
+  scenarioState,
 
   -- ** Initialization
   AppOpts (..),
@@ -154,21 +156,35 @@ logEvent src sev who msg el =
 
 -- | This encapsulates both game and UI state for an actively-playing scenario, as well
 -- as state that evolves as a result of playing a scenario.
-data PlayState = PlayState
+data ScenarioState = ScenarioState
   { _gameState :: GameState
   , _uiGameplay :: UIGameplay
   }
 
 --------------------------------------------------
--- Lenses for PlayState
+-- Lenses for ScenarioState
+
+makeLensesNoSigs ''ScenarioState
+
+-- | The 'GameState' record.
+gameState :: Lens' ScenarioState GameState
+
+-- | UI active during live gameplay
+uiGameplay :: Lens' ScenarioState UIGameplay
+
+-- | This encapsulates both game and UI state for an actively-playing scenario, as well
+-- as state that evolves as a result of playing a scenario.
+newtype PlayState = PlayState
+  { _scenarioState :: ScenarioState
+  }
+
+--------------------------------------------------
+-- Lenses for ScenarioState
 
 makeLensesNoSigs ''PlayState
 
--- | The 'GameState' record.
-gameState :: Lens' PlayState GameState
-
--- | UI active during live gameplay
-uiGameplay :: Lens' PlayState UIGameplay
+-- | The 'ScenarioState' record.
+scenarioState :: Lens' PlayState ScenarioState
 
 -- ----------------------------------------------------------------------------
 --                                   APPSTATE                                --
@@ -339,7 +355,7 @@ keyDispatchers :: Lens' KeyEventHandlingState SwarmKeyDispatchers
 
 makeLensesNoSigs ''AppState
 
--- | The 'PlayState' record.
+-- | The 'ScenarioState' record.
 playState :: Lens' AppState PlayState
 
 -- | The 'UIState' record.
@@ -356,7 +372,7 @@ runtimeState :: Lens' AppState RuntimeState
 
 -- | Get the currently focused 'InventoryListEntry' from the robot
 --   info panel (if any).
-focusedItem :: PlayState -> Maybe InventoryListEntry
+focusedItem :: ScenarioState -> Maybe InventoryListEntry
 focusedItem s = do
   list <- s ^? uiGameplay . uiInventory . uiInventoryList . _Just . _2
   (_, entry) <- BL.listSelectedElement list
@@ -365,7 +381,7 @@ focusedItem s = do
 -- | Get the currently focused entity from the robot info panel (if
 --   any).  This is just like 'focusedItem' but forgets the
 --   distinction between plain inventory items and equipped devices.
-focusedEntity :: PlayState -> Maybe Entity
+focusedEntity :: ScenarioState -> Maybe Entity
 focusedEntity =
   focusedItem >=> \case
     Separator _ -> Nothing

@@ -64,7 +64,7 @@ updateAndRedrawUI forceRedraw = do
   redraw <- updateUI
   unless (forceRedraw || redraw) continueWithoutRedraw
 
-checkInventoryUpdated :: Maybe Robot -> EventM Name PlayState Bool
+checkInventoryUpdated :: Maybe Robot -> EventM Name ScenarioState Bool
 checkInventoryUpdated fr = do
   -- The hash of the robot whose inventory is currently displayed (if any)
   listRobotHash <- fmap fst <$> use (uiGameplay . uiInventory . uiInventoryList)
@@ -93,7 +93,7 @@ checkInventoryUpdated fr = do
       uiInventoryShouldUpdate .= False
   return shouldRegenerateInventory
 
-checkReplUpdated :: GameState -> EventM Name PlayState Bool
+checkReplUpdated :: GameState -> EventM Name ScenarioState Bool
 checkReplUpdated g = case g ^. gameControls . replStatus of
   -- Now check if the base finished running a program entered at the REPL.
   REPLWorking pty (Just v)
@@ -118,16 +118,18 @@ checkReplUpdated g = case g ^. gameControls . replStatus of
         liftIO $ listener out
         invalidateCacheEntry REPLHistoryCache
         vScrollToEnd replScroll
-        gameState . gameControls . replStatus .= REPLDone (Just (finalType, v))
-        gameState . baseEnv . at itName .= Just (Typed v finalType mempty)
-        gameState . baseEnv . at "it" .= Just (Typed v finalType mempty)
-        gameState . gameControls . replNextValueIndex %= (+ 1)
+
+        Brick.zoom gameState $ do
+          gameControls . replStatus .= REPLDone (Just (finalType, v))
+          baseEnv . at itName .= Just (Typed v finalType mempty)
+          baseEnv . at "it" .= Just (Typed v finalType mempty)
+          gameControls . replNextValueIndex %= (+ 1)
         pure True
 
   -- Otherwise, do nothing.
   _ -> pure False
 
-checkLogUpdated :: Maybe Robot -> EventM Name PlayState Bool
+checkLogUpdated :: Maybe Robot -> EventM Name ScenarioState Bool
 checkLogUpdated fr = do
   -- If the inventory or info panels are currently focused, it would
   -- be rude to update them right under the user's nose, so consider
@@ -142,7 +144,7 @@ checkLogUpdated fr = do
     False -> pure False
     True -> do
       -- Reset the log updated flag
-      zoomGameStateFromPlayState $ zoomRobots clearFocusedRobotLogUpdated
+      zoomGameStateFromScenarioState $ zoomRobots clearFocusedRobotLogUpdated
 
       -- Find and focus an equipped "logger" device in the inventory list.
       let isLogger (EquippedEntry e) = e ^. entityName == "logger"
@@ -160,26 +162,26 @@ checkLogUpdated fr = do
 --   game for some number of ticks.
 updateUI :: EventM Name AppState Bool
 updateUI = do
-  g <- use $ playState . gameState
+  g <- use $ playState . scenarioState . gameState
 
-  Brick.zoom (playState . gameState) loadVisibleRegion
+  Brick.zoom (playState . scenarioState . gameState) loadVisibleRegion
 
   -- If the game state indicates a redraw is needed, invalidate the
   -- world cache so it will be redrawn.
   when (g ^. needsRedraw) $ invalidateCacheEntry WorldCache
 
   let fr = g ^. to focusedRobot
-  inventoryUpdated <- Brick.zoom playState $ checkInventoryUpdated fr
+  inventoryUpdated <- Brick.zoom (playState . scenarioState) $ checkInventoryUpdated fr
 
   -- Now check if the base finished running a program entered at the REPL.
-  replUpdated <- Brick.zoom playState $ checkReplUpdated g
+  replUpdated <- Brick.zoom (playState . scenarioState) $ checkReplUpdated g
 
   -- If the focused robot's log has been updated and the UI focus
   -- isn't currently on the inventory or info panels, attempt to
   -- automatically switch to the logger and scroll all the way down so
   -- the new message can be seen.
-  playState . uiGameplay . uiScrollToEnd .= False
-  logUpdated <- Brick.zoom playState $ checkLogUpdated fr
+  playState . scenarioState . uiGameplay . uiScrollToEnd .= False
+  logUpdated <- Brick.zoom (playState . scenarioState) $ checkLogUpdated fr
 
   menu <- use $ uiState . uiMenu
   goalOrWinUpdated <- doGoalUpdates menu
@@ -187,10 +189,10 @@ updateUI = do
   newPopups <- generateNotificationPopups
 
   -- Update the robots modal only when it is enabled.  See #2370.
-  curModal <- use $ playState . uiGameplay . uiDialogs . uiModal
+  curModal <- use $ playState . scenarioState . uiGameplay . uiDialogs . uiModal
   when ((view modalType <$> curModal) == Just RobotsModal) $ do
     dOps <- use $ uiState . uiDebugOptions
-    Brick.zoom playState $ doRobotListUpdate dOps g
+    Brick.zoom (playState . scenarioState) $ doRobotListUpdate dOps g
 
   let redraw =
         g ^. needsRedraw
@@ -201,7 +203,7 @@ updateUI = do
           || newPopups
   pure redraw
 
-doRobotListUpdate :: Set DebugOption -> GameState -> EventM Name PlayState ()
+doRobotListUpdate :: Set DebugOption -> GameState -> EventM Name ScenarioState ()
 doRobotListUpdate dOps g = do
   gp <- use uiGameplay
 
@@ -246,9 +248,9 @@ updateRobotDetailsPane robotPayload =
 -- * shows the player more "optional" goals they can continue to pursue
 doGoalUpdates :: Menu -> EventM Name AppState Bool
 doGoalUpdates menu = do
-  curGoal <- use (playState . uiGameplay . uiDialogs . uiGoal . goalsContent)
-  curWinCondition <- use (playState . gameState . winCondition)
-  announcementsList <- use (playState . gameState . messageInfo . announcementQueue . to toList)
+  curGoal <- use (playState . scenarioState . uiGameplay . uiDialogs . uiGoal . goalsContent)
+  curWinCondition <- use (playState . scenarioState . gameState . winCondition)
+  announcementsList <- use (playState . scenarioState . gameState . messageInfo . announcementQueue . to toList)
   showHiddenGoals <- use $ uiState . uiDebugOptions . Lens.contains ShowHiddenGoals
 
   -- Decide whether we need to update the current goal text and pop
@@ -256,14 +258,14 @@ doGoalUpdates menu = do
   case curWinCondition of
     NoWinCondition -> return False
     WinConditions (Unwinnable False) x -> do
-      Brick.zoom playState $ do
+      Brick.zoom (playState . scenarioState) $ do
         -- This clears the "flag" that the Lose dialog needs to pop up
         gameState . winCondition .= WinConditions (Unwinnable True) x
         openModal menu $ ScenarioEndModal LoseModal
       saveScenarioInfoOnFinishNocheat
       return True
     WinConditions (Won False ts) x -> do
-      Brick.zoom playState $ do
+      Brick.zoom (playState . scenarioState) $ do
         -- This clears the "flag" that the Win dialog needs to pop up
         gameState . winCondition .= WinConditions (Won True ts) x
         openModal menu $ ScenarioEndModal WinModal
@@ -276,7 +278,7 @@ doGoalUpdates menu = do
       -- quits to the menu or (2) selects 'next challenge' we will
       -- advance the menu at that point.
       return True
-    WinConditions _ oc -> Brick.zoom playState $ do
+    WinConditions _ oc -> Brick.zoom (playState . scenarioState) $ do
       currentModal <- preuse $ uiGameplay . uiDialogs . uiModal . _Just . modalType
       let newGoalTracking = GoalTracking announcementsList $ constructGoalMap showHiddenGoals oc
           -- The "uiGoal" field is initialized with empty members, so we know that
@@ -326,18 +328,18 @@ doGoalUpdates menu = do
 -- | Pops up notifications when new recipes or commands are unlocked.
 generateNotificationPopups :: EventM Name AppState Bool
 generateNotificationPopups = do
-  rs <- use $ playState . gameState . discovery . availableRecipes
+  rs <- use $ playState . scenarioState . gameState . discovery . availableRecipes
   let newRecipes = rs ^. notificationsShouldAlert
   when newRecipes $ do
     runtimeState . progression . uiPopups %= addPopup RecipesPopup
-    playState . gameState . discovery . availableRecipes . notificationsShouldAlert .= False
+    playState . scenarioState . gameState . discovery . availableRecipes . notificationsShouldAlert .= False
 
-  cs <- use $ playState . gameState . discovery . availableCommands
+  cs <- use $ playState . scenarioState . gameState . discovery . availableCommands
   let alertCommands = cs ^. notificationsShouldAlert
   when alertCommands $ do
     let newCommands = take (cs ^. notificationsCount) (cs ^. notificationsContent)
     runtimeState . progression . uiPopups %= addPopup (CommandsPopup newCommands)
-    playState . gameState . discovery . availableCommands . notificationsShouldAlert .= False
+    playState . scenarioState . gameState . discovery . availableCommands . notificationsShouldAlert .= False
 
   return $ newRecipes || alertCommands
 
