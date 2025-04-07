@@ -37,14 +37,16 @@ import Swarm.TUI.View.Util (generateModal)
 -- | Handle user input events in the robot panel.
 handleRobotPanelEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleRobotPanelEvent bev = do
-  search <- use $ playState . uiGameplay . uiInventory . uiInventorySearch
+  search <- use $ playState . scenarioState . uiGameplay . uiInventory . uiInventorySearch
   keyHandler <- use $ keyEventHandling . keyDispatchers . to robotDispatcher
   case search of
     Just _ -> handleInventorySearchEvent bev
     Nothing -> case bev of
       VtyEvent ev@(V.EvKey k m) -> do
         handled <- handleKey keyHandler k m
-        unless handled $ Brick.zoom (playState . uiGameplay) $ handleInventoryListEvent ev
+        unless handled $
+          Brick.zoom (playState . scenarioState . uiGameplay) $
+            handleInventoryListEvent ev
       _ -> continueWithoutRedraw
 
 -- | Handle key events in the robot panel.
@@ -55,17 +57,17 @@ robotEventHandlers = nonCustomizableHandlers <> customizableHandlers
     [ onKey V.KEnter "Show entity description" $ playStateWithMenu showEntityDescription
     ]
   customizableHandlers = allHandlers Robot $ \case
-    MakeEntityEvent -> ("Make the selected entity", Brick.zoom playState makeFocusedEntity)
+    MakeEntityEvent -> ("Make the selected entity", Brick.zoom (playState . scenarioState) makeFocusedEntity)
     ShowZeroInventoryEntitiesEvent -> ("Show entities with zero count in inventory", zoomInventory showZero)
     CycleInventorySortEvent -> ("Cycle inventory sorting type", zoomInventory cycleSort)
     SwitchInventorySortDirection -> ("Switch ascending/descending inventory sort", zoomInventory switchSortDirection)
     SearchInventoryEvent -> ("Start inventory search", zoomInventory searchInventory)
 
 -- | Display a modal window with the description of an entity.
-showEntityDescription :: Menu -> EventM Name PlayState ()
+showEntityDescription :: Menu -> EventM Name ScenarioState ()
 showEntityDescription m = gets focusedEntity >>= maybe continueWithoutRedraw descriptionModal
  where
-  descriptionModal :: Entity -> EventM Name PlayState ()
+  descriptionModal :: Entity -> EventM Name ScenarioState ()
   descriptionModal e = do
     s <- get
     resetViewport modalScroll
@@ -73,10 +75,10 @@ showEntityDescription m = gets focusedEntity >>= maybe continueWithoutRedraw des
 
 -- | Attempt to make an entity selected from the inventory, if the
 --   base is not currently busy.
-makeFocusedEntity :: EventM Name PlayState ()
+makeFocusedEntity :: EventM Name ScenarioState ()
 makeFocusedEntity = gets focusedEntity >>= maybe continueWithoutRedraw makeEntity
  where
-  makeEntity :: Entity -> EventM Name PlayState ()
+  makeEntity :: Entity -> EventM Name ScenarioState ()
   makeEntity e = do
     s <- get
     let name = e ^. entityName
@@ -137,7 +139,7 @@ handleInventorySearchEvent = \case
     zoomInventory $ uiInventorySearch %= fmap (T.dropEnd 1)
   -- Handle any other event as list navigation, so we can look through
   -- the filtered inventory using e.g. arrow keys
-  VtyEvent ev -> Brick.zoom (playState . uiGameplay) $ handleInventoryListEvent ev
+  VtyEvent ev -> Brick.zoom (playState . scenarioState . uiGameplay) $ handleInventoryListEvent ev
   _ -> continueWithoutRedraw
 
 -- ----------------------------------------------
@@ -145,6 +147,6 @@ handleInventorySearchEvent = \case
 -- ----------------------------------------------
 
 zoomInventory :: EventM Name UIInventory () -> EventM Name AppState ()
-zoomInventory act = Brick.zoom (playState . uiGameplay . uiInventory) $ do
+zoomInventory act = Brick.zoom (playState . scenarioState . uiGameplay . uiInventory) $ do
   uiInventoryShouldUpdate .= True
   act

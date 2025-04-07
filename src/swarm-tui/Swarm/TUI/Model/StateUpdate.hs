@@ -170,9 +170,9 @@ constructAppState rs ui key opts@(AppOpts {..}) = do
   startTime <- sendIO $ getTime Monotonic
 
   let gs = initGameState (rs ^. stdGameConfigInputs)
-      ps = PlayState gs $ initialUiGameplay startTime history
+      ps = PlayState $ ScenarioState gs $ initialUiGameplay startTime history
   case skipMenu opts of
-    False -> return $ AppState (ps & uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) ui key rs
+    False -> return $ AppState (ps & scenarioState . uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) ui key rs
     True -> do
       let tem = gs ^. landscape . terrainAndEntities
       (scenario, path) <-
@@ -317,10 +317,10 @@ scenarioToAppState ::
 scenarioToAppState siPair@(ScenarioWith scene p) lp = do
   rs <- use runtimeState
   gs <- liftIO $ scenarioToGameState (ScenarioWith scene $ Just p) lp $ rs ^. stdGameConfigInputs
-  playState . gameState .= gs
+  playState . scenarioState . gameState .= gs
 
   curTime <- liftIO $ getTime Monotonic
-  playState . uiGameplay %= setUIGameplay gs curTime isAutoplaying siPair
+  playState . scenarioState . uiGameplay %= setUIGameplay gs curTime isAutoplaying siPair
 
   void $ withLensIO uiState $ scenarioToUIState siPair
  where

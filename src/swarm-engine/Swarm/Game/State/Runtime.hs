@@ -56,8 +56,8 @@ import Swarm.Util.Lens (makeLensesNoSigs)
 -- | State that can evolve as the user progresses through scenarios.
 -- This includes achievements and completion records.
 --
--- Note that these things are also serialized to disk storage, but
--- we also persist in memory since we don't reload data from disk as
+-- Note that scenario completion/achievements are serialized to disk storage,
+-- but we also persist in memory since we don't reload data from disk as
 -- we progress through scenarios.
 data ProgressionState = ProgressionState
   { _scenarios :: ScenarioCollection ScenarioInfo

@@ -38,7 +38,7 @@ import Swarm.Util (maximum0)
 import Witch (from, into)
 
 -- | Generate a fresh modal window of the requested type.
-generateModal :: Menu -> PlayState -> ModalType -> Modal
+generateModal :: Menu -> ScenarioState -> ModalType -> Modal
 generateModal m s mt =
   Modal mt (dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth))
  where

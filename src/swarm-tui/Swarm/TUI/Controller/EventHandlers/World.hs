@@ -30,8 +30,8 @@ worldEventHandlers = allHandlers World $ \case
 
 scrollViewInDir :: V2 Int32 -> EventM Name AppState ()
 scrollViewInDir d = do
-  c <- use $ playState . gameState . creativeMode
-  s <- use $ playState . gameState . landscape . worldScrollable
+  c <- use $ playState . scenarioState . gameState . creativeMode
+  s <- use $ playState . scenarioState . gameState . landscape . worldScrollable
   when (c || s) $ scrollView (.+^ (worldScrollDist *^ d))
 
 worldScrollDist :: Int32
@@ -45,4 +45,4 @@ scrollView update = do
   -- always work, but there seems to be some sort of race condition
   -- where 'needsRedraw' gets reset before the UI drawing code runs.
   invalidateCacheEntry WorldCache
-  playState . gameState . robotInfo %= modifyViewCenter (fmap update)
+  playState . scenarioState . gameState . robotInfo %= modifyViewCenter (fmap update)
