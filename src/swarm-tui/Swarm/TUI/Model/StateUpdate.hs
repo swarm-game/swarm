@@ -260,9 +260,10 @@ startGameWithSeed ::
   m ()
 startGameWithSeed siPair@(_scene, si) lp = do
   t <- liftIO getZonedTime
-  ss <- use $ runtimeState . scenarios
+  ss <- use $ runtimeState . progression . scenarios
   p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
   runtimeState
+    . progression
     . scenarios
     . scenarioItemByPath p
     . _SISingle

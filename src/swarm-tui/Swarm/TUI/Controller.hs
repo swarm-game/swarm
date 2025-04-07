@@ -177,10 +177,10 @@ handleMainMenuEvent menu = \case
   Key V.KEnter ->
     forM_ (snd <$> BL.listSelectedElement menu) $ \case
       NewGame -> do
-        ss <- use $ runtimeState . scenarios
+        ss <- use $ runtimeState . progression . scenarios
         uiState . uiMenu .= NewGameMenu (pure $ mkScenarioList ss)
       Tutorial -> do
-        ss <- use $ runtimeState . scenarios
+        ss <- use $ runtimeState . progression . scenarios
 
         -- Extract the first unsolved tutorial challenge
         let tutorialCollection = getTutorials ss
