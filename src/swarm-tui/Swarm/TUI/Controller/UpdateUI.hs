@@ -34,7 +34,6 @@ import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
-import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
@@ -331,14 +330,14 @@ generateNotificationPopups = do
   rs <- use $ playState . scenarioState . gameState . discovery . availableRecipes
   let newRecipes = rs ^. notificationsShouldAlert
   when newRecipes $ do
-    runtimeState . progression . uiPopups %= addPopup RecipesPopup
+    playState . progression . uiPopups %= addPopup RecipesPopup
     playState . scenarioState . gameState . discovery . availableRecipes . notificationsShouldAlert .= False
 
   cs <- use $ playState . scenarioState . gameState . discovery . availableCommands
   let alertCommands = cs ^. notificationsShouldAlert
   when alertCommands $ do
     let newCommands = take (cs ^. notificationsCount) (cs ^. notificationsContent)
-    runtimeState . progression . uiPopups %= addPopup (CommandsPopup newCommands)
+    playState . progression . uiPopups %= addPopup (CommandsPopup newCommands)
     playState . scenarioState . gameState . discovery . availableCommands . notificationsShouldAlert .= False
 
   return $ newRecipes || alertCommands
