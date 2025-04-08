@@ -727,9 +727,10 @@ testLanguagePipeline =
     , testGroup
         "Custom error message for missing end #1141"
         [ testCase
-            "missing end" $ do
-            source <- TIO.readFile "data/test/language-snippets/errors/missing-end.sw"
-            processCompare T.isInfixOf source "end"
+            "missing end"
+            $ do
+              source <- TIO.readFile "data/test/language-snippets/errors/missing-end.sw"
+              processCompare T.isInfixOf source "end"
         ]
     ]
  where
