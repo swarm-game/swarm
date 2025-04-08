@@ -20,7 +20,7 @@ import Data.Functor.Identity (runIdentity)
 import Data.List.Extra (enumerate)
 import Data.Text qualified as T
 import Swarm.Failure (SystemFailure)
-import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (..), ScenarioInfoPair, getLaunchParams, scenarioStatus)
+import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (..), ScenarioInfo, ScenarioInfoPair, getLaunchParams, scenarioStatus)
 import Swarm.Game.State (ValidatedLaunchParams, getRunCodePath, parseCodeFile)
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Pretty (prettyText)
@@ -116,7 +116,7 @@ initFileBrowserWidget maybePlayedScript = do
 -- * The "marked file" is persisted outside of the 'FB.FileBrowser' state, and the
 --   "initial directory" is set upon instantiation from that external state.
 prepareLaunchDialog ::
-  ScenarioInfoPair ->
+  ScenarioInfoPair ScenarioInfo ->
   EventM Name LaunchOptions ()
 prepareLaunchDialog siPair@(_, si) = do
   let serializableLaunchParams = getLaunchParams $ si ^. scenarioStatus

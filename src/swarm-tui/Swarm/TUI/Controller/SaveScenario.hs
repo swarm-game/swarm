@@ -32,7 +32,7 @@ import System.FilePath (splitDirectories)
 getNormalizedCurrentScenarioPath ::
   MonadIO m =>
   GameState ->
-  ScenarioCollection ->
+  ScenarioCollection a ->
   m (Maybe FilePath)
 getNormalizedCurrentScenarioPath gs sc = do
   -- the path should be normalized and good to search in scenario collection

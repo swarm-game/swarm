@@ -62,9 +62,9 @@ data ModalType
 data ButtonAction
   = Cancel
   | KeepPlaying
-  | StartOver Seed ScenarioInfoPair
+  | StartOver Seed (ScenarioInfoPair ScenarioInfo)
   | QuitAction
-  | Next ScenarioInfoPair
+  | Next (ScenarioInfoPair ScenarioInfo)
 
 data Modal = Modal
   { _modalType :: ModalType
@@ -90,7 +90,7 @@ data Menu
     -- menu item is ALWAYS the same as the scenario currently being played.
     -- See https://github.com/swarm-game/swarm/issues/1064 and
     -- https://github.com/swarm-game/swarm/pull/1065.
-    NewGameMenu (NonEmpty (BL.List Name ScenarioItem))
+    NewGameMenu (NonEmpty (BL.List Name (ScenarioItem ScenarioInfo)))
   | AchievementsMenu (BL.List Name CategorizedAchievement)
   | MessagesMenu
   | AboutMenu
@@ -101,25 +101,25 @@ mainMenu e = BL.list MenuList (V.fromList enumerate) 1 & BL.listMoveToElement e
 makePrisms ''Menu
 
 -- | Create a brick 'BL.List' of scenario items from a 'ScenarioCollection'.
-mkScenarioList :: ScenarioCollection -> BL.List Name ScenarioItem
+mkScenarioList :: ScenarioCollection ScenarioInfo -> BL.List Name (ScenarioItem ScenarioInfo)
 mkScenarioList = flip (BL.list ScenarioList) 1 . V.fromList . scenarioCollectionToList
 
 -- | Given a 'ScenarioCollection' and a 'FilePath' which is the canonical
 --   path to some folder or scenario, construct a 'NewGameMenu' stack
 --   focused on the given item, if possible.
-mkNewGameMenu :: ScenarioCollection -> FilePath -> Maybe Menu
+mkNewGameMenu :: ScenarioCollection ScenarioInfo -> FilePath -> Maybe Menu
 mkNewGameMenu sc path = fmap NewGameMenu $ NE.nonEmpty =<< go (Just sc) (splitPath path) []
  where
   go ::
-    Maybe ScenarioCollection ->
+    Maybe (ScenarioCollection ScenarioInfo) ->
     [FilePath] ->
-    [BL.List Name ScenarioItem] ->
-    Maybe [BL.List Name ScenarioItem]
+    [BL.List Name (ScenarioItem ScenarioInfo)] ->
+    Maybe [BL.List Name (ScenarioItem ScenarioInfo)]
   go _ [] stk = Just stk
   go Nothing _ _ = Nothing
   go (Just curSC) (thing : rest) stk = go nextSC rest (lst : stk)
    where
-    hasName :: ScenarioItem -> Bool
+    hasName :: ScenarioItem ScenarioInfo -> Bool
     hasName (SISingle (_, ScenarioInfo pth _)) = takeFileName pth == thing
     hasName (SICollection nm _) = nm == into @Text (dropTrailingPathSeparator thing)
 

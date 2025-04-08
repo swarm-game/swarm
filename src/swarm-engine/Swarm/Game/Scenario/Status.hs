@@ -92,7 +92,7 @@ instance ToJSON ScenarioInfo where
   toEncoding = genericToEncoding scenarioOptions
   toJSON = genericToJSON scenarioOptions
 
-type ScenarioInfoPair = (Scenario, ScenarioInfo)
+type ScenarioInfoPair a = (Scenario, a)
 
 makeLensesNoSigs ''ScenarioInfo
 

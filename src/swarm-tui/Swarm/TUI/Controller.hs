@@ -186,7 +186,7 @@ handleMainMenuEvent menu = \case
         let tutorialCollection = getTutorials ss
             tutorials = scenarioCollectionToList tutorialCollection
             -- Find first unsolved tutorial, or first tutorial if all are solved
-            firstUnsolved :: Maybe ScenarioItem
+            firstUnsolved :: Maybe (ScenarioItem ScenarioInfo)
             firstUnsolved = find unsolved tutorials <|> listToMaybe tutorials
             unsolved = \case
               SISingle (_, si) -> case si ^. scenarioStatus of
@@ -264,7 +264,7 @@ handleMainMessagesEvent = \case
 
 -- TODO: #2010 Finish porting Controller to KeyEventHandlers
 handleNewGameMenuEvent ::
-  NonEmpty (BL.List Name ScenarioItem) ->
+  NonEmpty (BL.List Name (ScenarioItem ScenarioInfo)) ->
   BrickEvent Name AppEvent ->
   EventM Name AppState ()
 handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
@@ -287,7 +287,9 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
     Just (SISingle siPair) -> Brick.zoom (uiState . uiLaunchConfig) $ prepareLaunchDialog siPair
     _ -> pure ()
 
-exitNewGameMenu :: NonEmpty (BL.List Name ScenarioItem) -> EventM Name AppState ()
+exitNewGameMenu ::
+  NonEmpty (BL.List Name (ScenarioItem ScenarioInfo)) ->
+  EventM Name AppState ()
 exitNewGameMenu stk = do
   uiState
     . uiMenu
