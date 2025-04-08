@@ -47,6 +47,7 @@ import Swarm.Game.Scenario (
 import Swarm.Game.Scenario.Objective (objectiveGoal)
 import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
+  ScenarioInfo,
   ScenarioInfoPair,
   flatten,
   getTutorials,
@@ -81,7 +82,7 @@ data CoverageInfo = CoverageInfo
 -- introduced in their solution and descriptions
 -- having been extracted
 data TutorialInfo = TutorialInfo
-  { scenarioPair :: ScenarioInfoPair
+  { scenarioPair :: ScenarioInfoPair ScenarioInfo
   , tutIndex :: Int
   , solutionCommands :: Map Const [SrcLoc]
   , descriptionCommands :: Set Const
@@ -96,7 +97,7 @@ data CommandAccum = CommandAccum
 -- * Functions
 
 -- | Extract commands from both goal descriptions and solution code.
-extractCommandUsages :: Int -> ScenarioInfoPair -> TutorialInfo
+extractCommandUsages :: Int -> ScenarioInfoPair ScenarioInfo -> TutorialInfo
 extractCommandUsages idx siPair@(s, _si) =
   TutorialInfo siPair idx solnCommands $ getDescCommands s
  where
@@ -142,13 +143,13 @@ getCommands (Just tsyn) =
 
 -- | "fold" over the tutorials in sequence to determine which
 -- commands are novel to each tutorial's solution.
-computeCommandIntroductions :: [(Int, ScenarioInfoPair)] -> [CoverageInfo]
+computeCommandIntroductions :: [(Int, ScenarioInfoPair ScenarioInfo)] -> [CoverageInfo]
 computeCommandIntroductions =
   reverse . tuts . foldl' f initial
  where
   initial = CommandAccum mempty mempty
 
-  f :: CommandAccum -> (Int, ScenarioInfoPair) -> CommandAccum
+  f :: CommandAccum -> (Int, ScenarioInfoPair ScenarioInfo) -> CommandAccum
   f (CommandAccum encounteredPreviously xs) (idx, siPair) =
     CommandAccum updatedEncountered $ CoverageInfo usages novelCommands : xs
    where
@@ -160,7 +161,7 @@ computeCommandIntroductions =
 
 -- | Extract the tutorials from the complete scenario collection
 -- and derive their command coverage info.
-generateIntroductionsSequence :: ScenarioCollection -> [CoverageInfo]
+generateIntroductionsSequence :: ScenarioCollection ScenarioInfo -> [CoverageInfo]
 generateIntroductionsSequence =
   computeCommandIntroductions . zipFrom 0 . getTuts
  where
@@ -173,7 +174,7 @@ generateIntroductionsSequence =
 
 -- | Helper for standalone rendering.
 -- For unit tests, can instead access the scenarios via the GameState.
-loadScenarioCollection :: IO ScenarioCollection
+loadScenarioCollection :: IO (ScenarioCollection ScenarioInfo)
 loadScenarioCollection = simpleErrorHandle $ do
   tem <- loadEntitiesAndTerrain
 

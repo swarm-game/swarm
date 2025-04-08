@@ -57,6 +57,7 @@ import Control.Lens hiding (from, (<.>))
 import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Text (Text)
 import Swarm.Game.ScenarioInfo (
+  ScenarioInfo,
   ScenarioInfoPair,
  )
 import Swarm.Game.Universe
@@ -212,7 +213,7 @@ data UIGameplay = UIGameplay
   , _uiShowDebug :: Bool
   , _uiHideRobotsUntil :: TimeSpec
   , _uiTiming :: UITiming
-  , _scenarioRef :: Maybe ScenarioInfoPair
+  , _scenarioRef :: Maybe (ScenarioInfoPair ScenarioInfo)
   }
 
 -- * Lenses for UIGameplay
@@ -269,4 +270,4 @@ uiShowRobots :: Getter UIGameplay Bool
 uiShowRobots = to (\ui -> ui ^. uiTiming . lastFrameTime > ui ^. uiHideRobotsUntil)
 
 -- | The currently active Scenario description, useful for starting over.
-scenarioRef :: Lens' UIGameplay (Maybe ScenarioInfoPair)
+scenarioRef :: Lens' UIGameplay (Maybe (ScenarioInfoPair ScenarioInfo))

@@ -36,7 +36,7 @@ import Swarm.Failure (SystemFailure)
 import Swarm.Game.Land
 import Swarm.Game.Recipe (loadRecipes)
 import Swarm.Game.Scenario (GameStateInputs (..), ScenarioInputs (..))
-import Swarm.Game.ScenarioInfo (ScenarioCollection, loadScenarios)
+import Swarm.Game.ScenarioInfo (ScenarioCollection, ScenarioInfo, loadScenarios)
 import Swarm.Game.State.Substate
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Log
@@ -47,7 +47,7 @@ data RuntimeState = RuntimeState
   { _webPort :: Maybe Int
   , _upstreamRelease :: Either (Severity, Text) String
   , _eventLog :: Notifications LogEntry
-  , _scenarios :: ScenarioCollection
+  , _scenarios :: ScenarioCollection ScenarioInfo
   , _stdGameConfigInputs :: GameStateConfig
   , _appData :: Map Text Text
   }
@@ -131,7 +131,7 @@ upstreamRelease :: Lens' RuntimeState (Either (Severity, Text) String)
 eventLog :: Lens' RuntimeState (Notifications LogEntry)
 
 -- | The collection of scenarios that comes with the game.
-scenarios :: Lens' RuntimeState ScenarioCollection
+scenarios :: Lens' RuntimeState (ScenarioCollection ScenarioInfo)
 
 -- | Built-in resources for loading games
 stdGameConfigInputs :: Lens' RuntimeState GameStateConfig

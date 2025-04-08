@@ -236,7 +236,7 @@ constructAppState rs ui key opts@(AppOpts {..}) = do
       }
 
 -- | Load a 'Scenario' and start playing the game.
-startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe CodeToRun -> m ()
+startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair ScenarioInfo -> Maybe CodeToRun -> m ()
 startGame siPair = startGameWithSeed siPair . LaunchParams (pure Nothing) . pure
 
 -- | Re-initialize the game from the stored reference to the current scenario.
@@ -248,14 +248,19 @@ startGame siPair = startGameWithSeed siPair . LaunchParams (pure Nothing) . pure
 --
 -- Since scenarios are stored as a Maybe in the UI state, we handle the Nothing
 -- case upstream so that the Scenario passed to this function definitely exists.
-restartGame :: (MonadIO m, MonadState AppState m) => Seed -> ScenarioInfoPair -> m ()
-restartGame currentSeed siPair = startGameWithSeed siPair $ LaunchParams (pure (Just currentSeed)) (pure Nothing)
+restartGame ::
+  (MonadIO m, MonadState AppState m) =>
+  Seed ->
+  ScenarioInfoPair ScenarioInfo ->
+  m ()
+restartGame currentSeed siPair =
+  startGameWithSeed siPair $ LaunchParams (pure (Just currentSeed)) (pure Nothing)
 
 -- | Load a 'Scenario' and start playing the game, with the
 --   possibility for the user to override the seed.
 startGameWithSeed ::
   (MonadIO m, MonadState AppState m) =>
-  ScenarioInfoPair ->
+  ScenarioInfoPair ScenarioInfo ->
   ValidatedLaunchParams ->
   m ()
 startGameWithSeed siPair@(_scene, si) lp = do
@@ -290,7 +295,7 @@ startGameWithSeed siPair@(_scene, si) lp = do
 -- | Modify the 'AppState' appropriately when starting a new scenario.
 scenarioToAppState ::
   (MonadIO m, MonadState AppState m) =>
-  ScenarioInfoPair ->
+  ScenarioInfoPair ScenarioInfo ->
   ValidatedLaunchParams ->
   m ()
 scenarioToAppState siPair@(scene, _) lp = do
@@ -318,7 +323,7 @@ setUIGameplay ::
   GameState ->
   TimeSpec ->
   Bool ->
-  ScenarioInfoPair ->
+  ScenarioInfoPair ScenarioInfo ->
   UIGameplay ->
   UIGameplay
 setUIGameplay gs curTime isAutoplaying siPair@(scenario, _) uig =
@@ -356,7 +361,7 @@ setUIGameplay gs curTime isAutoplaying siPair@(scenario, _) uig =
 
 -- | Modify the UI state appropriately when starting a new scenario.
 scenarioToUIState ::
-  ScenarioInfoPair ->
+  ScenarioInfoPair ScenarioInfo ->
   UIState ->
   IO UIState
 scenarioToUIState siPair u = do

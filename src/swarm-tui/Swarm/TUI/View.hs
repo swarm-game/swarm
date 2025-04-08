@@ -199,7 +199,7 @@ newVersionWidget = \case
 -- | When launching a game, a modal prompt may appear on another layer
 -- to input seed and/or a script to run.
 drawNewGameMenuUI ::
-  NonEmpty (BL.List Name ScenarioItem) ->
+  NonEmpty (BL.List Name (ScenarioItem ScenarioInfo)) ->
   LaunchOptions ->
   [Widget Name]
 drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
@@ -249,14 +249,14 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
     NotStarted -> withAttr cyanAttr $ txt "not started"
     Played _initialScript pm _best -> describeProgress pm
 
-  breadcrumbs :: [BL.List Name ScenarioItem] -> Text
+  breadcrumbs :: [BL.List Name (ScenarioItem ScenarioInfo)] -> Text
   breadcrumbs =
     T.intercalate " > "
       . ("Scenarios" :)
       . reverse
       . mapMaybe (fmap (scenarioItemName . snd) . BL.listSelectedElement)
 
-  drawDescription :: ScenarioItem -> Widget Name
+  drawDescription :: ScenarioItem ScenarioInfo -> Widget Name
   drawDescription (SICollection _ _) = txtWrap " "
   drawDescription (SISingle (s, si)) =
     vBox
