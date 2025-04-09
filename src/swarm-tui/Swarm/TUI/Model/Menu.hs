@@ -23,6 +23,7 @@ import Data.Vector qualified as V
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Entity as E
 import Swarm.Game.Ingredients
+import Swarm.Game.Scenario.Status (ScenarioPath (..), scenarioPath)
 import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
   ScenarioInfo (..),
@@ -62,9 +63,9 @@ data ModalType
 data ButtonAction
   = Cancel
   | KeepPlaying
-  | StartOver Seed (ScenarioInfoPair ScenarioInfo)
+  | StartOver Seed (ScenarioInfoPair ScenarioPath)
   | QuitAction
-  | Next (ScenarioInfoPair ScenarioInfo)
+  | Next (ScenarioInfoPair ScenarioPath)
 
 data Modal = Modal
   { _modalType :: ModalType
@@ -90,7 +91,7 @@ data Menu
     -- menu item is ALWAYS the same as the scenario currently being played.
     -- See https://github.com/swarm-game/swarm/issues/1064 and
     -- https://github.com/swarm-game/swarm/pull/1065.
-    NewGameMenu (NonEmpty (BL.List Name (ScenarioItem ScenarioInfo)))
+    NewGameMenu (NonEmpty (BL.List Name (ScenarioItem ScenarioPath)))
   | AchievementsMenu (BL.List Name CategorizedAchievement)
   | MessagesMenu
   | AboutMenu
@@ -101,8 +102,11 @@ mainMenu e = BL.list MenuList (V.fromList enumerate) 1 & BL.listMoveToElement e
 makePrisms ''Menu
 
 -- | Create a brick 'BL.List' of scenario items from a 'ScenarioCollection'.
-mkScenarioList :: ScenarioCollection ScenarioInfo -> BL.List Name (ScenarioItem ScenarioInfo)
-mkScenarioList = flip (BL.list ScenarioList) 1 . V.fromList . scenarioCollectionToList
+mkScenarioList :: ScenarioCollection a -> BL.List Name (ScenarioItem a)
+mkScenarioList =
+  flip (BL.list ScenarioList) 1
+    . V.fromList
+    . scenarioCollectionToList
 
 -- | Given a 'ScenarioCollection' and a 'FilePath' which is the canonical
 --   path to some folder or scenario, construct a 'NewGameMenu' stack
@@ -113,17 +117,17 @@ mkNewGameMenu sc path = fmap NewGameMenu $ NE.nonEmpty =<< go (Just sc) (splitPa
   go ::
     Maybe (ScenarioCollection ScenarioInfo) ->
     [FilePath] ->
-    [BL.List Name (ScenarioItem ScenarioInfo)] ->
-    Maybe [BL.List Name (ScenarioItem ScenarioInfo)]
+    [BL.List Name (ScenarioItem ScenarioPath)] ->
+    Maybe [BL.List Name (ScenarioItem ScenarioPath)]
   go _ [] stk = Just stk
   go Nothing _ _ = Nothing
   go (Just curSC) (thing : rest) stk = go nextSC rest (lst : stk)
    where
-    hasName :: ScenarioItem ScenarioInfo -> Bool
-    hasName (SISingle (_, ScenarioInfo pth _)) = takeFileName pth == thing
+    hasName :: ScenarioItem ScenarioPath -> Bool
+    hasName (SISingle (_, ScenarioPath pth)) = takeFileName pth == thing
     hasName (SICollection nm _) = nm == into @Text (dropTrailingPathSeparator thing)
 
-    lst = BL.listFindBy hasName (mkScenarioList curSC)
+    lst = BL.listFindBy hasName (mkScenarioList $ fmap (ScenarioPath . view scenarioPath) curSC)
 
     nextSC = case OM.lookup (dropTrailingPathSeparator thing) (scMap curSC) of
       Just (SICollection _ c) -> Just c

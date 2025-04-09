@@ -100,7 +100,9 @@ import Swarm.Game.Scenario.Topography.Center
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
+  scenarioItemByPath,
   scenarioItemName,
+  _SISingle,
  )
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
@@ -166,7 +168,7 @@ drawMenuUI s = case s ^. uiState . uiMenu of
   -- quit the app instead.  But just in case, we display the main menu anyway.
   NoMenu -> [drawMainMenuUI s (mainMenu NewGame)]
   MainMenu l -> [drawMainMenuUI s l]
-  NewGameMenu stk -> drawNewGameMenuUI stk $ s ^. uiState . uiLaunchConfig
+  NewGameMenu stk -> drawNewGameMenuUI s stk $ s ^. uiState . uiLaunchConfig
   AchievementsMenu l -> [drawAchievementsMenuUI s l]
   MessagesMenu -> [drawMainMessages s]
   AboutMenu -> [drawAboutMenuUI (s ^. runtimeState . appData . at "about")]
@@ -199,10 +201,11 @@ newVersionWidget = \case
 -- | When launching a game, a modal prompt may appear on another layer
 -- to input seed and/or a script to run.
 drawNewGameMenuUI ::
-  NonEmpty (BL.List Name (ScenarioItem ScenarioInfo)) ->
+  AppState ->
+  NonEmpty (BL.List Name (ScenarioItem ScenarioPath)) ->
   LaunchOptions ->
   [Widget Name]
-drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
+drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
   Nothing -> pure mainWidget
   Just _ -> drawLaunchConfigPanel launchOptions <> pure mainWidget
  where
@@ -232,14 +235,19 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
     (Nothing, Just (SISingle _)) -> hCenter $ txt "Press 'o' for launch options, or 'Enter' to launch with defaults"
     _ -> txt " "
 
-  drawScenarioItem (SISingle (s, si)) = padRight (Pad 1) (drawStatusInfo s si) <+> txt (s ^. scenarioMetadata . scenarioName)
+  drawScenarioItem (SISingle (s, ScenarioPath sPath)) = padRight (Pad 1) (drawStatusInfo s sPath) <+> txt (s ^. scenarioMetadata . scenarioName)
   drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
-  drawStatusInfo s si = case si ^. scenarioStatus of
-    NotStarted -> txt " ○ "
-    Played _script _latestMetric best | isCompleted best -> withAttr greenAttr $ txt " ● "
-    Played {} -> case s ^. scenarioOperation . scenarioObjectives of
-      [] -> withAttr cyanAttr $ txt " ◉ "
-      _ -> withAttr yellowAttr $ txt " ◎ "
+
+  drawStatusInfo s sPath = case currentScenarioInfo of
+    Nothing -> emptyWidget
+    Just si -> case si ^. scenarioStatus of
+      NotStarted -> txt " ○ "
+      Played _script _latestMetric best | isCompleted best -> withAttr greenAttr $ txt " ● "
+      Played {} -> case s ^. scenarioOperation . scenarioObjectives of
+        [] -> withAttr cyanAttr $ txt " ◉ "
+        _ -> withAttr yellowAttr $ txt " ◎ "
+   where
+    currentScenarioInfo = appState ^? runtimeState . scenarios . scenarioItemByPath sPath . _SISingle . _2
 
   isCompleted :: BestRecords -> Bool
   isCompleted best = best ^. scenarioBestByTime . metricProgress == Completed
@@ -249,25 +257,27 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
     NotStarted -> withAttr cyanAttr $ txt "not started"
     Played _initialScript pm _best -> describeProgress pm
 
-  breadcrumbs :: [BL.List Name (ScenarioItem ScenarioInfo)] -> Text
+  breadcrumbs :: [BL.List Name (ScenarioItem ScenarioPath)] -> Text
   breadcrumbs =
     T.intercalate " > "
       . ("Scenarios" :)
       . reverse
       . mapMaybe (fmap (scenarioItemName . snd) . BL.listSelectedElement)
 
-  drawDescription :: ScenarioItem ScenarioInfo -> Widget Name
+  drawDescription :: ScenarioItem ScenarioPath -> Widget Name
   drawDescription (SICollection _ _) = txtWrap " "
-  drawDescription (SISingle (s, si)) =
+  drawDescription (SISingle (s, ScenarioPath sPath)) =
     vBox
       [ drawMarkdown (nonBlank (s ^. scenarioOperation . scenarioDescription))
-      , cached (ScenarioPreview $ si ^. scenarioPath) $
+      , cached (ScenarioPreview sPath) $
           hCenter . padTop (Pad 1) . vLimit 6 $
             hLimitPercent 60 worldPeek
       , padTop (Pad 1) table
       ]
    where
     vc = determineStaticViewCenter (s ^. scenarioLandscape) worldTuples
+
+    currentScenarioInfo = appState ^? runtimeState . scenarios . scenarioItemByPath sPath . _SISingle . _2
 
     worldTuples = buildWorldTuples $ s ^. scenarioLandscape
     theWorlds =
@@ -295,15 +305,19 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
       )
     secondRow =
       ( txt "last:"
-      , Just $ describeStatus $ si ^. scenarioStatus
+      , stat
       )
+     where
+      stat = case currentScenarioInfo of
+        Nothing -> Nothing
+        Just si -> Just $ describeStatus $ si ^. scenarioStatus
 
     padTopLeft = padTop (Pad 1) . padLeft (Pad 1)
 
     tableRows =
       map (map padTopLeft . pairToList) $
         mapMaybe sequenceA $
-          firstRow : secondRow : makeBestScoreRows (si ^. scenarioStatus)
+          firstRow : secondRow : maybe [] (makeBestScoreRows . view scenarioStatus) currentScenarioInfo
     table =
       BT.renderTable
         . BT.surroundingBorder False

@@ -9,21 +9,23 @@ module Swarm.TUI.Controller.SaveScenario (
 ) where
 
 -- See Note [liftA2 re-export from Prelude]
+
 import Brick.Widgets.List qualified as BL
 import Control.Lens as Lens
-import Control.Monad (forM_, unless, when)
+import Control.Monad (forM_, unless, void, when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState)
-import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Maybe (listToMaybe)
 import Data.Time (getZonedTime)
 import Swarm.Game.Achievement.Definitions
-import Swarm.Game.Scenario.Status (scenarioIsCompleted, updateScenarioInfoOnFinish)
+import Swarm.Game.Scenario.Status (ScenarioPath (..), scenarioIsCompleted, updateScenarioInfoOnFinish)
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievements (attainAchievement, attainAchievement')
+import Swarm.TUI.Model.Menu (mkNewGameMenu)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI (uiDebugOptions, uiMenu)
 import Swarm.TUI.Model.UI.Gameplay
@@ -116,26 +118,12 @@ saveScenarioInfoOnQuit isNoMenu = do
     getNormalizedCurrentScenarioPath gs sc >>= mapM_ go
  where
   go p = do
-    maybeSi <- saveScenarioInfoOnFinish p
-    -- Note [scenario menu update]
-    -- Ensures that the scenario selection menu gets updated
-    -- with the high score/completion status
-    forM_
-      maybeSi
-      ( uiState
-          . uiMenu
-          . _NewGameMenu
-          . ix 0
-          . BL.listSelectedElementL
-          . _SISingle
-          . _2
-          .=
-      )
+    void $ saveScenarioInfoOnFinish p
 
     -- See what scenario is currently focused in the menu.  Depending on how the
     -- previous scenario ended (via quit vs. via win), it might be the same as
     -- currentScenarioPath or it might be different.
-    curPath <- preuse $ uiState . uiMenu . _NewGameMenu . ix 0 . BL.listSelectedElementL . _SISingle . _2 . scenarioPath
+    curPath <- preuse $ uiState . uiMenu . _NewGameMenu . ix 0 . BL.listSelectedElementL . _SISingle . _2
 
     -- If the menu is NoMenu, it means we skipped showing the
     -- menu at startup, so leave it alone; we simply want to
@@ -145,4 +133,4 @@ saveScenarioInfoOnQuit isNoMenu = do
     -- scenario.
     unless isNoMenu $ do
       sc <- use $ runtimeState . scenarios
-      forM_ (mkNewGameMenu sc (fromMaybe p curPath)) (uiState . uiMenu .=)
+      forM_ (mkNewGameMenu sc (maybe p getScenarioPath curPath)) (uiState . uiMenu .=)

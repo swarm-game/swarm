@@ -56,8 +56,8 @@ import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
 import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Text (Text)
+import Swarm.Game.Scenario.Status (ScenarioPath)
 import Swarm.Game.ScenarioInfo (
-  ScenarioInfo,
   ScenarioInfoPair,
  )
 import Swarm.Game.Universe
@@ -213,7 +213,7 @@ data UIGameplay = UIGameplay
   , _uiShowDebug :: Bool
   , _uiHideRobotsUntil :: TimeSpec
   , _uiTiming :: UITiming
-  , _scenarioRef :: Maybe (ScenarioInfoPair ScenarioInfo)
+  , _scenarioRef :: Maybe (ScenarioInfoPair ScenarioPath)
   }
 
 -- * Lenses for UIGameplay
@@ -270,4 +270,4 @@ uiShowRobots :: Getter UIGameplay Bool
 uiShowRobots = to (\ui -> ui ^. uiTiming . lastFrameTime > ui ^. uiHideRobotsUntil)
 
 -- | The currently active Scenario description, useful for starting over.
-scenarioRef :: Lens' UIGameplay (Maybe (ScenarioInfoPair ScenarioInfo))
+scenarioRef :: Lens' UIGameplay (Maybe (ScenarioInfoPair ScenarioPath))
