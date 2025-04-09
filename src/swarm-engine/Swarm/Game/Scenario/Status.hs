@@ -76,7 +76,9 @@ getLaunchParams = \case
   Played x _ _ -> x
 
 -- | The normalized path to a scenario, amenable to lookup
-newtype ScenarioPath = ScenarioPath FilePath
+newtype ScenarioPath = ScenarioPath {
+  getScenarioPath :: FilePath
+}
 
 -- | A 'ScenarioInfo' record stores metadata about a scenario: its
 -- canonical path and status.

@@ -517,7 +517,7 @@ quitGame isNoMenu = do
   liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
 
   -- Save scenario status info.
-  saveScenarioInfoOnQuit
+  saveScenarioInfoOnQuit isNoMenu
 
   -- Automatically advance the menu to the next scenario iff the
   -- player has won the current one.

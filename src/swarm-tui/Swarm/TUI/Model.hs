@@ -33,7 +33,6 @@ module Swarm.TUI.Model (
   Menu (..),
   _NewGameMenu,
   mkScenarioList,
-  mkNewGameMenu,
 
   -- * UI state
 
