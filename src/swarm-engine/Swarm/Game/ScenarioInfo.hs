@@ -111,6 +111,7 @@ fromMapOM = OM.fromList . M.toList
 -- | A scenario item is either a specific scenario, or a collection of
 --   scenarios (/e.g./ the scenarios contained in a subdirectory).
 data ScenarioItem a = SISingle (ScenarioInfoPair a) | SICollection Text (ScenarioCollection a)
+  deriving (Functor)
 
 -- | Retrieve the name of a scenario item.
 scenarioItemName :: ScenarioItem a -> Text
@@ -125,6 +126,7 @@ scenarioItemName (SICollection name _) = name
 newtype ScenarioCollection a = SC
   { scMap :: OMap FilePath (ScenarioItem a)
   }
+  deriving (Functor)
 
 -- | Access and modify 'ScenarioItem's in collection based on their path.
 scenarioItemByPath :: FilePath -> Traversal' (ScenarioCollection a) (ScenarioItem a)

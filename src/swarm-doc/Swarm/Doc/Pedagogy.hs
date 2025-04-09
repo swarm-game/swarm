@@ -45,6 +45,7 @@ import Swarm.Game.Scenario (
   scenarioSolution,
  )
 import Swarm.Game.Scenario.Objective (objectiveGoal)
+import Swarm.Game.Scenario.Status (ScenarioPath (..))
 import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
   ScenarioInfo,
@@ -82,7 +83,7 @@ data CoverageInfo = CoverageInfo
 -- introduced in their solution and descriptions
 -- having been extracted
 data TutorialInfo = TutorialInfo
-  { scenarioPair :: ScenarioInfoPair ScenarioInfo
+  { scenarioPair :: ScenarioInfoPair ScenarioPath
   , tutIndex :: Int
   , solutionCommands :: Map Const [SrcLoc]
   , descriptionCommands :: Set Const
@@ -97,7 +98,7 @@ data CommandAccum = CommandAccum
 -- * Functions
 
 -- | Extract commands from both goal descriptions and solution code.
-extractCommandUsages :: Int -> ScenarioInfoPair ScenarioInfo -> TutorialInfo
+extractCommandUsages :: Int -> ScenarioInfoPair ScenarioPath -> TutorialInfo
 extractCommandUsages idx siPair@(s, _si) =
   TutorialInfo siPair idx solnCommands $ getDescCommands s
  where
@@ -143,13 +144,13 @@ getCommands (Just tsyn) =
 
 -- | "fold" over the tutorials in sequence to determine which
 -- commands are novel to each tutorial's solution.
-computeCommandIntroductions :: [(Int, ScenarioInfoPair ScenarioInfo)] -> [CoverageInfo]
+computeCommandIntroductions :: [(Int, ScenarioInfoPair ScenarioPath)] -> [CoverageInfo]
 computeCommandIntroductions =
   reverse . tuts . foldl' f initial
  where
   initial = CommandAccum mempty mempty
 
-  f :: CommandAccum -> (Int, ScenarioInfoPair ScenarioInfo) -> CommandAccum
+  f :: CommandAccum -> (Int, ScenarioInfoPair ScenarioPath) -> CommandAccum
   f (CommandAccum encounteredPreviously xs) (idx, siPair) =
     CommandAccum updatedEncountered $ CoverageInfo usages novelCommands : xs
    where
@@ -163,7 +164,7 @@ computeCommandIntroductions =
 -- and derive their command coverage info.
 generateIntroductionsSequence :: ScenarioCollection ScenarioInfo -> [CoverageInfo]
 generateIntroductionsSequence =
-  computeCommandIntroductions . zipFrom 0 . getTuts
+  computeCommandIntroductions . zipFrom 0 . getTuts . fmap (ScenarioPath . view scenarioPath)
  where
   getTuts =
     concatMap flatten
@@ -186,14 +187,14 @@ loadScenarioCollection = simpleErrorHandle $ do
   ignoreWarnings @(Seq SystemFailure) $ loadScenarios (ScenarioInputs worlds tem) True
 
 renderUsagesMarkdown :: CoverageInfo -> Text
-renderUsagesMarkdown (CoverageInfo (TutorialInfo (s, si) idx _sCmds dCmds) novelCmds) =
+renderUsagesMarkdown (CoverageInfo (TutorialInfo (s, ScenarioPath sp) idx _sCmds dCmds) novelCmds) =
   T.unlines bodySections
  where
   bodySections = firstLine : otherLines
   otherLines =
     intercalate
       [""]
-      [ pure . surround "`" . T.pack $ view scenarioPath si
+      [ pure . surround "`" . T.pack $ sp
       , pure . surround "*" . T.strip . docToText $ view (scenarioOperation . scenarioDescription) s
       , renderSection "Introduced in solution" . renderCmdList $ M.keysSet novelCmds
       , renderSection "Referenced in description" $ renderCmdList dCmds
