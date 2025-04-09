@@ -313,7 +313,7 @@ defaultAppOpts =
 --   currently selected scenario (if any).  Can return @Nothing@ if
 --   either we are not in the @NewGameMenu@, or the current scenario
 --   is the last among its siblings.
-nextScenario :: Menu -> Maybe (ScenarioInfoPair ScenarioInfo)
+nextScenario :: Menu -> Maybe (ScenarioInfoPair ScenarioPath)
 nextScenario = \case
   NewGameMenu (curMenu :| _) ->
     let nextMenuList = BL.listMoveDown curMenu
