@@ -91,6 +91,10 @@ generateModal m s mt =
     stopMsg = fromMaybe "Return to the menu" haltingMessage
     continueMsg = "Keep playing"
 
+  maybeStartOver = do
+    cs <- currentScenario
+    return ("Start over", Button StartOverButton, StartOver currentSeed cs)
+
   mkLoseModal =
     ( ""
     , Just
@@ -106,9 +110,6 @@ generateModal m s mt =
    where
     stopMsg = fromMaybe "Return to the menu" haltingMessage
     continueMsg = "Keep playing"
-    maybeStartOver = do
-      cs <- currentScenario
-      return ("Start over", Button StartOverButton, StartOver currentSeed cs)
 
   isNoMenu = case m of
     NoMenu -> True
@@ -128,9 +129,6 @@ generateModal m s mt =
     )
    where
     stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName m) ++ " menu") haltingMessage
-    maybeStartOver = do
-      cs <- currentScenario
-      return ("Start over", Button StartOverButton, StartOver currentSeed cs)
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name

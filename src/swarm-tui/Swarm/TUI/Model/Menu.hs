@@ -16,26 +16,20 @@ import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
 import Data.List.Extra (enumerate)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.List.NonEmpty qualified as NE
-import Data.Map.Ordered qualified as OM
 import Data.Text (Text)
 import Data.Vector qualified as V
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Entity as E
 import Swarm.Game.Ingredients
-import Swarm.Game.Scenario.Status (ScenarioPath (..), scenarioPath)
+import Swarm.Game.Scenario.Status (ScenarioPath (..))
 import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
-  ScenarioInfo (..),
   ScenarioInfoPair,
   ScenarioItem (..),
-  scMap,
   scenarioCollectionToList,
  )
 import Swarm.Game.World.Gen (Seed)
 import Swarm.TUI.Model.Name
-import System.FilePath (dropTrailingPathSeparator, splitPath, takeFileName)
-import Witch (into)
 
 ------------------------------------------------------------
 -- Menus and dialogs
@@ -107,31 +101,6 @@ mkScenarioList =
   flip (BL.list ScenarioList) 1
     . V.fromList
     . scenarioCollectionToList
-
--- | Given a 'ScenarioCollection' and a 'FilePath' which is the canonical
---   path to some folder or scenario, construct a 'NewGameMenu' stack
---   focused on the given item, if possible.
-mkNewGameMenu :: ScenarioCollection ScenarioInfo -> FilePath -> Maybe Menu
-mkNewGameMenu sc path = fmap NewGameMenu $ NE.nonEmpty =<< go (Just sc) (splitPath path) []
- where
-  go ::
-    Maybe (ScenarioCollection ScenarioInfo) ->
-    [FilePath] ->
-    [BL.List Name (ScenarioItem ScenarioPath)] ->
-    Maybe [BL.List Name (ScenarioItem ScenarioPath)]
-  go _ [] stk = Just stk
-  go Nothing _ _ = Nothing
-  go (Just curSC) (thing : rest) stk = go nextSC rest (lst : stk)
-   where
-    hasName :: ScenarioItem ScenarioPath -> Bool
-    hasName (SISingle (_, ScenarioPath pth)) = takeFileName pth == thing
-    hasName (SICollection nm _) = nm == into @Text (dropTrailingPathSeparator thing)
-
-    lst = BL.listFindBy hasName (mkScenarioList $ fmap (ScenarioPath . view scenarioPath) curSC)
-
-    nextSC = case OM.lookup (dropTrailingPathSeparator thing) (scMap curSC) of
-      Just (SICollection _ c) -> Just c
-      _ -> Nothing
 
 ------------------------------------------------------------
 -- Inventory list entries
