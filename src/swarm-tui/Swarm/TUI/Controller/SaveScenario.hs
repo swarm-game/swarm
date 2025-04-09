@@ -9,22 +9,23 @@ module Swarm.TUI.Controller.SaveScenario (
 ) where
 
 -- See Note [liftA2 re-export from Prelude]
-import Control.Lens as Lens
-import Swarm.TUI.Model.Menu (mkNewGameMenu)
+
 import Brick.Widgets.List qualified as BL
-import Control.Monad (forM_, unless, when, void)
+import Control.Lens as Lens
+import Control.Monad (forM_, unless, void, when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState)
 import Data.Maybe (listToMaybe)
 import Data.Time (getZonedTime)
 import Swarm.Game.Achievement.Definitions
-import Swarm.Game.Scenario.Status (scenarioIsCompleted, updateScenarioInfoOnFinish, ScenarioPath(..))
+import Swarm.Game.Scenario.Status (ScenarioPath (..), scenarioIsCompleted, updateScenarioInfoOnFinish)
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievements (attainAchievement, attainAchievement')
+import Swarm.TUI.Model.Menu (mkNewGameMenu)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI (uiDebugOptions, uiMenu)
 import Swarm.TUI.Model.UI.Gameplay
@@ -133,4 +134,3 @@ saveScenarioInfoOnQuit isNoMenu = do
     unless isNoMenu $ do
       sc <- use $ runtimeState . scenarios
       forM_ (mkNewGameMenu sc (maybe p getScenarioPath curPath)) (uiState . uiMenu .=)
-
