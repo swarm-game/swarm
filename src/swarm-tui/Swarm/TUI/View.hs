@@ -308,9 +308,7 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
       , stat
       )
      where
-      stat = case currentScenarioInfo of
-        Nothing -> Nothing
-        Just si -> Just $ describeStatus $ si ^. scenarioStatus
+      stat = describeStatus . view scenarioStatus <$> currentScenarioInfo
 
     padTopLeft = padTop (Pad 1) . padLeft (Pad 1)
 

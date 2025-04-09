@@ -283,10 +283,6 @@ startGameWithSeed siPair@(_scene, si) lp = do
   ss <- use $ runtimeState . scenarios
   p <- liftIO $ normalizeScenarioPath ss $ si ^. scenarioPath
 
-  let prevBest = case si ^. scenarioStatus of
-        NotStarted -> emptyBest t
-        Played _ _ b -> b
-
   runtimeState
     . scenarios
     . scenarioItemByPath p
@@ -296,7 +292,7 @@ startGameWithSeed siPair@(_scene, si) lp = do
     .= Played
       (toSerializableParams lp)
       (Metric Attempted $ ProgressStats t emptyAttemptMetric)
-      prevBest
+      (prevBest t)
 
   scenarioToAppState (fmap (ScenarioPath . view scenarioPath) siPair) lp
   -- Beware: currentScenarioPath must be set so that progress/achievements can be saved.
@@ -308,6 +304,10 @@ startGameWithSeed siPair@(_scene, si) lp = do
   debugging <- use $ uiState . uiDebugOptions
   unless (null debugging) $
     uiState . uiPopups %= addPopup DebugWarningPopup
+ where
+  prevBest t = case si ^. scenarioStatus of
+    NotStarted -> emptyBest t
+    Played _ _ b -> b
 
 -- | Modify the 'AppState' appropriately when starting a new scenario.
 scenarioToAppState ::
