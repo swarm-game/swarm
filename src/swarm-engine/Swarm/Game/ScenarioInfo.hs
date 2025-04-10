@@ -286,10 +286,16 @@ loadScenarioInfo p = do
     then do
       return $
         ScenarioInfo path NotStarted
-    else
-      withThrow (AssetNotLoaded (Data Scenarios) infoPath . CanNotParseYaml)
-        . (liftEither <=< sendIO)
-        $ decodeFileEither infoPath
+    else do
+      ScenarioInfo _storedPath status <-
+        withThrow (AssetNotLoaded (Data Scenarios) infoPath . CanNotParseYaml)
+          . (liftEither <=< sendIO)
+          $ decodeFileEither infoPath
+      -- We discard the path that was saved inside the yaml file, so that there
+      -- is only a single authoritative path "key": the original scenario path.
+      --
+      -- TODO(#2390) Maybe we shouldn't store that path.
+      return $ ScenarioInfo path status
 
 -- | Save info about played scenario to XDG data directory.
 saveScenarioInfo ::
