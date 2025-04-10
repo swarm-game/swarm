@@ -269,6 +269,7 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
   drawDescription (SISingle (s, ScenarioPath sPath)) =
     vBox
       [ drawMarkdown (nonBlank (s ^. scenarioOperation . scenarioDescription))
+      , str "Path:" <+> str " " <+> withAttr cyanAttr (str sPath)
       , cached (ScenarioPreview sPath) $
           hCenter . padTop (Pad 1) . vLimit 6 $
             hLimitPercent 60 worldPeek
