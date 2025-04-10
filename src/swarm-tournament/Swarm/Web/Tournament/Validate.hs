@@ -27,7 +27,7 @@ import Swarm.Game.CESK (continue)
 import Swarm.Game.Robot.Concrete (machine)
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize (codeMetricsFromSyntax)
-import Swarm.Game.Scenario.Status (emptyLaunchParams)
+import Swarm.Game.Scenario.Status (ScenarioWith (..), emptyLaunchParams)
 import Swarm.Game.State
 import Swarm.Game.State.Initialize (scenarioToGameState)
 import Swarm.Game.State.Runtime (RuntimeOptions (..), initGameStateConfig, initScenarioInputs, pauseOnObjectiveCompletion)
@@ -193,7 +193,7 @@ gamestateFromScenarioText content = do
 
   let scenarioInputs = gsiScenarioInputs $ initState gsc
   scenarioObject <- initScenarioObject scenarioInputs content
-  gs <- liftIO $ scenarioToGameState scenarioObject emptyLaunchParams gsc
+  gs <- liftIO $ scenarioToGameState (ScenarioWith scenarioObject Nothing) emptyLaunchParams gsc
   return (gs, scenarioObject)
 
 verifySolution ::

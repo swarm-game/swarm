@@ -58,23 +58,23 @@ import System.Random (mkStdGen)
 
 -- | Create an initial game state corresponding to the given scenario.
 scenarioToGameState ::
-  Scenario ->
+  ScenarioWith (Maybe ScenarioPath) ->
   ValidatedLaunchParams ->
   GameStateConfig ->
   IO GameState
-scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun)) gsc = do
+scenarioToGameState si@(ScenarioWith scenario _) (LaunchParams (Identity userSeed) (Identity toRun)) gsc = do
   theSeed <- arbitrateSeed userSeed $ scenario ^. scenarioLandscape
   now <- Clock.getTime Clock.Monotonic
-  return $ pureScenarioToGameState scenario theSeed now toRun gsc
+  return $ pureScenarioToGameState si theSeed now toRun gsc
 
 pureScenarioToGameState ::
-  Scenario ->
+  ScenarioWith (Maybe ScenarioPath) ->
   Seed ->
   Clock.TimeSpec ->
   Maybe CodeToRun ->
   GameStateConfig ->
   GameState
-pureScenarioToGameState scenario theSeed now toRun gsc =
+pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gsc =
   preliminaryGameState
     & discovery . structureRecognition .~ recognition
  where
@@ -93,6 +93,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
   gs = initGameState gsc
   preliminaryGameState =
     gs
+      & currentScenarioPath .~ fp
       & robotInfo %~ setRobotInfo baseID robotList'
       & creativeMode .~ scenario ^. scenarioOperation . scenarioCreative
       & winCondition .~ theWinCondition
