@@ -52,9 +52,6 @@ saveScenarioInfoOnFinish p = do
   ts <- use $ playState . gameState . temporal . ticks
   saved <- use $ playState . gameState . completionStatsSaved
 
-  -- NOTE: This traversal is apparently not the same one as used by
-  -- the scenario selection menu, so the menu needs to be updated separately.
-  -- See Note [scenario menu update]
   let currentScenarioInfo :: Traversal' AppState ScenarioInfo
       currentScenarioInfo = runtimeState . scenarios . scenarioItemByPath p . _SISingle . _2
 
