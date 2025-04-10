@@ -48,6 +48,7 @@ import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Robot.Walk (emptyExceptions)
+import Swarm.Game.Scenario.Status (getScenarioPath)
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..), destination, reorientation)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
@@ -258,7 +259,7 @@ grantAchievement a = do
       %= M.insertWith
         (<>)
         a
-        (Attainment (GameplayAchievement a) scenarioPath currentTime)
+        (Attainment (GameplayAchievement a) (getScenarioPath <$> scenarioPath) currentTime)
 
 -- | Capabilities needed for a specific robot to evaluate or execute a
 --   constant.  Right now, the only difference is whether the robot is

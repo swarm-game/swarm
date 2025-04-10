@@ -36,7 +36,7 @@ getNormalizedCurrentScenarioPath ::
   m (Maybe FilePath)
 getNormalizedCurrentScenarioPath gs sc = do
   -- the path should be normalized and good to search in scenario collection
-  traverse (liftIO . normalizeScenarioPath sc) $ gs ^. currentScenarioPath
+  traverse (liftIO . normalizeScenarioPath sc . getScenarioPath) $ gs ^. currentScenarioPath
 
 saveScenarioInfoOnFinish ::
   (MonadIO m, MonadState AppState m) =>
@@ -68,7 +68,7 @@ saveScenarioInfoOnFinish p = do
   forM_ status $ \si -> do
     forM_ (listToMaybe $ splitDirectories p) $ \firstDir -> do
       when (won && firstDir == tutorialsDirname) $
-        attainAchievement' t (Just p) $
+        attainAchievement' t (Just $ ScenarioPath p) $
           GlobalAchievement CompletedSingleTutorial
     liftIO $ saveScenarioInfo p si
 
