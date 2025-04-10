@@ -620,6 +620,7 @@ library swarm-scenario
     Swarm.Game.Ingredients
     Swarm.Game.Land
     Swarm.Game.Recipe
+    Swarm.Game.Recipe.Graph
     Swarm.Game.Robot
     Swarm.Game.Robot.Walk
     Swarm.Game.Scenario

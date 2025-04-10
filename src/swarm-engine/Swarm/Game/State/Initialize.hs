@@ -33,6 +33,7 @@ import Swarm.Game.Recipe (
   inRecipeMap,
   outRecipeMap,
  )
+import Swarm.Game.Recipe.Graph (scenarioRecipeGraph, RecipeGraph(..))
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Scenario
@@ -101,6 +102,7 @@ pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gsc =
       & discovery . availableCommands .~ Notifications 0 False initialCommands
       & discovery . knownEntities .~ sLandscape ^. scenarioKnown
       & discovery . tagMembers .~ buildTagMap em
+      & discovery . craftableDevices .~ craftable
       & randomness . seed .~ theSeed
       & randomness . randGen .~ mkStdGen theSeed
       & recipesInfo %~ modifyRecipesInfo
@@ -113,6 +115,15 @@ pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gsc =
       & temporal . robotStepsPerTick .~ ((scenario ^. scenarioOperation . scenarioStepsPerTick) ? defaultRobotStepsPerTick)
 
   robotList' = (robotCreatedAt .~ now) <$> robotList
+
+  -- Get the names of all devices (i.e. entities that provide at least
+  -- one capability) which can be recursively crafted from the
+  -- starting inventory + entities available in the world
+  craftable = S.map (view entityName) . S.filter isDevice $ S.unions (rgLevels recipeGraph)
+   where
+    recipeGraph = scenarioRecipeGraph scenario (initState gsc)
+    isDevice :: Entity -> Bool
+    isDevice = not . M.null . getMap . view entityCapabilities
 
   modifyRecipesInfo oldRecipesInfo =
     oldRecipesInfo
