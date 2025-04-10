@@ -63,6 +63,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (originalStruct
 import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
   normalizeScenarioPath,
+  pathifyCollection,
   scenarioItemByPath,
   _SISingle,
  )
@@ -294,7 +295,7 @@ startGameWithSeed siPair@(_scene, si) lp = do
       (Metric Attempted $ ProgressStats t emptyAttemptMetric)
       (prevBest t)
 
-  scenarioToAppState (fmap (ScenarioPath . view scenarioPath) siPair) lp
+  scenarioToAppState (pathifyCollection siPair) lp
   -- Beware: currentScenarioPath must be set so that progress/achievements can be saved.
   -- It has just been cleared in scenarioToAppState.
   playState . gameState . currentScenarioPath .= Just p

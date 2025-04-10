@@ -53,8 +53,8 @@ import Swarm.Game.ScenarioInfo (
   flatten,
   getTutorials,
   loadScenarios,
+  pathifyCollection,
   scenarioCollectionToList,
-  scenarioPath,
  )
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Language.Syntax
@@ -164,7 +164,7 @@ computeCommandIntroductions =
 -- and derive their command coverage info.
 generateIntroductionsSequence :: ScenarioCollection ScenarioInfo -> [CoverageInfo]
 generateIntroductionsSequence =
-  computeCommandIntroductions . zipFrom 0 . getTuts . fmap (ScenarioPath . view scenarioPath)
+  computeCommandIntroductions . zipFrom 0 . getTuts . pathifyCollection
  where
   getTuts =
     concatMap flatten

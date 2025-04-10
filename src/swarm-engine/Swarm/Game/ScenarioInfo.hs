@@ -26,6 +26,7 @@ module Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
   scenarioItemName,
   _SISingle,
+  pathifyCollection,
 
   -- ** Tutorials
   tutorialsDirname,
@@ -127,6 +128,9 @@ newtype ScenarioCollection a = SC
   { scMap :: OMap FilePath (ScenarioItem a)
   }
   deriving (Functor)
+
+pathifyCollection :: Functor f => f ScenarioInfo -> f ScenarioPath
+pathifyCollection = fmap (ScenarioPath . view scenarioPath)
 
 -- | Access and modify 'ScenarioItem's in collection based on their path.
 scenarioItemByPath :: FilePath -> Traversal' (ScenarioCollection a) (ScenarioItem a)

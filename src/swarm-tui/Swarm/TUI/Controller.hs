@@ -179,7 +179,7 @@ handleMainMenuEvent menu = \case
     forM_ (snd <$> BL.listSelectedElement menu) $ \case
       NewGame -> do
         ss <- use $ runtimeState . scenarios
-        uiState . uiMenu .= NewGameMenu (pure $ mkScenarioList $ fmap (ScenarioPath . view scenarioPath) ss)
+        uiState . uiMenu .= NewGameMenu (pure $ mkScenarioList $ pathifyCollection ss)
       Tutorial -> do
         ss <- use $ runtimeState . scenarios
 
@@ -203,8 +203,7 @@ handleMainMenuEvent menu = \case
 
         -- Now set up the menu stack as if the user had chosen "New Game > Tutorials > t"
         -- where t is the tutorial scenario we identified as the first unsolved one
-        let pathifyCollection = fmap (ScenarioPath . view scenarioPath)
-            topMenu =
+        let topMenu =
               BL.listFindBy
                 ((== tutorialsDirname) . T.unpack . scenarioItemName)
                 (mkScenarioList $ pathifyCollection ss)
@@ -216,7 +215,7 @@ handleMainMenuEvent menu = \case
 
         -- Finally, set the menu stack, and start the scenario!
         uiState . uiMenu .= NewGameMenu menuStack
-        startGame (fmap (ScenarioPath . view scenarioPath) firstUnsolvedInfo) Nothing
+        startGame (pathifyCollection firstUnsolvedInfo) Nothing
       Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
       Messages -> do
         runtimeState . eventLog . notificationsCount .= 0
