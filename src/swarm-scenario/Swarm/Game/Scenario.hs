@@ -473,6 +473,7 @@ data GameStateInputs = GameStateInputs
   -- ^ The standard list of recipes loaded from disk.  Individual scenarios
   --   may define additional recipes which will get added to this list
   --   when loading the scenario.
+  , gsiCraftableDevices :: Set EntityName
   }
 
 -- |

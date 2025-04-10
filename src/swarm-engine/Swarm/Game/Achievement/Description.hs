@@ -103,6 +103,13 @@ describe = \case
       "`give` something to your`self`."
       Easy
       True
+  GameplayAchievement EquippedAllDevices ->
+    AchievementInfo
+      "Swiss Army Robot"
+      (Just $ Freeform "You never know when that might come in handy...")
+      "`equip` all craftable devices simultaneously."
+      Gruelling
+      True
 
 -- | Validity conditions are required if-and-only-if the achievement
 -- category is 'GameplayAchievement'.
@@ -116,3 +123,4 @@ getValidityRequirements = \case
   GetDisoriented -> ValidityConditions OnlyPlayerRobot ExcludesCreativeMode
   SwapSame -> ValidityConditions OnlyPlayerRobot ExcludesCreativeMode
   GaveToSelf -> ValidityConditions OnlyPlayerRobot ExcludesCreativeMode
+  EquippedAllDevices -> ValidityConditions OnlyPlayerRobot ExcludesCreativeMode

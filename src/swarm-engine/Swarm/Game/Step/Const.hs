@@ -11,8 +11,6 @@
 -- Implementation of robot commands
 module Swarm.Game.Step.Const where
 
-import Swarm.Game.Scenario (RecognizableStructureContent)
-
 import Control.Applicative (Applicative (..))
 import Control.Arrow ((&&&))
 import Control.Carrier.State.Lazy
@@ -62,6 +60,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Robot.Walk (emptyExceptions)
+import Swarm.Game.Scenario (RecognizableStructureContent)
 import Swarm.Game.Scenario.Topography.Area (getNEGridDimensions, rectHeight)
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.Navigation.Util
@@ -409,6 +408,11 @@ execConst runChildProg c vs s k = do
         unless already $ do
           equippedDevices %= insert item
           robotInventory %= delete item
+
+          -- Check whether we should bestow the 'EquippedAllDevices' achievement
+          -- TODO: finish this
+          curScenario <- use currentScenarioPath
+          when (curScenario == Just "classic.yaml") $ sendIO $ writeFile "test.txt" "foo"
 
           -- Flag the UI for a redraw if we are currently showing our inventory
           when (focusedID == myID) flagRedraw
