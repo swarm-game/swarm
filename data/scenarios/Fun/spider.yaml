@@ -1,0 +1,57 @@
+version: 1
+name: Spiders
+description: |
+  Spiders catching prey by spinning webs
+creative: true
+objectives:
+  - goal:
+      - |
+        Complete 10 `cocoon`{=structure}s
+    condition: |
+      def length : (rec l. Unit + a * l) -> Int = \l.
+        case l (\_. 0) (\cons. 1 + length (snd cons))
+      end
+
+      foundStructures <- structures "cocoon";
+      pure $ length foundStructures >= 10;
+robots:
+  - name: base
+    dir: north
+    loc: [5, 0]
+  - name: ground spider
+    display:
+      invisible: false
+      attr: blue
+    dir: north
+    system: true
+    loc: [0, 0]
+    program: |
+      run "scenarios/Fun/_spider/spider.sw"
+  - name: tree spider
+    display:
+      invisible: false
+      attr: red
+    dir: north
+    system: true
+    loc: [0, 0]
+    program: |
+      run "scenarios/Fun/_spider/spider.sw"
+structures:
+  - name: cocoon
+    recognize: [north]
+    structure:
+      mask: '.'
+      palette:
+        'b': [grass, mountain]
+      map: |
+        bbb
+        b.b
+        bbb
+known: [tree]
+world:
+  dsl: |-
+    overlay
+      [ {grass}
+      , mask ((hash % 200) == 0) {flower}
+      , mask (((hash+1) % 200) == 0) {tree}
+      ]
