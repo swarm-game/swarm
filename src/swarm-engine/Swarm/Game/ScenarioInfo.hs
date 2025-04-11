@@ -15,7 +15,7 @@ module Swarm.Game.ScenarioInfo (
   scenarioPath,
   scenarioStatus,
   CodeSizeDeterminators (CodeSizeDeterminators),
-  ScenarioInfoPair,
+  ScenarioWith,
 
   -- * Scenario collection
   ScenarioCollection (..),
@@ -26,6 +26,7 @@ module Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
   scenarioItemName,
   _SISingle,
+  pathifyCollection,
 
   -- ** Tutorials
   tutorialsDirname,
@@ -110,11 +111,12 @@ fromMapOM = OM.fromList . M.toList
 
 -- | A scenario item is either a specific scenario, or a collection of
 --   scenarios (/e.g./ the scenarios contained in a subdirectory).
-data ScenarioItem = SISingle ScenarioInfoPair | SICollection Text ScenarioCollection
+data ScenarioItem a = SISingle (ScenarioWith a) | SICollection Text (ScenarioCollection a)
+  deriving (Functor)
 
 -- | Retrieve the name of a scenario item.
-scenarioItemName :: ScenarioItem -> Text
-scenarioItemName (SISingle (s, _ss)) = s ^. scenarioMetadata . scenarioName
+scenarioItemName :: ScenarioItem a -> Text
+scenarioItemName (SISingle (ScenarioWith s _ss)) = s ^. scenarioMetadata . scenarioName
 scenarioItemName (SICollection name _) = name
 
 -- | A scenario collection is a tree of scenarios, keyed by name,
@@ -122,16 +124,20 @@ scenarioItemName (SICollection name _) = name
 --
 --   /Invariant:/ every item in the
 --   'scOrder' exists as a key in the 'scMap'.
-newtype ScenarioCollection = SC
-  { scMap :: OMap FilePath ScenarioItem
+newtype ScenarioCollection a = SC
+  { scMap :: OMap FilePath (ScenarioItem a)
   }
+  deriving (Functor)
+
+pathifyCollection :: Functor f => f ScenarioInfo -> f ScenarioPath
+pathifyCollection = fmap (ScenarioPath . view scenarioPath)
 
 -- | Access and modify 'ScenarioItem's in collection based on their path.
-scenarioItemByPath :: FilePath -> Traversal' ScenarioCollection ScenarioItem
+scenarioItemByPath :: FilePath -> Traversal' (ScenarioCollection a) (ScenarioItem a)
 scenarioItemByPath path = ixp ps
  where
   ps = splitDirectories path
-  ixp :: (Applicative f) => [String] -> (ScenarioItem -> f ScenarioItem) -> ScenarioCollection -> f ScenarioCollection
+  ixp :: (Applicative f) => [String] -> (ScenarioItem a -> f (ScenarioItem a)) -> ScenarioCollection a -> f (ScenarioCollection a)
   ixp [] _ col = pure col
   ixp [s] f (SC m) = SC <$> ix s f m
   ixp (d : xs) f (SC m) = SC <$> ix d inner m
@@ -146,7 +152,7 @@ tutorialsDirname = "Tutorials"
 
 -- | Extract just the collection of tutorial scenarios from the entire
 --   scenario collection.
-getTutorials :: ScenarioCollection -> ScenarioCollection
+getTutorials :: ScenarioCollection a -> ScenarioCollection a
 getTutorials sc = case OM.lookup tutorialsDirname (scMap sc) of
   Just (SICollection _ c) -> c
   _ -> error "No tutorials exist"
@@ -154,7 +160,7 @@ getTutorials sc = case OM.lookup tutorialsDirname (scMap sc) of
 -- | Canonicalize a scenario path, making it usable as a unique key.
 normalizeScenarioPath ::
   (MonadIO m) =>
-  ScenarioCollection ->
+  ScenarioCollection a ->
   FilePath ->
   m FilePath
 normalizeScenarioPath col p =
@@ -171,10 +177,10 @@ normalizeScenarioPath col p =
           return n
 
 -- | Convert a scenario collection to a list of scenario items.
-scenarioCollectionToList :: ScenarioCollection -> [ScenarioItem]
+scenarioCollectionToList :: ScenarioCollection a -> [ScenarioItem a]
 scenarioCollectionToList (SC xs) = orderedElems xs
 
-flatten :: ScenarioItem -> [ScenarioInfoPair]
+flatten :: ScenarioItem a -> [ScenarioWith a]
 flatten (SISingle p) = [p]
 flatten (SICollection _ c) = concatMap flatten $ scenarioCollectionToList c
 
@@ -183,7 +189,7 @@ loadScenarios ::
   (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
   ScenarioInputs ->
   Bool ->
-  m ScenarioCollection
+  m (ScenarioCollection ScenarioInfo)
 loadScenarios scenarioInputs loadTestScenarios = do
   res <- runThrow @SystemFailure $ getDataDirSafe Scenarios "scenarios"
   case res of
@@ -214,7 +220,7 @@ loadScenarioDir ::
   ScenarioInputs ->
   Bool ->
   FilePath ->
-  m ScenarioCollection
+  m (ScenarioCollection ScenarioInfo)
 loadScenarioDir scenarioInputs loadTestScenarios dir = do
   itemPaths <- sendIO $ filterM (isYamlOrPublicDirectory dir) =<< listDirectory dir
   scenarioMap <- loadItems itemPaths
@@ -229,7 +235,7 @@ loadScenarioDir scenarioInputs loadTestScenarios dir = do
 
   -- The function for individual directory items either warns about SystemFailure,
   -- or has thrown SystemFailure. The following code just adds that thrown failure to others.
-  loadItems :: [FilePath] -> m (Map FilePath ScenarioItem)
+  loadItems :: [FilePath] -> m (Map FilePath (ScenarioItem ScenarioInfo))
   loadItems items = do
     let loadItem f = runThrow @SystemFailure $ (f,) <$> loadScenarioItem scenarioInputs loadTestScenarios (dir </> f)
     (scenarioFailures, okScenarios) <- partitionEithers <$> mapM loadItem items
@@ -250,13 +256,13 @@ loadScenarioDir scenarioInputs loadTestScenarios dir = do
         else takeExtensions f == ".yaml"
 
   -- warn that the ORDER file is missing
-  loadUnorderedScenarioDir :: Map FilePath ScenarioItem -> m ScenarioCollection
+  loadUnorderedScenarioDir :: Map FilePath (ScenarioItem a) -> m (ScenarioCollection a)
   loadUnorderedScenarioDir scenarioMap = do
     when (dirName /= testingDirectory) (warn $ OrderFileWarning orderFileShortPath NoOrderFile)
     pure . SC $ fromMapOM scenarioMap
 
   -- warn if the ORDER file does not match directory contents
-  loadOrderedScenarioDir :: [String] -> Map FilePath ScenarioItem -> m ScenarioCollection
+  loadOrderedScenarioDir :: [String] -> Map FilePath (ScenarioItem a) -> m (ScenarioCollection a)
   loadOrderedScenarioDir order scenarioMap = do
     let missing = M.keys scenarioMap \\ order
         (notPresent, loaded) = lookupInOrder scenarioMap order
@@ -284,10 +290,16 @@ loadScenarioInfo p = do
     then do
       return $
         ScenarioInfo path NotStarted
-    else
-      withThrow (AssetNotLoaded (Data Scenarios) infoPath . CanNotParseYaml)
-        . (liftEither <=< sendIO)
-        $ decodeFileEither infoPath
+    else do
+      ScenarioInfo _storedPath status <-
+        withThrow (AssetNotLoaded (Data Scenarios) infoPath . CanNotParseYaml)
+          . (liftEither <=< sendIO)
+          $ decodeFileEither infoPath
+      -- We discard the path that was saved inside the yaml file, so that there
+      -- is only a single authoritative path "key": the original scenario path.
+      --
+      -- TODO(#2390) Maybe we shouldn't store that path.
+      return $ ScenarioInfo path status
 
 -- | Save info about played scenario to XDG data directory.
 saveScenarioInfo ::
@@ -308,7 +320,7 @@ loadScenarioItem ::
   ScenarioInputs ->
   Bool ->
   FilePath ->
-  m ScenarioItem
+  m (ScenarioItem ScenarioInfo)
 loadScenarioItem scenarioInputs loadTestScenarios path = do
   isDir <- sendIO $ doesDirectoryExist path
   let collectionName = into @Text . dropWhile isSpace . takeBaseName $ path
@@ -318,10 +330,10 @@ loadScenarioItem scenarioInputs loadTestScenarios path = do
       s <- loadScenarioFile scenarioInputs path
       eitherSi <- runThrow @SystemFailure (loadScenarioInfo path)
       case eitherSi of
-        Right si -> return $ SISingle (s, si)
+        Right si -> return $ SISingle $ ScenarioWith s si
         Left warning -> do
           warn warning
-          return $ SISingle (s, ScenarioInfo path NotStarted)
+          return . SISingle . ScenarioWith s $ ScenarioInfo path NotStarted
 
 ------------------------------------------------------------
 -- Some lenses + prisms

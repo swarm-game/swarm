@@ -45,14 +45,14 @@ import Swarm.Game.Scenario (
   scenarioSolution,
  )
 import Swarm.Game.Scenario.Objective (objectiveGoal)
+import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
-  ScenarioInfoPair,
   flatten,
   getTutorials,
   loadScenarios,
+  pathifyCollection,
   scenarioCollectionToList,
-  scenarioPath,
  )
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Language.Syntax
@@ -81,7 +81,7 @@ data CoverageInfo = CoverageInfo
 -- introduced in their solution and descriptions
 -- having been extracted
 data TutorialInfo = TutorialInfo
-  { scenarioPair :: ScenarioInfoPair
+  { scenarioPair :: ScenarioWith ScenarioPath
   , tutIndex :: Int
   , solutionCommands :: Map Const [SrcLoc]
   , descriptionCommands :: Set Const
@@ -96,8 +96,8 @@ data CommandAccum = CommandAccum
 -- * Functions
 
 -- | Extract commands from both goal descriptions and solution code.
-extractCommandUsages :: Int -> ScenarioInfoPair -> TutorialInfo
-extractCommandUsages idx siPair@(s, _si) =
+extractCommandUsages :: Int -> ScenarioWith ScenarioPath -> TutorialInfo
+extractCommandUsages idx siPair@(ScenarioWith s _si) =
   TutorialInfo siPair idx solnCommands $ getDescCommands s
  where
   solnCommands = getCommands maybeSoln
@@ -142,13 +142,13 @@ getCommands (Just tsyn) =
 
 -- | "fold" over the tutorials in sequence to determine which
 -- commands are novel to each tutorial's solution.
-computeCommandIntroductions :: [(Int, ScenarioInfoPair)] -> [CoverageInfo]
+computeCommandIntroductions :: [(Int, ScenarioWith ScenarioPath)] -> [CoverageInfo]
 computeCommandIntroductions =
   reverse . tuts . foldl' f initial
  where
   initial = CommandAccum mempty mempty
 
-  f :: CommandAccum -> (Int, ScenarioInfoPair) -> CommandAccum
+  f :: CommandAccum -> (Int, ScenarioWith ScenarioPath) -> CommandAccum
   f (CommandAccum encounteredPreviously xs) (idx, siPair) =
     CommandAccum updatedEncountered $ CoverageInfo usages novelCommands : xs
    where
@@ -160,9 +160,9 @@ computeCommandIntroductions =
 
 -- | Extract the tutorials from the complete scenario collection
 -- and derive their command coverage info.
-generateIntroductionsSequence :: ScenarioCollection -> [CoverageInfo]
+generateIntroductionsSequence :: ScenarioCollection ScenarioInfo -> [CoverageInfo]
 generateIntroductionsSequence =
-  computeCommandIntroductions . zipFrom 0 . getTuts
+  computeCommandIntroductions . zipFrom 0 . getTuts . pathifyCollection
  where
   getTuts =
     concatMap flatten
@@ -173,7 +173,7 @@ generateIntroductionsSequence =
 
 -- | Helper for standalone rendering.
 -- For unit tests, can instead access the scenarios via the GameState.
-loadScenarioCollection :: IO ScenarioCollection
+loadScenarioCollection :: IO (ScenarioCollection ScenarioInfo)
 loadScenarioCollection = simpleErrorHandle $ do
   tem <- loadEntitiesAndTerrain
 
@@ -185,14 +185,14 @@ loadScenarioCollection = simpleErrorHandle $ do
   ignoreWarnings @(Seq SystemFailure) $ loadScenarios (ScenarioInputs worlds tem) True
 
 renderUsagesMarkdown :: CoverageInfo -> Text
-renderUsagesMarkdown (CoverageInfo (TutorialInfo (s, si) idx _sCmds dCmds) novelCmds) =
+renderUsagesMarkdown (CoverageInfo (TutorialInfo (ScenarioWith s (ScenarioPath sp)) idx _sCmds dCmds) novelCmds) =
   T.unlines bodySections
  where
   bodySections = firstLine : otherLines
   otherLines =
     intercalate
       [""]
-      [ pure . surround "`" . T.pack $ view scenarioPath si
+      [ pure . surround "`" . T.pack $ sp
       , pure . surround "*" . T.strip . docToText $ view (scenarioOperation . scenarioDescription) s
       , renderSection "Introduced in solution" . renderCmdList $ M.keysSet novelCmds
       , renderSection "Referenced in description" $ renderCmdList dCmds
@@ -251,7 +251,7 @@ renderTutorialProgression =
     render (cmd, tut) =
       T.unwords
         [ linkifyCommand cmd
-        , "(" <> renderTutorialTitle (tutIndex tut) (fst $ scenarioPair tut) <> ")"
+        , "(" <> renderTutorialTitle (tutIndex tut) (view getScenario $ scenarioPair tut) <> ")"
         ]
     renderFullCmdList = renderList . map render . sortOn fst
     infos = generateIntroductionsSequence ss

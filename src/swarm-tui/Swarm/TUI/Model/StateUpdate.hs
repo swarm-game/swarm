@@ -14,6 +14,7 @@ module Swarm.TUI.Model.StateUpdate (
   restartGame,
   attainAchievement,
   attainAchievement',
+  getScenarioInfoFromPath,
   scenarioToAppState,
 ) where
 
@@ -22,8 +23,6 @@ import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Applicative ((<|>))
 import Control.Carrier.Accum.FixedStrict (runAccum)
-import Control.Carrier.Lift (runM)
-import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Accum
 import Control.Effect.Lift
 import Control.Effect.Throw
@@ -62,8 +61,9 @@ import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Scenario.Status
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (originalStructureDefinitions)
 import Swarm.Game.ScenarioInfo (
-  loadScenarioInfo,
+  ScenarioCollection,
   normalizeScenarioPath,
+  pathifyCollection,
   scenarioItemByPath,
   _SISingle,
  )
@@ -146,6 +146,15 @@ initPersistentState opts@(AppOpts {..}) = do
   let initRS' = addWarnings initRS (F.toList warnings)
   return (initRS', initUI, initKs)
 
+getScenarioInfoFromPath ::
+  ScenarioCollection ScenarioInfo ->
+  FilePath ->
+  ScenarioInfo
+getScenarioInfoFromPath ss path =
+  fromMaybe (ScenarioInfo path NotStarted) currentScenarioInfo
+ where
+  currentScenarioInfo = ss ^? scenarioItemByPath path . _SISingle . getScenarioInfo
+
 -- | Construct an 'AppState' from an already-loaded 'RuntimeState' and
 --   'UIState', given the 'AppOpts' the app was started with.
 constructAppState ::
@@ -178,14 +187,12 @@ constructAppState rs ui key opts@(AppOpts {..}) = do
             return $ CodeToRun ScenarioSuggested soln
           codeToRun = maybeAutoplay <|> maybeRunScript
 
-      eitherSi <- sendIO . runM . runThrow $ loadScenarioInfo path
-      let (si, newRs) = case eitherSi of
-            Right x -> (x, rs)
-            Left e -> (ScenarioInfo path NotStarted, addWarnings rs [e])
+      let si = getScenarioInfoFromPath (rs ^. scenarios) path
+
       sendIO $
         execStateT
-          (startGameWithSeed (scenario, si) $ LaunchParams (pure userSeed) (pure codeToRun))
-          (AppState ps ui key newRs)
+          (startGameWithSeed (ScenarioWith scenario si) $ LaunchParams (pure userSeed) (pure codeToRun))
+          (AppState ps ui key rs)
  where
   initialUiGameplay startTime history =
     UIGameplay
@@ -236,8 +243,15 @@ constructAppState rs ui key opts@(AppOpts {..}) = do
       }
 
 -- | Load a 'Scenario' and start playing the game.
-startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe CodeToRun -> m ()
-startGame siPair = startGameWithSeed siPair . LaunchParams (pure Nothing) . pure
+startGame ::
+  (MonadIO m, MonadState AppState m) =>
+  ScenarioWith ScenarioPath ->
+  Maybe CodeToRun ->
+  m ()
+startGame (ScenarioWith s (ScenarioPath p)) c = do
+  ss <- use $ runtimeState . scenarios
+  let si = getScenarioInfoFromPath ss p
+  startGameWithSeed (ScenarioWith s si) . LaunchParams (pure Nothing) $ pure c
 
 -- | Re-initialize the game from the stored reference to the current scenario.
 --
@@ -248,31 +262,40 @@ startGame siPair = startGameWithSeed siPair . LaunchParams (pure Nothing) . pure
 --
 -- Since scenarios are stored as a Maybe in the UI state, we handle the Nothing
 -- case upstream so that the Scenario passed to this function definitely exists.
-restartGame :: (MonadIO m, MonadState AppState m) => Seed -> ScenarioInfoPair -> m ()
-restartGame currentSeed siPair = startGameWithSeed siPair $ LaunchParams (pure (Just currentSeed)) (pure Nothing)
+restartGame ::
+  (MonadIO m, MonadState AppState m) =>
+  Seed ->
+  ScenarioWith ScenarioPath ->
+  m ()
+restartGame currentSeed (ScenarioWith s (ScenarioPath p)) = do
+  ss <- use $ runtimeState . scenarios
+  let si = getScenarioInfoFromPath ss p
+  startGameWithSeed (ScenarioWith s si) $ LaunchParams (pure (Just currentSeed)) (pure Nothing)
 
 -- | Load a 'Scenario' and start playing the game, with the
 --   possibility for the user to override the seed.
 startGameWithSeed ::
   (MonadIO m, MonadState AppState m) =>
-  ScenarioInfoPair ->
+  ScenarioWith ScenarioInfo ->
   ValidatedLaunchParams ->
   m ()
-startGameWithSeed siPair@(_scene, si) lp = do
+startGameWithSeed siPair@(ScenarioWith _scene si) lp = do
   t <- liftIO getZonedTime
   ss <- use $ runtimeState . scenarios
-  p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
+  p <- liftIO $ normalizeScenarioPath ss $ si ^. scenarioPath
+
   runtimeState
     . scenarios
     . scenarioItemByPath p
     . _SISingle
-    . _2
+    . getScenarioInfo
     . scenarioStatus
     .= Played
       (toSerializableParams lp)
       (Metric Attempted $ ProgressStats t emptyAttemptMetric)
       (prevBest t)
-  scenarioToAppState siPair lp
+
+  scenarioToAppState (pathifyCollection siPair) lp
   -- Beware: currentScenarioPath must be set so that progress/achievements can be saved.
   -- It has just been cleared in scenarioToAppState.
   playState . gameState . currentScenarioPath .= Just p
@@ -290,10 +313,10 @@ startGameWithSeed siPair@(_scene, si) lp = do
 -- | Modify the 'AppState' appropriately when starting a new scenario.
 scenarioToAppState ::
   (MonadIO m, MonadState AppState m) =>
-  ScenarioInfoPair ->
+  ScenarioWith ScenarioPath ->
   ValidatedLaunchParams ->
   m ()
-scenarioToAppState siPair@(scene, _) lp = do
+scenarioToAppState siPair@(ScenarioWith scene _) lp = do
   rs <- use runtimeState
   gs <- liftIO $ scenarioToGameState scene lp $ rs ^. stdGameConfigInputs
   playState . gameState .= gs
@@ -318,10 +341,10 @@ setUIGameplay ::
   GameState ->
   TimeSpec ->
   Bool ->
-  ScenarioInfoPair ->
+  ScenarioWith ScenarioPath ->
   UIGameplay ->
   UIGameplay
-setUIGameplay gs curTime isAutoplaying siPair@(scenario, _) uig =
+setUIGameplay gs curTime isAutoplaying siPair@(ScenarioWith scenario _) uig =
   uig
     & uiDialogs . uiGoal .~ emptyGoalDisplay
     & uiIsAutoPlay .~ isAutoplaying
@@ -356,7 +379,7 @@ setUIGameplay gs curTime isAutoplaying siPair@(scenario, _) uig =
 
 -- | Modify the UI state appropriately when starting a new scenario.
 scenarioToUIState ::
-  ScenarioInfoPair ->
+  ScenarioWith a ->
   UIState ->
   IO UIState
 scenarioToUIState siPair u = do
@@ -366,7 +389,7 @@ scenarioToUIState siPair u = do
       & uiAttrMap
         .~ applyAttrMappings
           ( map (first getWorldAttrName . toAttrPair) $
-              fst siPair ^. scenarioLandscape . scenarioAttrs
+              siPair ^. getScenario . scenarioLandscape . scenarioAttrs
           )
           swarmAttrMap
 

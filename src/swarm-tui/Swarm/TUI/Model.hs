@@ -33,7 +33,6 @@ module Swarm.TUI.Model (
   Menu (..),
   _NewGameMenu,
   mkScenarioList,
-  mkNewGameMenu,
 
   -- * UI state
 
@@ -313,7 +312,7 @@ defaultAppOpts =
 --   currently selected scenario (if any).  Can return @Nothing@ if
 --   either we are not in the @NewGameMenu@, or the current scenario
 --   is the last among its siblings.
-nextScenario :: Menu -> Maybe ScenarioInfoPair
+nextScenario :: Menu -> Maybe (ScenarioWith ScenarioPath)
 nextScenario = \case
   NewGameMenu (curMenu :| _) ->
     let nextMenuList = BL.listMoveDown curMenu

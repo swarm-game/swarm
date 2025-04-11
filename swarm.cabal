@@ -1017,7 +1017,6 @@ library swarm-tui
     murmur3,
     natural-sort,
     nonempty-containers,
-    ordered-containers,
     palette,
     servant-docs,
     split,
