@@ -535,6 +535,11 @@
     - [1, iron plate]
   out:
     - [1, caliper]
+- in:
+    - [1, paper]
+    - [1, compass]
+  out:
+    - [1, atlas]
 ## MAGIC
 - in:
     - [2, copper wire]
