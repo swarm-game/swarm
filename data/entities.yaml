@@ -1184,7 +1184,7 @@
   description:
     - |
       An atlas enables the `waypoints` command: `waypoints : Text -> (rec l. Unit + (Int * Int) * l)`.
-      Waypoints are keyed by name.
+      This gets the x, y coordinates of the every waypoint with a given name.
   properties: [pickable]
   capabilities: [waypoints]
 - name: GPS receiver
