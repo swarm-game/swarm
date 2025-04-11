@@ -14,7 +14,7 @@ module Swarm.TUI.Model.StateUpdate (
   restartGame,
   attainAchievement,
   attainAchievement',
-  loadScenarioInfoFromPath,
+  getScenarioInfoFromPath,
   scenarioToAppState,
 ) where
 
@@ -146,11 +146,11 @@ initPersistentState opts@(AppOpts {..}) = do
   let initRS' = addWarnings initRS (F.toList warnings)
   return (initRS', initUI, initKs)
 
-loadScenarioInfoFromPath ::
+getScenarioInfoFromPath ::
   ScenarioCollection ScenarioInfo ->
   FilePath ->
   ScenarioInfo
-loadScenarioInfoFromPath ss path =
+getScenarioInfoFromPath ss path =
   fromMaybe (ScenarioInfo path NotStarted) currentScenarioInfo
  where
   currentScenarioInfo = ss ^? scenarioItemByPath path . _SISingle . _2
@@ -187,7 +187,7 @@ constructAppState rs ui key opts@(AppOpts {..}) = do
             return $ CodeToRun ScenarioSuggested soln
           codeToRun = maybeAutoplay <|> maybeRunScript
 
-      let si = loadScenarioInfoFromPath (rs ^. scenarios) path
+      let si = getScenarioInfoFromPath (rs ^. scenarios) path
 
       sendIO $
         execStateT
@@ -250,7 +250,7 @@ startGame ::
   m ()
 startGame (s, ScenarioPath p) c = do
   ss <- use $ runtimeState . scenarios
-  let si = loadScenarioInfoFromPath ss p
+  let si = getScenarioInfoFromPath ss p
   startGameWithSeed (s, si) . LaunchParams (pure Nothing) $ pure c
 
 -- | Re-initialize the game from the stored reference to the current scenario.
@@ -269,7 +269,7 @@ restartGame ::
   m ()
 restartGame currentSeed (s, ScenarioPath p) = do
   ss <- use $ runtimeState . scenarios
-  let si = loadScenarioInfoFromPath ss p
+  let si = getScenarioInfoFromPath ss p
   startGameWithSeed (s, si) $ LaunchParams (pure (Just currentSeed)) (pure Nothing)
 
 -- | Load a 'Scenario' and start playing the game, with the

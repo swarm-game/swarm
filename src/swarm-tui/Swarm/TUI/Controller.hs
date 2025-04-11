@@ -287,7 +287,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   showLaunchDialog = case snd <$> BL.listSelectedElement curMenu of
     Just (SISingle (s, ScenarioPath p)) -> do
       ss <- use $ runtimeState . scenarios
-      let si = loadScenarioInfoFromPath ss p
+      let si = getScenarioInfoFromPath ss p
       Brick.zoom (uiState . uiLaunchConfig) $ prepareLaunchDialog (s, si)
     _ -> pure ()
 
