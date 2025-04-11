@@ -92,20 +92,22 @@ makeLenses ''ScenarioWith
 -- canonical path and status.
 -- By way of the 'ScenarioStatus' record, it stores the
 -- most recent status and best-ever status.
-data ScenarioInfo = ScenarioInfo
-  { _scenarioPath :: FilePath
+data ScenarioInfoT a = ScenarioInfo
+  { _scenarioPath :: a
   , _scenarioStatus :: ScenarioStatus
   }
-  deriving (Eq, Ord, Show, Read, Generic)
+  deriving (Eq, Ord, Show, Read, Generic, Functor)
 
-instance FromJSON ScenarioInfo where
+type ScenarioInfo = ScenarioInfoT FilePath
+
+instance (FromJSON a) => FromJSON (ScenarioInfoT a) where
   parseJSON = genericParseJSON scenarioOptions
 
-instance ToJSON ScenarioInfo where
+instance (ToJSON a) => ToJSON (ScenarioInfoT a) where
   toEncoding = genericToEncoding scenarioOptions
   toJSON = genericToJSON scenarioOptions
 
-makeLensesNoSigs ''ScenarioInfo
+makeLensesNoSigs ''ScenarioInfoT
 
 -- | The path of the scenario, relative to @data/scenarios@.
 scenarioPath :: Lens' ScenarioInfo FilePath
