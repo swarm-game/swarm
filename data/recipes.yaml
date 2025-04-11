@@ -513,6 +513,10 @@
     - [1, iron plate]
   out:
     - [1, tweezers]
+- in:
+    - [1, iron plate]
+  out:
+    - [1, caliper]
 ## MAGIC
 - in:
     - [2, copper wire]

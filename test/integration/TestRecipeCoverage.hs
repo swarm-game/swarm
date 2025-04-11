@@ -55,7 +55,6 @@ nonCoveredList =
     [ "Elmer's glue"
     , "ash"
     , "blueprint"
-    , "caliper"
     , "decoder ring"
     , "linotype"
     , "tape drive"
