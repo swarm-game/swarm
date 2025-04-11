@@ -6,7 +6,6 @@ module Swarm.TUI.View.Robot.Details (renderRobotDetails) where
 
 import Brick
 import Brick.Widgets.Border
-import Brick.Widgets.Center (hCenter)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
 
@@ -33,13 +32,10 @@ renderRobotDetails ring r paneState =
           , show $ view robotName r
           ]
     , hBorder
-    , str " "
-    , hBox $
-        map
-          hCenter
-          [ hLimitPercent 70 $ highlightBorderFor RobotLogPane $ borderWithLabel (str "Logs") logsTable
-          , hLimitPercent 30 $ highlightBorderFor RobotCommandHistogramPane $ borderWithLabel (str "Commands") commandsTable
-          ]
+    , hBox
+      [ highlightBorderFor RobotLogPane $ borderWithLabel (str "Logs") logsTable
+      , highlightBorderFor RobotCommandHistogramPane $ borderWithLabel (str "Commands") commandsTable
+      ]
     ]
  where
   highlightBorderFor n =
@@ -53,7 +49,7 @@ renderRobotDetails ring r paneState =
     hBox
       [ withAttr cyanAttr . str . show . pretty . view leTime $ x
       , str ": "
-      , txt . view leText $ x
+      , txtWrap . view leText $ x
       ]
 
   commandsTable =
