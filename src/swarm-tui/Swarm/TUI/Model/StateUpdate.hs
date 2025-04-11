@@ -296,9 +296,6 @@ startGameWithSeed siPair@(ScenarioWith _scene si) lp = do
       (prevBest t)
 
   scenarioToAppState (pathifyCollection siPair) lp
-  -- Beware: currentScenarioPath must be set so that progress/achievements can be saved.
-  -- It has just been cleared in scenarioToAppState.
-  playState . gameState . currentScenarioPath .= Just p
 
   -- Warn the user that the use of debugging options means progress
   -- will not be saved.
@@ -316,9 +313,9 @@ scenarioToAppState ::
   ScenarioWith ScenarioPath ->
   ValidatedLaunchParams ->
   m ()
-scenarioToAppState siPair@(ScenarioWith scene _) lp = do
+scenarioToAppState siPair@(ScenarioWith scene p) lp = do
   rs <- use runtimeState
-  gs <- liftIO $ scenarioToGameState scene lp $ rs ^. stdGameConfigInputs
+  gs <- liftIO $ scenarioToGameState (ScenarioWith scene $ Just p) lp $ rs ^. stdGameConfigInputs
   playState . gameState .= gs
 
   curTime <- liftIO $ getTime Monotonic

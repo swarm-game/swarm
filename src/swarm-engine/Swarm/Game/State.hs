@@ -198,7 +198,7 @@ data GameState = GameState
   , _discovery :: Discovery
   , _randomness :: Randomness
   , _recipesInfo :: Recipes
-  , _currentScenarioPath :: Maybe FilePath
+  , _currentScenarioPath :: Maybe ScenarioPath
   , _landscape :: Landscape
   , _needsRedraw :: Bool
   , _gameControls :: GameControls
@@ -278,7 +278,16 @@ recipesInfo :: Lens' GameState Recipes
 --
 -- This is useful as an index to the scenarios collection,
 -- see 'Swarm.Game.ScenarioInfo.scenarioItemByPath'.
-currentScenarioPath :: Lens' GameState (Maybe FilePath)
+--
+-- Note that it is possible for this to be missing even
+-- with an active game state, since the game state can
+-- be initialized from sources other than a scenario
+-- file on disk.
+--
+-- We keep a reference to the possible path within the GameState,
+-- however, so that the achievement/progress saving functions
+-- do not require access to anything outside GameState.
+currentScenarioPath :: Lens' GameState (Maybe ScenarioPath)
 
 -- | Info about the lay of the land
 landscape :: Lens' GameState Landscape

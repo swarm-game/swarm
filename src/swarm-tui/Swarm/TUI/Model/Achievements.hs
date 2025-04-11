@@ -18,6 +18,7 @@ import Data.Time (ZonedTime, getZonedTime)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
+import Swarm.Game.Scenario.Status (ScenarioPath (..))
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Dialog.Popup (Popup (AchievementPopup), addPopup)
 import Swarm.TUI.Model.UI
@@ -30,7 +31,7 @@ attainAchievement a = do
 attainAchievement' ::
   (MonadIO m, MonadState AppState m) =>
   ZonedTime ->
-  Maybe FilePath ->
+  Maybe ScenarioPath ->
   CategorizedAchievement ->
   m ()
 attainAchievement' t p a = do
@@ -41,7 +42,7 @@ attainAchievement' t p a = do
     %= M.insertWith
       (<>)
       a
-      (Attainment a p t)
+      (Attainment a (getScenarioPath <$> p) t)
   newAchievements <- use $ uiState . uiAchievements
   liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
