@@ -48,7 +48,6 @@ import Brick.Widgets.Table qualified as BT
 import Control.Lens as Lens hiding (Const, from)
 import Control.Monad (guard)
 import Data.Array (range)
-import Data.Bits (shiftL, shiftR, (.&.))
 import Data.Foldable (toList)
 import Data.Foldable qualified as F
 import Data.Functor (($>))
@@ -109,7 +108,7 @@ import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
-import Swarm.Game.Tick (TickNumber (..))
+import Swarm.Game.Tick (TickNumber (..), formatTicks)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Gen (Seed)
@@ -343,7 +342,7 @@ describeProgress (Metric p (ProgressStats _startedAt (AttemptMetrics (DurationMe
   Completed ->
     withAttr greenAttr . vBox $
       [ txt $ T.unwords ["completed in", formatTimeDiff e]
-      , txt . (" " <>) . parens $ T.unwords [T.pack $ drawTime t True, "ticks"]
+      , txt . (" " <>) . parens $ T.unwords [T.pack $ formatTicks True t, "ticks"]
       ]
         <> maybeToList (sizeDisplay <$> maybeCodeMetrics)
    where
@@ -582,25 +581,13 @@ clockEquipped gs = case focusedRobot gs of
   Nothing -> False
   Just r -> CExecute Time `Set.member` getCapabilitySet (r ^. robotCapabilities)
 
--- | Format a ticks count as a hexadecimal clock.
-drawTime :: TickNumber -> Bool -> String
-drawTime (TickNumber t) showTicks =
-  mconcat $
-    intersperse
-      ":"
-      [ printf "%x" (t `shiftR` 20)
-      , printf "%02x" ((t `shiftR` 12) .&. ((1 `shiftL` 8) - 1))
-      , printf "%02x" ((t `shiftR` 4) .&. ((1 `shiftL` 8) - 1))
-      ]
-      ++ if showTicks then [".", printf "%x" (t .&. ((1 `shiftL` 4) - 1))] else []
-
 -- | Return a possible time display, if the currently focused robot
 --   has a clock device equipped.  The first argument is the number
 --   of ticks (e.g. 943 = 0x3af), and the second argument indicates
 --   whether the time should be shown down to single-tick resolution
 --   (e.g. 0:00:3a.f) or not (e.g. 0:00:3a).
 maybeDrawTime :: TickNumber -> Bool -> GameState -> Maybe (Widget n)
-maybeDrawTime t showTicks gs = guard (clockEquipped gs) $> str (drawTime t showTicks)
+maybeDrawTime t showTicks gs = guard (clockEquipped gs) $> str (formatTicks showTicks t)
 
 -- | Draw info about the current number of ticks per second.
 drawTPS :: UITiming -> Widget Name

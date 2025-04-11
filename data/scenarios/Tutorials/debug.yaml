@@ -4,23 +4,26 @@ description: |
   Learn how to view built robots and debug them.
 objectives:
   - goal:
-      - Before you send your robots far away from the `base` you need to learn how to figure out what went wrong with them if they crash.
       - |
-        In this challenge, you should start by
-        sending a robot to walk four steps straight east into the mountain,
-        crashing deliberately.  However, you must make sure it has a `logger`{=entity},
-        so we can see what command failed.  The simplest way to ensure
+        Before you send your robots far away from the `base` you need to learn how
+        to figure out what went wrong with them if they crash.
+      - |
+        In this challenge, you should start by sending a robot to walk four steps
+        straight east into the closest mountain, crashing deliberately.
+      - |
+        However, you must make sure it has a `logger`{=entity},
+        so we can see the failure in its logs. The simplest way to ensure
         that is to have it execute the `log` command; `build` will
         ensure it has the devices it needs to execute its commands.
         For example:
       - |
         ```
-        build {log "Hi!"; turn east; move; move; move; log "3"; move; log "OK"}
+        build { turn east; move; move; move; log "brace for impact"; move; }
         ```
       - |
         `wait` for the robot to crash, then execute `view it0`{=snippet} (or whichever
         `itN`{=snippet} variable corresponds to the result of the `build`
-        command) to see how far it got. Further instructions should
+        command) to see how far it got. Further instructions will
         appear in the crashed robot's log and `give` you an opportunity to `salvage`
         the situation...
     condition: |
@@ -33,16 +36,14 @@ entities:
       attr: device
       char: 'W'
     description:
-      - If you have this, you win!
+      - Once the base has this, you win!
     properties: [known, pickable]
 solution: |
   crasher <- build {
-      turn east; move; move; move; log "bye"; move
+    turn east; move; move; move; log "brace for impact"; move
   };
-  wait 32;
   salvager <- build {
-      log "I will bring home the Win!";
-      turn east; move; move; move; salvage; turn back; move; move; give base "Win"
+    turn east; move; move; move; salvage; turn back; move; move; give base "Win"
   };
 robots:
   - name: base
@@ -63,10 +64,11 @@ robots:
       - [10, solar panel]
       - [10, treads]
       - [10, grabber]
-  - name: secret
+  - name: hint
     dir: [0, 0]
     devices:
       - logger
+      - hearing aid
       - flash memory
       - dictionary
       - 3D printer
@@ -76,21 +78,24 @@ robots:
       invisible: true
     system: true
     program: |
-      run "scenarios/Tutorials/crash-secret.sw"
-known: [water, tree, mountain]
+      run "scenarios/Tutorials/debug-hint.sw"
+known: [water, wavy water, tree, mountain]
 world:
   palette:
     'Ω': [grass, null, base]
-    '!': [grass, null, secret]
+    '!': [dirt, null, hint]
     '.': [grass]
-    '~': [ice, water]
+    '_': [ice, water]
+    '~': [ice, wavy water]
     'T': [grass, tree]
     'A': [stone, mountain]
     '+': [stone, wall]
   upperleft: [-1, 3]
   map: |
-    +++++++
-    +AAAT~+
-    +..A.~+
-    +Ω..!A+
-    +++++++
+    +++++++++
+    +...AAT_+
+    +.....A~+
+    +Ω..!AAA+
+    +.~_...A+
+    +~__~...+
+    +++++++++
