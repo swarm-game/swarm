@@ -13,12 +13,12 @@ import Brick.Widgets.Core (emptyWidget, hBox, withAttr)
 import Control.Lens ((^.))
 import Swarm.Game.Achievement.Definitions (title)
 import Swarm.Game.Achievement.Description (describe)
+import Swarm.Game.Popup (Popup (..), currentPopup, popupFrames)
+import Swarm.Game.State.Runtime
 import Swarm.Language.Syntax (constInfo, syntax)
-import Swarm.TUI.Model (AppState, keyConfig, keyEventHandling, uiState)
-import Swarm.TUI.Model.Dialog.Popup (Popup (..), currentPopup, popupFrames)
+import Swarm.TUI.Model (AppState, keyConfig, keyEventHandling, runtimeState)
 import Swarm.TUI.Model.Event qualified as SE
 import Swarm.TUI.Model.Name
-import Swarm.TUI.Model.UI (uiPopups)
 import Swarm.TUI.View.Attribute.Attr (notifAttr)
 import Swarm.TUI.View.Util (bindingText)
 import Swarm.Util (commaList, squote)
@@ -31,7 +31,7 @@ animFrames = 3
 -- | Draw the current notification popup (if any).
 drawPopups :: AppState -> Widget Name
 drawPopups s = hCenterLayer $
-  case s ^. uiState . uiPopups . currentPopup of
+  case s ^. runtimeState . progression . uiPopups . currentPopup of
     Just (notif, f) ->
       cropTopTo (popupRows f) . border . padLeftRight 2 $ drawPopup s notif
     _ -> emptyWidget

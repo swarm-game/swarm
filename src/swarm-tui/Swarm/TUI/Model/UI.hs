@@ -12,9 +12,7 @@ module Swarm.TUI.Model.UI (
   uiPlaying,
   uiDebugOptions,
   uiLaunchConfig,
-  uiAchievements,
   uiAttrMap,
-  uiPopups,
 
   -- ** Initialization
   initFocusRing,
@@ -25,23 +23,16 @@ module Swarm.TUI.Model.UI (
 
 import Brick (AttrMap)
 import Brick.Focus
-import Control.Arrow ((&&&))
 import Control.Effect.Accum
 import Control.Effect.Lift
 import Control.Lens hiding (from, (<.>))
 import Data.List.Extra (enumerate)
-import Data.Map (Map)
-import Data.Map qualified as M
 import Data.Sequence (Seq)
 import Data.Set (Set)
 import Swarm.Failure (SystemFailure)
-import Swarm.Game.Achievement.Attainment
-import Swarm.Game.Achievement.Definitions
-import Swarm.Game.Achievement.Persistence
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep
 import Swarm.TUI.Model.DebugOption (DebugOption)
-import Swarm.TUI.Model.Dialog
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Attribute.Attr (swarmAttrMap)
@@ -57,9 +48,7 @@ data UIState = UIState
   , _uiPlaying :: Bool
   , _uiDebugOptions :: Set DebugOption
   , _uiLaunchConfig :: LaunchOptions
-  , _uiAchievements :: Map CategorizedAchievement Attainment
   , _uiAttrMap :: AttrMap
-  , _uiPopups :: PopupState
   }
 
 -- * Lenses for UIState
@@ -83,14 +72,8 @@ uiDebugOptions :: Lens' UIState (Set DebugOption)
 -- | Configuration modal when launching a scenario
 uiLaunchConfig :: Lens' UIState LaunchOptions
 
--- | Map of achievements that were attained
-uiAchievements :: Lens' UIState (Map CategorizedAchievement Attainment)
-
 -- | Attribute map
 uiAttrMap :: Lens' UIState AttrMap
-
--- | Queue of popups to display
-uiPopups :: Lens' UIState PopupState
 
 -- * UIState initialization
 
@@ -123,7 +106,6 @@ initUIState ::
   UIInitOptions ->
   m UIState
 initUIState UIInitOptions {..} = do
-  achievements <- loadAchievementsInfo
   launchConfigPanel <- sendIO initConfigPanel
   return
     UIState
@@ -131,7 +113,5 @@ initUIState UIInitOptions {..} = do
       , _uiPlaying = not showMainMenu
       , _uiDebugOptions = debugOptions
       , _uiLaunchConfig = launchConfigPanel
-      , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
       , _uiAttrMap = swarmAttrMap
-      , _uiPopups = initPopupState
       }

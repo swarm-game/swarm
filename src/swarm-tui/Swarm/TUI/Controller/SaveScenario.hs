@@ -9,13 +9,14 @@ module Swarm.TUI.Controller.SaveScenario (
 ) where
 
 -- See Note [liftA2 re-export from Prelude]
+
+import Brick
 import Brick.Widgets.List qualified as BL
 import Control.Lens as Lens
 import Control.Monad (forM_, unless, when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.State (MonadState)
 import Data.Maybe (fromMaybe, listToMaybe)
-import Data.Time (getZonedTime)
+import Data.Time (ZonedTime, getZonedTime)
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Scenario.Status (scenarioIsCompleted, updateScenarioInfoOnFinish)
 import Swarm.Game.ScenarioInfo
@@ -38,10 +39,32 @@ getNormalizedCurrentScenarioPath gs sc = do
   -- the path should be normalized and good to search in scenario collection
   traverse (liftIO . normalizeScenarioPath sc) $ gs ^. currentScenarioPath
 
-saveScenarioInfoOnFinish ::
-  (MonadIO m, MonadState AppState m) =>
+applyCompletionAchievements ::
+  Bool ->
+  ZonedTime ->
   FilePath ->
-  m (Maybe ScenarioInfo)
+  EventM n ProgressionState ()
+applyCompletionAchievements won t p = do
+  forM_ (listToMaybe $ splitDirectories p) $ \firstDir -> do
+    when (won && firstDir == tutorialsDirname) $
+      attainAchievement' t (Just p) $
+        GlobalAchievement CompletedSingleTutorial
+
+  -- Check if all tutorials have been completed
+  tutorialMap <- use $ scenarios . to getTutorials . to scMap
+  let isComplete (SISingle (_, s)) = scenarioIsCompleted s
+      -- There are not currently any subcollections within the
+      -- tutorials, but checking subcollections recursively just seems
+      -- like the right thing to do
+      isComplete (SICollection _ (SC m)) = all isComplete m
+
+  when (all isComplete tutorialMap) $
+    attainAchievement $
+      GlobalAchievement CompletedAllTutorials
+
+saveScenarioInfoOnFinish ::
+  FilePath ->
+  EventM n AppState (Maybe ScenarioInfo)
 saveScenarioInfoOnFinish p = do
   initialRunCode <- use $ playState . gameState . gameControls . initiallyRunCode
   t <- liftIO getZonedTime
@@ -56,7 +79,7 @@ saveScenarioInfoOnFinish p = do
   -- the scenario selection menu, so the menu needs to be updated separately.
   -- See Note [scenario menu update]
   let currentScenarioInfo :: Traversal' AppState ScenarioInfo
-      currentScenarioInfo = runtimeState . scenarios . scenarioItemByPath p . _SISingle . _2
+      currentScenarioInfo = runtimeState . progression . scenarios . scenarioItemByPath p . _SISingle . _2
 
   replHist <- use $ playState . uiGameplay . uiREPL . replHistory
   let determinator = CodeSizeDeterminators initialRunCode $ replHist ^. replHasExecutedManualInput
@@ -69,48 +92,33 @@ saveScenarioInfoOnFinish p = do
 
   status <- preuse currentScenarioInfo
   forM_ status $ \si -> do
-    forM_ (listToMaybe $ splitDirectories p) $ \firstDir -> do
-      when (won && firstDir == tutorialsDirname) $
-        attainAchievement' t (Just p) $
-          GlobalAchievement CompletedSingleTutorial
     liftIO $ saveScenarioInfo p si
-
-  -- Check if all tutorials have been completed
-  tutorialMap <- use $ runtimeState . scenarios . to getTutorials . to scMap
-  let isComplete (SISingle (_, s)) = scenarioIsCompleted s
-      -- There are not currently any subcollections within the
-      -- tutorials, but checking subcollections recursively just seems
-      -- like the right thing to do
-      isComplete (SICollection _ (SC m)) = all isComplete m
-
-  when (all isComplete tutorialMap) $
-    attainAchievement $
-      GlobalAchievement CompletedAllTutorials
+    Brick.zoom (runtimeState . progression) $ applyCompletionAchievements won t p
 
   playState . gameState . completionStatsSaved .= won
 
   return status
 
 -- | Don't save progress for developers or cheaters.
-unlessCheating :: MonadState AppState m => m () -> m ()
+unlessCheating :: EventM n AppState () -> EventM n AppState ()
 unlessCheating a = do
   debugging <- use $ uiState . uiDebugOptions
   isAuto <- use $ playState . uiGameplay . uiIsAutoPlay
   when (null debugging && not isAuto) a
 
 -- | Write the @ScenarioInfo@ out to disk when finishing a game (i.e. on winning or exit).
-saveScenarioInfoOnFinishNocheat :: (MonadIO m, MonadState AppState m) => m ()
+saveScenarioInfoOnFinishNocheat :: EventM n AppState ()
 saveScenarioInfoOnFinishNocheat = do
-  sc <- use $ runtimeState . scenarios
+  sc <- use $ runtimeState . progression . scenarios
   gs <- use $ playState . gameState
   unlessCheating $
     -- the path should be normalized and good to search in scenario collection
     getNormalizedCurrentScenarioPath gs sc >>= mapM_ saveScenarioInfoOnFinish
 
 -- | Write the @ScenarioInfo@ out to disk when exiting a game.
-saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => Bool -> m ()
+saveScenarioInfoOnQuit :: Bool -> EventM n AppState ()
 saveScenarioInfoOnQuit isNoMenu = do
-  sc <- use $ runtimeState . scenarios
+  sc <- use $ runtimeState . progression . scenarios
   gs <- use $ playState . gameState
   unlessCheating $
     getNormalizedCurrentScenarioPath gs sc >>= mapM_ go
@@ -144,5 +152,5 @@ saveScenarioInfoOnQuit isNoMenu = do
     -- ScenarioInfo, being sure to preserve the same focused
     -- scenario.
     unless isNoMenu $ do
-      sc <- use $ runtimeState . scenarios
+      sc <- use $ runtimeState . progression . scenarios
       forM_ (mkNewGameMenu sc (fromMaybe p curPath)) (uiState . uiMenu .=)
