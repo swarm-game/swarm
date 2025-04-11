@@ -67,7 +67,6 @@ robots:
     dir: east
     system: true
 entities:
-
   - name: scythe
     display:
       char: 'y'

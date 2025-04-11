@@ -343,6 +343,20 @@
       radius: 2
       density: 0.3
   biomes: [dirt, clay]
+- name: millstone
+  display:
+    char: 'm'
+    attr: rock
+  description:
+    - Grinds grain
+  properties: [known, pickable]
+- name: flour
+  display:
+    char: 'f'
+    attr: snow
+  description:
+    - Edible, ground wheat
+  properties: [known, pickable]
 - name: parsley
   display:
     attr: plant

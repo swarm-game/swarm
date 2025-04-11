@@ -106,6 +106,24 @@
     - [8, wooden gear]
   out:
     - [1, counter]
+- in:
+    - [1, rock]
+    - [1, wooden gear]
+  out:
+    - [1, millstone]
+- in:
+    - [4, wheat]
+  out:
+    - [1, flour]
+  required:
+    - [1, millstone]
+- in:
+    - [1, flour]
+    - [1, water]
+  required:
+    - [1, furnace]
+  out:
+    - [1, Elmer's glue]
 #########################################
 ##                STONE                ##
 #########################################
