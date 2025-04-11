@@ -15,7 +15,7 @@ module Swarm.Game.ScenarioInfo (
   scenarioPath,
   scenarioStatus,
   CodeSizeDeterminators (CodeSizeDeterminators),
-  ScenarioInfoPair,
+  ScenarioWith,
 
   -- * Scenario collection
   ScenarioCollection (..),
@@ -111,12 +111,12 @@ fromMapOM = OM.fromList . M.toList
 
 -- | A scenario item is either a specific scenario, or a collection of
 --   scenarios (/e.g./ the scenarios contained in a subdirectory).
-data ScenarioItem a = SISingle (ScenarioInfoPair a) | SICollection Text (ScenarioCollection a)
+data ScenarioItem a = SISingle (ScenarioWith a) | SICollection Text (ScenarioCollection a)
   deriving (Functor)
 
 -- | Retrieve the name of a scenario item.
 scenarioItemName :: ScenarioItem a -> Text
-scenarioItemName (SISingle (s, _ss)) = s ^. scenarioMetadata . scenarioName
+scenarioItemName (SISingle (ScenarioWith s _ss)) = s ^. scenarioMetadata . scenarioName
 scenarioItemName (SICollection name _) = name
 
 -- | A scenario collection is a tree of scenarios, keyed by name,
@@ -180,7 +180,7 @@ normalizeScenarioPath col p =
 scenarioCollectionToList :: ScenarioCollection a -> [ScenarioItem a]
 scenarioCollectionToList (SC xs) = orderedElems xs
 
-flatten :: ScenarioItem a -> [ScenarioInfoPair a]
+flatten :: ScenarioItem a -> [ScenarioWith a]
 flatten (SISingle p) = [p]
 flatten (SICollection _ c) = concatMap flatten $ scenarioCollectionToList c
 
@@ -330,10 +330,10 @@ loadScenarioItem scenarioInputs loadTestScenarios path = do
       s <- loadScenarioFile scenarioInputs path
       eitherSi <- runThrow @SystemFailure (loadScenarioInfo path)
       case eitherSi of
-        Right si -> return $ SISingle (s, si)
+        Right si -> return $ SISingle $ ScenarioWith s si
         Left warning -> do
           warn warning
-          return $ SISingle (s, ScenarioInfo path NotStarted)
+          return . SISingle . ScenarioWith s $ ScenarioInfo path NotStarted
 
 ------------------------------------------------------------
 -- Some lenses + prisms

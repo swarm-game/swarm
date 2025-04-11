@@ -235,7 +235,7 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
     (Nothing, Just (SISingle _)) -> hCenter $ txt "Press 'o' for launch options, or 'Enter' to launch with defaults"
     _ -> txt " "
 
-  drawScenarioItem (SISingle (s, ScenarioPath sPath)) = padRight (Pad 1) (drawStatusInfo s sPath) <+> txt (s ^. scenarioMetadata . scenarioName)
+  drawScenarioItem (SISingle (ScenarioWith s (ScenarioPath sPath))) = padRight (Pad 1) (drawStatusInfo s sPath) <+> txt (s ^. scenarioMetadata . scenarioName)
   drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
 
   drawStatusInfo s sPath = case currentScenarioInfo of
@@ -247,7 +247,7 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
         [] -> withAttr cyanAttr $ txt " ◉ "
         _ -> withAttr yellowAttr $ txt " ◎ "
    where
-    currentScenarioInfo = appState ^? runtimeState . scenarios . scenarioItemByPath sPath . _SISingle . _2
+    currentScenarioInfo = appState ^? runtimeState . scenarios . scenarioItemByPath sPath . _SISingle . getScenarioInfo
 
   isCompleted :: BestRecords -> Bool
   isCompleted best = best ^. scenarioBestByTime . metricProgress == Completed
@@ -266,7 +266,7 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
 
   drawDescription :: ScenarioItem ScenarioPath -> Widget Name
   drawDescription (SICollection _ _) = txtWrap " "
-  drawDescription (SISingle (s, ScenarioPath sPath)) =
+  drawDescription (SISingle (ScenarioWith s (ScenarioPath sPath))) =
     vBox
       [ drawMarkdown (nonBlank (s ^. scenarioOperation . scenarioDescription))
       , cached (ScenarioPreview sPath) $
@@ -277,7 +277,7 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
    where
     vc = determineStaticViewCenter (s ^. scenarioLandscape) worldTuples
 
-    currentScenarioInfo = appState ^? runtimeState . scenarios . scenarioItemByPath sPath . _SISingle . _2
+    currentScenarioInfo = appState ^? runtimeState . scenarios . scenarioItemByPath sPath . _SISingle . getScenarioInfo
 
     worldTuples = buildWorldTuples $ s ^. scenarioLandscape
     theWorlds =
@@ -685,7 +685,7 @@ drawModal h ps isNoMenu = \case
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg isNoMenu)
   GoalModal ->
     GR.renderGoalsDisplay (uig ^. uiDialogs . uiGoal) $
-      view (scenarioOperation . scenarioDescription) . fst <$> uig ^. scenarioRef
+      view (getScenario . scenarioOperation . scenarioDescription) <$> uig ^. scenarioRef
   KeepPlayingModal ->
     padLeftRight 1 $
       displayParagraphs $

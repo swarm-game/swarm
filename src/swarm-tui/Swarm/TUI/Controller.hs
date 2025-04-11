@@ -65,7 +65,7 @@ import Swarm.Game.Robot.Concrete
 import Swarm.Game.Scenario (scenarioMetadata, scenarioName)
 import Swarm.Game.Scenario.Scoring.Best (scenarioBestByTime)
 import Swarm.Game.Scenario.Scoring.GenericMetrics
-import Swarm.Game.Scenario.Status (ScenarioPath (..))
+import Swarm.Game.Scenario.Status (ScenarioPath (..), ScenarioWith (..), getScenario)
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
@@ -190,7 +190,7 @@ handleMainMenuEvent menu = \case
             firstUnsolved :: Maybe (ScenarioItem ScenarioInfo)
             firstUnsolved = find unsolved tutorials <|> listToMaybe tutorials
             unsolved = \case
-              SISingle (_, si) -> case si ^. scenarioStatus of
+              SISingle (ScenarioWith _ si) -> case si ^. scenarioStatus of
                 Played _ _ best
                   | Metric Completed _ <- best ^. scenarioBestByTime -> False
                   | otherwise -> True
@@ -199,7 +199,7 @@ handleMainMenuEvent menu = \case
             firstUnsolvedInfo = case firstUnsolved of
               Just (SISingle siPair) -> siPair
               _ -> error "No first tutorial found!"
-            firstUnsolvedName = firstUnsolvedInfo ^. _1 . scenarioMetadata . scenarioName
+            firstUnsolvedName = firstUnsolvedInfo ^. getScenario . scenarioMetadata . scenarioName
 
         -- Now set up the menu stack as if the user had chosen "New Game > Tutorials > t"
         -- where t is the tutorial scenario we identified as the first unsolved one
@@ -285,10 +285,10 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   _ -> pure ()
  where
   showLaunchDialog = case snd <$> BL.listSelectedElement curMenu of
-    Just (SISingle (s, ScenarioPath p)) -> do
+    Just (SISingle (ScenarioWith s (ScenarioPath p))) -> do
       ss <- use $ runtimeState . scenarios
       let si = getScenarioInfoFromPath ss p
-      Brick.zoom (uiState . uiLaunchConfig) $ prepareLaunchDialog (s, si)
+      Brick.zoom (uiState . uiLaunchConfig) $ prepareLaunchDialog $ ScenarioWith s si
     _ -> pure ()
 
 exitNewGameMenu ::

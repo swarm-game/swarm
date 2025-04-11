@@ -24,8 +24,8 @@ import Swarm.Game.Ingredients
 import Swarm.Game.Scenario.Status (ScenarioPath (..))
 import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
-  ScenarioInfoPair,
   ScenarioItem (..),
+  ScenarioWith,
   scenarioCollectionToList,
  )
 import Swarm.Game.World.Gen (Seed)
@@ -57,9 +57,9 @@ data ModalType
 data ButtonAction
   = Cancel
   | KeepPlaying
-  | StartOver Seed (ScenarioInfoPair ScenarioPath)
+  | StartOver Seed (ScenarioWith ScenarioPath)
   | QuitAction
-  | Next (ScenarioInfoPair ScenarioPath)
+  | Next (ScenarioWith ScenarioPath)
 
 data Modal = Modal
   { _modalType :: ModalType

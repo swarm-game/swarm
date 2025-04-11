@@ -80,6 +80,14 @@ newtype ScenarioPath = ScenarioPath
   { getScenarioPath :: FilePath
   }
 
+data ScenarioWith a = ScenarioWith
+  { _getScenario :: Scenario
+  , _getScenarioInfo :: a
+  }
+  deriving (Generic, Functor)
+
+makeLenses ''ScenarioWith
+
 -- | A 'ScenarioInfo' record stores metadata about a scenario: its
 -- canonical path and status.
 -- By way of the 'ScenarioStatus' record, it stores the
@@ -96,8 +104,6 @@ instance FromJSON ScenarioInfo where
 instance ToJSON ScenarioInfo where
   toEncoding = genericToEncoding scenarioOptions
   toJSON = genericToJSON scenarioOptions
-
-type ScenarioInfoPair a = (Scenario, a)
 
 makeLensesNoSigs ''ScenarioInfo
 

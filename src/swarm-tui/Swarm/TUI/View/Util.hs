@@ -19,6 +19,7 @@ import Graphics.Vty qualified as V
 import Swarm.Game.Entity as E
 import Swarm.Game.Land
 import Swarm.Game.Scenario (scenarioMetadata, scenarioName)
+import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (scenarioItemName)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
@@ -63,7 +64,7 @@ generateModal m s mt =
       GoalModal ->
         let goalModalTitle = case currentScenario of
               Nothing -> "Goal"
-              Just (scenario, _) -> scenario ^. scenarioMetadata . scenarioName
+              Just (ScenarioWith scenario _) -> scenario ^. scenarioMetadata . scenarioName
          in (" " <> T.unpack goalModalTitle <> " ", Nothing, descriptionWidth)
       KeepPlayingModal -> ("", Just (Button CancelButton, [("OK", Button CancelButton, Cancel)]), 80)
       TerrainPaletteModal -> ("Terrain", Nothing, w)

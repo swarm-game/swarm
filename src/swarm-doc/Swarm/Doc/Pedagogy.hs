@@ -45,11 +45,9 @@ import Swarm.Game.Scenario (
   scenarioSolution,
  )
 import Swarm.Game.Scenario.Objective (objectiveGoal)
-import Swarm.Game.Scenario.Status (ScenarioPath (..))
+import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
-  ScenarioInfo,
-  ScenarioInfoPair,
   flatten,
   getTutorials,
   loadScenarios,
@@ -83,7 +81,7 @@ data CoverageInfo = CoverageInfo
 -- introduced in their solution and descriptions
 -- having been extracted
 data TutorialInfo = TutorialInfo
-  { scenarioPair :: ScenarioInfoPair ScenarioPath
+  { scenarioPair :: ScenarioWith ScenarioPath
   , tutIndex :: Int
   , solutionCommands :: Map Const [SrcLoc]
   , descriptionCommands :: Set Const
@@ -98,8 +96,8 @@ data CommandAccum = CommandAccum
 -- * Functions
 
 -- | Extract commands from both goal descriptions and solution code.
-extractCommandUsages :: Int -> ScenarioInfoPair ScenarioPath -> TutorialInfo
-extractCommandUsages idx siPair@(s, _si) =
+extractCommandUsages :: Int -> ScenarioWith ScenarioPath -> TutorialInfo
+extractCommandUsages idx siPair@(ScenarioWith s _si) =
   TutorialInfo siPair idx solnCommands $ getDescCommands s
  where
   solnCommands = getCommands maybeSoln
@@ -144,13 +142,13 @@ getCommands (Just tsyn) =
 
 -- | "fold" over the tutorials in sequence to determine which
 -- commands are novel to each tutorial's solution.
-computeCommandIntroductions :: [(Int, ScenarioInfoPair ScenarioPath)] -> [CoverageInfo]
+computeCommandIntroductions :: [(Int, ScenarioWith ScenarioPath)] -> [CoverageInfo]
 computeCommandIntroductions =
   reverse . tuts . foldl' f initial
  where
   initial = CommandAccum mempty mempty
 
-  f :: CommandAccum -> (Int, ScenarioInfoPair ScenarioPath) -> CommandAccum
+  f :: CommandAccum -> (Int, ScenarioWith ScenarioPath) -> CommandAccum
   f (CommandAccum encounteredPreviously xs) (idx, siPair) =
     CommandAccum updatedEncountered $ CoverageInfo usages novelCommands : xs
    where
@@ -187,7 +185,7 @@ loadScenarioCollection = simpleErrorHandle $ do
   ignoreWarnings @(Seq SystemFailure) $ loadScenarios (ScenarioInputs worlds tem) True
 
 renderUsagesMarkdown :: CoverageInfo -> Text
-renderUsagesMarkdown (CoverageInfo (TutorialInfo (s, ScenarioPath sp) idx _sCmds dCmds) novelCmds) =
+renderUsagesMarkdown (CoverageInfo (TutorialInfo (ScenarioWith s (ScenarioPath sp)) idx _sCmds dCmds) novelCmds) =
   T.unlines bodySections
  where
   bodySections = firstLine : otherLines
@@ -253,7 +251,7 @@ renderTutorialProgression =
     render (cmd, tut) =
       T.unwords
         [ linkifyCommand cmd
-        , "(" <> renderTutorialTitle (tutIndex tut) (fst $ scenarioPair tut) <> ")"
+        , "(" <> renderTutorialTitle (tutIndex tut) (view getScenario $ scenarioPair tut) <> ")"
         ]
     renderFullCmdList = renderList . map render . sortOn fst
     infos = generateIntroductionsSequence ss

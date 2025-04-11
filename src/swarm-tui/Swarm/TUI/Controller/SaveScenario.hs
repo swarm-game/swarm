@@ -17,7 +17,7 @@ import Control.Monad.State (MonadState)
 import Data.Maybe (listToMaybe)
 import Data.Time (getZonedTime)
 import Swarm.Game.Achievement.Definitions
-import Swarm.Game.Scenario.Status (scenarioIsCompleted, updateScenarioInfoOnFinish)
+import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.State.Runtime
@@ -53,7 +53,7 @@ saveScenarioInfoOnFinish p = do
   saved <- use $ playState . gameState . completionStatsSaved
 
   let currentScenarioInfo :: Traversal' AppState ScenarioInfo
-      currentScenarioInfo = runtimeState . scenarios . scenarioItemByPath p . _SISingle . _2
+      currentScenarioInfo = runtimeState . scenarios . scenarioItemByPath p . _SISingle . getScenarioInfo
 
   replHist <- use $ playState . uiGameplay . uiREPL . replHistory
   let determinator = CodeSizeDeterminators initialRunCode $ replHist ^. replHasExecutedManualInput
@@ -74,7 +74,7 @@ saveScenarioInfoOnFinish p = do
 
   -- Check if all tutorials have been completed
   tutorialMap <- use $ runtimeState . scenarios . to getTutorials . to scMap
-  let isComplete (SISingle (_, s)) = scenarioIsCompleted s
+  let isComplete (SISingle (ScenarioWith _ s)) = scenarioIsCompleted s
       -- There are not currently any subcollections within the
       -- tutorials, but checking subcollections recursively just seems
       -- like the right thing to do
