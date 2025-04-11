@@ -15,6 +15,7 @@ import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
+import Data.Text.IO qualified as TIO
 import Swarm.Language.JSON ()
 import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ (tyQ)
@@ -722,6 +723,14 @@ testLanguagePipeline =
         , testCase
             "nested polymorphic def/annot"
             (valid "def id : a -> a * Int = \\y. (y, 3 : Int) end")
+        ]
+    , testGroup
+        "Custom error message for missing end #1141"
+        [ testCase
+            "missing end"
+            $ do
+              source <- TIO.readFile "data/test/language-snippets/errors/missing-end.sw"
+              processCompare T.isInfixOf source "end"
         ]
     ]
  where
