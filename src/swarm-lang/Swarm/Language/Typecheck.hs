@@ -1050,7 +1050,6 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Scout -> [tyQ| Dir -> Cmd Bool |]
   Whereami -> [tyQ| Cmd (Int * Int) |]
   LocateMe -> [tyQ| Cmd (Text * (Int * Int)) |]
-  Waypoint -> [tyQ| Text -> Int -> (Int * Int) |]
   Waypoints -> [tyQ| Text -> (rec l. Unit + (Int * Int) * l) |]
   Structures -> [tyQ| Text -> Cmd (rec l. Unit + (Int * Int) * l) |]
   Floorplan -> [tyQ| Text -> Cmd (Int * Int) |]

@@ -1183,11 +1183,10 @@
     char: 'a'
   description:
     - |
-      An atlas enables the `waypoint` command: `waypoint : Text -> Int -> Cmd (Int * (Int * Int))`.
-      Waypoints are keyed by name and index; the count of waypoints with the same name will be returned
-      along with the current index's location.
+      An atlas enables the `waypoints` command: `waypoints : Text -> (rec l. Unit + (Int * Int) * l)`.
+      Waypoints are keyed by name.
   properties: [pickable]
-  capabilities: [waypoint]
+  capabilities: [waypoints]
 - name: GPS receiver
   display:
     attr: device
