@@ -67,15 +67,7 @@ robots:
     dir: east
     system: true
 entities:
-  - name: wheat
-    display:
-      char: 'w'
-      attr: gold
-    description:
-      - Grain
-    properties: [known, pickable, growable]
-    growth: [2, 4]
-    biomes: [dirt]
+
   - name: scythe
     display:
       char: 'y'
