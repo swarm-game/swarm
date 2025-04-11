@@ -29,9 +29,9 @@ entities:
     display:
       char: 'a'
     description:
-      - Enables `waypoint` command
+      - Enables `waypoints` command
     properties: [known, pickable]
-    capabilities: [waypoint]
+    capabilities: [waypoints]
   - name: kudzu
     display:
       char: 'k'

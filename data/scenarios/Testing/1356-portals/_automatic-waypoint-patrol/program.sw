@@ -45,10 +45,7 @@ def visitNextWaypoint : (rec l. Unit + (Int * Int) * l) -> (rec l. Unit + (Int *
     end;
 
 def go =
-    // teleport self $ waypointQuery;
-
     let wpList = waypoints "wp" in
-
     visitNextWaypoint wpList wpList;
     end;
 
