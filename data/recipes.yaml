@@ -659,6 +659,11 @@
   required:
     - [1, drill]
 - in:
+    - [2, copper pipe]
+    - [2, lens]
+  out:
+    - [1, binoculars]
+- in:
     - [1, glass]
     - [8, copper wire]
   out:

@@ -54,7 +54,6 @@ nonCoveredList =
     T.toCaseFold
     [ "Elmer's glue"
     , "ash"
-    , "binoculars"
     , "blueprint"
     , "caliper"
     , "decoder ring"
