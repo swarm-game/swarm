@@ -33,9 +33,9 @@ renderRobotDetails ring r paneState =
           ]
     , hBorder
     , hBox
-      [ highlightBorderFor RobotLogPane $ borderWithLabel (str "Logs") logsTable
-      , highlightBorderFor RobotCommandHistogramPane $ borderWithLabel (str "Commands") commandsTable
-      ]
+        [ highlightBorderFor RobotLogPane $ borderWithLabel (str "Logs") logsTable
+        , highlightBorderFor RobotCommandHistogramPane $ borderWithLabel (str "Commands") commandsTable
+        ]
     ]
  where
   highlightBorderFor n =

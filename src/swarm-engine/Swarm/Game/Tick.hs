@@ -10,14 +10,14 @@ module Swarm.Game.Tick (
 
 import Data.Aeson (FromJSON, ToJSON (..))
 import Data.Aeson qualified as A
+import Data.Bits (Bits (..))
 import Data.Int (Int64)
+import Data.List (intersperse)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
 import Swarm.Util.JSON (optionsUnwrapUnary)
 import Swarm.Util.WindowedCounter (Offsettable (..))
 import Text.Printf
-import Data.List (intersperse)
-import Data.Bits (Bits(..))
 
 -- | A newtype representing a count of ticks (typically since the
 --   start of a game).
