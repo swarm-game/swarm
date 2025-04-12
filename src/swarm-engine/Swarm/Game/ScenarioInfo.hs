@@ -11,7 +11,7 @@ module Swarm.Game.ScenarioInfo (
   -- * Scenario info
   ScenarioStatus (..),
   _NotStarted,
-  ScenarioInfo (..),
+  ScenarioInfo,
   scenarioPath,
   scenarioStatus,
   CodeSizeDeterminators (CodeSizeDeterminators),
@@ -45,7 +45,7 @@ import Control.Effect.Accum (Accum, add)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw (Throw, liftEither)
 import Control.Lens hiding (from, (<.>))
-import Control.Monad (filterM, forM_, when, (<=<))
+import Control.Monad (filterM, forM_, void, when, (<=<))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Char (isSpace)
 import Data.Either (partitionEithers)
@@ -291,15 +291,13 @@ loadScenarioInfo p = do
       return $
         ScenarioInfo path NotStarted
     else do
-      ScenarioInfo _storedPath status <-
+      si <-
         withThrow (AssetNotLoaded (Data Scenarios) infoPath . CanNotParseYaml)
           . (liftEither <=< sendIO)
           $ decodeFileEither infoPath
-      -- We discard the path that was saved inside the yaml file, so that there
+      -- We overwrite the (void) path that was saved inside the yaml file, so that there
       -- is only a single authoritative path "key": the original scenario path.
-      --
-      -- TODO(#2390) Maybe we shouldn't store that path.
-      return $ ScenarioInfo path status
+      return $ path <$ (si :: ScenarioInfoT ())
 
 -- | Save info about played scenario to XDG data directory.
 saveScenarioInfo ::
@@ -308,7 +306,8 @@ saveScenarioInfo ::
   IO ()
 saveScenarioInfo path si = do
   infoPath <- scenarioPathToSavePath path <$> getSwarmSavePath True
-  encodeFile infoPath si
+  -- We do not store the path in the save file (see #2390).
+  encodeFile infoPath $ void si
 
 -- | Load a scenario item (either a scenario, or a subdirectory
 --   containing a collection of scenarios) from a particular path.
