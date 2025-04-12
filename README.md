@@ -63,10 +63,10 @@ unreleased features), read on.
        cd /path/to/the/swarm/repo
        cabal run -O0 swarm:exe:swarm
 
-   (Note that we recommend turning off optimizations with `-O0` since
-   they don't seem to make much difference to the speed of the
-   resulting executable, but they make a big difference in compilation
-   time.)
+   (Note that we recommend turning off optimizations with `-O0`,
+   as they make a big difference in compilation time.
+   Optimized builds are only noticeably faster in scenarios with
+   _swarms_ of robots.)
 
 1. Go get a snack while `cabal` downloads and builds all of Swarm's
    dependencies.
