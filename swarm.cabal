@@ -65,7 +65,7 @@ data-files:
 
 source-repository head
   type: git
-  location: git://github.com/swarm-game/swarm.git
+  location: https://github.com/swarm-game/swarm.git
 
 flag ci
   description: Make warnings error
