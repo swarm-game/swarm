@@ -247,7 +247,7 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
         [] -> withAttr cyanAttr $ txt " ◉ "
         _ -> withAttr yellowAttr $ txt " ◎ "
    where
-    currentScenarioInfo = appState ^? runtimeState . scenarios . scenarioItemByPath sPath . _SISingle . getScenarioInfo
+    currentScenarioInfo = appState ^? runtimeState . progression . scenarios . scenarioItemByPath sPath . _SISingle . getScenarioInfo
 
   isCompleted :: BestRecords -> Bool
   isCompleted best = best ^. scenarioBestByTime . metricProgress == Completed
@@ -277,7 +277,7 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
    where
     vc = determineStaticViewCenter (s ^. scenarioLandscape) worldTuples
 
-    currentScenarioInfo = appState ^? runtimeState . scenarios . scenarioItemByPath sPath . _SISingle . getScenarioInfo
+    currentScenarioInfo = appState ^? runtimeState . progression . scenarios . scenarioItemByPath sPath . _SISingle . getScenarioInfo
 
     worldTuples = buildWorldTuples $ s ^. scenarioLandscape
     theWorlds =

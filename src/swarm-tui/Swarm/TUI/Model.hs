@@ -152,7 +152,8 @@ logEvent src sev who msg el =
  where
   l = LogEntry (TickNumber 0) src sev who msg
 
--- | This encapsulates both game and UI state for an actively-playing scenario.
+-- | This encapsulates both game and UI state for an actively-playing scenario, as well
+-- as state that evolves as a result of playing a scenario.
 data PlayState = PlayState
   { _gameState :: GameState
   , _uiGameplay :: UIGameplay
