@@ -6,7 +6,7 @@ Swarm
 [![Swarm release on Hackage][hackage-img]][hackage]
 [![Contributor Covenant][badge-covenant]](CODE_OF_CONDUCT.md)
 [![ircchat][badge-ircchat]][ircchat]
-![GitHub Contributors][contribs]
+[![All Contributors][contributors]](#contributors)
 
 [build-status]: https://github.com/swarm-game/swarm/actions/workflows/haskell-ci.yml/badge.svg
 [release-img]: https://img.shields.io/github/v/release/swarm-game/swarm?logo=github
@@ -17,7 +17,7 @@ Swarm
 [badge-covenant]: https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg
 [badge-ircchat]: https://img.shields.io/badge/chat-on%20libera-brightgreen.svg
 [ircchat]: https://web.libera.chat/?channels=#swarm
-[contribs]: https://contrib.rocks/image?repo=swarm-game/swarm
+[contributors]: https://img.shields.io/github/all-contributors/swarm-game/swarm?color=ee8449&style=flat-square
 
 Swarm is a 2D programming and resource gathering game. Program your
 robots to explore the world and collect resources, which in turn
@@ -27,11 +27,20 @@ website](https://swarm-game.github.io).
 
 [![World 0 after scanning a tree and making a log.](images/tutorial/log.png)](https://swarm-game.github.io)
 
-Contributing
+Contributors
 ------------
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for information about various
 ways you can contribute to Swarm development!
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
 
 Building
 --------
