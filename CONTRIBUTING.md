@@ -1,7 +1,7 @@
 # Contributing to Swarm
 
-Thanks so much for taking the time to contribute to Swarm! All
-contributions are welcomed and appreciated, whether reporting
+Thanks so much for taking the time to contribute to Swarm! [All
+contributions are welcomed and appreciated](README.md), whether reporting
 a bug or fixing a single punctuation mark, contributing to
 game design, or implementing a complex new feature.
 
