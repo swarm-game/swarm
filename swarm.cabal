@@ -712,6 +712,7 @@ library swarm-engine
     Swarm.Game.Achievement.Persistence
     Swarm.Game.CESK
     Swarm.Game.Exception
+    Swarm.Game.Popup
     Swarm.Game.Robot.Activity
     Swarm.Game.Robot.Concrete
     Swarm.Game.Scenario.Objective.WinCheck
@@ -1064,7 +1065,6 @@ library swarm-tui
     Swarm.TUI.Model.DebugOption
     Swarm.TUI.Model.Dialog
     Swarm.TUI.Model.Dialog.Goal
-    Swarm.TUI.Model.Dialog.Popup
     Swarm.TUI.Model.Dialog.Structure
     Swarm.TUI.Model.Event
     Swarm.TUI.Model.KeyBindings
