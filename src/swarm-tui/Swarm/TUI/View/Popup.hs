@@ -14,9 +14,8 @@ import Control.Lens ((^.))
 import Swarm.Game.Achievement.Definitions (title)
 import Swarm.Game.Achievement.Description (describe)
 import Swarm.Game.Popup (Popup (..), currentPopup, popupFrames)
-import Swarm.Game.State.Runtime
 import Swarm.Language.Syntax (constInfo, syntax)
-import Swarm.TUI.Model (AppState, keyConfig, keyEventHandling, runtimeState)
+import Swarm.TUI.Model (AppState, keyConfig, keyEventHandling, playState, progression, uiPopups)
 import Swarm.TUI.Model.Event qualified as SE
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Attribute.Attr (notifAttr)
@@ -31,7 +30,7 @@ animFrames = 3
 -- | Draw the current notification popup (if any).
 drawPopups :: AppState -> Widget Name
 drawPopups s = hCenterLayer $
-  case s ^. runtimeState . progression . uiPopups . currentPopup of
+  case s ^. playState . progression . uiPopups . currentPopup of
     Just (notif, f) ->
       cropTopTo (popupRows f) . border . padLeftRight 2 $ drawPopup s notif
     _ -> emptyWidget
