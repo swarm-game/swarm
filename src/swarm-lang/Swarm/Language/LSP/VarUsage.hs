@@ -124,6 +124,7 @@ getUsage bindings (CSyntax _pos t _comments) = case t of
   TAntiInt {} -> mempty
   TText {} -> mempty
   TAntiText {} -> mempty
+  TAntiSyn {} -> mempty
   TBool {} -> mempty
   TRobot {} -> mempty
   TRef {} -> mempty

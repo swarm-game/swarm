@@ -137,6 +137,7 @@ narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
   TRobot {} -> Nothing
   TAntiInt {} -> Nothing
   TAntiText {} -> Nothing
+  TAntiSyn {} -> Nothing
   SSuspend {} -> Nothing
  where
   d = descend pos
@@ -247,6 +248,7 @@ explain trm = case trm ^. sTerm of
   TRef {} -> internal "A memory reference."
   TAntiInt {} -> internal "An antiquoted Haskell variable name of type Integer."
   TAntiText {} -> internal "An antiquoted Haskell variable name of type Text."
+  TAntiSyn {} -> internal "An antiquoted Haskell variable name of type Syntax."
   TRobot {} -> internal "A robot reference."
   SSuspend {} -> internal "A suspension."
  where

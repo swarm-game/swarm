@@ -1,17 +1,20 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- A quasiquoter for Swarm polytypes.
-module Swarm.Language.Parser.QQ (tyQ) where
+-- A quasiquoter for Swarm polytypes + untyped terms.
+module Swarm.Language.Parser.QQ (tyQ, astQ) where
 
 import Data.Generics
 import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Quote
+import Swarm.Language.Syntax
 import Swarm.Language.Parser.Core (runParserTH)
 import Swarm.Language.Parser.Lex (sc)
+import Swarm.Language.Parser.Term (parseTerm)
 import Swarm.Language.Parser.Type (parsePolytype)
 import Swarm.Language.Parser.Util (fully)
 import Swarm.Util (liftText)
+import Witch (from)
 
 ------------------------------------------------------------
 -- Quasiquoters
@@ -40,3 +43,27 @@ quoteTypeExp s = do
         )
   parsed <- runParserTH pos (fully sc parsePolytype) s
   dataToExpQ (fmap liftText . cast) parsed
+
+astQ :: QuasiQuoter
+astQ =
+  QuasiQuoter
+    { quoteExp = quoteASTExp
+    , quotePat = error "quotePat  not implemented for ASTs"
+    , quoteType = error "quoteType not implemented for ASTs"
+    , quoteDec = error "quoteDec  not implemented for ASTs"
+    }
+
+quoteASTExp :: String -> TH.ExpQ
+quoteASTExp s = do
+  loc <- TH.location
+  let pos =
+        ( TH.loc_filename loc
+        , fst (TH.loc_start loc)
+        , snd (TH.loc_start loc)
+        )
+  parsed <- runParserTH pos (fully sc parseTerm) s
+  dataToExpQ ((fmap liftText . cast) `extQ` antiASTExp) parsed
+
+antiASTExp :: Syntax -> Maybe TH.ExpQ
+antiASTExp (STerm (TAntiSyn v)) = Just $ TH.varE (TH.mkName (from v))
+antiASTExp _ = Nothing

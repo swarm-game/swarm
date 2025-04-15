@@ -134,8 +134,9 @@ bindTydef xs ty
 
 parseAntiquotation :: Parser Term
 parseAntiquotation =
-  TAntiText <$> (lexeme . try) (symbol "$str:" *> tmVar)
-    <|> TAntiInt <$> (lexeme . try) (symbol "$int:" *> tmVar)
+      TAntiText <$> (lexeme . try) (symbol "$str:" *> tmVar)
+  <|> TAntiInt <$> (lexeme . try) (symbol "$int:" *> tmVar)
+  <|> TAntiSyn <$> (lexeme . try) (symbol "`" *> tmVar)
 
 -- | Parse a Swarm language term.
 parseTerm :: Parser Syntax
