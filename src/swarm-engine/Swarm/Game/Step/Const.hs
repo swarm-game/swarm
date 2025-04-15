@@ -970,11 +970,8 @@ execConst runChildProg c vs s k = do
     Case -> case vs of
       [VInj side v, kl, kr] -> return $ Out v s (FApp (bool kl kr side) : k)
       _ -> badConst
-    Fst -> case vs of
-      [VPair v _] -> return $ Out v s k
-      _ -> badConst
-    Snd -> case vs of
-      [VPair _ v] -> return $ Out v s k
+    Match -> case vs of
+      [VPair v1 v2, kp] -> return $ Out v1 s (FApp kp : FVArg v2 : k)
       _ -> badConst
     Try -> case vs of
       [c1, c2] -> return $ Out c1 s (FApp (VCApp Force []) : FExec : FTry c2 : k)

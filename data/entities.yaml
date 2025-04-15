@@ -1030,8 +1030,8 @@
       if `t`{=type} is a type with three elements, then there are 2 * 3 = 6
       different pairs containing a `Bool`{=type} and a `t`{=type}, that is, 6 elements
       of type `Bool * t`{=type}.  For working with products of types, the ADT
-      calculator enables pair syntax `(1, "Hi!")` as well as the projection
-      functions `fst : a * b -> a` and `snd : a * b -> b`.
+      calculator enables pair syntax `(1, "Hi!")` as well as the pair elimination
+      function `match : a * b -> (a -> b -> c) -> c`.
     - |
       The sum of two types is a type with two options; for example, a
       value of type `Bool + t`{=type} is either a `Bool`{=type} value or a `t`{=type} value,
