@@ -143,8 +143,7 @@ constCaps = \case
   Inr -> Just CSum
   Case -> Just CSum
   -- TODO: #563 pair syntax (1,2,3...) should require CProd too
-  Fst -> Just CProd
-  Snd -> Just CProd
+  Match -> Just CProd
   c -> Just (CExecute c)
 
 -- | Inverts the 'constCaps' mapping.

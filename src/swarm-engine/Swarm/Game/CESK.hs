@@ -123,6 +123,13 @@ data Frame
     -- application) in environment @e@.  We will also push an 'FApp'
     -- frame on the stack.
     FArg Term Env
+  | -- | @FVArg v@ says that we were evaluating the left-hand side of
+    --   an application, and the next thing we should do is apply it
+    --   to the given value.  This does not normally occur as part of
+    --   the usual evaluation process for applications, which instead
+    --   uses FArg.  However, it is sometimes useful when reducing
+    --   other constructs.
+    FVArg Value
   | -- | @FApp v@ says that we were evaluating the right-hand side of
     -- an application; once we are done, we should pass the resulting
     -- value as an argument to @v@.
@@ -405,6 +412,7 @@ prettyFrame f (p, inner) = case f of
   FSnd t _ -> (11, "(" <> inner <> "," <+> ppr t <> ")")
   FFst v -> (11, "(" <> ppr (valueToTerm v) <> "," <+> inner <> ")")
   FArg t _ -> (10, pparens (p < 10) inner <+> prettyPrec 11 t)
+  FVArg v -> (10, pparens (p < 10) inner <+> prettyPrec 11 (valueToTerm v))
   FApp v -> (10, prettyPrec 10 (valueToTerm v) <+> pparens (p < 11) inner)
   FLet x _ t _ -> (11, hsep ["let", pretty x, "=", inner, "in", ppr t])
   FTry v -> (10, "try" <+> pparens (p < 11) inner <+> prettyPrec 11 (valueToTerm v))
