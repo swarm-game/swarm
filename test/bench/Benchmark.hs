@@ -111,7 +111,8 @@ waveProgram manualInline =
         end;
     def start =
         pos <- whereami;
-        wait $ fst pos;
+        match pos \x. \_.
+        wait x;
         go;
         end;
     start;

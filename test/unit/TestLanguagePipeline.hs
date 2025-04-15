@@ -62,7 +62,7 @@ testLanguagePipeline =
         (valid "1 <= 2")
     , testCase
         "parsing operators #239 - parse valid operator ($)"
-        (valid "fst $ snd $ (1,2,3)")
+        (valid "(\\x. -x) $ (\\x. x^2) $ 2")
     , testGroup
         "Identifiers"
         [ testCase
@@ -399,7 +399,7 @@ testLanguagePipeline =
             (process "1 : a" "1:1: Type mismatch:\n  From context, expected `1` to have type `a`,\n  but it actually has type `Int`")
         , testCase
             "type specialization through type ascription"
-            (valid "fst:(Int + b) * a -> Int + b")
+            (valid "match : (Int + b) * a -> ((Int + b) -> a -> c) -> c")
         , testCase
             "type ascription doesn't allow rank 2 types"
             ( process
@@ -560,8 +560,8 @@ testLanguagePipeline =
         , testCase
             "inferring type of bad recursive function - #2186"
             ( process
-                "def bad = \\acc.\\n. if (n <= 0) {fst acc} {bad (fst acc + 1) (n - 1)} end"
-                "1:1: Type mismatch:\n  From context, expected `\\acc. \\n. if (n <= 0) {fst acc} {\n    bad (fst acc + 1) (n - 1)\n  }` to have type `Int -> Int -> Int`,\n  but it actually has a type like `(Int * _) -> Int -> Int`"
+                "def fst = \\p. match p \\a. \\_. a end; def bad = \\acc. \\n. if (n <= 0) {fst acc} {bad (fst acc + 1) (n - 1)} end"
+                "1:38: Type mismatch:\n  From context, expected `\\acc. \\n. if (n <= 0) {fst acc} {\n    bad (fst acc + 1) (n - 1)\n  }` to have type `Int -> Int -> Int`,\n  but it actually has a type like `(Int * _) -> Int -> Int`"
             )
         ]
     , testGroup
@@ -631,12 +631,12 @@ testLanguagePipeline =
         [ testCase
             "occurs check"
             ( process
-                "def sum = \\l. case l (\\_. 0) (\\c. fst c + sum (snd c)) end"
+                "def sum = \\l. case l (\\_. 0) (\\c. match c \\hd. \\tl. hd + sum tl) end"
                 "Encountered infinite type u6 = Int * (u5 + u6).\nSwarm will not infer recursive types; if you want a recursive type, add an explicit type annotation."
             )
         , testCase
             "no occurs check with type annotation"
-            (valid "def sum : (rec l. Unit + Int * l) -> Int = \\l. case l (\\_. 0) (\\c. fst c + sum (snd c)) end")
+            (valid "def sum : (rec l. Unit + Int * l) -> Int = \\l. case l (\\_. 0) (\\c. match c \\hd. \\tl. hd + sum tl) end")
         , testCase
             "vacuous"
             ( process

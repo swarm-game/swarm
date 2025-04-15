@@ -58,9 +58,11 @@ def locationIsOpen =
     end;
 
 def faceAwayFrom = \loc.
+    match loc \locx. \locy.
     myLoc <- whereami;
-    let x = fst loc - fst myLoc in
-    let y = snd loc - snd myLoc in
+    match myLoc \myx. \myy.
+    let x = locx - myx in
+    let y = locy - myy in
     let d = if (abs x > abs y) {
         if (x > 0) {west} {east}
     } {

@@ -33,8 +33,10 @@ def randSwap = \f. \g.
     end;
 
 def converge = \dest. \currentLoc.
-    let xDist = fst currentLoc - fst dest in
-    let yDist = snd currentLoc - snd dest in
+    match dest \destx. \desty.
+    match currentLoc \curx. \cury.
+    let xDist = curx - destx in
+    let yDist = cury - desty in
     randSwap (goDir xDist east west) (goDir yDist north south);
     end;
 
@@ -94,9 +96,9 @@ def go = \width. \height. \lastTauntIndex. \startingAmount. \dropping.
     newCount <- count dropping;
     if (newCount > 0) {
         let tauntStage = getTauntStage startingAmount newCount in
-        let tauntIndex = fst tauntStage in
+        match tauntStage \tauntIndex. \taunt.
         if (tauntIndex != lastTauntIndex) {
-            say $ snd tauntStage;
+            say taunt
         } {};
 
         appear "o" (inl ());

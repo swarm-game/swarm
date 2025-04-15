@@ -51,7 +51,8 @@ def loopMonotonicityCheck : Int -> Cmd Bool = \expectedVal.
                 isOnRightBorder <- itemIsHere "border";
                 if isOnRightBorder {
                     loc <- whereami;
-                    teleport self (0, snd loc - 1);
+                    match loc \_. \y.
+                    teleport self (0, y - 1);
                 } {};
                 loopMonotonicityCheck nextVal;
             );

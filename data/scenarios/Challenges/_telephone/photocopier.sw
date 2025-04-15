@@ -5,10 +5,8 @@ def X : Int -> Cmd Unit -> Cmd Unit = \n. \c.
 end
 
 def pixel : (Int * Int) * Text -> Cmd Unit = \instr.
-  let loc = fst instr in
-  let x = fst loc in
-  let y = snd loc in
-  let ty = snd instr in
+  match instr \loc. \ty.
+  match loc \x. \y.
   turn back; X 5 move; turn right; X 2 move;
   turn west; X x move; turn north; X y move;
   place ty;

@@ -8,12 +8,13 @@ def min = \x. \y. if (x < y) {x} {y} end;
 def elif = \t. \then. \else. {if t then else} end
 def else = \t. t end
 
-def sumTuples = \t1. \t2.
-    (fst t1 + fst t2, snd t1 + snd t2);
-    end;
+def λcase = \f. \g. \s. case s f g end
+def λmatch = \f. \p. match p f end
 
-def mapTuple = \f. \t.
-    (f $ fst t, f $ snd t)
+def mapTuple = \f. λmatch \a. \b. (f a, f b) end;
+
+def sumTuples = λmatch \t11. \t12. λmatch \t21. \t22.
+    (t11 + t21, t12 + t22);
     end;
 
 def negateTuple = \t.
@@ -25,9 +26,7 @@ def subtractTuple = \t1. \t2.
     end;
 
 // Deprecated
-def moveTuple = \tup.
-    let x = fst tup in
-    let y = snd tup in
+def moveTuple = λmatch \x. \y.
     turn $ if (x > 0) {east} {west};
     doN (abs x) move;
 
@@ -69,8 +68,7 @@ def moveToward = \maxDirect. \goal.
 
         currLoc <- whereami;
         let delta = subtractTuple goal currLoc in
-        let x = fst delta in
-        let y = snd delta in
+        match delta \x. \y.
 
         moveHorizontal maxDirect x;
         moveVertical maxDirect y;
@@ -117,8 +115,8 @@ def depositHoneycomb = \dist.
     };
     end;
 
-def goToHive = \hiveLoc.
-    let depositLoc = (fst hiveLoc - 1, snd hiveLoc) in
+def goToHive = λmatch \hivex. \hivey.
+    let depositLoc = (hivex - 1, hivey) in
     moveToward 2 depositLoc;
     turn north;
     depositHoneycomb 0;
@@ -225,10 +223,9 @@ def associateHive = \loc.
    };
    end;
 
-def mapM_ : (a -> Cmd b) -> (rec l. Unit + a * l) -> Cmd Unit = \f. \l.
-  case l
-    (\_. pure ())
-    (\cons. f (fst cons); mapM_ f (snd cons))
+def mapM_ : (a -> Cmd b) -> (rec l. Unit + a * l) -> Cmd Unit = \f. λcase
+  (\_. pure ())
+  (λmatch \hd. \tl. f hd; mapM_ f tl)
   end;
 
 /**

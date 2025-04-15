@@ -17,7 +17,7 @@ objectives:
       def hasAny : (rec l. Unit + Text * l) -> Cmd Bool = \items.
         case items
           (\_. pure false)
-          (\c. b <- has (fst c); if b {pure true} {hasAny (snd c)})
+          (\c. match c \hd. \tl. b <- has hd; if b {pure true} {hasAny tl})
       end;
 
       let prohibited = tagmembers "fruit" in

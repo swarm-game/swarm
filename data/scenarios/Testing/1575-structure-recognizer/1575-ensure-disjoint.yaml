@@ -17,7 +17,7 @@ objectives:
         Build 2 of the same structure
     condition: |
       def length : (rec l. Unit + a * l) -> Int = \l.
-        case l (\_. 0) (\cons. 1 + length (snd cons))
+        case l (\_. 0) (\cons. match cons \_. \rest. 1 + length rest)
       end;
       foundStructures <- structures "chessboard";
       pure $ length foundStructures >= 2
@@ -30,7 +30,7 @@ objectives:
         while the bases still possesses `silver`{=entity}
     condition: |
       def length : (rec l. Unit + a * l) -> Int = \l.
-        case l (\_. 0) (\cons. 1 + length (snd cons))
+        case l (\_. 0) (\cons. match cons \_. \rest. 1 + length rest)
       end;
       robotHasSilver <- as base {has "silver"};
 

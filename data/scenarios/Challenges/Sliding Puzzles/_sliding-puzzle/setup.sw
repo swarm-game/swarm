@@ -249,7 +249,8 @@ def placeSingleRow = \sourceRow. \boardWidth. \rowIndex. \colIndex.
 
 def placeRandomizedPuzzle = \arrayLoc. \boardWidth. \rowIndex.
     if (rowIndex >= 0) {
-        placeSingleRow (snd arrayLoc) boardWidth rowIndex $ boardWidth - 1;
+        match arrayLoc \_. \array_y.
+        placeSingleRow array_y boardWidth rowIndex $ boardWidth - 1;
         placeRandomizedPuzzle arrayLoc boardWidth $ rowIndex - 1;
     } {};
     end;

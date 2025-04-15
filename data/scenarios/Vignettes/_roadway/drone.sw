@@ -1,17 +1,17 @@
 def elif = \t. \then. \else. {if t then else} end
 def else = \t. t end
 
-def sumTuples = \t1. \t2.
-    (fst t1 + fst t2, snd t1 + snd t2);
+def λmatch = \f. \p. match p f end
+
+def sumTuples = λmatch \t11. \t12. λmatch \t21. \t22.
+    (t11 + t21, t12 + t22);
     end;
 
 def max = \a. \b.
     if (a > b) {a} {b};
     end;
 
-def mapTuple = \f. \t.
-    (f $ fst t, f $ snd t)
-    end;
+def mapTuple = \f. λmatch \x. \y. (f x, f y) end;
 
 // modulus function (%)
 def mod : Int -> Int -> Int = \i.\m.
@@ -34,11 +34,11 @@ def init :
     let topCorner = (-18, 30) in
     absloc <- whereami;
     let loc = sumTuples absloc $ mapTuple (\x. -x) topCorner in
-    let xloc = abs $ fst loc in
+    match loc \x. \y.
+    let xloc = abs x in
     let idx = xloc / 2 in
+    let yloc = abs y in
 
-    let yloc = abs (snd loc) in
-    
     randoffset <- random 5;
     let baseoffset = 10 * idx in
     let offset = randoffset + baseoffset in
@@ -56,8 +56,9 @@ def init :
             (west, (extents.xMax - offset, lanes.yWest))
         }
     } in
-    turn $ fst locdir;
-    teleport self $ snd locdir;
+    match locdir \dir. \loc.
+    turn dir;
+    teleport self loc;
     pure (isLongitudinal, idx);
     end;
 
@@ -75,15 +76,16 @@ def getCanMove :
 
     d <- heading;
     loc <- whereami;
+    match loc \x. \y.
     let atStopLine = if (d == north) {
-        snd loc == stoplines.yNorth;
+        y == stoplines.yNorth;
     } $ elif (d == south) {
-        snd loc == stoplines.ySouth;
+        y == stoplines.ySouth;
     } $ elif (d == east) {
-        fst loc == stoplines.xEast;
+        x == stoplines.xEast;
     } $ else {
         // west
-        fst loc == stoplines.xWest;
+        x == stoplines.xWest;
     } in
 
     eitherNeighbor <- meet;
@@ -97,17 +99,18 @@ def getCanMove :
 
 def doTunnelWrap : [xMin : Int, xMax : Int, yMin : Int, yMax : Int] -> Cmd Bool = \extents.
     myloc <- whereami;
-    didWrap <- if (fst myloc < extents.xMin) {
-        teleport self (extents.xMax, snd myloc);
+    match myloc \myx. \myy.
+    didWrap <- if (myx < extents.xMin) {
+        teleport self (extents.xMax, myy);
         pure true;
-    } $ elif (fst myloc > extents.xMax) {
-        teleport self (extents.xMin, snd myloc);
+    } $ elif (myx > extents.xMax) {
+        teleport self (extents.xMin, myy);
         pure true;
-    } $ elif (snd myloc < extents.yMin) {
-        teleport self (fst myloc, extents.yMax);
+    } $ elif (myy < extents.yMin) {
+        teleport self (myx, extents.yMax);
         pure true;
-    } $ elif (snd myloc > extents.yMax) {
-        teleport self (fst myloc, extents.yMin);
+    } $ elif (myy > extents.yMax) {
+        teleport self (myx, extents.yMin);
         pure true;
     } $ else {
         pure false;
@@ -176,8 +179,7 @@ def advance :
     wait delayState.moveDelay;
 
     result <- instant $ moveWithWrap stoplines extents isLongitudinal;
-    let canGo = fst result in
-    let wentThroughTunnel = snd result in
+    match result \canGo. \wentThroughTunnel.
     if wentThroughTunnel {
         r <- random 50;
         wait $ idx * 10 + r;
@@ -192,8 +194,7 @@ def go =
     let lanes = [yWest = 7, yEast = 5, xSouth = 20, xNorth = 22] in
     let stoplines = [xWest = 24, xEast = 17, ySouth = 9, yNorth = 2] in
     result <- instant $ init extents lanes;
-    let isLongitudinal = fst result in
-    let idx = snd result in
+    match result \isLongitudinal. \idx.
     advance idx isLongitudinal stoplines extents [moveDelay=5, transitionCountdown=2];
     end;
 

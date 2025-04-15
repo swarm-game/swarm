@@ -1,7 +1,8 @@
 def get_x_coord = \r.
     as r {
         pos <- whereami;
-        pure $ fst pos;
+        match pos \x. \_.
+        pure x
     };
     end;
 

@@ -12,7 +12,9 @@ def getBasePos =
 def go = \lastBasePos.
     wait 1;
     curBasePos <- getBasePos;
-    let deltaX = abs(fst curBasePos - fst lastBasePos) in
+    match curBasePos \curx. \_.
+    match lastBasePos \lastx. \_.
+    let deltaX = abs (curx - lastx) in
     if (deltaX > 1) {
         create "bit (0)";
     } {go curBasePos};

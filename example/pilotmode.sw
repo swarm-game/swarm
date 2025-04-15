@@ -1,5 +1,5 @@
 def cons : a * b -> (a -> b) -> (a -> b) = \p. \k. \a.
-  if (a == fst p) {snd p} {k a}
+  match p \x. \y. if (a == x) {y} {k a}
 end
 
 def nil : a -> Cmd Unit = \a. pure () end

@@ -3,11 +3,11 @@ def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
 def waypointByIndexRec : (rec l. Unit + (Int * Int) * l) -> Int -> (Int * Int) = \wps. \idx.
 
     case wps (\_. fail "invalid index") (\cons.
-
+        match cons \hd. \tl.
         if (idx == 0) {
-            fst cons;
+            hd;
         } {
-            waypointByIndexRec (snd cons) $ idx - 1;
+            waypointByIndexRec tl $ idx - 1;
         }
     );
     end;
@@ -133,7 +133,7 @@ def makeDnaStrand = \receptacleLoc.
     teleport self (5, -2);
 
     dims <- floorplan "DNA decoder";
-    let decoderWidth = fst dims in
+    match dims \decoderWidth. \_.
     eitherClonedOrganism <- placeBase (myStandby receptacleLoc) decoderWidth;
 
     case eitherClonedOrganism (\_.

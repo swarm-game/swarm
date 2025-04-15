@@ -170,7 +170,8 @@ def columnFunc = \exclusionValue. \inputCardinality. \x.
     if (x != 0 && x != exclusionValue && not (exactlyOneBit false x)) {
         naiveRandomStack (placeEntsForBits x) inputCardinality 0 inputCardinality;
         myloc <- whereami;
-        teleport self (fst myloc + 1, 0);
+        match myloc \x. \_.
+        teleport self (x + 1, 0);
     } {};
     end;
 

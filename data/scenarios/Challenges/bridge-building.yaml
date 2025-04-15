@@ -71,8 +71,8 @@ objectives:
     condition: |
       as base {
         c <- whereami;
-        let x = fst c in
-        pure $ x >= 1 && x <= 2 && snd c == -30;
+        match c \x. \y.
+        pure $ x >= 1 && x <= 2 && y == -30;
       };
   - id: get_pebble
     teaser: Off-piste

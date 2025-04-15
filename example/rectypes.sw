@@ -6,6 +6,23 @@
 // (rec l. Unit + Int * l) = (rec q. Unit + Int * q)
 
 ////////////////////////////////////////////////////////////
+// Utilities
+////////////////////////////////////////////////////////////
+
+// Flipped versions of match and case come in handy for
+// writing functions where we want to immediately match or case on
+// the argument.  e.g. instead of  `\p. match p \x. \y. ...` we can
+// write `λmatch \x. \y. ...`
+
+def λmatch : (a -> b -> c) -> (a * b) -> c =
+  \f. \p. match p f
+end
+
+def λcase : (a -> c) -> (b -> c) -> (a + b) -> c =
+  \f. \g. \s. case s f g
+end
+
+////////////////////////////////////////////////////////////
 // Lists
 ////////////////////////////////////////////////////////////
 
@@ -14,10 +31,9 @@ tydef List a = rec l. Unit + a * l end
 def nil : List a = inl () end
 def cons : a -> List a -> List a = \x. \l. inr (x, l) end
 
-def foldr : (a -> b -> b) -> b -> List a -> b = \f. \z. \xs.
-  case xs
-    (\_. z)
-    (\c. f (fst c) (foldr f z (snd c)))
+def foldr : (a -> b -> b) -> b -> List a -> b = \f. \z. λcase
+  (\_. z)
+  (λmatch \x. \xs. f x (foldr f z xs))
 end
 
 def map : (a -> b) -> List a -> List b = \f.
@@ -59,11 +75,11 @@ def branch : BTree a b -> a -> BTree a b -> BTree a b =
 end
 
 def foldBTree : (b -> c) -> (c -> a -> c -> c) -> BTree a b -> c =
-  \lf. \br. \t.
-    case t
-      lf
-      // fst p, fst (snd p), snd (snd p) is annoying; see #1893
-      (\p. br (foldBTree lf br (fst p)) (fst (snd p)) (foldBTree lf br (snd (snd p))))
+  \lf. \br. λcase
+    lf
+    (λmatch \l. λmatch \x. \r.
+      br (foldBTree lf br l) x (foldBTree lf br r)
+    )
 end
 
 def max : Int -> Int -> Int = \a. \b. if (a > b) {a} {b} end
@@ -81,8 +97,8 @@ end
 // but we do it this way just to show off nested rec
 tydef Rose a = rec r. a * (rec l. Unit + r * l) end
 
-def foldRose : (a -> List b -> b) -> Rose a -> b = \f. \r.
-  f (fst r) (map (foldRose f) (snd r))
+def foldRose : (a -> List b -> b) -> Rose a -> b = \f. λmatch \a. \ts.
+  f a (map (foldRose f) ts)
 end
 
 def flatten : Rose a -> List a =

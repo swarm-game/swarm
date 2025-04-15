@@ -90,14 +90,16 @@ def naiveRandomStack = \valueFunc. \maxval. \bitmask. \n.
     valueFunc val;
     end;
 
-def index : Int -> (rec l. Unit + a * l) -> a = \i. \l.
-  case l
-    (\_. fail "bad index")
-    (\cons. if (i == 0) {fst cons} {index (i-1) (snd cons)})
+def λcase = \f. \g. \s. case s f g end
+def λmatch = \f. \p. match p f end
+
+def index : Int -> (rec l. Unit + a * l) -> a = \i. λcase
+  (\_. fail "bad index")
+  (λmatch \hd. \tl. if (i == 0) {hd} {index (i-1) tl})
 end
 
-def length : (rec l. Unit + a * l) -> Int = \l.
-  case l (\_. 0) (\cons. 1 + length (snd cons))
+def length : (rec l. Unit + a * l) -> Int = λcase
+  (\_. 0) (λmatch \_. \tl. 1 + length tl)
 end
 
 def busts : (rec l. Unit + Text * l) = tagmembers "bust" end

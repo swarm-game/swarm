@@ -24,13 +24,15 @@ def intersperse = \n. \f2. \f1. if (n > 0) {
     } {};
     end;
 
-def sumTuples = \t1. \t2.
-    (fst t1 + fst t2, snd t1 + snd t2);
+def λmatch = \f. \p. match p f end
+
+def sumTuples =
+    λmatch \t11. \t12.
+    λmatch \t21. \t22.
+    (t11 + t21, t12 + t22);
     end;
 
-def mapTuple = \f. \t.
-    (f $ fst t, f $ snd t)
-    end;
+def mapTuple = \f. λmatch \a. \b. (f a, f b) end;
 
 def replaceWith = \withThis.
     create withThis;
@@ -134,7 +136,8 @@ def isQuietPatternMember = \rowIdx. \colIdx.
 
 def advanceRowViaTeleport =
     curLoc <- whereami;
-    teleport self (0, snd curLoc - 1);
+    match curLoc \_. \y.
+    teleport self (0, y - 1);
     end;
 
 def shouldCorrectTile : (Bool * Bool) -> (Bool * Bool) -> Cmd Bool = \evenOverlaps. \isQuietTiles.
@@ -168,8 +171,8 @@ def prepareBoardRow = \abortFunc. \rowIdx. \colIdx.
 
             move;
             retval <- prepareBoardRow abortFunc rowIdx $ colIdx - 1;
-            let subTotal = fst retval in
-            pure $ (sumTuples addend subTotal, snd retval);
+            match retval \subTotal. \b.
+            pure (sumTuples addend subTotal, b);
         }
     } {
         pure ((0, 0), false);
@@ -182,8 +185,7 @@ with each quiet pattern.
 def prepareBoardAllRows = \abortFunc. \boardWidth. \rowIdx.
     if (rowIdx >= 0) {
         retval <- prepareBoardRow abortFunc rowIdx $ boardWidth - 1;
-        let rowCommonCount = fst retval in
-        let shouldAbort = snd retval in
+        match retval \rowCommonCount. \shouldAbort.
 
         if shouldAbort {
             pure (0, 0);
@@ -227,7 +229,8 @@ def prepareBoardRandom = \boardWidth. \boardHeight.
     end;
 
 def ensureSolvability = \evenOverlaps. \boardWidth. \boardHeight.
-    let isSolvable = fst evenOverlaps && snd evenOverlaps in
+    match evenOverlaps \a. \b.
+    let isSolvable = a && b in
     // say $ "isSolvable: " ++ format isSolvable;
     if isSolvable {} {
         atLocation (0, 0) $

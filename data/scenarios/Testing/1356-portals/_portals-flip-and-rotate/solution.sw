@@ -2,12 +2,12 @@ def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
 
 def abs = \n. if (n < 0) {-n} {n} end;
 
-def mapTuple = \f. \t.
-    (f $ fst t, f $ snd t)
-    end;
+def λmatch = \f. \p. match p f end
 
-def sumTuples = \t1. \t2.
-    (fst t1 + fst t2, snd t1 + snd t2);
+def mapTuple = \f. λmatch \a. \b. (f a, f b) end;
+
+def sumTuples = λmatch \t11. \t12. λmatch \t21. \t22.
+    (t11 + t21, t12 + t22);
     end;
 
 def negateTuple = \t.
@@ -19,9 +19,7 @@ def getRelativeLocation = \absCurrentLoc. \absDestLoc.
     pure $ sumTuples negatedLoc absDestLoc;
     end;
 
-def moveTuple = \tup.
-    let x = fst tup in
-    let y = snd tup in
+def moveTuple = λmatch \x. \y.
     turn $ if (x > 0) {east} {west};
     doN (abs x) move;
     turn $ if (y > 0) {north} {south};

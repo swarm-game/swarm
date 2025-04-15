@@ -62,8 +62,12 @@ objectives:
         );
         end;
 
-      def length : (rec l. Unit + a * l) -> Int = \l.
-        case l (\_. 0) (\cons. 1 + length (snd cons))
+      def λmatch = \f. \p. match p f end
+      def λcase = \f. \g. \s. case s f g end
+
+      def length : (rec l. Unit + a * l) -> Int = λcase
+        (\_. 0)
+        (λmatch \_. \rest. 1 + length rest)
       end
 
       j <- robotnamed "judge";

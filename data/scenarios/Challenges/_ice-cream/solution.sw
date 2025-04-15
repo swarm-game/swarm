@@ -55,11 +55,10 @@ def scoopUntil = \customer. \targetRemainingIngredientCount.
 def runSolution = \targetRemainingIngredientCount.
     getBriefcase;
     coneAndCherry <- getIngredients;
+    match coneAndCherry \cone. \cherry.
     getCounter;
     customer <- meetCustomer;
 
-    let cone = fst coneAndCherry in
-    let cherry = snd coneAndCherry in
     serveCustomer cone customer;
     scoopUntil customer targetRemainingIngredientCount;
     give customer cherry;

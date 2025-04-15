@@ -16,7 +16,9 @@ def mod : Int -> Int -> Int = \i.\m.
     end
 
 def sumTuples = \t1. \t2.
-    (fst t1 + fst t2, snd t1 + snd t2);
+    match t1 \t11. \t12.
+    match t2 \t21. \t22.
+    (t11 + t21, t12 + t22);
     end;
 
 /** Teleports to a new location to execute a function
@@ -173,7 +175,8 @@ def iterateAllTiles : Cmd Unit -> Cmd Unit = \func.
         isOnRightBorder <- itemIsHere b;
         if isOnRightBorder {
             loc <- whereami;
-            teleport self (0, snd loc - 1);
+            match loc \_. \y.
+            teleport self (0, y - 1);
         } {};
         iterateAllTiles func;
     }

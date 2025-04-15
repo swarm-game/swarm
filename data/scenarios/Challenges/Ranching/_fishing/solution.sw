@@ -62,10 +62,12 @@ def harvestIngredients =
     move;
     end;
 
-def find : (a -> Cmd Bool) -> (rec l. Unit + a * l) -> Cmd (Unit + a) = \p. \l.
-  case l
-    (\_. pure (inl ()))
-    (\cons. h <- p (fst cons); if h {pure $ inr (fst cons)} {find p (snd cons)})
+def λcase = \f. \g. \s. case s f g end
+def λmatch = \f. \p. match p f end
+
+def find : (a -> Cmd Bool) -> (rec l. Unit + a * l) -> Cmd (Unit + a) = \p. λcase
+  (\_. pure (inl ()))
+  (λmatch \hd. \tl. h <- p hd; if h {pure $ inr hd} {find p tl})
 end
 
 def tryPlace = \item.

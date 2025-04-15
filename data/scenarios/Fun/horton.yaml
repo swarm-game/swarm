@@ -35,7 +35,7 @@ robots:
       - wayfinder
 solution: |
   def goDir = \f. \result.
-    let d = fst result in
+    match result \d. \_.
     if (d == down) {grab; f;} {turn d; move; f;}
     end;
 

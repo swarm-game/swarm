@@ -10,7 +10,8 @@ objectives:
     condition: |
       as base {
         myloc <- locateme;
-        pure $ fst myloc == "underground";
+        match myloc \w. \_.
+        pure $ w == "underground";
       }
 solution: |
   noop

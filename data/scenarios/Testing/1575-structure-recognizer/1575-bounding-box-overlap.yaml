@@ -14,9 +14,14 @@ objectives:
       - |
         Build 3 `chevron`{=structure} structures
     condition: |
-      def length : (rec l. Unit + a * l) -> Int = \l.
-        case l (\_. 0) (\cons. 1 + length (snd cons))
-      end;
+      def λmatch = \f. \p. match p f end
+      def λcase = \f. \g. \s. case s f g end
+
+      def length : (rec l. Unit + a * l) -> Int = λcase
+        (\_. 0)
+        (λmatch \_. \rest. 1 + length rest)
+      end
+
       foundStructures <- structures "chevron";
       pure $ length foundStructures >= 3
 robots:

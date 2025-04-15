@@ -101,7 +101,7 @@ def moveToOtherRow =
 
 def waitForItem : Dir -> Cmd Text = \d.
     item <- scan d;
-    case item (\_. 
+    case item (\_.
         watch d;
         wait 1000;
         waitForItem d;
@@ -177,10 +177,10 @@ def pickFlowerAndWater =
 
     turn back;
     doN 23 move;
-    
+
     turn right;
     pure dahlia;
-    
+
     // pure mushroom;
     // pure d;
     end;
@@ -221,7 +221,7 @@ def completeDnaTask = \sentinel.
     waitWhileHere sentinel;
     moveToPattern;
     replicatePattern moveToOtherRow 32;
-    
+
     // Activate the switch
     doN 3 move;
     drill forward;
@@ -243,10 +243,12 @@ def completeDnaTask = \sentinel.
     returnToInputReceptacle;
     end;
 
-def mapM_ : (a -> Cmd b) -> (rec l. Unit + a * l) -> Cmd Unit = \f. \l.
-  case l
-    (\_. pure ())
-    (\c. f (fst c); mapM_ f (snd c))
+def λcase = \f. \g. \s. case s f g end
+def λmatch = \f. \p. match p f end
+
+def mapM_ : (a -> Cmd b) -> (rec l. Unit + a * l) -> Cmd Unit = \f. λcase
+  (\_. pure ())
+  (λmatch \hd. \tl. f hd; mapM_ f tl)
 end;
 
 def go =

@@ -10,7 +10,7 @@ objectives:
         Build 12 copies of the `green_jewel`{=structure} structure
     condition: |
       def length : (rec l. Unit + a * l) -> Int = \l.
-        case l (\_. 0) (\cons. 1 + length (snd cons))
+        case l (\_. 0) (\cons. match cons \_. \rest. 1 + length rest)
       end;
       foundGreen <- structures "green_jewel";
       pure $ length foundGreen >= 12;

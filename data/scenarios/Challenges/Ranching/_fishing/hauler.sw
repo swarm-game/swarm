@@ -16,17 +16,20 @@ def isEnclosureFull : Int * Int -> Cmd Bool = \encl.
     teleport self encl;
 
     c <- density ((0, 0), dims);
-    let area = fst dims * snd dims in
+    match dims \w. \h.
+    let area = w * h in
     let notFull = c < area in
 
     teleport self prevLoc;
     pure $ not notFull;
     end;
 
-def any : (a -> Cmd Bool) -> (rec l. Unit + a * l) -> Cmd Bool = \p. \l.
-  case l
-    (\_. pure false)
-    (\c. b <- p (fst c); if b {pure true} {any p (snd c)})
+def λcase = \f. \g. \s. case s f g end
+def λmatch = \f. \p. match p f end
+
+def any : (a -> Cmd Bool) -> (rec l. Unit + a * l) -> Cmd Bool = \p. λcase
+  (\_. pure false)
+  (λmatch \hd. \tl. b <- p hd; if b {pure true} {any p tl})
 end;
 
 def isEitherEnclosureFull =
