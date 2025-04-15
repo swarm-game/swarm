@@ -33,9 +33,10 @@ def disperse =
   end;
 
 def converge = \loc. \currentLoc.
-
-  let xDist = fst currentLoc - fst loc in
-  let yDist = snd currentLoc - snd loc in
+  match loc \x. \y.
+  match currentLoc \curx. \cury.
+  let xDist = curx - x in
+  let yDist = cury - y in
 
   if (xDist < 0) {
     turn east;

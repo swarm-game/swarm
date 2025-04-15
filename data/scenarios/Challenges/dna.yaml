@@ -88,7 +88,7 @@ objectives:
       def hasAll : (rec l. Unit + Text * l) -> Cmd Bool = \l.
         case l
           (\_. pure true)
-          (\c. b1 <- has (fst c); if b1 {hasAll (snd c)} {pure false})
+          (\c. match c \hd. \tl. b1 <- has hd; if b1 {hasAll tl} {pure false})
       end;
 
       k <- robotnamed "keeper";
@@ -108,7 +108,7 @@ objectives:
       def hasCount : (rec l. Unit + Text * l) -> Cmd Int = \l.
         case l
           (\_. pure 0)
-          (\c. b <- has (fst c); n <- hasCount (snd c); pure (if b {1} {0} + n))
+          (\c. match c \hd. \tl. b <- has hd; n <- hasCount tl; pure (if b {1} {0} + n))
       end;
 
       k <- robotnamed "keeper";

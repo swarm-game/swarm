@@ -77,13 +77,13 @@ def pureL : a -> List a = \a. cons a emptyL end
 def foldr : (a -> b -> b) -> b -> List a -> b = \f. \z. \xs.
   case xs
     (\_. z)
-    (\c. f (fst c) (foldr f z (snd c)))
+    (\c. match c \hd. \tl. f hd (foldr f z tl))
 end
 
 def foldl : (b -> a -> b) -> b -> List a -> b = \f. \z. \xs.
   case xs
     (\_. z)
-    (\c. (foldl f (f z $ fst c) (snd c)))
+    (\c. match c \hd. \tl. (foldl f (f z hd) tl))
 end
 
 def flip : (a -> b -> c) -> (b -> a -> c) = \f. (\b.\a.f a b) end
@@ -99,7 +99,7 @@ end
 def lengthL : List a -> Int = foldl (\acc.\_. acc + 1) 0 end 
 
 def safeGetL : Int -> List a -> Maybe a = \i.\l.
-  case l (\_. inl ()) (\n. if (i <= 0) {inr $ fst n} {safeGetL (i - 1) (snd n)})
+  case l (\_. inl ()) (\n. match n \hd. \tl. if (i <= 0) {inr hd} {safeGetL (i - 1) tl})
 end 
 
 def getL : Int -> List a -> a = \i.\l.
@@ -107,8 +107,8 @@ def getL : Int -> List a -> a = \i.\l.
 end
 
 def formatL : List a -> Text = \l.
- let f : List a -> Text = \l. case l (\_. "]") (\n. ", " ++ format (fst n) ++ f (snd n))
- in case l (\_. "[]") (\n. "[" ++ format (fst n) ++ f (snd n))
+ let f : List a -> Text = \l. case l (\_. "]") (\n. match n \hd. \tl. ", " ++ format hd ++ f tl)
+ in case l (\_. "[]") (\n. match n \hd. \tl. "[" ++ format hd ++ f tl)
 end
 
 /*******************************************************************/
@@ -118,14 +118,15 @@ end
 // get from ordered list
 def getKeyL : (a -> k) -> k -> List a -> Maybe a = \p.\x.\l.
   case l (\_. inl ()) (\n.
-    let nx = p (fst n) in
+    match n \hd. \tl.
+    let nx = p hd in
     if (nx < x) {
-      getKeyL p x $ snd n
+      getKeyL p x tl
     } {
       if (nx > x) {
         inl ()
       } {
-        inr $ fst n
+        inr hd
       }
     }
   )
@@ -138,15 +139,16 @@ end
 // insert into ordered list - replaces elements, like set
 def insertKeyL : (a -> k) -> a -> List a -> List a = \p.\y.\l.
   case l (\_. pureL y) (\n.
-    let nx = p (fst n) in
+    match n \hd. \tl.
+    let nx = p hd in
     let x = p y in
     if (nx == x) {
-      inr (y, snd n)
+      inr (y, tl)
     } {
       if (nx > x) {
         cons y l
       } {
-        cons (fst n) (insertKeyL p y $ snd n)
+        cons hd (insertKeyL p y tl)
       }
     }
   )
@@ -155,14 +157,15 @@ end
 // delete in ordered list
 def deleteKeyL : (a -> k) -> k -> List a -> List a = \p.\x.\l.
   case l (\_. emptyL) (\n.
-    let nx = p (fst n) in
+    match n \hd. \tl.
+    let nx = p hd in
     if (nx == x) {
-      snd n
+      tl
     } {
       if (nx > x) {
         l
       } {
-        cons (fst n) (deleteKeyL p x $ snd n)
+        cons hd (deleteKeyL p x tl)
       }
     }
   )
@@ -182,6 +185,9 @@ end
 
 tydef FlatDict k v = List (k * v) end
 
+def fst = \p. match p \a. \_. a end
+def snd = \p. match p \_. \b. b end
+
 def flat_dict : IDict (FlatDict k v) k v =
   [ empty=emptyL
   , insert=\k.\v. insertKeyL fst (k,v)
@@ -189,9 +195,9 @@ def flat_dict : IDict (FlatDict k v) k v =
   , get=\k.\d. mmap snd (getKeyL fst k d)
   , contains=containsKeyL fst
   , pretty=\d.
-    let p : (k * v) -> Text = \kv. format (fst kv) ++ ": " ++ format (snd kv) in 
-    let f : List (k * v) -> Text = \l. case l (\_. "}") (\n. ", " ++ p (fst n) ++ f (snd n))
-    in case d (\_. "{}") (\n. "{" ++ p (fst n) ++ f (snd n))
+    let p : (k * v) -> Text = \kv. match kv \k. \v. format k ++ ": " ++ format v in 
+    let f : List (k * v) -> Text = \l. case l (\_. "}") (\n. match n \hd. \tl. ", " ++ p hd ++ f tl)
+    in case d (\_. "{}") (\n. match n \hd. \tl. "{" ++ p hd ++ f tl)
   ]
 end
 
@@ -659,20 +665,22 @@ def benchmark: Int -> s -> (s -> s) -> Cmd (Int * (Int * Int)) = \times.\s.\act.
       //log $ "END " ++ format t1;
       let t = t1 - t0 in
       //log $ format s ++ " " ++ format t ++ " ticks";
-      let lim = case (snd acc) (\_. (t, t)) (\l. (min t $ fst l, max t $ snd l)) in
-      runM ((fst acc + t), inr lim) ns (n - 1)
+      match acc \acc1. \acc2.
+      let lim = case acc2 (\_. (t, t)) (\l. match l \l1. \l2. (min t l1, max t l2)) in
+      runM ((acc1 + t), inr lim) ns (n - 1)
     } in
   //log "start run";
   res <- runM (0, inl ()) s times;
   //log "end run";
-  let avg = fst res / times in
-  let lim = case (snd res) (\_. fail "BENCHMARK NOT RUN") (\l.l) in
+  match res \res1. \res2.
+  let avg = res1 / times in
+  let lim = case res2 (\_. fail "BENCHMARK NOT RUN") (\l.l) in
   pure (avg, lim)
 end
 
 def cmp_bench : Int -> Text -> (Int * (Int * Int)) -> Text -> (Int * (Int * Int)) -> Cmd Unit
  = \i.\base_name.\base_res.\new_name.\new_res.
-  let formatLim = \l. "(min " ++ format (fst l) ++ ", max " ++ format (snd l) ++ ")" in
+  let formatLim = \l. match l \a. \b. "(min " ++ format a ++ ", max " ++ format b ++ ")" in
   log $ indent i ++ "* " ++ base_name ++ ": "
     ++ format (fst base_res) ++ " ticks " ++ formatLim (snd base_res);
 
@@ -682,9 +690,9 @@ def cmp_bench : Int -> Text -> (Int * (Int * Int)) -> Text -> (Int * (Int * Int)
     } {
       format (100 - d) ++ "% faster"
     } in
-     
+  match new_res \res1. \res2.
   log $ indent i ++ "* " ++ new_name ++ ": "
-    ++ format (fst new_res) ++ " ticks " ++ formatLim (snd new_res)
+    ++ format res1 ++ " ticks " ++ formatLim res2
     ++ " <- " ++ cmp;
 end
 
@@ -713,8 +721,9 @@ def bench_insert = \i.
   // Use the given function to construct (Flat)Set from the head of provided list of lists and return the tail
   let set_from_first_list : (List a -> s) -> List (List a) -> List (List a) =\from_list.\lls.
     case lls (\_. lls) (\ls_nlls.
-      let ns = from_list (fst ls_nlls) in
-      snd ls_nlls
+      match ls_nlls \ls. \nlls.
+      let ns = from_list ls in
+      nlls
     )
   in
 

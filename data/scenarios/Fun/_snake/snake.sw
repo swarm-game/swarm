@@ -3,7 +3,8 @@ Uses a string to maintain a queue of coordinates.
 */
 
 def coordsToString : (Int * Int) -> Text = \coords.
-  format (fst coords) ++ "," ++ format (snd coords)
+  match coords \x. \y.
+  format x ++ "," ++ format y
   end
 
 def indexOfRec : Int -> Text -> Text -> (Unit + Int) = \pos. \inputString. \targetChar.
@@ -24,7 +25,7 @@ def indexOf : Text -> Text -> (Unit + Int) =
 
 // Drops the first character of a string
 def strTail : Text -> Text = \inputString.
-  snd $ split 1 inputString
+  match (split 1 inputString) \_. \rest. rest
   end
 
 def splitOnFirstChar : Text -> Text -> (Text * Text) = \inputString. \splitChar.
@@ -33,7 +34,8 @@ def splitOnFirstChar : Text -> Text -> (Text * Text) = \inputString. \splitChar.
     (inputString, "")
   ) (\foundIdx.
     let parts = split foundIdx inputString in
-    (fst parts, strTail $ snd parts)
+    match parts \a. \b.
+    (a, strTail b)
   )
   end
 
@@ -59,7 +61,8 @@ def parseDecimal : Text -> Int = \inputString.
 // Comma (",") is the separator between abscissa and ordinate
 def stringToCoords : Text -> (Int * Int) = \coordsString.
   let pair = splitOnFirstChar coordsString "," in
-  (parseDecimal $ fst pair, parseDecimal $ snd pair)
+  match pair \a. \b.
+  (parseDecimal a, parseDecimal b)
   end
 
 // APPEND to string representation of a coordinate list
@@ -72,7 +75,8 @@ def snoc : (Int * Int) -> Text -> Text = \coords. \strList.
 def pop : Text -> (Unit + ((Int * Int) * Text)) = \strList.
   if (chars strList > 0) {
     let pair = splitOnFirstChar strList ";" in
-    inR (stringToCoords $ fst pair, snd pair)
+    match pair \a. \b.
+    inR (stringToCoords a, b)
   } {
     inL ();
   }
@@ -98,9 +102,7 @@ def moveTail = \tailList.
       pure tailList;
 
     ) (\newPair.
-
-        let farthestTail = fst newPair in
-        let newInit = snd newPair in
+        match newPair \farthestTail. \newInit.
         newLoc <- whereami;
         grabbedItem <- doAtLoc newLoc farthestTail grab;
         place grabbedItem;
@@ -120,7 +122,8 @@ def moveOneStep = \tailList.
 
     maybeD <- getDir targetLoc;
     case maybeD (\_. say "Dead!"; pure "") (\d.
-      turn $ fst d;
+      match d \dir. \_.
+      turn dir;
       newList <- moveTail tailList;
       move;
       pure newList

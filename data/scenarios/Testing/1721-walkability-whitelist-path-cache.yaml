@@ -9,7 +9,7 @@ objectives:
       as base {ishere "platform"}
 solution: |
   def goDir = \f. \result.
-    let d = fst result in
+    match result \d. \_.
     if (d == down) {pure ()} {turn d; move; f;}
     end;
 
