@@ -1,4 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -8,13 +10,17 @@ module Swarm.Language.Format where
 
 import Control.Applicative ((<|>))
 import Control.Lens ((&), (.~))
+import Data.Set qualified as S
+import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Prettyprinter
 import Prettyprinter.Render.Text qualified as RT
+import Swarm.Language.Syntax
 import Swarm.Language.Parser (readTerm')
-import Swarm.Language.Parser.Core (LanguageVersion, defaultParserConfig, languageVersion)
+import Swarm.Language.Parser.QQ (astQ)
+import Swarm.Language.Parser.Core (LanguageVersion(..), defaultParserConfig, languageVersion)
 import Swarm.Pretty (ppr)
 import Swarm.Util ((?))
 import System.Console.Terminal.Size qualified as Term
@@ -67,9 +73,27 @@ formatSwarm :: FormatConfig -> Text -> Either Text Text
 formatSwarm (FormatConfig _ _ mWidth ver) content = case readTerm' cfg content of
   Right Nothing -> Right ""
   Right (Just ast) ->
-    let mkOpt w = LayoutOptions (AvailablePerLine w 1.0)
+    let ast' = case ver of
+          SwarmLang0_6 -> addProjections_v7 ast
+          _ -> ast
+        mkOpt w = LayoutOptions (AvailablePerLine w 1.0)
         opt = (mkOpt <$> mWidth) ? defaultLayoutOptions
-     in Right . RT.renderStrict . layoutPretty opt $ ppr ast
+     in Right . RT.renderStrict . layoutPretty opt $ ppr ast'
   Left e -> Left (into @Text $ errorBundlePretty e)
  where
   cfg = defaultParserConfig & languageVersion .~ ver
+
+-- | Version 0.6 of Swarm had keywords 'fst' and 'snd'; version 0.7
+--   has 'match' instead.  Add definitions of 'fst' and 'snd' if the AST
+--   contains free variables with those names.
+addProjections_v7 :: Syntax -> Syntax
+addProjections_v7 ast = foldl' addDefn ast (reverse $ S.toList freeProjs)
+ where
+  -- Any free occurrences of 'fst' or 'snd'?
+  freeProjs = setOf freeVarsV ast `S.intersection` (S.fromList ["fst", "snd"])
+
+  addDefn :: Syntax -> Var -> Syntax
+  addDefn syn = \case
+    "fst" -> [astQ| def fst = \p. match p (\a. \_. a) end; `syn |]
+    "snd" -> [astQ| def snd = \p. match p (\_. \b. b) end; `syn |]
+    _ -> error "Variable was not one of 'fst' or 'snd'"
