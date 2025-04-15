@@ -24,8 +24,9 @@ def f = \x.\y.
 end;
 
 w <- whereami;
+match w \wx. \wy.
 // the middle of the column
-let a = (fst w, snd w + 3) in
+let a = (wx, wy + 3) in
 repeat (
     o <- as self {
         teleport self a;

@@ -28,7 +28,7 @@ solution: |
   def ifC = \p. \t. \e. b <- p; if b t e end
   def findTree = ifC (ishere "tree") {whereami} {move; findTree} end
   def ell = \d. turn right; x (2*d) move; grab; pure () end
-  def grabTrees = \loc. let x = fst loc in let y = snd loc in grab; ell y; ell x; ell y end
+  def grabTrees = \loc. match loc \x. \y. grab; ell y; ell x; ell y end
   n <- random 10;
   x (n+1) move; turn right; move;
   loc <- findTree;

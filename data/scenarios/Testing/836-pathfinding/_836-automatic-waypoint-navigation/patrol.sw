@@ -1,5 +1,7 @@
-def goDir = \f. \r.
-  let d = fst r in
+def λmatch = \f. \p. match p f end
+def λcase = \f. \g. \s. case s f g end
+
+def goDir = \f. λmatch \d. \_.
   if (d == down) {
     eggHere <- ishere "egg";
     if eggHere {grab; pure ()} {};
@@ -28,9 +30,9 @@ def visitNextWaypoint : (rec l. Unit + (Int * Int) * l) -> (rec l. Unit + (Int *
     // Wrap around
     let myList = case remainingList (\_. originalList) (\_. remainingList) in
 
-    case myList pure (\cons.
-        followRoute $ fst cons;
-        visitNextWaypoint originalList $ snd cons;
+    case myList pure (λmatch \hd. \tl.
+        followRoute hd;
+        visitNextWaypoint originalList tl;
     );
     end;
 

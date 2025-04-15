@@ -41,9 +41,7 @@ solution: |
     end;
 
   dims <- floorplan "wooden box";
-  let width = fst dims in
-  let height = snd dims in
-
+  match dims \width. \height.
   mkRows height width;
 structures:
   - name: wooden box

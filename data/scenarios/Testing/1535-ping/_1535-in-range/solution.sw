@@ -3,8 +3,7 @@ def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
 def goToBuddy = \loc.
 
     // log $ format loc;
-    
-    let longitudinalDist = snd loc in
+    match loc \lateralDist. \longitudinalDist.
     absFwd <- if (longitudinalDist < 0) {
         turn back;
         pure $ -longitudinalDist;
@@ -16,7 +15,6 @@ def goToBuddy = \loc.
         turn back;
     } {};
 
-    let lateralDist = fst loc in
     absSide <- if (lateralDist < 0) {
         turn left;
         pure $ -lateralDist;

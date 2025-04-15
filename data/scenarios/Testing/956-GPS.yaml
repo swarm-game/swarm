@@ -18,8 +18,9 @@ solution: |
   def abs = \n. if (n<0) {-n} {n} end;
   wait 2;
   loc <- whereami;
-  turn (if (fst loc < 0) {east} {west}); x (abs (fst loc)) move;
-  turn (if (snd loc < 0) {north} {south}); x (abs (snd loc)) move;
+  match loc \locx. \locy.
+  turn (if (locx < 0) {east} {west}); x (abs locx) move;
+  turn (if (locy < 0) {north} {south}); x (abs locy) move;
 robots:
   - name: base
     dir: north

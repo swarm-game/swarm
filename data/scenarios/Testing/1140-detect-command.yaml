@@ -10,9 +10,7 @@ objectives:
 solution: |
   def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
   loc <- detect "tree" ((0, 0), (6, 4));
-  case loc pure (\delta.
-    let xDelta = fst delta in
-    let yDelta = snd delta in
+  case loc pure (\delta. match delta \xDelta. \yDelta.
     if (yDelta < 0) {turn south;} {};
     doN yDelta move; // y-movement
     if (xDelta < 0) {turn west;} {turn east};

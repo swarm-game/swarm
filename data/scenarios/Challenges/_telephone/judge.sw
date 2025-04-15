@@ -40,16 +40,17 @@ def checkCell : Unit + Text -> Cmd Bool = \pat.
   pure (actual == pat)
 end
 
-def checkRow : List (Unit + Text) -> Cmd Bool = \row.
-  case row
-    (\_. turn back; x 8 move; turn right; move; turn right; pure true)
-    (\cons. andC (checkCell (fst cons)) (checkRow (snd cons)))
+def λmatch = \f. \p. match p f end
+def λcase = \f. \g. \s. case s f g end
+
+def checkRow : List (Unit + Text) -> Cmd Bool = λcase
+  (\_. turn back; x 8 move; turn right; move; turn right; pure true)
+  (λmatch \hd. \tl. andC (checkCell hd) (checkRow tl))
 end
 
-def checkRect : Rect -> Cmd Bool = \rect.
-  case rect
-    (\_. pure true)
-    (\cons. andC (checkRow (fst cons)) (checkRect (snd cons)))
+def checkRect : Rect -> Cmd Bool = λcase
+  (\_. pure true)
+  (λmatch \hd. \tl. andC (checkRow hd) (checkRect tl))
 end
 
 def check : Rect -> Cmd Unit = \rect.
@@ -64,9 +65,10 @@ end
 def judge =
   instant (
     loc <- whereami;
+    match loc \locx. \locy.
     for 4 (\y.
       for 8 (\x.
-        surveil (fst loc + x, snd loc + y)
+        surveil (locx + x, locy + y)
       )
     );
   );

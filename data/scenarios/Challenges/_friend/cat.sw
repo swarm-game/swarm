@@ -37,9 +37,11 @@ def disappointed = \cat. say "meow??"; cat end
 
 def follow : Cmd Unit -> Actor -> Cmd Unit = \cat. \r.
   rLoc <- as r {whereami};
+  match rLoc \rx. \ry.
   myLoc <- whereami;
-  let dx = fst rLoc - fst myLoc in
-  let dy = snd rLoc - snd myLoc in
+  match myLoc \myx. \myy.
+  let dx = rx - myx in
+  let dy = ry - myy in
   if (abs dx > abs dy)
   { if (dx < 0) {turn west} {turn east} }
   { if (dy < 0) {turn south} {turn north} };

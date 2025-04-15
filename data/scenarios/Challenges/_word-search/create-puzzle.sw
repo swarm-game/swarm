@@ -68,7 +68,8 @@ def getExcludedVerticalLetter =
     northOrdinal <- getAdjacentOrdinal north;
     if (northOrdinal == 1) {
         currentLoc <- whereami;
-        teleport self (fst currentLoc, snd currentLoc + 1);
+        match currentLoc \x. \y.
+        teleport self (x, y + 1);
         doubleNorthOrdinal <- getAdjacentOrdinal north;
         teleport self currentLoc;
 
@@ -155,7 +156,8 @@ def singleTile = \expectedFwdOrdinal. \expectedBkwdOrdinal.
 
 def crossBack = \_n.
     currentLoc <- whereami;
-    teleport self (0, snd currentLoc - 1);
+    match currentLoc \_. \y.
+    teleport self (0, y - 1);
     end;
 
 /**
@@ -191,7 +193,8 @@ def giveLetterNumbered = \n.
 
 def removeBoulder =
     baseLoc <- as base {whereami};
-    teleport self (fst baseLoc - 1, snd baseLoc);
+    match baseLoc \x. \y.
+    teleport self (x - 1, y);
 
     // Remove the boulder blocking the player's path
     grab;

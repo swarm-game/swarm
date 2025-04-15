@@ -24,7 +24,9 @@ myLoc <- whereami;
 def foldM : (rec l. Unit + a * l) -> b -> (b -> a -> Cmd b) -> Cmd b =
   \xs. \b. \f. case xs
     (\_. pure b)
-    (\cons. b' <- f b (fst cons); foldM (snd cons) b' f)
+    (\cons. match cons
+      \a. \rest. b' <- f b a; foldM rest b' f
+    )
 end
 
 // Try to give a robot a Win, filtering out those that were already given a Win.

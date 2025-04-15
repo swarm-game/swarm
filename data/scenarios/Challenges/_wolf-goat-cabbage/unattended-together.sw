@@ -1,7 +1,8 @@
 def get_x_coord = \r.
     as r {
         pos <- whereami;
-        pure $ fst pos;
+        match pos \x. \_.
+        pure x;
     };
     end;
 
@@ -23,7 +24,7 @@ def is_unattended_together = \baseX. \robotName.
             has_goat <- has "goat";
             has_cabbage <- has "cabbage";
             pure $ (has_wolf && has_goat) || (has_goat && has_cabbage);
-        };        
+        };
     }
     end;
 

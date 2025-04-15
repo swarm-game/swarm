@@ -2,8 +2,10 @@
 Uses a string to maintain a queue of coordinates.
 */
 
-def coordsToString : (Int * Int) -> Text = \coords.
-  format (fst coords) ++ "," ++ format (snd coords)
+def λmatch = \f. \p. match p f end
+
+def coordsToString : (Int * Int) -> Text = λmatch \x. \y.
+  format x ++ "," ++ format y
   end
 
 def indexOfRec : Int -> Text -> Text -> (Unit + Int) = \pos. \inputString. \targetChar.
@@ -24,17 +26,19 @@ def indexOf : Text -> Text -> (Unit + Int) =
 
 // Drops the first character of a string
 def strTail : Text -> Text = \inputString.
-  snd $ split 1 inputString
+  match (split 1 inputString) \_. \rest. rest
   end
 
 def splitOnFirstChar : Text -> Text -> (Text * Text) = \inputString. \splitChar.
-  case (indexOf inputString splitChar) (\_.
-    // Did not find the split character, so return the original string
-    (inputString, "")
-  ) (\foundIdx.
-    let parts = split foundIdx inputString in
-    (fst parts, strTail $ snd parts)
-  )
+  case (indexOf inputString splitChar)
+    (\_.
+      // Did not find the split character, so return the original string
+      (inputString, "")
+    )
+    (\foundIdx.
+      match (split foundIdx inputString) \a. \b.
+      (a, strTail b)
+    )
   end
 
 def getDecimalCharValue = \inputString. \idx.
@@ -58,8 +62,8 @@ def parseDecimal : Text -> Int = \inputString.
 
 // Comma (",") is the separator between abscissa and ordinate
 def stringToCoords : Text -> (Int * Int) = \coordsString.
-  let pair = splitOnFirstChar coordsString "," in
-  (parseDecimal $ fst pair, parseDecimal $ snd pair)
+  match (splitOnFirstChar coordsString ",") \a. \b.
+  (parseDecimal a, parseDecimal b)
   end
 
 // APPEND to string representation of a coordinate list
@@ -72,7 +76,8 @@ def snoc : (Int * Int) -> Text -> Text = \coords. \strList.
 def pop : Text -> (Unit + ((Int * Int) * Text)) = \strList.
   if (chars strList > 0) {
     let pair = splitOnFirstChar strList ";" in
-    inR (stringToCoords $ fst pair, snd pair)
+    match pair \a. \b.
+    inR (stringToCoords a, b)
   } {
     inL ();
   }
@@ -97,10 +102,7 @@ def moveTail = \tailList.
       // Nothing to pick up or replace
       pure tailList;
 
-    ) (\newPair.
-
-        let farthestTail = fst newPair in
-        let newInit = snd newPair in
+    ) (λmatch \farthestTail. \newInit.
         newLoc <- whereami;
         grabbedItem <- doAtLoc newLoc farthestTail grab;
         place grabbedItem;
@@ -119,8 +121,8 @@ def moveOneStep = \tailList.
     targetLoc <- as r {whereami};
 
     maybeD <- getDir targetLoc;
-    case maybeD (\_. say "Dead!"; pure "") (\d.
-      turn $ fst d;
+    case maybeD (\_. say "Dead!"; pure "") (λmatch \dir. \_.
+      turn dir;
       newList <- moveTail tailList;
       move;
       pure newList

@@ -149,7 +149,7 @@ testEval g =
         "operator evaluation"
         [ testCase
             "application operator #239"
-            ("fst $ snd $ (1,2,3)" `evaluatesTo` VInt 2)
+            ("(\\x. -x) $ (\\x. x^2) $ 2" `evaluatesTo` VInt (-4))
         ]
     , testGroup
         "recursive bindings"

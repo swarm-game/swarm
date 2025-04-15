@@ -6,13 +6,15 @@ def abs : Int -> Int = \n.
   if (n < 0) {-n} {n}
 end
 
+def λmatch = \f. \p. match p f end
+def λcase = \f. \g. \s. case s f g end
+
 // Go to the given absolute coordinates.  End facing east.
-def goto : Int * Int -> Cmd Unit = \dest.
+def goto : Int * Int -> Cmd Unit = λmatch \destx. \desty.
   cur <- whereami;
-  let x = fst cur in
-  let y = snd cur in
-  let dx = fst dest - x in
-  let dy = snd dest - y in
+  match cur \x. \y.
+  let dx = destx - x in
+  let dy = desty - y in
   if (dx < 0) {turn west} {turn east};
   doN (abs dx) move;
   if (dy < 0) {turn south} {turn north};
@@ -37,10 +39,9 @@ end
 
 tydef List a = rec l. Unit + (a * l) end
 
-def sum : List Int -> Int = \l.
-  case l
-    (\_. 0)
-    (\cons. fst cons + sum (snd cons))
+def sum : List Int -> Int = λcase
+  (\_. 0)
+  (λmatch \hd. \tl. hd + sum tl)
 end
 
 def for : Int -> (Int -> Cmd a) -> Cmd (List a) = \n. \k.
@@ -61,8 +62,7 @@ def around : Dir -> Cmd Unit = \d. turn d; move; turn d end
 // in the w by h rectangle with lower-left corner at (x,y)
 def countFlowers : Int * Int -> Int * Int -> Cmd Int = \size. \ll.
   goto ll;
-  let w = fst size in
-  let h = snd size in
+  match size \w. \h.
   cnts <- for (h-1) (\i.
     cnt <- countRow w;
     if (isEven i) { around right } { around left };

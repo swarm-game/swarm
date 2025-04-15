@@ -5,7 +5,7 @@ Assumes we are on the left edge of a row of nucleobases
 */
 def resetPlayfieldRow =
     dims <- floorplan "DNA decoder";
-    let decoderWidth = fst dims in
+    match dims \decoderWidth. \_.
     doN decoderWidth (grab; move;);
     end;
 

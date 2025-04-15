@@ -128,7 +128,7 @@ data Frame
     --   to the given value.  This does not normally occur as part of
     --   the usual evaluation process for applications, which instead
     --   uses FArg.  However, it is sometimes useful when reducing
-    --   other constructs.
+    --   other constructs---for example, the pair eliminator 'match'.
     FVArg Value
   | -- | @FApp v@ says that we were evaluating the right-hand side of
     -- an application; once we are done, we should pass the resulting

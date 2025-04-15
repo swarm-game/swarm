@@ -13,11 +13,11 @@ def while : Cmd Bool -> Cmd Unit -> Cmd Unit = \test.\c.
 end;
 def getX : Cmd Int =
   pos <- whereami;
-  pure (fst pos);
+  pure (match pos \x. \_. x);
 end;
 def getY : Cmd Int =
   pos <- whereami;
-  pure (snd pos);
+  pure (match pos \_. \y. y);
 end;
 def gotoX : Int -> Cmd Unit = \tgt.
   cur <- getX;

@@ -15,8 +15,9 @@ def moveWithMorbidity =
     move;
     end;
 
-def goFoodDir = \f. \r.
-    let d = fst r in
+def λmatch = \f. \p. match p f end
+
+def goFoodDir = \f. λmatch \d. \_. 
     if (d == down) {
         foodHere <- ishere "oats";
         if foodHere {
@@ -37,8 +38,7 @@ def goFoodDir = \f. \r.
     }
     end;
 
-def goHomeDir = \f. \r.
-    let d = fst r in
+def goHomeDir = \f. λmatch \d. \_.
     if (d == down) {
         pure ()
     } {
