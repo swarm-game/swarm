@@ -28,7 +28,7 @@ objectives:
         Good job. Now send robots to grab the rest!
       - |
         Where will you find the item names, so you can `give base "item name"`?
-        That's the best part, you won't!
+        That's the neat part, you won't!
       - |
         You will get the name from the `grab` command result:
         ```
