@@ -2,11 +2,14 @@ def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
 def abs = \n. if (n < 0) {-n} {n} end;
 
 def mapTuple = \f. \t.
-    (f $ fst t, f $ snd t)
+    match t \a. \b.
+    (f a, f b)
     end;
 
 def sumTuples = \t1. \t2.
-    (fst t1 + fst t2, snd t1 + snd t2);
+    match t1 \t11. \t12.
+    match t2 \t21. \t22.
+    (t11 + t21, t12 + t22);
     end;
 
 def negateTuple = \t.
@@ -19,8 +22,7 @@ def getRelativeLocation = \absCurrentLoc. \absDestLoc.
     end;
 
 def moveTuple = \tup.
-    let x = fst tup in
-    let y = snd tup in
+    match tup \x. \y.
     turn $ if (x > 0) {east} {west};
     doN (abs x) move;
     turn $ if (y > 0) {north} {south};
@@ -39,8 +41,9 @@ def visitNextWaypoint : (rec l. Unit + (Int * Int) * l) -> (rec l. Unit + (Int *
     let myList = case remainingList (\_. originalList) (\_. remainingList) in
 
     case myList pure (\cons.
-        goToLocation loc $ fst cons;
-        visitNextWaypoint originalList $ snd cons;
+        match cons \hd. \tl.
+        goToLocation loc hd;
+        visitNextWaypoint originalList tl;
     );
     end;
 

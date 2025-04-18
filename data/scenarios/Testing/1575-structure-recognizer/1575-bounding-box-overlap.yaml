@@ -15,7 +15,7 @@ objectives:
         Build 3 `chevron`{=structure} structures
     condition: |
       def length : (rec l. Unit + a * l) -> Int = \l.
-        case l (\_. 0) (\cons. 1 + length (snd cons))
+        case l (\_. 0) (\cons. match cons \_. \tl. 1 + length tl)
       end;
       foundStructures <- structures "chevron";
       pure $ length foundStructures >= 3

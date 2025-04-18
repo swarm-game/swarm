@@ -18,8 +18,7 @@ def checkCombo = \noMismatchYet. \stepsTaken. \colorString.
     if (remainingCount > 0) {
 
         let splitted = split 1 colorString in
-        let nextLetter = fst splitted in
-        let remainingLetters = snd splitted in
+        match splitted \nextLetter. \remainingLetters.
         let expectedPixel = pixelFromColor nextLetter in
 
         move;

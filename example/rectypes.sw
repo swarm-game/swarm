@@ -17,7 +17,7 @@ def cons : a -> List a -> List a = \x. \l. inr (x, l) end
 def foldr : (a -> b -> b) -> b -> List a -> b = \f. \z. \xs.
   case xs
     (\_. z)
-    (\c. f (fst c) (foldr f z (snd c)))
+    (\c. match c \x. \xs. f x (foldr f z xs))
 end
 
 def map : (a -> b) -> List a -> List b = \f.
@@ -62,8 +62,9 @@ def foldBTree : (b -> c) -> (c -> a -> c -> c) -> BTree a b -> c =
   \lf. \br. \t.
     case t
       lf
-      // fst p, fst (snd p), snd (snd p) is annoying; see #1893
-      (\p. br (foldBTree lf br (fst p)) (fst (snd p)) (foldBTree lf br (snd (snd p))))
+      (\p. match p \l. \xr. match xr \x. \r.
+        br (foldBTree lf br l) x (foldBTree lf br r)
+      )
 end
 
 def max : Int -> Int -> Int = \a. \b. if (a > b) {a} {b} end
@@ -82,7 +83,7 @@ end
 tydef Rose a = rec r. a * (rec l. Unit + r * l) end
 
 def foldRose : (a -> List b -> b) -> Rose a -> b = \f. \r.
-  f (fst r) (map (foldRose f) (snd r))
+  match r \a. \ts. f a (map (foldRose f) ts)
 end
 
 def flatten : Rose a -> List a =

@@ -39,7 +39,8 @@ robots:
       attr: blue
     program: |
       loc <- whereami;
-      wait $ fst loc;
+      match loc \x. \_.
+      wait x;
       say ("Hello from " ++ format loc ++ "!");
 entities:
   - name: token

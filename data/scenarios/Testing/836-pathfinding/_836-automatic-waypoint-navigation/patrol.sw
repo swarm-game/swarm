@@ -1,5 +1,5 @@
 def goDir = \f. \r.
-  let d = fst r in
+  match r \d. \_.
   if (d == down) {
     eggHere <- ishere "egg";
     if eggHere {grab; pure ()} {};
@@ -29,8 +29,9 @@ def visitNextWaypoint : (rec l. Unit + (Int * Int) * l) -> (rec l. Unit + (Int *
     let myList = case remainingList (\_. originalList) (\_. remainingList) in
 
     case myList pure (\cons.
-        followRoute $ fst cons;
-        visitNextWaypoint originalList $ snd cons;
+        match cons \hd. \tl.
+        followRoute hd;
+        visitNextWaypoint originalList tl;
     );
     end;
 

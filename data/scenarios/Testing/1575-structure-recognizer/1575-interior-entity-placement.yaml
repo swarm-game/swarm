@@ -19,7 +19,7 @@ objectives:
     condition: |
       foundBoxes <- structures "pigpen";
       case foundBoxes (\_. pure false) (\cons.
-        let structPos = fst cons in
+        match cons \structPos. \_.
         j <- robotnamed "judge";
         as j {
           structBounds <- floorplan "pigpen";

@@ -38,7 +38,7 @@ def spinWeb = \border.
 end
 
 def goDir = \result.
-    let d = fst result in
+    match result \d. \_.
     if (d == down) {
         spinWeb "mountain";
     } {

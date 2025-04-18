@@ -19,7 +19,7 @@ objectives:
         the upper-left one should be recognized.
     condition: |
       def length : (rec l. Unit + a * l) -> Int = \l.
-        case l (\_. 0) (\c. 1 + length (snd c))
+        case l (\_. 0) (\c. match c \_. \tl. 1 + length tl)
       end;
       foundStructures <- structures "square";
       pure $ length foundStructures == 1;

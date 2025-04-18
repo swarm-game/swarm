@@ -13,11 +13,11 @@ def visitNextWaypoint : (rec l. Unit + (Int * Int) * l) -> (rec l. Unit + (Int *
     let myList = case remainingList (\_. originalList) (\_. remainingList) in
 
     case myList pure (\cons.
-
-        teleport self $ fst cons;
+        match cons \wp. \tl.
+        teleport self wp;
         wait 1000;
 
-        visitNextWaypoint originalList $ snd cons;
+        visitNextWaypoint originalList tl;
     );
 
 

@@ -111,7 +111,8 @@ def to1numA: Int -> (Int * Int)
     (2 * i, 1)
   } {
     let p = to1numA nextPart in
-    (1 /* header isEnd bit */ + setLenPart i + shiftRH 1 (fst p), 1 + snd p)
+    match p \a. \b.
+    (1 /* header isEnd bit */ + setLenPart i + shiftRH 1 a, 1 + b)
   }
 end
 
@@ -124,7 +125,9 @@ def getLenA: ListI -> (Int * Int)
   let l = getLenPart xs in
   let nextPart = shiftLH 1 xs in
   if isEnd {(l, nextPart)} {
-    let p = getLenA nextPart in (l + shiftR 7 (fst p), snd p)
+    let p = getLenA nextPart in
+    match p \bits. \lst.
+    (l + shiftR 7 bits, lst)
   }
 end
 
@@ -137,8 +140,9 @@ def headTail: ListI -> (Int * ListI)
   let sign = mod xs 2 in
   let ns = xs / 2 in
   let p = getLenA ns in
-  ( let x = mod (snd p) $ 2 ^ fst p in if (sign == 0) {x} {-x}
-  , shiftL (fst p) (snd p) )
+  match p \bits. \lst.
+  ( let x = mod lst $ 2 ^ bits in if (sign == 0) {x} {-x}
+  , shiftL bits lst )
 end
 
 def head: ListI -> Int 
@@ -146,13 +150,17 @@ def head: ListI -> Int
   let sign = mod xs 2 in
   let ns = xs / 2 in
   let p = getLenA ns in
-  let x = mod (snd p) $ 2 ^ fst p in if (sign == 0) {x} {-x}
+  match p \bits. \lst.
+  let x = mod lst $ 2 ^ bits in if (sign == 0) {x} {-x}
 end
 
 def tail: ListI -> ListI 
   = \xs.
   let sign = mod xs 2 in
-  let ns = xs / 2 in let p = getLenA ns in shiftL (fst p) (snd p)
+  let ns = xs / 2 in
+  let p = getLenA ns in
+  match p \bits. \lst.
+  shiftL bits lst
 end
 
 def nil: ListI = 0 end
@@ -163,7 +171,9 @@ def consP: Int -> ListI -> Int
   = \x. \xs.
   if (x == 0) {2 /* header says one bit length */ + shiftR (8 + 1) xs} {
     let l = len x in
-    let pl = to1numA l in fst pl + shiftRH (snd pl) (x + shiftR l xs)
+    let pl = to1numA l in
+    match pl \a. \b.
+    a + shiftRH b (x + shiftR l xs)
   }
 end
 
@@ -191,7 +201,9 @@ end
 def for_each_i: Int -> ListI -> (Int -> Int -> Cmd Unit) -> Cmd Unit 
   = \i. \xs. \act.
   if (xs == nil) {} {
-    let ht = headTail xs in act i (fst ht); for_each_i (i + 1) (snd ht) act
+    let ht = headTail xs in
+    match ht \hd. \tl.
+    act i hd; for_each_i (i + 1) tl act
   }
 end
 
