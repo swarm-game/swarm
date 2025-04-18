@@ -16,6 +16,8 @@ objectives:
         around your `base`, by `build`ing one or more robots to collect
         them and then `give` them to you.
       - |
+        This is a training simulation, so the items will reappear after a while.
+      - |
         Start with `build`ing a robot to `grab` the `bit (0)`{=entity} east of the base.
     condition: |
       as base { has "bit (0)" }
@@ -23,14 +25,14 @@ objectives:
     teaser: Fetch the rest
     goal:
       - |
-        Good job! Now send robot(s) to grab the rest!
+        Good job. Now send robots to grab the rest!
       - |
-        But where will you find the item names, so you can `give base "item name"`?
+        Where will you find the item names, so you can `give base "item name"`?
         That's the best part, you won't!
       - |
         You will get the name from the `grab` command result:
         ```
-        build { move; w <- grab; turn back; move; give base w }
+        build { move; w <- grab; log w; turn back; move; give base w }
         ```
       - |
         **TIP:** Instead of trial and error, you can get the distance to items
@@ -72,15 +74,25 @@ robots:
       - [10, scanner]
       - [10, treads]
       - [10, solar panel]
+  - name: replacer
+    system: true
+    program: |
+      def replace: Cmd Unit =
+          i <- scan down;
+          watch down; wait 2024; wait 32;
+          case i (\_. noop) (\i. create i; try { place i } {} );
+          replace;
+      end;
+      replace
 known: [board, LaTeX, bit (0), copper ore]
 world:
   palette:
     'Ω': [grass, null, base]
     '.': [grass]
-    'w': [dirt, board]
-    '$': [grass, LaTeX]
-    '0': [grass, bit (0)]
-    'C': [grass, copper ore]
+    'w': [dirt, board, replacer]
+    '$': [grass, LaTeX, replacer]
+    '0': [grass, bit (0), replacer]
+    'C': [grass, copper ore, replacer]
     '+': [stone, wall]
   upperleft: [-5, 3]
   map: |
