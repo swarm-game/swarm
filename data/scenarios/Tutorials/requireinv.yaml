@@ -20,20 +20,18 @@ objectives:
         **TIP:** You can define commands to simplify your task, for example:
         `def r = move; place "rock"; end`
     condition: |
-      def repeat = \n. \c. if (n == 0) {} {c ; repeat (n-1) c} end;
+      def forM = \i.\e. \c. if (i >= e) {} {c i; forM (i+1) e c} end;
       def ifC = \test. \then. \else. b <- test; if b then else end;
-      try {
-        teleport self (0,0); turn south;
-        repeat 4 (
-          move; turn east;
-          repeat 4 (
-            move;
 
-            ifC (ishere "rock") {} {create "tree"};
+      try {
+        turn east;
+        forM 1 5 (\y.
+          forM 1 5 (\x.
+            teleport self (x,-y);
+            ifC (ishere "rock") {} {grab; noop};
           );
-          turn back; move; move; move; move; turn left
         );
-        ifC (has "tree") {pure false} {pure true}
+        pure true
       } { pure false }
 solution: |
   def x4 = \c. c;c;c;c end;
