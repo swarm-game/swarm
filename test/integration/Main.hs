@@ -212,7 +212,7 @@ testScenarioSolutions rs ui key =
         , testTutorialSolution Default "Tutorials/equip"
         , testTutorialSolution Default "Tutorials/build"
         , testTutorialSolution Default "Tutorials/bind2"
-        , testTutorialSolution' Default "Tutorials/crash" CheckForBadErrors $ \g -> do
+        , testTutorialSolution' Default "Tutorials/debug" CheckForBadErrors $ \g -> do
             let robots = toList $ g ^. robotInfo . robotMap
             let hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
             let win = isJust $ find hints robots

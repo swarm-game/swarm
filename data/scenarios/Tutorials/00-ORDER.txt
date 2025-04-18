@@ -8,7 +8,7 @@ type-errors.yaml
 equip.yaml
 build.yaml
 bind2.yaml
-crash.yaml
+debug.yaml
 scan.yaml
 give.yaml
 def.yaml
