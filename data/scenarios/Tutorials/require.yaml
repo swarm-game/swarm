@@ -13,15 +13,15 @@ objectives:
         In this case, you can use the special `require`{=snippet} command to require a particular device.
         For example, if you run:
         ```
-        build {require "3D printer"; move}
+        build {require "boat"; move}
         ```
-        Then a `3D printer`{=entity} will be equipped on the new robot (in addition to `treads`{=entity})
-        even though it does not execute any commands that use `3D printer`{=entity}.
+        Then a `boat`{=entity} will be equipped on the new robot in addition to `treads`{=entity}.
+      - |
+        Unlike other devices used so far in the tutorial, `boat`{=entity} does not provide any commands,
+        but robots that have it equipped will not drown in the `water`{=entity}.
       - |
         Your goal is to pick a flower on the other side of the river and bring it back to your base.
         You win when the base has a `periwinkle`{=entity} flower in its inventory.
-      - |
-        **TIP:** Robots will drown in the `water`{=entity} unless they have a `boat`{=entity} device equipped.
       - |
         **TIP:** To see what the `build` command will equip, you can type `requirements <e>`{=snippet}
         where `<e>`{=snippet} is any expression.
@@ -54,6 +54,7 @@ robots:
       - logger
       - 3D printer
       - dictionary
+      - lambda
     inventory:
       - [10, solar panel]
       - [10, logger]
