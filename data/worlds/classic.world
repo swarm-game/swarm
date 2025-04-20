@@ -89,6 +89,7 @@ overlay
   ( overlay
     [ {grass}
     , mask (hash % 20 == 10) {grass, cotton}
+    , mask (hash % 20 == 11) {grass, wheat}
     , mask (hash % 20 == 0)  {grass, flower}
     , mask (hash % 1000 == 1) {grass, tea plant}
     ]

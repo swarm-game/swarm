@@ -148,8 +148,6 @@ data Const
     Whereami
   | -- | Get the current subworld and x, y coordinates
     LocateMe
-  | -- | Get the x, y coordinates of a specific waypoints by name and index
-    Waypoint
   | -- | Get the list of x, y coordinates of the waypoints for a given name
     Waypoints
   | -- | Get the list of x, y coordinates of the southwest corner of all
@@ -696,11 +694,6 @@ constInfo c = case c of
       shortDoc
         (Set.singleton $ Query $ Sensing RobotSensing)
         "Get the current subworld and x, y coordinates."
-  Waypoint ->
-    function 2 . doc (Set.singleton $ Query APriori) "Get the x, y coordinates of a waypoint, by name and index." $
-      [ "Returns only waypoints in the same subworld as the calling robot."
-      , "Wraps around modulo the number of waypoints with the given name.  Throws an exception if there are no waypoints with the given name."
-      ]
   Waypoints ->
     function 1 . doc (Set.singleton $ Query APriori) "Get the list of x, y coordinates of a named waypoint" $
       [ "Returns only the waypoints in the same subworld as the calling robot."

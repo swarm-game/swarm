@@ -1,5 +1,6 @@
 
-def visitNextWaypoint = \nextWpIdx.
+def visitNextWaypoint : (rec l. Unit + (Int * Int) * l) -> (rec l. Unit + (Int * Int) * l) -> Cmd Unit = \originalList. \remainingList.
+
     emptyHere <- isempty;
     if emptyHere {
       try {
@@ -7,10 +8,20 @@ def visitNextWaypoint = \nextWpIdx.
       } {};
     } {};
     watch down;
-    let nextWaypointQuery = waypoint "wp" nextWpIdx in
-    teleport self $ nextWaypointQuery;
-    wait 1000;
-    visitNextWaypoint $ nextWpIdx + 1;
+
+    // Wrap around
+    let myList = case remainingList (\_. originalList) (\_. remainingList) in
+
+    case myList pure (\cons.
+
+        teleport self $ fst cons;
+        wait 1000;
+
+        visitNextWaypoint originalList $ snd cons;
+    );
+
+
     end;
 
-visitNextWaypoint 0;
+let wps = waypoints "wp" in
+visitNextWaypoint wps wps;

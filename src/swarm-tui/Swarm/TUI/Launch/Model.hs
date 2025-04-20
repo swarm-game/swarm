@@ -16,7 +16,7 @@ import Control.Lens (makeLenses)
 import Data.Functor.Identity (Identity (Identity))
 import Data.Text (Text)
 import Swarm.Failure (SystemFailure)
-import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (LaunchParams), ScenarioInfoPair, SerializableLaunchParams)
+import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (LaunchParams), ScenarioInfo, ScenarioWith, SerializableLaunchParams)
 import Swarm.Game.State (LaunchParams, ValidatedLaunchParams, getRunCodePath, parseCodeFile)
 import Swarm.Pretty (prettyText)
 import Swarm.TUI.Model.Name
@@ -50,7 +50,7 @@ data LaunchControls = LaunchControls
   { _fileBrowser :: FileBrowserControl
   , _seedValueEditor :: Editor Text Name
   , _scenarioConfigFocusRing :: Focus.FocusRing Name
-  , _isDisplayedFor :: Maybe ScenarioInfoPair
+  , _isDisplayedFor :: Maybe (ScenarioWith ScenarioInfo)
   }
 
 makeLenses ''LaunchControls

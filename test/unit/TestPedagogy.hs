@@ -9,8 +9,8 @@ module TestPedagogy where
 import Control.Lens (view)
 import Data.Map qualified as M
 import Swarm.Doc.Pedagogy
-import Swarm.Game.ScenarioInfo (scenarioPath)
-import Swarm.Game.State.Runtime (RuntimeState, scenarios)
+import Swarm.Game.Scenario.Status (ScenarioPath (..), ScenarioWith (..))
+import Swarm.Game.State.Runtime (RuntimeState, progression, scenarios)
 import Test.Tasty
 import Test.Tasty.HUnit
 
@@ -23,10 +23,10 @@ testPedagogy rs =
         testList
     ]
  where
-  tutorialInfos = generateIntroductionsSequence $ view scenarios rs
+  tutorialInfos = generateIntroductionsSequence $ view (progression . scenarios) rs
 
   testFromTut :: Int -> CoverageInfo -> TestTree
-  testFromTut idx (CoverageInfo (TutorialInfo (_s, si) _ _ descCommands) novelCommands) =
+  testFromTut idx (CoverageInfo (TutorialInfo (ScenarioWith _s (ScenarioPath scPath)) _ _ descCommands) novelCommands) =
     testCase
       (unwords [show idx, scPath])
       $ assertBool errMsg allCommandsCovered
@@ -38,7 +38,6 @@ testPedagogy rs =
         , show $ M.keysSet missingCmds
         ]
 
-    scPath = view scenarioPath si
     allCommandsCovered = M.null missingCmds
 
   testList = zipWith testFromTut [0 ..] tutorialInfos
