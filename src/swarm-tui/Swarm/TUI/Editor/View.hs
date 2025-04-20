@@ -10,6 +10,7 @@ import Control.Lens hiding (Const, from)
 import Data.List qualified as L
 import Swarm.Game.Land
 import Swarm.Game.Scenario
+import Swarm.Game.Scenario.Status
 import Swarm.Game.Scenario.Topography.Area qualified as EA
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Terrain (TerrainMap, TerrainType)
@@ -28,7 +29,7 @@ import Swarm.Util (applyWhen)
 
 extractTerrainMap :: UIGameplay -> TerrainMap
 extractTerrainMap uig =
-  maybe mempty (view (scenarioLandscape . scenarioTerrainAndEntities . terrainMap) . fst) $
+  maybe mempty (view $ getScenario . scenarioLandscape . scenarioTerrainAndEntities . terrainMap) $
     uig ^. scenarioRef
 
 drawWorldEditor :: FocusRing Name -> UIGameplay -> Widget Name

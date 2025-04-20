@@ -22,15 +22,21 @@ def followRoute = \loc.
     case nextDir pure $ goDir $ followRoute loc;
     end;
 
-def visitNextWaypoint = \nextWpIdx.
-    let nextWaypointQuery = waypoint "wp" nextWpIdx in
-    followRoute $ nextWaypointQuery;
 
-    visitNextWaypoint $ nextWpIdx + 1;
+def visitNextWaypoint : (rec l. Unit + (Int * Int) * l) -> (rec l. Unit + (Int * Int) * l) -> Cmd Unit = \originalList. \remainingList.
+
+    // Wrap around
+    let myList = case remainingList (\_. originalList) (\_. remainingList) in
+
+    case myList pure (\cons.
+        followRoute $ fst cons;
+        visitNextWaypoint originalList $ snd cons;
+    );
     end;
 
 def go =
-    visitNextWaypoint 0;
+    let wps = waypoints "wp" in
+    visitNextWaypoint wps wps;
     end;
 
 go;

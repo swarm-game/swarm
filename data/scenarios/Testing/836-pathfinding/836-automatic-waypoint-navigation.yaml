@@ -25,13 +25,6 @@ entities:
       - Enables `path` command
     properties: [known, pickable]
     capabilities: [path]
-  - name: atlas
-    display:
-      char: 'a'
-    description:
-      - Enables `waypoint` command
-    properties: [known, pickable]
-    capabilities: [waypoint]
   - name: kudzu
     display:
       char: 'k'

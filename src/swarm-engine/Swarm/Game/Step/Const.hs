@@ -567,14 +567,6 @@ execConst runChildProg c vs s k = do
     LocateMe -> do
       loc <- use robotLocation
       return $ mkReturn (loc ^. subworld, loc ^. planar)
-    Waypoint -> case vs of
-      [VText name, VInt idx] -> do
-        lm <- use $ landscape . worldNavigation
-        Cosmic swName _ <- use robotLocation
-        case M.lookup (WaypointName name) $ M.findWithDefault mempty swName $ waypoints lm of
-          Nothing -> raise Waypoint ["There are no waypoints named", quote name <> "."]
-          Just wps -> return $ mkReturn $ indexWrapNonEmpty wps idx
-      _ -> badConst
     Waypoints -> case vs of
       [VText name] -> do
         lm <- use $ landscape . worldNavigation

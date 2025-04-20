@@ -10,9 +10,6 @@ attrs:
   - name: clay
     fg: "#444444"
     bg: "#c2b280"
-  - name: wheat
-    fg: "#444444"
-    bg: "#F5DEB3"
   - name: barley
     fg: "#444444"
     bg: "#F6E9B1"
@@ -80,19 +77,6 @@ robots:
     dir: east
     system: true
 entities:
-  - name: wheat
-    display:
-      char: 'w'
-      attr: wheat
-    description:
-      - Grain
-    properties: [known, pickable, growable]
-    growth:
-      duration: [20, 30]
-      spread:
-        radius: 2
-        density: 0.3
-    biomes: [dirt, clay]
   - name: barley
     display:
       char: 'b'
