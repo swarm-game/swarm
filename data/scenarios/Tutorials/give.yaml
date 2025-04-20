@@ -18,7 +18,7 @@ objectives:
       - |
         This is a training simulation, so the items will reappear after a while.
       - |
-        Start with `build`ing a robot to `grab` the `bit (0)`{=entity} east of the base.
+        Start with `build`ing a robot to `grab` the `bit (0)`{=entity} east of the base, then return to `give` it to the `base`.
     condition: |
       as base { has "bit (0)" }
   - id: give_rest
@@ -30,13 +30,13 @@ objectives:
         Where will you find the item names, so you can `give base "item name"`?
         That's the neat part, you won't!
       - |
-        You will get the name from the `grab` command result:
+        You will get the name from the `grab` command result, for example:
         ```
         build { move; w <- grab; log w; turn back; move; give base w }
         ```
       - |
         **TIP:** Instead of trial and error, you can get the distance to items
-        by clinking on them in the world map, which will show the coordinates.
+        by clicking on them in the world map, which will show the coordinates.
     prerequisite: give_bit
     condition: |
       as base {
