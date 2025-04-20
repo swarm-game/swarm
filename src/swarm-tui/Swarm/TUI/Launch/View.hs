@@ -20,7 +20,7 @@ import Data.Either (isRight)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Scenario (scenarioLandscape, scenarioSeed)
-import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (..))
+import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (..), getScenario)
 import Swarm.Game.State (getRunCodePath)
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep
@@ -103,7 +103,7 @@ drawLaunchConfigPanel (LaunchOptions lc launchParams) =
 
   scenarioSeedText =
     maybe "random" show $
-      view (scenarioLandscape . scenarioSeed) . fst =<< displayedFor
+      view (getScenario . scenarioLandscape . scenarioSeed) =<< displayedFor
 
   mkSeedEntryWidget seedEntryContent =
     if isFocused SeedSelector

@@ -24,3 +24,7 @@ stan.html
 docs/ott/*.tex
 
 .dir-locals.el
+
+node_modules/
+package-lock.json
+package.json

@@ -117,7 +117,7 @@ handleFBEvent ev = do
     cacheValidatedInputs
 
 handleLaunchOptionsEvent ::
-  ScenarioInfoPair ->
+  ScenarioWith ScenarioInfo ->
   BrickEvent Name AppEvent ->
   EventM Name AppState ()
 handleLaunchOptionsEvent siPair = \case

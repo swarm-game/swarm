@@ -69,6 +69,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
 import Swarm.Game.Scenario.Objective.WinCheck
+import Swarm.Game.Scenario.Status
 import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..))
 import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Structure.Recognition
@@ -311,7 +312,7 @@ replHistHandler appStateRef = do
 mapViewHandler :: IO AppState -> AreaDimensions -> Handler GridResponse
 mapViewHandler appStateRef areaSize = do
   appState <- liftIO appStateRef
-  let maybeScenario = fst <$> appState ^. playState . uiGameplay . scenarioRef
+  let maybeScenario = appState ^? playState . uiGameplay . scenarioRef . _Just . getScenario
   pure $ case maybeScenario of
     Just s ->
       GridResponse True

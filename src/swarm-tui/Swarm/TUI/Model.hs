@@ -33,7 +33,6 @@ module Swarm.TUI.Model (
   Menu (..),
   _NewGameMenu,
   mkScenarioList,
-  mkNewGameMenu,
 
   -- * UI state
 
@@ -153,7 +152,8 @@ logEvent src sev who msg el =
  where
   l = LogEntry (TickNumber 0) src sev who msg
 
--- | This encapsulates both game and UI state for an actively-playing scenario.
+-- | This encapsulates both game and UI state for an actively-playing scenario, as well
+-- as state that evolves as a result of playing a scenario.
 data PlayState = PlayState
   { _gameState :: GameState
   , _uiGameplay :: UIGameplay
@@ -313,7 +313,7 @@ defaultAppOpts =
 --   currently selected scenario (if any).  Can return @Nothing@ if
 --   either we are not in the @NewGameMenu@, or the current scenario
 --   is the last among its siblings.
-nextScenario :: Menu -> Maybe ScenarioInfoPair
+nextScenario :: Menu -> Maybe (ScenarioWith ScenarioPath)
 nextScenario = \case
   NewGameMenu (curMenu :| _) ->
     let nextMenuList = BL.listMoveDown curMenu

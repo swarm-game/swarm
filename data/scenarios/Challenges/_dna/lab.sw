@@ -1,5 +1,22 @@
 def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
 
+def waypointByIndexRec : (rec l. Unit + (Int * Int) * l) -> Int -> (Int * Int) = \wps. \idx.
+
+    case wps (\_. fail "invalid index") (\cons.
+
+        if (idx == 0) {
+            fst cons;
+        } {
+            waypointByIndexRec (snd cons) $ idx - 1;
+        }
+    );
+    end;
+
+def waypointByIndex : Text -> Int -> (Int * Int) = \wpName. \idx.
+    let wpList = waypoints wpName in
+    waypointByIndexRec wpList idx;
+    end;
+
 def getBaseForNumber = \n.
     if (n == 0) {
         "guanine";
@@ -126,7 +143,7 @@ def makeDnaStrand = \receptacleLoc.
             teleport self (0, -11);
             waitUntilHere "switch (on)";
 
-            let receptacleLoc2 = waypoint "receiver" 1 in
+            let receptacleLoc2 = waypointByIndex "receiver" 1 in
             teleport self receptacleLoc2;
 
             sow clonedItem;
@@ -143,8 +160,7 @@ def makeDnaStrand = \receptacleLoc.
     end;
 
 def waitForCloneableOrganism =
-
-    let receptacleLoc = waypoint "receiver" 0 in
+    let receptacleLoc = waypointByIndex "receiver" 0 in
     organism <- instant (
         teleport self receptacleLoc;
 

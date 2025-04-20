@@ -32,18 +32,21 @@ def goToLocation = \currentLoc. \absoluteDestination.
     moveTuple relativeDestination;
     end;
 
-def visitNextWaypoint = \nextWpIdx.
+def visitNextWaypoint : (rec l. Unit + (Int * Int) * l) -> (rec l. Unit + (Int * Int) * l) -> Cmd Unit = \originalList. \remainingList.
     loc <- whereami;
-    let nextWaypointQuery = waypoint "wp" nextWpIdx in
-    goToLocation loc $ nextWaypointQuery;
 
-    visitNextWaypoint $ nextWpIdx + 1;
+    // Wrap around
+    let myList = case remainingList (\_. originalList) (\_. remainingList) in
+
+    case myList pure (\cons.
+        goToLocation loc $ fst cons;
+        visitNextWaypoint originalList $ snd cons;
+    );
     end;
 
 def go =
-    let waypointQuery = waypoint "wp" 0 in
-    teleport self $ waypointQuery;
-    visitNextWaypoint 1;
+    let wpList = waypoints "wp" in
+    visitNextWaypoint wpList wpList;
     end;
 
 go;

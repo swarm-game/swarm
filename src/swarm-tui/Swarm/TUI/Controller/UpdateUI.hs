@@ -28,11 +28,13 @@ import Data.String (fromString)
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Swarm.Game.Entity hiding (empty)
+import Swarm.Game.Popup (Popup (..), addPopup)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
+import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
@@ -43,7 +45,6 @@ import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model
 import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Dialog.Goal
-import Swarm.TUI.Model.Dialog.Popup (Popup (..), addPopup)
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
@@ -328,14 +329,14 @@ generateNotificationPopups = do
   rs <- use $ playState . gameState . discovery . availableRecipes
   let newRecipes = rs ^. notificationsShouldAlert
   when newRecipes $ do
-    uiState . uiPopups %= addPopup RecipesPopup
+    runtimeState . progression . uiPopups %= addPopup RecipesPopup
     playState . gameState . discovery . availableRecipes . notificationsShouldAlert .= False
 
   cs <- use $ playState . gameState . discovery . availableCommands
   let alertCommands = cs ^. notificationsShouldAlert
   when alertCommands $ do
     let newCommands = take (cs ^. notificationsCount) (cs ^. notificationsContent)
-    uiState . uiPopups %= addPopup (CommandsPopup newCommands)
+    runtimeState . progression . uiPopups %= addPopup (CommandsPopup newCommands)
     playState . gameState . discovery . availableCommands . notificationsShouldAlert .= False
 
   return $ newRecipes || alertCommands
