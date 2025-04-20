@@ -3,32 +3,59 @@ name: Give
 description: |
   Learn how to give items to other robots.
 objectives:
-  - goal:
+  - id: give_bit
+    teaser: Give base bit
+    goal:
       - |
         Robots can transfer items between them using the `give`
         command. This command takes two arguments: the target
         robot, and the name of the item to give.  The target robot
         is often the special `base` robot, but could be any robot.
-      - In this scenario, you will need to collect the items scattered around your `base`, by `build`ing one or more robots to collect them and then `give` them to you.
+      - |
+        In this scenario, you will need to collect the items scattered
+        around your `base`, by `build`ing one or more robots to collect
+        them and then `give` them to you.
+      - |
+        This is a training simulation, so the items will reappear after a while.
+      - |
+        Start with `build`ing a robot to `grab` the `bit (0)`{=entity} east of the base, then return to `give` it to the `base`.
+    condition: |
+      as base { has "bit (0)" }
+  - id: give_rest
+    teaser: Fetch the rest
+    goal:
+      - |
+        Good job. Now send robots to grab the rest!
+      - |
+        Where will you find the item names, so you can `give base "item name"`?
+        That's the neat part, you won't!
+      - |
+        You will get the name from the `grab` command result, for example:
+        ```
+        build { move; w <- grab; log w; turn back; move; give base w }
+        ```
+      - |
+        **TIP:** Instead of trial and error, you can get the distance to items
+        by clicking on them in the world map, which will show the coordinates.
+    prerequisite: give_bit
     condition: |
       as base {
-          bd <- has "board";
-          b0 <- has "bit (0)";
-          lx <- has "LaTeX";
-          co <- has "copper ore";
-          pure $ bd && b0 && lx && co;
+          b <- has "board";
+          l <- has "LaTeX";
+          c <- has "copper ore";
+          pure $ b && l && c;
       };
 solution: |
   build {
-    turn back; move; turn right; move; move; move; grab;
-    turn right; move; move; turn right; move; grab;
-    move; move; move; move; turn right; move; grab;
-    turn left; move; move; turn right; move; move; grab;
+    turn back; move; turn right; move; move; move; latex <- grab;
+    turn right; move; move; turn right; move; board <- grab;
+    move; move; move; move; turn right; move; copper <- grab;
+    turn left; move; move; turn right; move; move; bit <- grab;
     turn right; move; move; move; move; turn right; move; move;
-    give base "LaTeX";
-    give base "board";
-    give base "copper ore";
-    give base "bit (0)";
+    give base latex;
+    give base board;
+    give base copper;
+    give base bit;
   }
 robots:
   - name: base
@@ -47,17 +74,27 @@ robots:
       - [10, scanner]
       - [10, treads]
       - [10, solar panel]
+  - name: replacer
+    system: true
+    program: |
+      def replace: Cmd Unit =
+          i <- scan down;
+          watch down; wait 2024; wait 32;
+          case i (\_. noop) (\i. create i; try { place i } {} );
+          replace;
+      end;
+      replace
 known: [board, LaTeX, bit (0), copper ore]
 world:
   palette:
     'Ω': [grass, null, base]
     '.': [grass]
-    'w': [grass, board]
-    '$': [grass, LaTeX]
-    '0': [grass, bit (0)]
-    'C': [grass, copper ore]
+    'w': [dirt, board, replacer]
+    '$': [grass, LaTeX, replacer]
+    '0': [grass, bit (0), replacer]
+    'C': [grass, copper ore, replacer]
     '+': [stone, wall]
-  upperleft: [-1, 3]
+  upperleft: [-5, 3]
   map: |
     +++++++++++
     +.........+
