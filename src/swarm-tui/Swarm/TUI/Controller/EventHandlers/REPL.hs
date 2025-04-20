@@ -29,15 +29,15 @@ import Swarm.TUI.Model.UI.Gameplay
 -- See 'Swarm.TUI.Controller.handleREPLEvent'.
 replEventHandlers :: [B.KeyEventHandler SwarmEvent (EventM Name AppState)]
 replEventHandlers = allHandlers REPL $ \case
-  CancelRunningProgramEvent -> ("Cancel running base robot program", Brick.zoom playState cancelRunningBase)
-  TogglePilotingModeEvent -> ("Toggle piloting mode", Brick.zoom playState $ onlyCreative togglePilotingMode)
-  ToggleCustomKeyHandlingEvent -> ("Toggle custom key handling mode", Brick.zoom playState toggleCustomKeyHandling)
+  CancelRunningProgramEvent -> ("Cancel running base robot program", Brick.zoom (playState . scenarioState) cancelRunningBase)
+  TogglePilotingModeEvent -> ("Toggle piloting mode", Brick.zoom (playState . scenarioState) $ onlyCreative togglePilotingMode)
+  ToggleCustomKeyHandlingEvent -> ("Toggle custom key handling mode", Brick.zoom (playState . scenarioState) toggleCustomKeyHandling)
 
 -- | Cancel the running base CESK machine and clear REPL input text.
 --
 -- It is handled in top REPL handler so we can always cancel the currently running
 -- base program no matter what REPL control mode we are in.
-cancelRunningBase :: EventM Name PlayState ()
+cancelRunningBase :: EventM Name ScenarioState ()
 cancelRunningBase = do
   working <- use $ gameState . gameControls . replWorking
   when working $ gameState . baseRobot . machine %= cancel
@@ -45,7 +45,7 @@ cancelRunningBase = do
     replPromptType .= CmdPrompt []
     replPromptText .= ""
 
-togglePilotingMode :: EventM Name PlayState ()
+togglePilotingMode :: EventM Name ScenarioState ()
 togglePilotingMode = do
   s <- get
   let theRepl = s ^. uiGameplay . uiREPL
@@ -60,7 +60,7 @@ togglePilotingMode = do
           addREPLHistItem $ mkREPLError "Please clear the REPL before engaging pilot mode."
           invalidateCacheEntry REPLHistoryCache
 
-toggleCustomKeyHandling :: EventM Name PlayState ()
+toggleCustomKeyHandling :: EventM Name ScenarioState ()
 toggleCustomKeyHandling = do
   s <- get
   when (isJust (s ^. gameState . gameControls . inputHandler)) $ do

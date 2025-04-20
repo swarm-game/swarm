@@ -11,22 +11,21 @@ module Swarm.TUI.Controller.SaveScenario (
 -- See Note [liftA2 re-export from Prelude]
 
 import Brick
-
 import Control.Lens as Lens
 import Control.Monad (forM_, unless, when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe (listToMaybe)
+import Data.Set (Set)
 import Data.Time (ZonedTime, getZonedTime)
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
-import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievements (attainAchievement, attainAchievement')
+import Swarm.TUI.Model.DebugOption (DebugOption)
 import Swarm.TUI.Model.Repl
-import Swarm.TUI.Model.UI (uiDebugOptions)
 import Swarm.TUI.Model.UI.Gameplay
 import System.FilePath (splitDirectories)
 
@@ -64,21 +63,21 @@ applyCompletionAchievements won t p = do
 
 saveScenarioInfoOnFinish ::
   FilePath ->
-  EventM n AppState ()
+  EventM n PlayState ()
 saveScenarioInfoOnFinish p = do
-  initialRunCode <- use $ playState . gameState . gameControls . initiallyRunCode
+  initialRunCode <- use $ scenarioState . gameState . gameControls . initiallyRunCode
   t <- liftIO getZonedTime
-  wc <- use $ playState . gameState . winCondition
+  wc <- use $ scenarioState . gameState . winCondition
   let won = case wc of
         WinConditions (Won _ _) _ -> True
         _ -> False
-  ts <- use $ playState . gameState . temporal . ticks
-  saved <- use $ playState . gameState . completionStatsSaved
+  ts <- use $ scenarioState . gameState . temporal . ticks
+  saved <- use $ scenarioState . gameState . completionStatsSaved
 
-  let currentScenarioInfo :: Traversal' AppState ScenarioInfo
-      currentScenarioInfo = runtimeState . progression . scenarios . scenarioItemByPath p . _SISingle . getScenarioInfo
+  let currentScenarioInfo :: Traversal' PlayState ScenarioInfo
+      currentScenarioInfo = progression . scenarios . scenarioItemByPath p . _SISingle . getScenarioInfo
 
-  replHist <- use $ playState . uiGameplay . uiREPL . replHistory
+  replHist <- use $ scenarioState . uiGameplay . uiREPL . replHistory
   let determinator = CodeSizeDeterminators initialRunCode $ replHist ^. replHasExecutedManualInput
 
   -- Don't update scenario statistics if we have previously saved
@@ -90,30 +89,29 @@ saveScenarioInfoOnFinish p = do
   status <- preuse currentScenarioInfo
   forM_ status $ \si -> do
     liftIO $ saveScenarioInfo p si
-    Brick.zoom (runtimeState . progression) $ applyCompletionAchievements won t p
+    Brick.zoom progression $ applyCompletionAchievements won t p
 
-  playState . gameState . completionStatsSaved .= won
+  scenarioState . gameState . completionStatsSaved .= won
 
 -- | Don't save progress for developers or cheaters.
-unlessCheating :: EventM n AppState () -> EventM n AppState ()
-unlessCheating a = do
-  debugging <- use $ uiState . uiDebugOptions
-  isAuto <- use $ playState . uiGameplay . uiIsAutoPlay
-  when (null debugging && not isAuto) a
+unlessCheating :: Set DebugOption -> EventM n PlayState () -> EventM n PlayState ()
+unlessCheating dOpts a = do
+  isAuto <- use $ scenarioState . uiGameplay . uiIsAutoPlay
+  when (null dOpts && not isAuto) a
 
 -- | Write the @ScenarioInfo@ out to disk when finishing a game (i.e. on winning or exit).
-saveScenarioInfoOnFinishNocheat :: EventM n AppState ()
-saveScenarioInfoOnFinishNocheat = do
-  sc <- use $ runtimeState . progression . scenarios
-  gs <- use $ playState . gameState
-  unlessCheating $
+saveScenarioInfoOnFinishNocheat :: Set DebugOption -> EventM n PlayState ()
+saveScenarioInfoOnFinishNocheat dOpts = do
+  sc <- use $ progression . scenarios
+  gs <- use $ scenarioState . gameState
+  unlessCheating dOpts $
     -- the path should be normalized and good to search in scenario collection
     getNormalizedCurrentScenarioPath gs sc >>= mapM_ saveScenarioInfoOnFinish
 
 -- | Write the @ScenarioInfo@ out to disk when exiting a game.
-saveScenarioInfoOnQuit :: EventM n AppState ()
-saveScenarioInfoOnQuit = do
-  sc <- use $ runtimeState . progression . scenarios
-  gs <- use $ playState . gameState
-  unlessCheating $
+saveScenarioInfoOnQuit :: Set DebugOption -> EventM n PlayState ()
+saveScenarioInfoOnQuit dOpts = do
+  sc <- use $ progression . scenarios
+  gs <- use $ scenarioState . gameState
+  unlessCheating dOpts $
     getNormalizedCurrentScenarioPath gs sc >>= mapM_ saveScenarioInfoOnFinish
