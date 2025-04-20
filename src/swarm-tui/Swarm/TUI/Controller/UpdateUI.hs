@@ -185,7 +185,7 @@ updateUI = do
 
   menu <- use $ uiState . uiMenu
   dOps <- use $ uiState . uiDebugOptions
-  goalOrWinUpdated <- doGoalUpdates dOps menu
+  goalOrWinUpdated <- Brick.zoom playState $ doGoalUpdates dOps menu
 
   newPopups <- Brick.zoom playState generateNotificationPopups
 
@@ -243,11 +243,11 @@ updateRobotDetailsPane robotPayload =
 -- * feedback as to the final goal the player accomplished,
 -- * as a summary of all of the goals of the game
 -- * shows the player more "optional" goals they can continue to pursue
-doGoalUpdates :: Set DebugOption -> Menu -> EventM Name AppState Bool
+doGoalUpdates :: Set DebugOption -> Menu -> EventM Name PlayState Bool
 doGoalUpdates dOpts menu = do
-  curGoal <- use (playState . scenarioState . uiGameplay . uiDialogs . uiGoal . goalsContent)
-  curWinCondition <- use (playState . scenarioState . gameState . winCondition)
-  announcementsList <- use (playState . scenarioState . gameState . messageInfo . announcementQueue . to toList)
+  curGoal <- use (scenarioState . uiGameplay . uiDialogs . uiGoal . goalsContent)
+  curWinCondition <- use (scenarioState . gameState . winCondition)
+  announcementsList <- use (scenarioState . gameState . messageInfo . announcementQueue . to toList)
   let showHiddenGoals = ShowHiddenGoals `S.member` dOpts
 
   -- Decide whether we need to update the current goal text and pop
@@ -255,18 +255,18 @@ doGoalUpdates dOpts menu = do
   case curWinCondition of
     NoWinCondition -> return False
     WinConditions (Unwinnable False) x -> do
-      Brick.zoom (playState . scenarioState) $ do
+      Brick.zoom scenarioState $ do
         -- This clears the "flag" that the Lose dialog needs to pop up
         gameState . winCondition .= WinConditions (Unwinnable True) x
         openModal menu $ ScenarioEndModal LoseModal
-      saveScenarioInfoOnFinishNocheat
+      saveScenarioInfoOnFinishNocheat dOpts
       return True
     WinConditions (Won False ts) x -> do
-      Brick.zoom (playState . scenarioState) $ do
+      Brick.zoom scenarioState $ do
         -- This clears the "flag" that the Win dialog needs to pop up
         gameState . winCondition .= WinConditions (Won True ts) x
         openModal menu $ ScenarioEndModal WinModal
-      saveScenarioInfoOnFinishNocheat
+      saveScenarioInfoOnFinishNocheat dOpts
       -- We do NOT advance the New Game menu to the next item here (we
       -- used to!), because we do not know if the user is going to
       -- select 'keep playing' or 'next challenge'.  We maintain the
@@ -275,7 +275,7 @@ doGoalUpdates dOpts menu = do
       -- quits to the menu or (2) selects 'next challenge' we will
       -- advance the menu at that point.
       return True
-    WinConditions _ oc -> Brick.zoom (playState . scenarioState) $ do
+    WinConditions _ oc -> Brick.zoom scenarioState $ do
       currentModal <- preuse $ uiGameplay . uiDialogs . uiModal . _Just . modalType
       let newGoalTracking = GoalTracking announcementsList $ constructGoalMap showHiddenGoals oc
           -- The "uiGoal" field is initialized with empty members, so we know that
