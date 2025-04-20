@@ -17,6 +17,7 @@ import Data.Map qualified as M
 import Data.Yaml qualified as Y
 import Graphics.Vty qualified as V
 import Swarm.Game.Land
+import Swarm.Game.Scenario.Status
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
@@ -155,6 +156,6 @@ saveMapFile = do
       fp = worldEditor ^. outputFilePath
       maybeScenarioPair = uig ^. scenarioRef
 
-  liftIO $ Y.encodeFile fp $ constructScenario (fst <$> maybeScenarioPair) mapCellGrid
+  liftIO $ Y.encodeFile fp $ constructScenario (view getScenario <$> maybeScenarioPair) mapCellGrid
 
   uiGameplay . uiWorldEditor . lastWorldEditorMessage .= Just "Saved."

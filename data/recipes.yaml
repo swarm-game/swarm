@@ -106,6 +106,24 @@
     - [8, wooden gear]
   out:
     - [1, counter]
+- in:
+    - [1, rock]
+    - [1, wooden gear]
+  out:
+    - [1, millstone]
+- in:
+    - [4, wheat]
+  out:
+    - [1, flour]
+  required:
+    - [1, millstone]
+- in:
+    - [1, flour]
+    - [1, water]
+  required:
+    - [1, furnace]
+  out:
+    - [1, Elmer's glue]
 #########################################
 ##                STONE                ##
 #########################################
@@ -513,6 +531,15 @@
     - [1, iron plate]
   out:
     - [1, tweezers]
+- in:
+    - [1, iron plate]
+  out:
+    - [1, caliper]
+- in:
+    - [1, paper]
+    - [1, compass]
+  out:
+    - [1, atlas]
 ## MAGIC
 - in:
     - [2, copper wire]
@@ -658,6 +685,11 @@
     - [1, lens]
   required:
     - [1, drill]
+- in:
+    - [2, copper pipe]
+    - [2, lens]
+  out:
+    - [1, binoculars]
 - in:
     - [1, glass]
     - [8, copper wire]

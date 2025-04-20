@@ -65,6 +65,7 @@ import Swarm.Game.Robot.Concrete
 import Swarm.Game.Scenario (scenarioMetadata, scenarioName)
 import Swarm.Game.Scenario.Scoring.Best (scenarioBestByTime)
 import Swarm.Game.Scenario.Scoring.GenericMetrics
+import Swarm.Game.Scenario.Status (ScenarioPath (..), ScenarioWith (..), getScenario)
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
@@ -136,7 +137,7 @@ handleEvent e = do
       -- quitting a game, moving around the menu, the popup
       -- display will continue as normal.
       upd <- case e of
-        AppEvent Frame -> Brick.zoom (uiState . uiPopups) progressPopups
+        AppEvent Frame -> Brick.zoom (runtimeState . progression . uiPopups) progressPopups
         _ -> pure False
       if playing
         then handleMainEvent upd e
@@ -177,19 +178,19 @@ handleMainMenuEvent menu = \case
   Key V.KEnter ->
     forM_ (snd <$> BL.listSelectedElement menu) $ \case
       NewGame -> do
-        ss <- use $ runtimeState . scenarios
-        uiState . uiMenu .= NewGameMenu (pure $ mkScenarioList ss)
+        ss <- use $ runtimeState . progression . scenarios
+        uiState . uiMenu .= NewGameMenu (pure $ mkScenarioList $ pathifyCollection ss)
       Tutorial -> do
-        ss <- use $ runtimeState . scenarios
+        ss <- use $ runtimeState . progression . scenarios
 
         -- Extract the first unsolved tutorial challenge
         let tutorialCollection = getTutorials ss
             tutorials = scenarioCollectionToList tutorialCollection
             -- Find first unsolved tutorial, or first tutorial if all are solved
-            firstUnsolved :: Maybe ScenarioItem
+            firstUnsolved :: Maybe (ScenarioItem ScenarioInfo)
             firstUnsolved = find unsolved tutorials <|> listToMaybe tutorials
             unsolved = \case
-              SISingle (_, si) -> case si ^. scenarioStatus of
+              SISingle (ScenarioWith _ si) -> case si ^. scenarioStatus of
                 Played _ _ best
                   | Metric Completed _ <- best ^. scenarioBestByTime -> False
                   | otherwise -> True
@@ -198,30 +199,32 @@ handleMainMenuEvent menu = \case
             firstUnsolvedInfo = case firstUnsolved of
               Just (SISingle siPair) -> siPair
               _ -> error "No first tutorial found!"
-            firstUnsolvedName = firstUnsolvedInfo ^. _1 . scenarioMetadata . scenarioName
+            firstUnsolvedName = firstUnsolvedInfo ^. getScenario . scenarioMetadata . scenarioName
 
         -- Now set up the menu stack as if the user had chosen "New Game > Tutorials > t"
         -- where t is the tutorial scenario we identified as the first unsolved one
         let topMenu =
               BL.listFindBy
                 ((== tutorialsDirname) . T.unpack . scenarioItemName)
-                (mkScenarioList ss)
+                (mkScenarioList $ pathifyCollection ss)
             tutorialMenu =
               BL.listFindBy
                 ((== firstUnsolvedName) . scenarioItemName)
-                (mkScenarioList tutorialCollection)
+                (mkScenarioList $ pathifyCollection tutorialCollection)
             menuStack = tutorialMenu :| pure topMenu
 
         -- Finally, set the menu stack, and start the scenario!
         uiState . uiMenu .= NewGameMenu menuStack
-        startGame firstUnsolvedInfo Nothing
+        startGame (pathifyCollection firstUnsolvedInfo) Nothing
       Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
       Messages -> do
         runtimeState . eventLog . notificationsCount .= 0
         uiState . uiMenu .= MessagesMenu
       About -> do
         uiState . uiMenu .= AboutMenu
-        attainAchievement $ GlobalAchievement LookedAtAboutScreen
+        Brick.zoom (runtimeState . progression) $
+          attainAchievement $
+            GlobalAchievement LookedAtAboutScreen
       Quit -> halt
   CharKey 'q' -> halt
   ControlChar 'q' -> halt
@@ -264,7 +267,7 @@ handleMainMessagesEvent = \case
 
 -- TODO: #2010 Finish porting Controller to KeyEventHandlers
 handleNewGameMenuEvent ::
-  NonEmpty (BL.List Name ScenarioItem) ->
+  NonEmpty (BL.List Name (ScenarioItem ScenarioPath)) ->
   BrickEvent Name AppEvent ->
   EventM Name AppState ()
 handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
@@ -284,10 +287,15 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   _ -> pure ()
  where
   showLaunchDialog = case snd <$> BL.listSelectedElement curMenu of
-    Just (SISingle siPair) -> Brick.zoom (uiState . uiLaunchConfig) $ prepareLaunchDialog siPair
+    Just (SISingle (ScenarioWith s (ScenarioPath p))) -> do
+      ss <- use $ runtimeState . progression . scenarios
+      let si = getScenarioInfoFromPath ss p
+      Brick.zoom (uiState . uiLaunchConfig) $ prepareLaunchDialog $ ScenarioWith s si
     _ -> pure ()
 
-exitNewGameMenu :: NonEmpty (BL.List Name ScenarioItem) -> EventM Name AppState ()
+exitNewGameMenu ::
+  NonEmpty (BL.List Name (ScenarioItem ScenarioPath)) ->
+  EventM Name AppState ()
 exitNewGameMenu stk = do
   uiState
     . uiMenu
@@ -511,7 +519,7 @@ quitGame isNoMenu = do
   liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
 
   -- Save scenario status info.
-  saveScenarioInfoOnQuit isNoMenu
+  saveScenarioInfoOnQuit
 
   -- Automatically advance the menu to the next scenario iff the
   -- player has won the current one.

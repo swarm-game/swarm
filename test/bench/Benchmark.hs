@@ -21,6 +21,7 @@ import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, mkRobot)
 import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Scenario (loadStandaloneScenario)
+import Swarm.Game.Scenario.Status
 import Swarm.Game.State (GameState, creativeMode, landscape, zoomRobots)
 import Swarm.Game.State.Initialize (pureScenarioToGameState)
 import Swarm.Game.State.Landscape (multiWorld)
@@ -145,8 +146,8 @@ mkGameState prog robotMaker numRobots = do
     (_ :: Seq SystemFailure, initRS) <-
       runAccum mempty . initRuntimeState $
         RuntimeOptions {startPaused = False, pauseOnObjectiveCompletion = False, loadTestScenarios = False}
-    (scenario, _) <- loadStandaloneScenario "classic"
-    return $ pureScenarioToGameState scenario 0 0 Nothing $ view stdGameConfigInputs initRS
+    (scenario, _gsi) <- loadStandaloneScenario "classic"
+    return $ pureScenarioToGameState (ScenarioWith scenario Nothing) 0 0 Nothing $ view stdGameConfigInputs initRS
 
   execStateT
     (zoomRobots $ mapM_ (addTRobot $ initMachine prog) robots)
