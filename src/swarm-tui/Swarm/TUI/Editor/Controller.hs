@@ -28,6 +28,7 @@ import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Palette
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.Util (hoistMaybe)
@@ -39,8 +40,8 @@ import System.Clock
 ------------------------------------------------------------
 
 activateWorldEditorFunction :: Menu -> WorldEditorFocusable -> EventM Name ScenarioState ()
-activateWorldEditorFunction m BrushSelector = openModal m TerrainPaletteModal
-activateWorldEditorFunction m EntitySelector = openModal m EntityPaletteModal
+activateWorldEditorFunction m BrushSelector = openModal m $ MidScenarioModal TerrainPaletteModal
+activateWorldEditorFunction m EntitySelector = openModal m $ MidScenarioModal EntityPaletteModal
 activateWorldEditorFunction _ AreaSelector =
   Brick.zoom (uiGameplay . uiWorldEditor . editingBounds) $ do
     selectorStage <- use boundsSelectionStep

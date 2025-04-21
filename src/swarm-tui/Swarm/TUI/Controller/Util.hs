@@ -86,7 +86,7 @@ openModal m mt = do
   uiGameplay . uiDialogs . uiModal ?= newModal
   -- Beep
   case mt of
-    ScenarioEndModal _ -> do
+    ScenarioEndModal (ScenarioFinishModal _) -> do
       vty <- getVtyHandle
       liftIO $ V.ringTerminalBell $ V.outputIface vty
     _ -> return ()
@@ -99,8 +99,8 @@ openModal m mt = do
 -- | The running modals do not autopause the game.
 isRunningModal :: ModalType -> Bool
 isRunningModal = \case
-  RobotsModal -> True
-  MessagesModal -> True
+  MidScenarioModal RobotsModal -> True
+  MidScenarioModal MessagesModal -> True
   _ -> False
 
 -- | Set the game to Running if it was (auto) paused otherwise to paused.
@@ -253,9 +253,9 @@ addREPLHistItem item = uiGameplay . uiREPL . replHistory %= addREPLItem item
 
 -- | Run an action that only depends on a 'ScenarioState'
 -- and read-only access to the 'Menu'.
-playStateWithMenu ::
+scenarioStateWithMenu ::
   (Menu -> EventM Name ScenarioState ()) ->
   EventM Name AppState ()
-playStateWithMenu f = do
+scenarioStateWithMenu f = do
   m <- use $ uiState . uiMenu
   Brick.zoom (playState . scenarioState) $ f m

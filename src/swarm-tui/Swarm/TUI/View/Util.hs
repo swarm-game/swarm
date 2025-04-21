@@ -20,7 +20,7 @@ import Swarm.Game.Entity as E
 import Swarm.Game.Land
 import Swarm.Game.Scenario (scenarioMetadata, scenarioName)
 import Swarm.Game.Scenario.Status
-import Swarm.Game.ScenarioInfo (scenarioItemName)
+import Swarm.Game.ScenarioInfo (scenarioItemName, _SISingle)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
@@ -31,11 +31,16 @@ import Swarm.Language.Types (Polytype)
 import Swarm.Pretty (prettyTextLine)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event (SwarmEvent)
+import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
 import Swarm.Util (maximum0)
 import Witch (from, into)
+
+-- generateScenarioEndModal :: Menu -> PlayState -> ScenarioOutcome -> Modal
+-- generateScenarioEndModal m s mt =
+--   Modal mt (dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth))
 
 -- | Generate a fresh modal window of the requested type.
 generateModal :: Menu -> ScenarioState -> ModalType -> Modal
@@ -51,28 +56,28 @@ generateModal m s mt =
   descriptionWidth = 100
   (title, buttons, requiredWidth) =
     case mt of
-      HelpModal -> (" Help ", Nothing, descriptionWidth)
-      RobotsModal -> ("Robots", Nothing, descriptionWidth)
-      RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
-      CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
-      MessagesModal -> ("Messages", Nothing, descriptionWidth)
-      StructuresModal -> ("Buildable Structures", Nothing, descriptionWidth)
-      ScenarioEndModal WinModal -> mkWinModal
-      ScenarioEndModal LoseModal -> mkLoseModal
-      DescriptionModal e -> (descriptionTitle e, Nothing, descriptionWidth)
-      QuitModal -> mkQuitModal
-      GoalModal ->
+      MidScenarioModal HelpModal -> (" Help ", Nothing, descriptionWidth)
+      MidScenarioModal RobotsModal -> ("Robots", Nothing, descriptionWidth)
+      MidScenarioModal RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
+      MidScenarioModal CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
+      MidScenarioModal MessagesModal -> ("Messages", Nothing, descriptionWidth)
+      MidScenarioModal StructuresModal -> ("Buildable Structures", Nothing, descriptionWidth)
+      ScenarioEndModal (ScenarioFinishModal WinModal) -> mkWinModal
+      ScenarioEndModal (ScenarioFinishModal LoseModal) -> mkLoseModal
+      MidScenarioModal (DescriptionModal e) -> (descriptionTitle e, Nothing, descriptionWidth)
+      ScenarioEndModal QuitModal -> mkQuitModal
+      MidScenarioModal GoalModal ->
         let goalModalTitle = case currentScenario of
               Nothing -> "Goal"
               Just (ScenarioWith scenario _) -> scenario ^. scenarioMetadata . scenarioName
          in (" " <> T.unpack goalModalTitle <> " ", Nothing, descriptionWidth)
-      KeepPlayingModal -> ("", Just (Button CancelButton, [("OK", Button CancelButton, Cancel)]), 80)
-      TerrainPaletteModal -> ("Terrain", Nothing, w)
+      ScenarioEndModal KeepPlayingModal -> ("", Just (Button CancelButton, [("OK", Button CancelButton, Cancel)]), 80)
+      MidScenarioModal TerrainPaletteModal -> ("Terrain", Nothing, w)
        where
         tm = s ^. gameState . landscape . terrainAndEntities . terrainMap
         wordLength = maximum0 $ map (T.length . getTerrainWord) (M.keys $ terrainByName tm)
         w = wordLength + 6
-      EntityPaletteModal -> ("Entity", Nothing, 30)
+      MidScenarioModal EntityPaletteModal -> ("Entity", Nothing, 30)
 
   mkWinModal =
     ( ""
@@ -266,3 +271,17 @@ bindingText keyConf e = maybe "" ppBindingShort b
     Binding V.KLeft m | null m -> "←"
     Binding V.KRight m | null m -> "→"
     bi -> ppBinding bi
+
+--- | Extract the scenario which would come next in the menu from the
+---   currently selected scenario (if any).  Can return @Nothing@ if
+---   either we are not in the @NewGameMenu@, or the current scenario
+---   is the last among its siblings.
+nextScenario :: Menu -> Maybe (ScenarioWith ScenarioPath)
+nextScenario = \case
+  NewGameMenu (curMenu :| _) ->
+    let nextMenuList = BL.listMoveDown curMenu
+        isLastScenario = BL.listSelected curMenu == Just (length (BL.listElements curMenu) - 1)
+     in if isLastScenario
+          then Nothing
+          else BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
+  _ -> Nothing

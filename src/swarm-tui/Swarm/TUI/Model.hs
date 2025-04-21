@@ -25,12 +25,10 @@ module Swarm.TUI.Model (
   ScenarioOutcome (..),
   Button (..),
   ButtonAction (..),
-  Modal (..),
   modalType,
   modalDialog,
   MainMenuEntry (..),
   mainMenu,
-  Menu (..),
   _NewGameMenu,
   mkScenarioList,
 
@@ -72,6 +70,7 @@ module Swarm.TUI.Model (
   scenarios,
   attainedAchievements,
   uiPopups,
+  scenarioSequence,
 
   -- ** Initialization
   AppOpts (..),
@@ -83,7 +82,6 @@ module Swarm.TUI.Model (
   -- ** Utility
   focusedItem,
   focusedEntity,
-  nextScenario,
 ) where
 
 import Brick (EventM, ViewportScroll, viewportScroll)
@@ -191,6 +189,7 @@ data ProgressionState = ProgressionState
   { _scenarios :: ScenarioCollection ScenarioInfo
   , _attainedAchievements :: Map CategorizedAchievement Attainment
   , _uiPopups :: PopupState
+  , _scenarioSequence :: [ScenarioWith ScenarioPath]
   }
 
 makeLensesNoSigs ''ProgressionState
@@ -203,6 +202,9 @@ scenarios :: Lens' ProgressionState (ScenarioCollection ScenarioInfo)
 
 -- | Queue of popups to display
 uiPopups :: Lens' ProgressionState PopupState
+
+-- | Remaining scenarios in the current sequence
+scenarioSequence :: Lens' ProgressionState [ScenarioWith ScenarioPath]
 
 -- | This encapsulates both game and UI state for an actively-playing scenario, as well
 -- as state that evolves as a result of playing a scenario.
@@ -360,20 +362,6 @@ defaultAppOpts =
     , userWebPort = Nothing
     , repoGitInfo = Nothing
     }
-
--- | Extract the scenario which would come next in the menu from the
---   currently selected scenario (if any).  Can return @Nothing@ if
---   either we are not in the @NewGameMenu@, or the current scenario
---   is the last among its siblings.
-nextScenario :: Menu -> Maybe (ScenarioWith ScenarioPath)
-nextScenario = \case
-  NewGameMenu (curMenu :| _) ->
-    let nextMenuList = BL.listMoveDown curMenu
-        isLastScenario = BL.listSelected curMenu == Just (length (BL.listElements curMenu) - 1)
-     in if isLastScenario
-          then Nothing
-          else BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
-  _ -> Nothing
 
 --------------------------------------------------
 -- Lenses for KeyEventHandlingState

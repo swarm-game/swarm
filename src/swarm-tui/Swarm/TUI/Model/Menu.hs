@@ -38,7 +38,7 @@ import Swarm.TUI.Model.Name
 data ScenarioOutcome = WinModal | LoseModal
   deriving (Show, Eq)
 
-data ModalType
+data MidScenarioModalType
   = HelpModal
   | RecipesModal
   | CommandsModal
@@ -47,11 +47,19 @@ data ModalType
   | EntityPaletteModal
   | TerrainPaletteModal
   | RobotsModal
-  | ScenarioEndModal ScenarioOutcome
-  | QuitModal
-  | KeepPlayingModal
   | DescriptionModal Entity
   | GoalModal
+  deriving (Show, Eq)
+
+data ScenarioEndModalType
+  = ScenarioFinishModal ScenarioOutcome
+  | QuitModal
+  | KeepPlayingModal
+  deriving (Show, Eq)
+
+data ModalType
+  = MidScenarioModal MidScenarioModalType
+  | ScenarioEndModal ScenarioEndModalType
   deriving (Show, Eq)
 
 data ButtonAction

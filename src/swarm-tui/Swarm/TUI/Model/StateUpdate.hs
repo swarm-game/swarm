@@ -168,6 +168,7 @@ initPersistentState opts@(AppOpts {..}) = do
             { _scenarios = s
             , _attainedAchievements = M.fromList $ map (view achievement &&& id) achievements
             , _uiPopups = initPopupState
+            , _scenarioSequence = mempty
             }
     return $ PersistentState rs ui ks progState
   let initRS' = addWarnings initRS (F.toList warnings)
