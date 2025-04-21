@@ -51,7 +51,7 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl (REPLHistItem, REPLPrompt, REPLState, addREPLItem, replHistory, replPromptText, replPromptType)
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
-import Swarm.TUI.View.Util (generateModal)
+import Swarm.TUI.View.Util (generateModal, generateScenarioEndModal)
 import System.Clock (Clock (..), getTime)
 
 -- | Pattern synonyms to simplify brick event handler
@@ -81,16 +81,19 @@ pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 openModal :: Menu -> ModalType -> EventM Name ScenarioState ()
 openModal m mt = do
   resetViewport modalScroll
-  newModal <- gets $ flip (generateModal m) mt
+  newModal <- gets genModal
   ensurePause
   uiGameplay . uiDialogs . uiModal ?= newModal
   -- Beep
   case mt of
-    ScenarioEndModal (ScenarioFinishModal _) -> do
+    EndScenarioModal (ScenarioFinishModal _) -> do
       vty <- getVtyHandle
       liftIO $ V.ringTerminalBell $ V.outputIface vty
     _ -> return ()
  where
+  genModal s = case mt of
+    MidScenarioModal y -> generateModal s y
+    EndScenarioModal y -> generateScenarioEndModal m s y
   -- Set the game to AutoPause if needed
   ensurePause = do
     pause <- use $ gameState . temporal . paused

@@ -663,37 +663,39 @@ drawModal ::
   ModalType ->
   Widget Name
 drawModal h ps isNoMenu = \case
-  MidScenarioModal HelpModal -> helpWidget h $ gs ^. randomness . seed
-  MidScenarioModal RobotsModal -> drawRobotsModal $ uig ^. uiDialogs . uiRobot
-  MidScenarioModal RecipesModal -> availableListWidget gs RecipeList
-  MidScenarioModal CommandsModal -> commandsListWidget gs
-  MidScenarioModal MessagesModal -> availableListWidget gs MessageList
-  MidScenarioModal StructuresModal -> SR.renderStructuresDisplay gs $ uig ^. uiDialogs . uiStructure
-  ScenarioEndModal (ScenarioFinishModal outcome) ->
-    padBottom (Pad 1) $
-      vBox $
-        map
-          (hCenter . txt)
-          content
-   where
-    content = case outcome of
-      WinModal -> ["Congratulations!"]
-      LoseModal ->
-        [ "Condolences!"
-        , "This scenario is no longer winnable."
-        ]
-  MidScenarioModal (DescriptionModal e) -> descriptionWidget ps e
-  ScenarioEndModal QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg isNoMenu)
-  MidScenarioModal GoalModal ->
-    GR.renderGoalsDisplay (uig ^. uiDialogs . uiGoal) $
-      view (getScenario . scenarioOperation . scenarioDescription) <$> uig ^. scenarioRef
-  ScenarioEndModal KeepPlayingModal ->
-    padLeftRight 1 $
-      displayParagraphs $
-        pure
-          "Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."
-  MidScenarioModal TerrainPaletteModal -> EV.drawTerrainSelector uig
-  MidScenarioModal EntityPaletteModal -> EV.drawEntityPaintSelector uig
+  MidScenarioModal x -> case x of
+    HelpModal -> helpWidget h $ gs ^. randomness . seed
+    RobotsModal -> drawRobotsModal $ uig ^. uiDialogs . uiRobot
+    RecipesModal -> availableListWidget gs RecipeList
+    CommandsModal -> commandsListWidget gs
+    MessagesModal -> availableListWidget gs MessageList
+    StructuresModal -> SR.renderStructuresDisplay gs $ uig ^. uiDialogs . uiStructure
+    DescriptionModal e -> descriptionWidget ps e
+    GoalModal ->
+      GR.renderGoalsDisplay (uig ^. uiDialogs . uiGoal) $
+        view (getScenario . scenarioOperation . scenarioDescription) <$> uig ^. scenarioRef
+    TerrainPaletteModal -> EV.drawTerrainSelector uig
+    EntityPaletteModal -> EV.drawEntityPaintSelector uig
+  EndScenarioModal x -> case x of
+    ScenarioFinishModal outcome ->
+      padBottom (Pad 1) $
+        vBox $
+          map
+            (hCenter . txt)
+            content
+     where
+      content = case outcome of
+        WinModal -> ["Congratulations!"]
+        LoseModal ->
+          [ "Condolences!"
+          , "This scenario is no longer winnable."
+          ]
+    QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg isNoMenu)
+    KeepPlayingModal ->
+      padLeftRight 1 $
+        displayParagraphs $
+          pure
+            "Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."
  where
   gs = ps ^. gameState
   uig = ps ^. uiGameplay

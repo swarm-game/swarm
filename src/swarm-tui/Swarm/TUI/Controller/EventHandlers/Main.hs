@@ -101,7 +101,7 @@ toggleQuitGameDialog = do
         WinConditions (Won _ _) _ -> ScenarioFinishModal WinModal
         WinConditions (Unwinnable _) _ -> ScenarioFinishModal LoseModal
         _ -> QuitModal
-  scenarioStateWithMenu $ toggleModal $ ScenarioEndModal whichModal
+  scenarioStateWithMenu $ toggleModal $ EndScenarioModal whichModal
 
 toggleGameModal ::
   Foldable t =>

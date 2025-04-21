@@ -51,7 +51,7 @@ data MidScenarioModalType
   | GoalModal
   deriving (Show, Eq)
 
-data ScenarioEndModalType
+data EndScenarioModalType
   = ScenarioFinishModal ScenarioOutcome
   | QuitModal
   | KeepPlayingModal
@@ -59,7 +59,7 @@ data ScenarioEndModalType
 
 data ModalType
   = MidScenarioModal MidScenarioModalType
-  | ScenarioEndModal ScenarioEndModalType
+  | EndScenarioModal EndScenarioModalType
   deriving (Show, Eq)
 
 data ButtonAction

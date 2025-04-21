@@ -444,7 +444,7 @@ handleModalEvent = \case
               updateRobotDetailsPane $ snd x
       _ -> do
         mdialog <- preuse $ playState . scenarioState . uiGameplay . uiDialogs . uiModal . _Just . modalDialog
-        scenarioStateWithMenu $ toggleModal $ ScenarioEndModal QuitModal
+        scenarioStateWithMenu $ toggleModal $ EndScenarioModal QuitModal
 
         menu <- use $ uiState . uiMenu
         let isNoMenu = case menu of
@@ -453,7 +453,7 @@ handleModalEvent = \case
 
         case dialogSelection =<< mdialog of
           Just (Button QuitButton, _) -> quitGame isNoMenu
-          Just (Button KeepPlayingButton, _) -> scenarioStateWithMenu $ toggleModal $ ScenarioEndModal KeepPlayingModal
+          Just (Button KeepPlayingButton, _) -> scenarioStateWithMenu $ toggleModal $ EndScenarioModal KeepPlayingModal
           Just (Button StartOverButton, StartOver currentSeed siPair) -> do
             invalidateCache
             restartGame currentSeed siPair
@@ -717,7 +717,7 @@ handleREPLEventTyping m = \case
       ControlChar 'd' -> do
         text <- use $ uiGameplay . uiREPL . replPromptText
         if text == T.empty
-          then toggleModal (ScenarioEndModal QuitModal) m
+          then toggleModal (EndScenarioModal QuitModal) m
           else continueWithoutRedraw
       MetaKey V.KBS ->
         uiGameplay . uiREPL . replPromptEditor %= applyEdit TZ.deletePrevWord
