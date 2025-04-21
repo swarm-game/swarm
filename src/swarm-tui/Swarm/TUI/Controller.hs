@@ -216,7 +216,11 @@ handleMainMenuEvent menu = \case
 
         -- Finally, set the menu stack, and start the scenario!
         uiState . uiMenu .= NewGameMenu menuStack
-        startGame (pathifyCollection firstUnsolvedInfo) Nothing
+
+        let getRemaining pos = snd $ BL.splitAt (pos + 1) $ listElements tutorialMenu
+            remainingTutorials = maybe mempty getRemaining $ BL.listSelected tutorialMenu
+
+        startGame (pathifyCollection firstUnsolvedInfo) Nothing [x | SISingle x <- V.toList remainingTutorials]
       Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
       Messages -> do
         runtimeState . eventLog . notificationsCount .= 0
@@ -277,8 +281,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
       SISingle siPair -> do
         invalidateCache
         let (_, remaining) = BL.splitAt (pos + 1) $ listElements curMenu
-        playState . progression . scenarioSequence .= [x | SISingle x <- V.toList remaining]
-        startGame siPair Nothing
+        startGame siPair Nothing [x | SISingle x <- V.toList remaining]
       SICollection _ c -> do
         uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList c) scenarioStack)
   CharKey 'o' -> showLaunchDialog
@@ -458,10 +461,10 @@ handleModalEvent = \case
           Just (Button StartOverButton, StartOver currentSeed siPair) -> do
             invalidateCache
             restartGame currentSeed siPair
-          Just (Button NextButton, Next siPair) -> do
+          Just (Button NextButton, Next siPair remainingScenarios) -> do
             quitGame isNoMenu
             invalidateCache
-            startGame siPair Nothing
+            startGame siPair Nothing remainingScenarios
           _ -> return ()
   ev -> Brick.zoom (playState . scenarioState) $ do
     Brick.zoom (uiGameplay . uiDialogs . uiModal . _Just . modalDialog) (handleDialogEvent ev)

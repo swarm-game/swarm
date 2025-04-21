@@ -281,8 +281,10 @@ startGame ::
   (MonadIO m, MonadState AppState m) =>
   ScenarioWith ScenarioPath ->
   Maybe CodeToRun ->
+  [ScenarioWith ScenarioPath] ->
   m ()
-startGame (ScenarioWith s (ScenarioPath p)) c = do
+startGame (ScenarioWith s (ScenarioPath p)) c remaining = do
+  playState . progression . scenarioSequence .= remaining
   ss <- use $ playState . progression . scenarios
   let si = getScenarioInfoFromPath ss p
   startGameWithSeed (ScenarioWith s si) . LaunchParams (pure Nothing) $ pure c

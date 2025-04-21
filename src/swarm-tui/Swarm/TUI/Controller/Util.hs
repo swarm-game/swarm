@@ -81,7 +81,7 @@ pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 openEndScenarioModal :: Menu -> EndScenarioModalType -> EventM Name PlayState ()
 openEndScenarioModal m mt = do
   resetViewport modalScroll
-  newModal <- Brick.zoom scenarioState $ gets (flip (generateScenarioEndModal m) mt)
+  newModal <- gets $ flip (generateScenarioEndModal m) mt
   Brick.zoom scenarioState ensurePause
   scenarioState . uiGameplay . uiDialogs . uiModal ?= newModal
   -- Beep

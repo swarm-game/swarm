@@ -11,6 +11,7 @@ import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
 import Control.Monad.Reader (withReaderT)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Text (Text)
@@ -38,12 +39,14 @@ import Swarm.TUI.View.CellDisplay
 import Swarm.Util (maximum0)
 import Witch (from, into)
 
-generateScenarioEndModal :: Menu -> ScenarioState -> EndScenarioModalType -> Modal
+generateScenarioEndModal :: Menu -> PlayState -> EndScenarioModalType -> Modal
 generateScenarioEndModal m s mt =
   Modal (EndScenarioModal mt) (dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth))
  where
-  currentScenario = s ^. uiGameplay . scenarioRef
-  currentSeed = s ^. gameState . randomness . seed
+  currentScenario = s ^. scenarioState . uiGameplay . scenarioRef
+  currentSeed = s ^. scenarioState . gameState . randomness . seed
+
+  scenarioList = s ^. progression . scenarioSequence
 
   (title, buttons, requiredWidth) = case mt of
     ScenarioFinishModal WinModal -> mkWinModal
@@ -55,8 +58,8 @@ generateScenarioEndModal m s mt =
     ( ""
     , Just
         ( Button NextButton
-        , [ (nextMsg, Button NextButton, Next scene)
-          | Just scene <- [nextScenario m]
+        , [ (nextMsg, Button NextButton, Next scene remainingScenarios)
+          | Just (scene :| remainingScenarios) <- [NE.nonEmpty scenarioList]
           ]
             ++ [ (stopMsg, Button QuitButton, QuitAction) -- TODO(#2376) QuitAction is not used
                , (continueMsg, Button KeepPlayingButton, KeepPlaying)
