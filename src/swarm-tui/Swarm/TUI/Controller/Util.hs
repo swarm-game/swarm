@@ -78,26 +78,35 @@ pattern BackspaceKey = VtyEvent (V.EvKey V.KBS [])
 pattern FKey :: Int -> BrickEvent n e
 pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
-openModal :: Menu -> ModalType -> EventM Name ScenarioState ()
-openModal m mt = do
+openEndScenarioModal :: Menu -> EndScenarioModalType -> EventM Name PlayState ()
+openEndScenarioModal m mt = do
   resetViewport modalScroll
-  newModal <- gets genModal
-  ensurePause
-  uiGameplay . uiDialogs . uiModal ?= newModal
+  newModal <- Brick.zoom scenarioState $ gets (flip (generateScenarioEndModal m) mt)
+  Brick.zoom scenarioState ensurePause
+  scenarioState . uiGameplay . uiDialogs . uiModal ?= newModal
   -- Beep
   case mt of
-    EndScenarioModal (ScenarioFinishModal _) -> do
+    ScenarioFinishModal _ -> do
       vty <- getVtyHandle
       liftIO $ V.ringTerminalBell $ V.outputIface vty
     _ -> return ()
  where
-  genModal s = case mt of
-    MidScenarioModal y -> generateModal s y
-    EndScenarioModal y -> generateScenarioEndModal m s y
   -- Set the game to AutoPause if needed
   ensurePause = do
     pause <- use $ gameState . temporal . paused
-    unless (pause || isRunningModal mt) $ gameState . temporal . runStatus .= AutoPause
+    unless pause $ gameState . temporal . runStatus .= AutoPause
+
+openMidScenarioModal :: MidScenarioModalType -> EventM Name ScenarioState ()
+openMidScenarioModal mt = do
+  resetViewport modalScroll
+  newModal <- gets $ flip generateModal mt
+  ensurePause
+  uiGameplay . uiDialogs . uiModal ?= newModal
+ where
+  -- Set the game to AutoPause if needed
+  ensurePause = do
+    pause <- use $ gameState . temporal . paused
+    unless (pause || isRunningModal (MidScenarioModal mt)) $ gameState . temporal . runStatus .= AutoPause
 
 -- | The running modals do not autopause the game.
 isRunningModal :: ModalType -> Bool
@@ -129,12 +138,19 @@ safeAutoUnpause = do
   runs <- use $ gameState . temporal . runStatus
   when (runs == AutoPause) safeTogglePause
 
-toggleModal :: ModalType -> Menu -> EventM Name ScenarioState ()
-toggleModal mt m = do
+toggleMidScenarioModal :: MidScenarioModalType -> EventM Name ScenarioState ()
+toggleMidScenarioModal mt = do
   modal <- use $ uiGameplay . uiDialogs . uiModal
   case modal of
-    Nothing -> openModal m mt
+    Nothing -> openMidScenarioModal mt
     Just _ -> uiGameplay . uiDialogs . uiModal .= Nothing >> safeAutoUnpause
+
+toggleEndScenarioModal :: EndScenarioModalType -> Menu -> EventM Name PlayState ()
+toggleEndScenarioModal mt m = do
+  modal <- use $ scenarioState . uiGameplay . uiDialogs . uiModal
+  case modal of
+    Nothing -> openEndScenarioModal m mt
+    Just _ -> scenarioState . uiGameplay . uiDialogs . uiModal .= Nothing >> Brick.zoom scenarioState safeAutoUnpause
 
 setFocus :: FocusablePanel -> EventM Name ScenarioState ()
 setFocus name = uiGameplay . uiFocusRing %= focusSetCurrent (FocusablePanel name)

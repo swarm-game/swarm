@@ -39,20 +39,20 @@ import System.Clock
 -- World Editor panel events
 ------------------------------------------------------------
 
-activateWorldEditorFunction :: Menu -> WorldEditorFocusable -> EventM Name ScenarioState ()
-activateWorldEditorFunction m BrushSelector = openModal m $ MidScenarioModal TerrainPaletteModal
-activateWorldEditorFunction m EntitySelector = openModal m $ MidScenarioModal EntityPaletteModal
-activateWorldEditorFunction _ AreaSelector =
+activateWorldEditorFunction :: WorldEditorFocusable -> EventM Name ScenarioState ()
+activateWorldEditorFunction BrushSelector = openMidScenarioModal TerrainPaletteModal
+activateWorldEditorFunction EntitySelector = openMidScenarioModal EntityPaletteModal
+activateWorldEditorFunction AreaSelector =
   Brick.zoom (uiGameplay . uiWorldEditor . editingBounds) $ do
     selectorStage <- use boundsSelectionStep
     case selectorStage of
       SelectionComplete -> boundsSelectionStep .= UpperLeftPending
       _ -> return ()
-activateWorldEditorFunction _ OutputPathSelector =
+activateWorldEditorFunction OutputPathSelector =
   -- TODO: #1371
   liftIO $ putStrLn "File selection"
-activateWorldEditorFunction _ MapSaveButton = saveMapFile
-activateWorldEditorFunction _ ClearEntityButton =
+activateWorldEditorFunction MapSaveButton = saveMapFile
+activateWorldEditorFunction ClearEntityButton =
   uiGameplay . uiWorldEditor . entityPaintList . BL.listSelectedL .= Nothing
 
 handleCtrlLeftClick :: B.Location -> EventM Name ScenarioState ()
@@ -104,13 +104,13 @@ handleMiddleClick mouseLoc = do
     whenJust mouseCoordsM setTerrainPaint
 
 -- | Handle user input events in the robot panel.
-handleWorldEditorPanelEvent :: BrickEvent Name AppEvent -> Menu -> EventM Name ScenarioState ()
-handleWorldEditorPanelEvent e m = case e of
+handleWorldEditorPanelEvent :: BrickEvent Name AppEvent -> EventM Name ScenarioState ()
+handleWorldEditorPanelEvent = \case
   Key V.KEsc -> uiGameplay . uiWorldEditor . editingBounds . boundsSelectionStep .= SelectionComplete
   Key V.KEnter -> do
     fring <- use $ uiGameplay . uiWorldEditor . editorFocusRing
     case focusGetCurrent fring of
-      Just (WorldEditorPanelControl x) -> activateWorldEditorFunction m x
+      Just (WorldEditorPanelControl x) -> activateWorldEditorFunction x
       _ -> return ()
   ControlChar 's' -> saveMapFile
   CharKey '\t' -> uiGameplay . uiWorldEditor . editorFocusRing %= focusNext

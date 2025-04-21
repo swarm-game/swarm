@@ -91,7 +91,6 @@ import Control.Lens hiding (from, (<.>))
 import Control.Monad ((>=>))
 import Control.Monad.State (MonadState)
 import Data.List (findIndex)
-import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
@@ -107,7 +106,7 @@ import Swarm.Game.Ingredients
 import Swarm.Game.Popup
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Status
-import Swarm.Game.ScenarioInfo (ScenarioCollection, _SISingle)
+import Swarm.Game.ScenarioInfo (ScenarioCollection)
 import Swarm.Game.State
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate

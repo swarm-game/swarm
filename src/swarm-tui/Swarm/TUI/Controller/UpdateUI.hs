@@ -257,17 +257,17 @@ doGoalUpdates dOpts menu = do
   case curWinCondition of
     NoWinCondition -> return False
     WinConditions (Unwinnable False) x -> do
-      Brick.zoom scenarioState $ do
-        -- This clears the "flag" that the Lose dialog needs to pop up
-        gameState . winCondition .= WinConditions (Unwinnable True) x
-        openModal menu $ EndScenarioModal $ ScenarioFinishModal LoseModal
+      -- This clears the "flag" that the Lose dialog needs to pop up
+      scenarioState . gameState . winCondition .= WinConditions (Unwinnable True) x
+      openEndScenarioModal menu $ ScenarioFinishModal LoseModal
+
       saveScenarioInfoOnFinishNocheat dOpts
       return True
     WinConditions (Won False ts) x -> do
-      Brick.zoom scenarioState $ do
-        -- This clears the "flag" that the Win dialog needs to pop up
-        gameState . winCondition .= WinConditions (Won True ts) x
-        openModal menu $ EndScenarioModal $ ScenarioFinishModal WinModal
+      -- This clears the "flag" that the Win dialog needs to pop up
+      scenarioState . gameState . winCondition .= WinConditions (Won True ts) x
+      openEndScenarioModal menu $ ScenarioFinishModal WinModal
+
       saveScenarioInfoOnFinishNocheat dOpts
       -- We do NOT advance the New Game menu to the next item here (we
       -- used to!), because we do not know if the user is going to
@@ -299,7 +299,7 @@ doGoalUpdates dOpts menu = do
         gameState . messageInfo . announcementQueue .= mempty
 
         showObjectives <- use $ uiGameplay . uiAutoShowObjectives
-        when showObjectives $ openModal menu $ MidScenarioModal GoalModal
+        when showObjectives $ openMidScenarioModal GoalModal
 
       return goalWasUpdated
  where
