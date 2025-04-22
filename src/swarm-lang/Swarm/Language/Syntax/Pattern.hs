@@ -59,7 +59,9 @@ type UTerm = Term' UType
 
 -- | Raw parsed syntax, without comments or type annotations.
 pattern Syntax :: SrcLoc -> Term -> Syntax
-pattern Syntax l t = Syntax' l t Empty ()
+pattern Syntax l t <- Syntax' l t _ ()
+  where
+    Syntax l t = Syntax' l t Empty ()
 
 {-# COMPLETE Syntax #-}
 
