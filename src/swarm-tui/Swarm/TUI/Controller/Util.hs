@@ -44,12 +44,10 @@ import Swarm.TUI.Model (
   playState,
   scenarioState,
   uiGameplay,
-  uiState,
  )
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl (REPLHistItem, REPLPrompt, REPLState, addREPLItem, replHistory, replPromptText, replPromptType)
-import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Util (generateModal, generateScenarioEndModal)
 import System.Clock (Clock (..), getTime)
@@ -269,12 +267,3 @@ resetREPL t p = uiGameplay . uiREPL %= modifyResetREPL t p
 -- | Add an item to the REPL history.
 addREPLHistItem :: MonadState ScenarioState m => REPLHistItem -> m ()
 addREPLHistItem item = uiGameplay . uiREPL . replHistory %= addREPLItem item
-
--- | Run an action that only depends on a 'ScenarioState'
--- and read-only access to the 'Menu'.
-scenarioStateWithMenu ::
-  (Menu -> EventM Name ScenarioState ()) ->
-  EventM Name AppState ()
-scenarioStateWithMenu f = do
-  m <- use $ uiState . uiMenu
-  Brick.zoom (playState . scenarioState) $ f m

@@ -21,7 +21,7 @@ import Swarm.Game.Entity as E
 import Swarm.Game.Land
 import Swarm.Game.Scenario (scenarioMetadata, scenarioName)
 import Swarm.Game.Scenario.Status
-import Swarm.Game.ScenarioInfo (scenarioItemName, _SISingle)
+import Swarm.Game.ScenarioInfo (scenarioItemName)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
@@ -280,17 +280,3 @@ bindingText keyConf e = maybe "" ppBindingShort b
     Binding V.KLeft m | null m -> "←"
     Binding V.KRight m | null m -> "→"
     bi -> ppBinding bi
-
---- | Extract the scenario which would come next in the menu from the
----   currently selected scenario (if any).  Can return @Nothing@ if
----   either we are not in the @NewGameMenu@, or the current scenario
----   is the last among its siblings.
-nextScenario :: Menu -> Maybe (ScenarioWith ScenarioPath)
-nextScenario = \case
-  NewGameMenu (curMenu :| _) ->
-    let nextMenuList = BL.listMoveDown curMenu
-        isLastScenario = BL.listSelected curMenu == Just (length (BL.listElements curMenu) - 1)
-     in if isLastScenario
-          then Nothing
-          else BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
-  _ -> Nothing
