@@ -217,10 +217,8 @@ handleMainMenuEvent menu = \case
         -- Finally, set the menu stack, and start the scenario!
         uiState . uiMenu .= NewGameMenu menuStack
 
-        let getRemaining pos = snd $ BL.splitAt (pos + 1) $ listElements tutorialMenu
-            remainingTutorials = maybe mempty getRemaining $ BL.listSelected tutorialMenu
-
-        startGame (pathifyCollection firstUnsolvedInfo) Nothing [x | SISingle x <- V.toList remainingTutorials]
+        let remainingTutorials = maybe mempty (getScenariosAfterSelection tutorialMenu) $ BL.listSelected tutorialMenu
+        startGame (pathifyCollection firstUnsolvedInfo :| remainingTutorials) Nothing
       Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
       Messages -> do
         runtimeState . eventLog . notificationsCount .= 0
@@ -280,8 +278,8 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
     forM_ (BL.listSelectedElement curMenu) $ \(pos, item) -> case item of
       SISingle siPair -> do
         invalidateCache
-        let (_, remaining) = BL.splitAt (pos + 1) $ listElements curMenu
-        startGame siPair Nothing [x | SISingle x <- V.toList remaining]
+        let remaining = getScenariosAfterSelection curMenu pos
+        startGame (siPair :| remaining) Nothing
       SICollection _ c -> do
         uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList c) scenarioStack)
   CharKey 'o' -> showLaunchDialog
@@ -461,10 +459,10 @@ handleModalEvent = \case
           Just (Button StartOverButton, StartOver currentSeed siPair) -> do
             invalidateCache
             restartGame currentSeed siPair
-          Just (Button NextButton, Next siPair remainingScenarios) -> do
+          Just (Button NextButton, Next remainingScenarios) -> do
             quitGame isNoMenu
             invalidateCache
-            startGame siPair Nothing remainingScenarios
+            startGame remainingScenarios Nothing
           _ -> return ()
   ev -> Brick.zoom (playState . scenarioState) $ do
     Brick.zoom (uiGameplay . uiDialogs . uiModal . _Just . modalDialog) (handleDialogEvent ev)
@@ -911,3 +909,14 @@ handleInfoPanelEvent vs = \case
   Key V.KHome -> vScrollToBeginning vs
   Key V.KEnd -> vScrollToEnd vs
   _ -> return ()
+
+-- * Util
+
+getScenariosAfterSelection ::
+  BL.GenericList n V.Vector (ScenarioItem a) ->
+  Int ->
+  [ScenarioWith a]
+getScenariosAfterSelection m selIndex =
+  [x | SISingle x <- V.toList remaining]
+ where
+  remaining = snd $ BL.splitAt (selIndex + 1) $ listElements m

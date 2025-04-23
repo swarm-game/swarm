@@ -67,7 +67,7 @@ data ButtonAction
   | KeepPlaying
   | StartOver Seed (ScenarioWith ScenarioPath)
   | QuitAction
-  | Next (ScenarioWith ScenarioPath) [ScenarioWith ScenarioPath]
+  | Next (NonEmpty (ScenarioWith ScenarioPath))
 
 data Modal = Modal
   { _modalType :: ModalType

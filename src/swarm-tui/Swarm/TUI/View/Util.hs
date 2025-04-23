@@ -58,8 +58,8 @@ generateScenarioEndModal m s mt =
     ( ""
     , Just
         ( Button NextButton
-        , [ (nextMsg, Button NextButton, Next scene remainingScenarios)
-          | Just (scene :| remainingScenarios) <- [NE.nonEmpty scenarioList]
+        , [ (nextMsg, Button NextButton, Next remainingScenarios)
+          | Just remainingScenarios <- [NE.nonEmpty scenarioList]
           ]
             ++ [ (stopMsg, Button QuitButton, QuitAction) -- TODO(#2376) QuitAction is not used
                , (continueMsg, Button KeepPlayingButton, KeepPlaying)
