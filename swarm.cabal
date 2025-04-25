@@ -1256,6 +1256,7 @@ test-suite swarm-unit
     TestParse
     TestPedagogy
     TestPretty
+    TestQQ
     TestRepl
     TestRequirements
     TestScoring
