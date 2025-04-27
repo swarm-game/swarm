@@ -69,8 +69,6 @@ generateScenarioEndModal m s mt =
     )
    where
     nextMsg = "Next challenge!"
-    stopMsg = fromMaybe "Return to the menu" haltingMessage
-    continueMsg = "Keep playing"
 
   maybeStartOver = do
     cs <- currentScenario
@@ -88,14 +86,14 @@ generateScenarioEndModal m s mt =
         )
     , sum (map length [stopMsg, continueMsg]) + 32
     )
-   where
-    stopMsg = fromMaybe "Return to the menu" haltingMessage
-    continueMsg = "Keep playing"
 
   haltingMessage =
     if isNoMenu
       then Just "Quit"
       else Nothing
+
+  stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName m) ++ " menu") haltingMessage
+  continueMsg = "Keep playing"
 
   isNoMenu = case m of
     NoMenu -> True
@@ -113,8 +111,6 @@ generateScenarioEndModal m s mt =
         )
     , T.length (quitMsg isNoMenu) + 4
     )
-   where
-    stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName m) ++ " menu") haltingMessage
 
 -- | Generate a fresh modal window of the requested type.
 generateModal :: ScenarioState -> MidScenarioModalType -> Modal
