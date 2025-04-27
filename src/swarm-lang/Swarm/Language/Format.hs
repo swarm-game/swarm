@@ -16,7 +16,6 @@ import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
-import Prelude hiding (Foldable(..))
 import Prettyprinter
 import Prettyprinter.Render.Text qualified as RT
 import Swarm.Language.Parser (readTerm')
@@ -30,6 +29,7 @@ import System.Exit (exitFailure)
 import System.IO (stderr)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Witch (into)
+import Prelude hiding (Foldable (..))
 
 -- | From where should the input be taken?
 data FormatInput = Stdin | InputFile FilePath
