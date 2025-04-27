@@ -11,6 +11,7 @@ import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
 import Control.Monad.Reader (withReaderT)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Text (Text)
@@ -31,55 +32,34 @@ import Swarm.Language.Types (Polytype)
 import Swarm.Pretty (prettyTextLine)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event (SwarmEvent)
+import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
 import Swarm.Util (maximum0)
 import Witch (from, into)
 
--- | Generate a fresh modal window of the requested type.
-generateModal :: Menu -> ScenarioState -> ModalType -> Modal
-generateModal m s mt =
-  Modal mt (dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth))
+generateScenarioEndModal :: Menu -> PlayState -> EndScenarioModalType -> Modal
+generateScenarioEndModal m s mt =
+  Modal (EndScenarioModal mt) (dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth))
  where
-  currentScenario = s ^. uiGameplay . scenarioRef
-  currentSeed = s ^. gameState . randomness . seed
-  haltingMessage =
-    if isNoMenu
-      then Just "Quit"
-      else Nothing
-  descriptionWidth = 100
-  (title, buttons, requiredWidth) =
-    case mt of
-      HelpModal -> (" Help ", Nothing, descriptionWidth)
-      RobotsModal -> ("Robots", Nothing, descriptionWidth)
-      RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
-      CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
-      MessagesModal -> ("Messages", Nothing, descriptionWidth)
-      StructuresModal -> ("Buildable Structures", Nothing, descriptionWidth)
-      ScenarioEndModal WinModal -> mkWinModal
-      ScenarioEndModal LoseModal -> mkLoseModal
-      DescriptionModal e -> (descriptionTitle e, Nothing, descriptionWidth)
-      QuitModal -> mkQuitModal
-      GoalModal ->
-        let goalModalTitle = case currentScenario of
-              Nothing -> "Goal"
-              Just (ScenarioWith scenario _) -> scenario ^. scenarioMetadata . scenarioName
-         in (" " <> T.unpack goalModalTitle <> " ", Nothing, descriptionWidth)
-      KeepPlayingModal -> ("", Just (Button CancelButton, [("OK", Button CancelButton, Cancel)]), 80)
-      TerrainPaletteModal -> ("Terrain", Nothing, w)
-       where
-        tm = s ^. gameState . landscape . terrainAndEntities . terrainMap
-        wordLength = maximum0 $ map (T.length . getTerrainWord) (M.keys $ terrainByName tm)
-        w = wordLength + 6
-      EntityPaletteModal -> ("Entity", Nothing, 30)
+  currentScenario = s ^. scenarioState . uiGameplay . scenarioRef
+  currentSeed = s ^. scenarioState . gameState . randomness . seed
+
+  scenarioList = s ^. progression . scenarioSequence
+
+  (title, buttons, requiredWidth) = case mt of
+    ScenarioFinishModal WinModal -> mkWinModal
+    ScenarioFinishModal LoseModal -> mkLoseModal
+    QuitModal -> mkQuitModal
+    KeepPlayingModal -> ("", Just (Button CancelButton, [("OK", Button CancelButton, Cancel)]), 80)
 
   mkWinModal =
     ( ""
     , Just
         ( Button NextButton
-        , [ (nextMsg, Button NextButton, Next scene)
-          | Just scene <- [nextScenario m]
+        , [ (nextMsg, Button NextButton, Next remainingScenarios)
+          | Just remainingScenarios <- [NE.nonEmpty scenarioList]
           ]
             ++ [ (stopMsg, Button QuitButton, QuitAction) -- TODO(#2376) QuitAction is not used
                , (continueMsg, Button KeepPlayingButton, KeepPlaying)
@@ -112,6 +92,11 @@ generateModal m s mt =
     stopMsg = fromMaybe "Return to the menu" haltingMessage
     continueMsg = "Keep playing"
 
+  haltingMessage =
+    if isNoMenu
+      then Just "Quit"
+      else Nothing
+
   isNoMenu = case m of
     NoMenu -> True
     _ -> False
@@ -130,6 +115,35 @@ generateModal m s mt =
     )
    where
     stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName m) ++ " menu") haltingMessage
+
+-- | Generate a fresh modal window of the requested type.
+generateModal :: ScenarioState -> MidScenarioModalType -> Modal
+generateModal s mt =
+  Modal (MidScenarioModal mt) (dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth))
+ where
+  currentScenario = s ^. uiGameplay . scenarioRef
+
+  descriptionWidth = 100
+  (title, buttons, requiredWidth) =
+    case mt of
+      HelpModal -> (" Help ", Nothing, descriptionWidth)
+      RobotsModal -> ("Robots", Nothing, descriptionWidth)
+      RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
+      CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
+      MessagesModal -> ("Messages", Nothing, descriptionWidth)
+      StructuresModal -> ("Buildable Structures", Nothing, descriptionWidth)
+      DescriptionModal e -> (descriptionTitle e, Nothing, descriptionWidth)
+      GoalModal ->
+        let goalModalTitle = case currentScenario of
+              Nothing -> "Goal"
+              Just (ScenarioWith scenario _) -> scenario ^. scenarioMetadata . scenarioName
+         in (" " <> T.unpack goalModalTitle <> " ", Nothing, descriptionWidth)
+      TerrainPaletteModal -> ("Terrain", Nothing, w)
+       where
+        tm = s ^. gameState . landscape . terrainAndEntities . terrainMap
+        wordLength = maximum0 $ map (T.length . getTerrainWord) (M.keys $ terrainByName tm)
+        w = wordLength + 6
+      EntityPaletteModal -> ("Entity", Nothing, 30)
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name

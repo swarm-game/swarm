@@ -31,6 +31,7 @@ import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event
+import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Util (generateModal)
 
@@ -54,7 +55,7 @@ robotEventHandlers :: [KeyEventHandler SwarmEvent (EventM Name AppState)]
 robotEventHandlers = nonCustomizableHandlers <> customizableHandlers
  where
   nonCustomizableHandlers =
-    [ onKey V.KEnter "Show entity description" $ playStateWithMenu showEntityDescription
+    [ onKey V.KEnter "Show entity description" $ Brick.zoom (playState . scenarioState) showEntityDescription
     ]
   customizableHandlers = allHandlers Robot $ \case
     MakeEntityEvent -> ("Make the selected entity", Brick.zoom (playState . scenarioState) makeFocusedEntity)
@@ -64,14 +65,14 @@ robotEventHandlers = nonCustomizableHandlers <> customizableHandlers
     SearchInventoryEvent -> ("Start inventory search", zoomInventory searchInventory)
 
 -- | Display a modal window with the description of an entity.
-showEntityDescription :: Menu -> EventM Name ScenarioState ()
-showEntityDescription m = gets focusedEntity >>= maybe continueWithoutRedraw descriptionModal
+showEntityDescription :: EventM Name ScenarioState ()
+showEntityDescription = gets focusedEntity >>= maybe continueWithoutRedraw descriptionModal
  where
   descriptionModal :: Entity -> EventM Name ScenarioState ()
   descriptionModal e = do
     s <- get
     resetViewport modalScroll
-    uiGameplay . uiDialogs . uiModal ?= generateModal m s (DescriptionModal e)
+    uiGameplay . uiDialogs . uiModal ?= generateModal s (DescriptionModal e)
 
 -- | Attempt to make an entity selected from the inventory, if the
 --   base is not currently busy.
@@ -129,7 +130,7 @@ handleInventorySearchEvent = \case
   -- Enter: return to regular inventory mode, and pop out the selected item
   Key V.KEnter -> do
     zoomInventory $ uiInventorySearch .= Nothing
-    playStateWithMenu showEntityDescription
+    Brick.zoom (playState . scenarioState) showEntityDescription
   -- Any old character: append to the current search string
   CharKey c -> do
     resetViewport infoScroll

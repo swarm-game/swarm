@@ -38,6 +38,7 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.DebugOption (DebugOption (ToggleCreative, ToggleWorldEditor))
 import Swarm.TUI.Model.Dialog.Goal
 import Swarm.TUI.Model.Event (MainEvent (..), SwarmEvent (..))
+import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
 import System.Clock (Clock (..), TimeSpec (..), getTime)
@@ -50,32 +51,32 @@ mainEventHandlers = allHandlers Main $ \case
   QuitEvent -> ("Open quit game dialog", toggleQuitGameDialog)
   ViewHelpEvent ->
     ( "View Help screen"
-    , playStateWithMenu $ toggleModal HelpModal
+    , Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal HelpModal
     )
   ViewRobotsEvent ->
     ( "View Robots screen"
-    , playStateWithMenu $ toggleModal RobotsModal
+    , Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal RobotsModal
     )
   ViewRecipesEvent ->
     ( "View Recipes screen"
-    , playStateWithMenu $ toggleDiscoveryNotificationModal RecipesModal availableRecipes
+    , Brick.zoom (playState . scenarioState) $ toggleDiscoveryNotificationModal RecipesModal availableRecipes
     )
   ViewCommandsEvent ->
     ( "View Commands screen"
-    , playStateWithMenu $ toggleDiscoveryNotificationModal CommandsModal availableCommands
+    , Brick.zoom (playState . scenarioState) $ toggleDiscoveryNotificationModal CommandsModal availableCommands
     )
   ViewMessagesEvent ->
     ( "View Messages screen"
-    , playStateWithMenu toggleMessagesModal
+    , Brick.zoom (playState . scenarioState) toggleMessagesModal
     )
   ViewStructuresEvent ->
     ( "View Structures screen"
-    , playStateWithMenu $
-        toggleStructuresModal StructuresModal (recognizerAutomatons . originalStructureDefinitions)
+    , Brick.zoom (playState . scenarioState) $
+        toggleStructuresModal (recognizerAutomatons . originalStructureDefinitions)
     )
   ViewGoalEvent ->
     ( "View scenario goal description"
-    , playStateWithMenu viewGoal
+    , Brick.zoom (playState . scenarioState) viewGoal
     )
   HideRobotsEvent -> ("Hide robots for a few ticks", Brick.zoom (playState . scenarioState . uiGameplay) hideRobots)
   ShowCESKDebugEvent -> ("Show active robot CESK machine debugging line", showCESKDebug)
@@ -97,53 +98,49 @@ toggleQuitGameDialog :: EventM Name AppState ()
 toggleQuitGameDialog = do
   s <- get
   let whichModal = case s ^. playState . scenarioState . gameState . winCondition of
-        WinConditions (Won _ _) _ -> ScenarioEndModal WinModal
-        WinConditions (Unwinnable _) _ -> ScenarioEndModal LoseModal
+        WinConditions (Won _ _) _ -> ScenarioFinishModal WinModal
+        WinConditions (Unwinnable _) _ -> ScenarioFinishModal LoseModal
         _ -> QuitModal
-  playStateWithMenu $ toggleModal whichModal
+  Brick.zoom playState $ toggleEndScenarioModal whichModal $ s ^. uiState . uiMenu
 
 toggleGameModal ::
   Foldable t =>
-  Menu ->
-  ModalType ->
+  MidScenarioModalType ->
   Getter GameState (t a) ->
   EventM Name ScenarioState Bool
-toggleGameModal menu m l = do
+toggleGameModal m l = do
   s <- get
   let nothingToShow = null $ s ^. gameState . l
 
   unless nothingToShow $
-    toggleModal m menu
+    toggleMidScenarioModal m
   return nothingToShow
 
 toggleStructuresModal ::
   Foldable t =>
-  ModalType ->
   Lens' Landscape (t a) ->
-  Menu ->
   EventM Name ScenarioState ()
-toggleStructuresModal m l menu = void $ toggleGameModal menu m (landscape . l)
+toggleStructuresModal l = void $ toggleGameModal StructuresModal (landscape . l)
 
 toggleDiscoveryNotificationModal ::
-  ModalType ->
+  MidScenarioModalType ->
   Lens' Discovery (Notifications a) ->
-  Menu ->
   EventM Name ScenarioState ()
-toggleDiscoveryNotificationModal m l menu = do
-  nothingToShow <- toggleGameModal menu m (discovery . l . notificationsContent)
+toggleDiscoveryNotificationModal mt l = do
+  nothingToShow <- toggleGameModal mt $ discovery . l . notificationsContent
   unless nothingToShow $ gameState . discovery . l . notificationsCount .= 0
 
-toggleMessagesModal :: Menu -> EventM Name ScenarioState ()
-toggleMessagesModal menu = do
+toggleMessagesModal :: EventM Name ScenarioState ()
+toggleMessagesModal = do
   s <- get
-  nothingToShow <- toggleGameModal menu MessagesModal (messageNotifications . notificationsContent)
+  nothingToShow <- toggleGameModal MessagesModal $ messageNotifications . notificationsContent
   unless nothingToShow $ gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . temporal . ticks
 
-viewGoal :: Menu -> EventM Name ScenarioState ()
-viewGoal m = do
+viewGoal :: EventM Name ScenarioState ()
+viewGoal = do
   s <- get
   if hasAnythingToShow $ s ^. uiGameplay . uiDialogs . uiGoal . goalsContent
-    then toggleModal GoalModal m
+    then toggleMidScenarioModal GoalModal
     else continueWithoutRedraw
 
 hideRobots :: EventM Name UIGameplay ()

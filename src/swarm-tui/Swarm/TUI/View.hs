@@ -132,6 +132,7 @@ import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Dialog.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.Event qualified as SE
 import Swarm.TUI.Model.KeyBindings (handlerNameKeysDescription)
+import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
@@ -648,8 +649,8 @@ drawDialog h isNoMenu ps =
  where
   m = ps ^. uiGameplay . uiDialogs . uiModal
   go (Modal mt d) = renderDialog d $ case mt of
-    GoalModal -> draw
-    RobotsModal -> draw
+    MidScenarioModal GoalModal -> draw
+    MidScenarioModal RobotsModal -> draw
     _ -> maybeScroll ModalViewport draw
    where
     draw = drawModal h ps isNoMenu mt
@@ -662,37 +663,39 @@ drawModal ::
   ModalType ->
   Widget Name
 drawModal h ps isNoMenu = \case
-  HelpModal -> helpWidget h $ gs ^. randomness . seed
-  RobotsModal -> drawRobotsModal $ uig ^. uiDialogs . uiRobot
-  RecipesModal -> availableListWidget gs RecipeList
-  CommandsModal -> commandsListWidget gs
-  MessagesModal -> availableListWidget gs MessageList
-  StructuresModal -> SR.renderStructuresDisplay gs $ uig ^. uiDialogs . uiStructure
-  ScenarioEndModal outcome ->
-    padBottom (Pad 1) $
-      vBox $
-        map
-          (hCenter . txt)
-          content
-   where
-    content = case outcome of
-      WinModal -> ["Congratulations!"]
-      LoseModal ->
-        [ "Condolences!"
-        , "This scenario is no longer winnable."
-        ]
-  DescriptionModal e -> descriptionWidget ps e
-  QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg isNoMenu)
-  GoalModal ->
-    GR.renderGoalsDisplay (uig ^. uiDialogs . uiGoal) $
-      view (getScenario . scenarioOperation . scenarioDescription) <$> uig ^. scenarioRef
-  KeepPlayingModal ->
-    padLeftRight 1 $
-      displayParagraphs $
-        pure
-          "Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."
-  TerrainPaletteModal -> EV.drawTerrainSelector uig
-  EntityPaletteModal -> EV.drawEntityPaintSelector uig
+  MidScenarioModal x -> case x of
+    HelpModal -> helpWidget h $ gs ^. randomness . seed
+    RobotsModal -> drawRobotsModal $ uig ^. uiDialogs . uiRobot
+    RecipesModal -> availableListWidget gs RecipeList
+    CommandsModal -> commandsListWidget gs
+    MessagesModal -> availableListWidget gs MessageList
+    StructuresModal -> SR.renderStructuresDisplay gs $ uig ^. uiDialogs . uiStructure
+    DescriptionModal e -> descriptionWidget ps e
+    GoalModal ->
+      GR.renderGoalsDisplay (uig ^. uiDialogs . uiGoal) $
+        view (getScenario . scenarioOperation . scenarioDescription) <$> uig ^. scenarioRef
+    TerrainPaletteModal -> EV.drawTerrainSelector uig
+    EntityPaletteModal -> EV.drawEntityPaintSelector uig
+  EndScenarioModal x -> case x of
+    ScenarioFinishModal outcome ->
+      padBottom (Pad 1) $
+        vBox $
+          map
+            (hCenter . txt)
+            content
+     where
+      content = case outcome of
+        WinModal -> ["Congratulations!"]
+        LoseModal ->
+          [ "Condolences!"
+          , "This scenario is no longer winnable."
+          ]
+    QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg isNoMenu)
+    KeepPlayingModal ->
+      padLeftRight 1 $
+        displayParagraphs $
+          pure
+            "Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."
  where
   gs = ps ^. gameState
   uig = ps ^. uiGameplay

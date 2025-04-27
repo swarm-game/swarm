@@ -11,6 +11,7 @@ module Swarm.TUI.Controller.UpdateUI (
 ) where
 
 -- See Note [liftA2 re-export from Prelude]
+
 import Brick hiding (Direction, Location, on)
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
@@ -45,6 +46,7 @@ import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model
 import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Dialog.Goal
+import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
@@ -255,17 +257,17 @@ doGoalUpdates dOpts menu = do
   case curWinCondition of
     NoWinCondition -> return False
     WinConditions (Unwinnable False) x -> do
-      Brick.zoom scenarioState $ do
-        -- This clears the "flag" that the Lose dialog needs to pop up
-        gameState . winCondition .= WinConditions (Unwinnable True) x
-        openModal menu $ ScenarioEndModal LoseModal
+      -- This clears the "flag" that the Lose dialog needs to pop up
+      scenarioState . gameState . winCondition .= WinConditions (Unwinnable True) x
+      openEndScenarioModal menu $ ScenarioFinishModal LoseModal
+
       saveScenarioInfoOnFinishNocheat dOpts
       return True
     WinConditions (Won False ts) x -> do
-      Brick.zoom scenarioState $ do
-        -- This clears the "flag" that the Win dialog needs to pop up
-        gameState . winCondition .= WinConditions (Won True ts) x
-        openModal menu $ ScenarioEndModal WinModal
+      -- This clears the "flag" that the Win dialog needs to pop up
+      scenarioState . gameState . winCondition .= WinConditions (Won True ts) x
+      openEndScenarioModal menu $ ScenarioFinishModal WinModal
+
       saveScenarioInfoOnFinishNocheat dOpts
       -- We do NOT advance the New Game menu to the next item here (we
       -- used to!), because we do not know if the user is going to
@@ -297,7 +299,7 @@ doGoalUpdates dOpts menu = do
         gameState . messageInfo . announcementQueue .= mempty
 
         showObjectives <- use $ uiGameplay . uiAutoShowObjectives
-        when showObjectives $ openModal menu GoalModal
+        when showObjectives $ openMidScenarioModal GoalModal
 
       return goalWasUpdated
  where
@@ -317,9 +319,7 @@ doGoalUpdates dOpts menu = do
 
   isEndingModal :: ModalType -> Bool
   isEndingModal = \case
-    ScenarioEndModal {} -> True
-    QuitModal -> True
-    KeepPlayingModal -> True
+    EndScenarioModal _ -> True
     _ -> False
 
 -- | Pops up notifications when new recipes or commands are unlocked.

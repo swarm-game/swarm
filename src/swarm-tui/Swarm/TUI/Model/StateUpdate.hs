@@ -37,6 +37,7 @@ import Data.Bifunctor (first)
 import Data.Foldable qualified as F
 import Data.List qualified as List
 import Data.List.Extra (enumerate)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
@@ -168,6 +169,7 @@ initPersistentState opts@(AppOpts {..}) = do
             { _scenarios = s
             , _attainedAchievements = M.fromList $ map (view achievement &&& id) achievements
             , _uiPopups = initPopupState
+            , _scenarioSequence = mempty
             }
     return $ PersistentState rs ui ks progState
   let initRS' = addWarnings initRS (F.toList warnings)
@@ -278,10 +280,11 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) = do
 -- | Load a 'Scenario' and start playing the game.
 startGame ::
   (MonadIO m, MonadState AppState m) =>
-  ScenarioWith ScenarioPath ->
+  NonEmpty (ScenarioWith ScenarioPath) ->
   Maybe CodeToRun ->
   m ()
-startGame (ScenarioWith s (ScenarioPath p)) c = do
+startGame (ScenarioWith s (ScenarioPath p) :| remaining) c = do
+  playState . progression . scenarioSequence .= remaining
   ss <- use $ playState . progression . scenarios
   let si = getScenarioInfoFromPath ss p
   startGameWithSeed (ScenarioWith s si) . LaunchParams (pure Nothing) $ pure c

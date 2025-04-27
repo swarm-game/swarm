@@ -33,7 +33,7 @@ import Brick.Focus
 import Brick.Keybindings qualified as B
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (Editor, applyEdit, editContentsL, handleEditorEvent)
-import Brick.Widgets.List (handleListEvent)
+import Brick.Widgets.List (handleListEvent, listElements)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.TabularList.Mixed
 import Control.Applicative (pure, (<|>))
@@ -102,6 +102,7 @@ import Swarm.TUI.Launch.Prep (prepareLaunchDialog)
 import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Dialog hiding (Completed)
+import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
@@ -215,7 +216,9 @@ handleMainMenuEvent menu = \case
 
         -- Finally, set the menu stack, and start the scenario!
         uiState . uiMenu .= NewGameMenu menuStack
-        startGame (pathifyCollection firstUnsolvedInfo) Nothing
+
+        let remainingTutorials = maybe mempty (getScenariosAfterSelection tutorialMenu) $ BL.listSelected tutorialMenu
+        startGame (pathifyCollection firstUnsolvedInfo :| remainingTutorials) Nothing
       Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
       Messages -> do
         runtimeState . eventLog . notificationsCount .= 0
@@ -272,8 +275,11 @@ handleNewGameMenuEvent ::
   EventM Name AppState ()
 handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   Key V.KEnter ->
-    forM_ (snd <$> BL.listSelectedElement curMenu) $ \case
-      SISingle siPair -> invalidateCache >> startGame siPair Nothing
+    forM_ (BL.listSelectedElement curMenu) $ \(pos, item) -> case item of
+      SISingle siPair -> do
+        invalidateCache
+        let remaining = getScenariosAfterSelection curMenu pos
+        startGame (siPair :| remaining) Nothing
       SICollection _ c -> do
         uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList c) scenarioStack)
   CharKey 'o' -> showLaunchDialog
@@ -358,11 +364,11 @@ handleMainEvent forceRedraw ev = do
           when shouldUpdateCursor $
             uiGameplay . uiWorldCursor .= mouseCoordsM
         REPLInput -> handleREPLEvent ev
-        (UIShortcut "Help") -> playStateWithMenu $ toggleModal HelpModal
-        (UIShortcut "Robots") -> playStateWithMenu $ toggleModal RobotsModal
-        (UIShortcut "Commands") -> playStateWithMenu $ toggleDiscoveryNotificationModal CommandsModal availableCommands
-        (UIShortcut "Recipes") -> playStateWithMenu $ toggleDiscoveryNotificationModal RecipesModal availableRecipes
-        (UIShortcut "Messages") -> playStateWithMenu toggleMessagesModal
+        (UIShortcut "Help") -> Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal HelpModal
+        (UIShortcut "Robots") -> Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal RobotsModal
+        (UIShortcut "Commands") -> Brick.zoom (playState . scenarioState) $ toggleDiscoveryNotificationModal CommandsModal availableCommands
+        (UIShortcut "Recipes") -> Brick.zoom (playState . scenarioState) $ toggleDiscoveryNotificationModal RecipesModal availableRecipes
+        (UIShortcut "Messages") -> Brick.zoom (playState . scenarioState) toggleMessagesModal
         (UIShortcut "pause") -> Brick.zoom (playState . scenarioState) $ whenRunningPlayState safeTogglePause
         (UIShortcut "unpause") -> Brick.zoom (playState . scenarioState) $ whenRunningPlayState safeTogglePause
         (UIShortcut "step") -> whenRunningAppState runSingleTick
@@ -372,15 +378,15 @@ handleMainEvent forceRedraw ev = do
         (UIShortcut "show REPL") -> Brick.zoom (playState . scenarioState) toggleREPLVisibility
         (UIShortcut "debug") -> showCESKDebug
         (UIShortcut "hide robots") -> Brick.zoom (playState . scenarioState . uiGameplay) hideRobots
-        (UIShortcut "goal") -> playStateWithMenu viewGoal
+        (UIShortcut "goal") -> Brick.zoom (playState . scenarioState) viewGoal
         _ -> continueWithoutRedraw
     MouseUp n _ _mouseLoc ->
-      playStateWithMenu $ \m -> do
+      Brick.zoom (playState . scenarioState) $ do
         case n of
           InventoryListItem pos -> uiGameplay . uiInventory . uiInventoryList . traverse . _2 %= BL.listMoveTo pos
           x@(WorldEditorPanelControl y) -> do
             uiGameplay . uiWorldEditor . editorFocusRing %= focusSetCurrent x
-            EC.activateWorldEditorFunction m y
+            EC.activateWorldEditorFunction y
           _ -> return ()
         flip whenJust setFocus $ case n of
           -- Adapt click event origin to the right panel.  For the world
@@ -409,7 +415,7 @@ handleMainEvent forceRedraw ev = do
             wh <- use $ keyEventHandling . keyDispatchers . to worldDispatcher
             void $ B.handleKey wh k m
           WorldPanel | otherwise -> continueWithoutRedraw
-          WorldEditorPanel -> playStateWithMenu $ EC.handleWorldEditorPanelEvent ev
+          WorldEditorPanel -> Brick.zoom (playState . scenarioState) $ EC.handleWorldEditorPanelEvent ev
           RobotPanel -> handleRobotPanelEvent ev
           InfoPanel -> handleInfoPanelEvent infoScroll ev
         _ -> continueWithoutRedraw
@@ -419,7 +425,7 @@ closeModal m = do
   safeAutoUnpause
   uiGameplay . uiDialogs . uiModal .= Nothing
   -- message modal is not autopaused, so update notifications when leaving it
-  when ((m ^. modalType) == MessagesModal) $ do
+  when ((m ^. modalType) == MidScenarioModal MessagesModal) $ do
     t <- use $ gameState . temporal . ticks
     gameState . messageInfo . lastSeenMessageTime .= t
 
@@ -429,7 +435,7 @@ handleModalEvent = \case
   V.EvKey V.KEnter [] -> do
     modal <- preuse $ playState . scenarioState . uiGameplay . uiDialogs . uiModal . _Just . modalType
     case modal of
-      Just RobotsModal -> do
+      Just (MidScenarioModal RobotsModal) -> do
         robotDialog <- use $ playState . scenarioState . uiGameplay . uiDialogs . uiRobot
         unless (robotDialog ^. isDetailsOpened) $ do
           let widget = robotDialog ^. robotListContent . robotsListWidget
@@ -438,34 +444,35 @@ handleModalEvent = \case
               isDetailsOpened .= True
               updateRobotDetailsPane $ snd x
       _ -> do
-        mdialog <- preuse $ playState . scenarioState . uiGameplay . uiDialogs . uiModal . _Just . modalDialog
-        playStateWithMenu $ toggleModal QuitModal
-
         menu <- use $ uiState . uiMenu
+
+        mdialog <- preuse $ playState . scenarioState . uiGameplay . uiDialogs . uiModal . _Just . modalDialog
+        Brick.zoom playState $ toggleEndScenarioModal QuitModal menu
+
         let isNoMenu = case menu of
               NoMenu -> True
               _ -> False
 
         case dialogSelection =<< mdialog of
           Just (Button QuitButton, _) -> quitGame isNoMenu
-          Just (Button KeepPlayingButton, _) -> playStateWithMenu $ toggleModal KeepPlayingModal
+          Just (Button KeepPlayingButton, _) -> Brick.zoom playState $ toggleEndScenarioModal KeepPlayingModal menu
           Just (Button StartOverButton, StartOver currentSeed siPair) -> do
             invalidateCache
             restartGame currentSeed siPair
-          Just (Button NextButton, Next siPair) -> do
+          Just (Button NextButton, Next remainingScenarios) -> do
             quitGame isNoMenu
             invalidateCache
-            startGame siPair Nothing
+            startGame remainingScenarios Nothing
           _ -> return ()
   ev -> Brick.zoom (playState . scenarioState) $ do
     Brick.zoom (uiGameplay . uiDialogs . uiModal . _Just . modalDialog) (handleDialogEvent ev)
     modal <- preuse $ uiGameplay . uiDialogs . uiModal . _Just . modalType
     case modal of
-      Just TerrainPaletteModal ->
+      Just (MidScenarioModal TerrainPaletteModal) ->
         refreshList $ uiGameplay . uiWorldEditor . terrainList
-      Just EntityPaletteModal -> do
+      Just (MidScenarioModal EntityPaletteModal) -> do
         refreshList $ uiGameplay . uiWorldEditor . entityPaintList
-      Just GoalModal -> case ev of
+      Just (MidScenarioModal GoalModal) -> case ev of
         V.EvKey (V.KChar '\t') [] -> uiGameplay . uiDialogs . uiGoal . focus %= focusNext
         _ -> do
           focused <- use $ uiGameplay . uiDialogs . uiGoal . focus
@@ -477,7 +484,7 @@ handleModalEvent = \case
                 uiGameplay . uiDialogs . uiGoal . listWidget .= newList
               GoalSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
             _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
-      Just StructuresModal -> case ev of
+      Just (MidScenarioModal StructuresModal) -> case ev of
         V.EvKey (V.KChar '\t') [] -> uiGameplay . uiDialogs . uiStructure . structurePanelFocus %= focusNext
         _ -> do
           focused <- use $ uiGameplay . uiDialogs . uiStructure . structurePanelFocus
@@ -487,7 +494,7 @@ handleModalEvent = \case
                 refreshList $ uiGameplay . uiDialogs . uiStructure . structurePanelListWidget
               StructureSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
             _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
-      Just RobotsModal -> Brick.zoom (uiGameplay . uiDialogs . uiRobot) $ case ev of
+      Just (MidScenarioModal RobotsModal) -> Brick.zoom (uiGameplay . uiDialogs . uiRobot) $ case ev of
         V.EvKey (V.KChar '\t') [] -> robotDetailsFocus %= focusNext
         _ -> do
           isInDetailsMode <- use isDetailsOpened
@@ -555,12 +562,12 @@ handleREPLEvent x = do
           void $ B.handleKey keyHandler k m
     -- Handle other events in a way appropriate to the current REPL
     -- control mode.
-    _ -> Brick.zoom (playState . scenarioState) $ case controlMode of
+    _ -> Brick.zoom playState $ case controlMode of
       Typing -> handleREPLEventTyping menu x
       Piloting -> handleREPLEventPiloting menu x
       Handling -> case x of
         -- Handle keypresses using the custom installed handler
-        VtyEvent (V.EvKey k mods) -> runInputHandler (mkKeyCombo mods k)
+        VtyEvent (V.EvKey k mods) -> Brick.zoom scenarioState $ runInputHandler (mkKeyCombo mods k)
         -- Handle all other events normally
         _ -> handleREPLEventTyping menu x
 
@@ -587,7 +594,7 @@ runInputHandler kc = do
 -- | Handle a user "piloting" input event for the REPL.
 --
 -- TODO: #2010 Finish porting Controller to KeyEventHandlers
-handleREPLEventPiloting :: Menu -> BrickEvent Name AppEvent -> EventM Name ScenarioState ()
+handleREPLEventPiloting :: Menu -> BrickEvent Name AppEvent -> EventM Name PlayState ()
 handleREPLEventPiloting m x = case x of
   Key V.KUp -> inputCmd "move"
   Key V.KDown -> inputCmd "turn back"
@@ -609,8 +616,8 @@ handleREPLEventPiloting m x = case x of
   _ -> inputCmd "noop"
  where
   inputCmd cmdText = do
-    uiGameplay . uiREPL %= setCmd (cmdText <> ";")
-    modify validateREPLForm
+    scenarioState . uiGameplay . uiREPL %= setCmd (cmdText <> ";")
+    Brick.zoom scenarioState $ modify validateREPLForm
     handleREPLEventTyping m $ Key V.KEnter
 
   setCmd nt theRepl =
@@ -647,7 +654,7 @@ runBaseCode uinput = do
 -- | Handle a user input event for the REPL.
 --
 -- TODO: #2010 Finish porting Controller to KeyEventHandlers
-handleREPLEventTyping :: Menu -> BrickEvent Name AppEvent -> EventM Name ScenarioState ()
+handleREPLEventTyping :: Menu -> BrickEvent Name AppEvent -> EventM Name PlayState ()
 handleREPLEventTyping m = \case
   -- Scroll the REPL on PageUp or PageDown
   Key V.KPageUp -> vScrollPage replScroll Brick.Up
@@ -656,7 +663,7 @@ handleREPLEventTyping m = \case
     -- On any other key event, jump to the bottom of the REPL then handle the event
     vScrollToEnd replScroll
     case k of
-      Key V.KEnter -> do
+      Key V.KEnter -> Brick.zoom scenarioState $ do
         s <- get
         let theRepl = s ^. uiGameplay . uiREPL
             uinput = theRepl ^. replPromptText
@@ -675,8 +682,8 @@ handleREPLEventTyping m = \case
                       resetREPL found (CmdPrompt [])
                       modify validateREPLForm
           else continueWithoutRedraw
-      Key V.KUp -> modify $ adjReplHistIndex Older
-      Key V.KDown -> do
+      Key V.KUp -> Brick.zoom scenarioState $ modify $ adjReplHistIndex Older
+      Key V.KDown -> Brick.zoom scenarioState $ do
         repl <- use $ uiGameplay . uiREPL
         let hist = repl ^. replHistory
             uinput = repl ^. replPromptText
@@ -692,38 +699,39 @@ handleREPLEventTyping m = \case
           -- Otherwise, just move around in the history as normal.
           _ -> modify $ adjReplHistIndex Newer
       ControlChar 'r' ->
-        Brick.zoom (uiGameplay . uiREPL) $ do
+        Brick.zoom (scenarioState . uiGameplay . uiREPL) $ do
           uir <- get
           let uinput = uir ^. replPromptText
           case uir ^. replPromptType of
             CmdPrompt _ -> replPromptType .= SearchPrompt (uir ^. replHistory)
             SearchPrompt rh -> forM_ (lastEntry uinput rh) $ \found ->
               replPromptType .= SearchPrompt (removeEntry found rh)
-      CharKey '\t' -> do
+      CharKey '\t' -> Brick.zoom scenarioState $ do
         s <- get
         let names = s ^.. gameState . baseEnv . envTypes . to assocs . traverse . _1
         uiGameplay . uiREPL %= tabComplete (CompletionContext (s ^. gameState . creativeMode)) names (s ^. gameState . landscape . terrainAndEntities . entityMap)
         modify validateREPLForm
-      EscapeKey -> do
+      EscapeKey -> Brick.zoom scenarioState $ do
         formSt <- use $ uiGameplay . uiREPL . replPromptType
         case formSt of
           CmdPrompt {} -> continueWithoutRedraw
           SearchPrompt _ -> resetREPL "" (CmdPrompt [])
       ControlChar 'd' -> do
-        text <- use $ uiGameplay . uiREPL . replPromptText
+        text <- use $ scenarioState . uiGameplay . uiREPL . replPromptText
         if text == T.empty
-          then toggleModal QuitModal m
+          then toggleEndScenarioModal QuitModal m
           else continueWithoutRedraw
       MetaKey V.KBS ->
-        uiGameplay . uiREPL . replPromptEditor %= applyEdit TZ.deletePrevWord
+        Brick.zoom scenarioState $
+          uiGameplay . uiREPL . replPromptEditor %= applyEdit TZ.deletePrevWord
       -- finally if none match pass the event to the editor
       ev -> do
-        Brick.zoom (uiGameplay . uiREPL . replPromptEditor) $ case ev of
+        Brick.zoom (scenarioState . uiGameplay . uiREPL . replPromptEditor) $ case ev of
           CharKey c
             | c `elem` ("([{" :: String) -> insertMatchingPair c
             | c `elem` (")]}" :: String) -> insertOrMovePast c
           _ -> handleEditorEvent ev
-        uiGameplay . uiREPL . replPromptType %= \case
+        scenarioState . uiGameplay . uiREPL . replPromptType %= \case
           CmdPrompt _ -> CmdPrompt [] -- reset completions on any event passed to editor
           SearchPrompt a -> SearchPrompt a
 
@@ -731,7 +739,7 @@ handleREPLEventTyping m = \case
         case ev of
           Key V.KLeft -> pure ()
           Key V.KRight -> pure ()
-          _ -> modify validateREPLForm
+          _ -> Brick.zoom scenarioState $ modify validateREPLForm
 
 insertMatchingPair :: Char -> EventM Name (Editor Text Name) ()
 insertMatchingPair c = modify . applyEdit $ TZ.insertChar c >>> TZ.insertChar (close c) >>> TZ.moveLeft
@@ -901,3 +909,14 @@ handleInfoPanelEvent vs = \case
   Key V.KHome -> vScrollToBeginning vs
   Key V.KEnd -> vScrollToEnd vs
   _ -> return ()
+
+-- * Util
+
+getScenariosAfterSelection ::
+  BL.GenericList n V.Vector (ScenarioItem a) ->
+  Int ->
+  [ScenarioWith a]
+getScenariosAfterSelection m selIndex =
+  [x | SISingle x <- V.toList remaining]
+ where
+  remaining = snd $ BL.splitAt (selIndex + 1) $ listElements m
