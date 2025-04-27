@@ -94,7 +94,7 @@ addProjections_v7 ast = foldl' addDefn ast (reverse $ S.toList freeProjs)
   freeProjs = setOf freeVarsV ast `S.intersection` S.fromList ["fst", "snd"]
 
   addDefn :: Syntax -> Var -> Syntax
-  addDefn ast = \case
-    "fst" -> [astQ| def fst = \p. match p (\a. \_. a) end; $syn:ast |]
-    "snd" -> [astQ| def snd = \p. match p (\_. \b. b) end; $syn:ast |]
+  addDefn rest = \case
+    "fst" -> [astQ| def fst = \p. match p (\a. \_. a) end; $syn:rest |]
+    "snd" -> [astQ| def snd = \p. match p (\_. \b. b) end; $syn:rest |]
     _ -> error "Variable was not one of 'fst' or 'snd'"
