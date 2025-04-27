@@ -7,12 +7,12 @@ module Swarm.Language.Parser.QQ (tyQ, astQ) where
 import Data.Generics
 import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Quote
-import Swarm.Language.Syntax
 import Swarm.Language.Parser.Core (runParserTH)
 import Swarm.Language.Parser.Lex (sc)
 import Swarm.Language.Parser.Term (parseTerm)
 import Swarm.Language.Parser.Type (parsePolytype)
 import Swarm.Language.Parser.Util (fully)
+import Swarm.Language.Syntax
 import Swarm.Util (liftText)
 import Witch (from)
 
