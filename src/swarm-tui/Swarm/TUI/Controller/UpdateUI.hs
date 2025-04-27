@@ -254,27 +254,10 @@ doGoalUpdates dOpts menu = do
   -- up a modal dialog.
   case curWinCondition of
     NoWinCondition -> return False
-    WinConditions (Unwinnable False) x -> do
-      -- This clears the "flag" that the Lose dialog needs to pop up
-      scenarioState . gameState . winCondition .= WinConditions (Unwinnable True) x
-      openEndScenarioModal menu $ ScenarioFinishModal LoseModal
-
-      saveScenarioInfoOnFinishNocheat dOpts
-      return True
+    WinConditions (Unwinnable False) x ->
+      setFinishState LoseModal (Unwinnable True) x
     WinConditions (Won False ts) x -> do
-      -- This clears the "flag" that the Win dialog needs to pop up
-      scenarioState . gameState . winCondition .= WinConditions (Won True ts) x
-      openEndScenarioModal menu $ ScenarioFinishModal WinModal
-
-      saveScenarioInfoOnFinishNocheat dOpts
-      -- We do NOT advance the New Game menu to the next item here (we
-      -- used to!), because we do not know if the user is going to
-      -- select 'keep playing' or 'next challenge'.  We maintain the
-      -- invariant that the current menu item is always the same as
-      -- the scenario currently being played.  If the user either (1)
-      -- quits to the menu or (2) selects 'next challenge' we will
-      -- advance the menu at that point.
-      return True
+      setFinishState WinModal (Won True ts) x
     WinConditions _ oc -> Brick.zoom scenarioState $ do
       currentModal <- preuse $ uiGameplay . uiDialogs . uiModal . _Just . modalType
       let newGoalTracking = GoalTracking announcementsList $ constructGoalMap showHiddenGoals oc
@@ -301,6 +284,23 @@ doGoalUpdates dOpts menu = do
 
       return goalWasUpdated
  where
+  setFinishState :: ScenarioOutcome -> WinStatus -> ObjectiveCompletion -> EventM Name PlayState Bool
+  setFinishState m result x = do
+    -- This clears the "flag" that the Lose dialog needs to pop up
+    scenarioState . gameState . winCondition .= WinConditions result x
+    openEndScenarioModal menu $ ScenarioFinishModal m
+
+    saveScenarioInfoOnFinishNocheat dOpts
+
+    -- We do NOT advance the New Game menu to the next item here (we
+    -- used to!), because we do not know if the user is going to
+    -- select 'keep playing' or 'next challenge'.  We maintain the
+    -- invariant that the current menu item is always the same as
+    -- the scenario currently being played.  If the user either (1)
+    -- quits to the menu or (2) selects 'next challenge' we will
+    -- advance the menu at that point.
+    return True
+
   goalDisplay :: GoalTracking -> GoalDisplay
   goalDisplay newGoalTracking =
     let multiple = hasMultipleGoals newGoalTracking

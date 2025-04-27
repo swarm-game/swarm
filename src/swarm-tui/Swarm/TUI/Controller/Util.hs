@@ -36,14 +36,14 @@ import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (CDebug))
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.TUI.Model (
-  scenarioSequence,
-  progression,
   AppState,
   PlayState,
   ScenarioState,
   gameState,
   modalScroll,
   playState,
+  progression,
+  scenarioSequence,
   scenarioState,
   uiGameplay,
  )
