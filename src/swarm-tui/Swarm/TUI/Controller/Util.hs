@@ -147,14 +147,18 @@ toggleMidScenarioModal mt = do
   modal <- use $ uiGameplay . uiDialogs . uiModal
   case modal of
     Nothing -> openMidScenarioModal mt
-    Just _ -> uiGameplay . uiDialogs . uiModal .= Nothing >> safeAutoUnpause
+    Just _ -> do
+      uiGameplay . uiDialogs . uiModal .= Nothing
+      safeAutoUnpause
 
 toggleEndScenarioModal :: EndScenarioModalType -> Menu -> EventM Name PlayState ()
 toggleEndScenarioModal mt m = do
   modal <- use $ scenarioState . uiGameplay . uiDialogs . uiModal
   case modal of
     Nothing -> openEndScenarioModal m mt
-    Just _ -> scenarioState . uiGameplay . uiDialogs . uiModal .= Nothing >> Brick.zoom scenarioState safeAutoUnpause
+    Just _ -> do
+      scenarioState . uiGameplay . uiDialogs . uiModal .= Nothing
+      Brick.zoom scenarioState safeAutoUnpause
 
 setFocus :: FocusablePanel -> EventM Name ScenarioState ()
 setFocus name = uiGameplay . uiFocusRing %= focusSetCurrent (FocusablePanel name)
