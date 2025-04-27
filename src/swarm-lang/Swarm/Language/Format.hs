@@ -18,10 +18,10 @@ import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Prettyprinter
 import Prettyprinter.Render.Text qualified as RT
-import Swarm.Language.Syntax
 import Swarm.Language.Parser (readTerm')
+import Swarm.Language.Parser.Core (LanguageVersion (..), defaultParserConfig, languageVersion)
 import Swarm.Language.Parser.QQ (astQ)
-import Swarm.Language.Parser.Core (LanguageVersion(..), defaultParserConfig, languageVersion)
+import Swarm.Language.Syntax
 import Swarm.Pretty (ppr)
 import Swarm.Util ((?))
 import System.Console.Terminal.Size qualified as Term
