@@ -39,14 +39,17 @@ import Swarm.TUI.View.CellDisplay
 import Swarm.Util (maximum0)
 import Witch (from, into)
 
-generateScenarioEndModal :: Menu -> PlayState -> EndScenarioModalType -> Modal
-generateScenarioEndModal m s mt =
+generateScenarioEndModal ::
+  Menu ->
+  [ScenarioWith ScenarioPath] ->
+  EndScenarioModalType ->
+  ScenarioState ->
+  Modal
+generateScenarioEndModal m scenarioList mt s =
   Modal (EndScenarioModal mt) (dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth))
  where
-  currentScenario = s ^. scenarioState . uiGameplay . scenarioRef
-  currentSeed = s ^. scenarioState . gameState . randomness . seed
-
-  scenarioList = s ^. progression . scenarioSequence
+  currentScenario = s ^. uiGameplay . scenarioRef
+  currentSeed = s ^. gameState . randomness . seed
 
   (title, buttons, requiredWidth) = case mt of
     ScenarioFinishModal WinModal -> mkWinModal

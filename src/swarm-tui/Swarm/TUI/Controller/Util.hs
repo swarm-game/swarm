@@ -36,6 +36,8 @@ import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (CDebug))
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.TUI.Model (
+  scenarioSequence,
+  progression,
   AppState,
   PlayState,
   ScenarioState,
@@ -79,9 +81,13 @@ pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 openEndScenarioModal :: Menu -> EndScenarioModalType -> EventM Name PlayState ()
 openEndScenarioModal m mt = do
   resetViewport modalScroll
-  newModal <- gets $ flip (generateScenarioEndModal m) mt
-  Brick.zoom scenarioState ensurePause
-  scenarioState . uiGameplay . uiDialogs . uiModal ?= newModal
+  remainingScenarios <- use $ progression . scenarioSequence
+
+  Brick.zoom scenarioState $ do
+    newModal <- gets $ generateScenarioEndModal m remainingScenarios mt
+    ensurePause
+    uiGameplay . uiDialogs . uiModal ?= newModal
+
   -- Beep
   case mt of
     ScenarioFinishModal _ -> do
