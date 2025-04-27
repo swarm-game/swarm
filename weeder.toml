@@ -6,6 +6,7 @@ roots = [
     # -------------------------------
     "^Swarm.Language.Pipeline.QQ.tmQ$",
     "^Swarm.Language.Parser.QQ.tyQ$",
+    "^Swarm.Language.Parser.QQ.astQ$",
     "^Swarm.Util.Lens.makeLensesNoSigs$",
     "^Swarm.Util.Lens.makeLensesExcluding$",
 
