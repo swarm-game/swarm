@@ -39,6 +39,7 @@ import TestOverlay (testOverlay)
 import TestParse (testParse)
 import TestPedagogy (testPedagogy)
 import TestPretty (testPrettyConst)
+import TestQQ (testQQ)
 import TestRepl (testRepl)
 import TestRequirements (testRequirements)
 import TestScoring (testHighScores)
@@ -92,6 +93,7 @@ statelessTests =
     , testOverlay
     , testMisc
     , testLSP
+    , testQQ
     ]
 
 testMisc :: TestTree

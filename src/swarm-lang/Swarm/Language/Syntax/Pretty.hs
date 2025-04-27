@@ -70,6 +70,7 @@ instance PrettyPrec (Term' ty) where
     TAntiInt v -> "$int:" <> pretty v
     TText s -> fromString (ushow s)
     TAntiText v -> "$str:" <> pretty v
+    TAntiSyn v -> "$syn:" <> pretty v
     TBool b -> bool "false" "true" b
     TRobot r -> "<a" <> pretty r <> ">"
     TRef r -> "@" <> pretty r

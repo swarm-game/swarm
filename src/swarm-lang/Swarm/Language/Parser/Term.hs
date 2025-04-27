@@ -136,6 +136,7 @@ parseAntiquotation :: Parser Term
 parseAntiquotation =
   TAntiText <$> (lexeme . try) (symbol "$str:" *> tmVar)
     <|> TAntiInt <$> (lexeme . try) (symbol "$int:" *> tmVar)
+    <|> TAntiSyn <$> (lexeme . try) (symbol "$syn:" *> tmVar)
 
 -- | Parse a Swarm language term.
 parseTerm :: Parser Syntax

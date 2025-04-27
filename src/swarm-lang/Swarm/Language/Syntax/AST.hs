@@ -71,6 +71,8 @@ data Term' ty
     TAntiText Text
   | -- | A Boolean literal.
     TBool Bool
+  | -- | An antiquoted Haskell variable name of type Syntax.
+    TAntiSyn Text
   | -- | A robot reference.  These never show up in surface syntax, but are
     --   here so we can factor pretty-printing for Values through
     --   pretty-printing for Terms.

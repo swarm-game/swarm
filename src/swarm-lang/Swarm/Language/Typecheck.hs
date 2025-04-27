@@ -1396,6 +1396,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   TAntiInt {} -> return 0
   TText {} -> return 0
   TAntiText {} -> return 0
+  TAntiSyn {} -> return 0
   TBool {} -> return 0
   TRobot {} -> return 0
   TRequireDevice {} -> return 0

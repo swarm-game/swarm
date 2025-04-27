@@ -128,6 +128,7 @@ freeVarsS f = go S.empty
     TAntiInt {} -> pure s
     TText {} -> pure s
     TAntiText {} -> pure s
+    TAntiSyn {} -> pure s
     TBool {} -> pure s
     TRobot {} -> pure s
     TRef {} -> pure s
