@@ -132,6 +132,7 @@ import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Dialog.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.Event qualified as SE
 import Swarm.TUI.Model.KeyBindings (handlerNameKeysDescription)
+import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
@@ -247,7 +248,7 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
         [] -> withAttr cyanAttr $ txt " ◉ "
         _ -> withAttr yellowAttr $ txt " ◎ "
    where
-    currentScenarioInfo = appState ^? runtimeState . progression . scenarios . scenarioItemByPath sPath . _SISingle . getScenarioInfo
+    currentScenarioInfo = appState ^? playState . progression . scenarios . scenarioItemByPath sPath . _SISingle . getScenarioInfo
 
   isCompleted :: BestRecords -> Bool
   isCompleted best = best ^. scenarioBestByTime . metricProgress == Completed
@@ -277,7 +278,7 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
    where
     vc = determineStaticViewCenter (s ^. scenarioLandscape) worldTuples
 
-    currentScenarioInfo = appState ^? runtimeState . progression . scenarios . scenarioItemByPath sPath . _SISingle . getScenarioInfo
+    currentScenarioInfo = appState ^? playState . progression . scenarios . scenarioItemByPath sPath . _SISingle . getScenarioInfo
 
     worldTuples = buildWorldTuples $ s ^. scenarioLandscape
     theWorlds =
@@ -477,7 +478,7 @@ drawGameUI s =
  where
   debugOpts = s ^. uiState . uiDebugOptions
   keyConf = s ^. keyEventHandling . keyConfig
-  ps = s ^. playState
+  ps = s ^. playState . scenarioState
   gs = ps ^. gameState
   uig = ps ^. uiGameplay
 
@@ -635,21 +636,21 @@ chooseCursor s locs = do
   guard $ null m
   showFirstCursor s locs
  where
-  m = s ^. playState . uiGameplay . uiDialogs . uiModal
+  m = s ^. playState . scenarioState . uiGameplay . uiDialogs . uiModal
 
 -- | Draw a dialog window, if one should be displayed right now.
 drawDialog ::
   ToplevelConfigurationHelp ->
   Bool ->
-  PlayState ->
+  ScenarioState ->
   Widget Name
 drawDialog h isNoMenu ps =
   maybe emptyWidget go m
  where
   m = ps ^. uiGameplay . uiDialogs . uiModal
   go (Modal mt d) = renderDialog d $ case mt of
-    GoalModal -> draw
-    RobotsModal -> draw
+    MidScenarioModal GoalModal -> draw
+    MidScenarioModal RobotsModal -> draw
     _ -> maybeScroll ModalViewport draw
    where
     draw = drawModal h ps isNoMenu mt
@@ -657,42 +658,44 @@ drawDialog h isNoMenu ps =
 -- | Draw one of the various types of modal dialog.
 drawModal ::
   ToplevelConfigurationHelp ->
-  PlayState ->
+  ScenarioState ->
   Bool ->
   ModalType ->
   Widget Name
 drawModal h ps isNoMenu = \case
-  HelpModal -> helpWidget h $ gs ^. randomness . seed
-  RobotsModal -> drawRobotsModal $ uig ^. uiDialogs . uiRobot
-  RecipesModal -> availableListWidget gs RecipeList
-  CommandsModal -> commandsListWidget gs
-  MessagesModal -> availableListWidget gs MessageList
-  StructuresModal -> SR.renderStructuresDisplay gs $ uig ^. uiDialogs . uiStructure
-  ScenarioEndModal outcome ->
-    padBottom (Pad 1) $
-      vBox $
-        map
-          (hCenter . txt)
-          content
-   where
-    content = case outcome of
-      WinModal -> ["Congratulations!"]
-      LoseModal ->
-        [ "Condolences!"
-        , "This scenario is no longer winnable."
-        ]
-  DescriptionModal e -> descriptionWidget ps e
-  QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg isNoMenu)
-  GoalModal ->
-    GR.renderGoalsDisplay (uig ^. uiDialogs . uiGoal) $
-      view (getScenario . scenarioOperation . scenarioDescription) <$> uig ^. scenarioRef
-  KeepPlayingModal ->
-    padLeftRight 1 $
-      displayParagraphs $
-        pure
-          "Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."
-  TerrainPaletteModal -> EV.drawTerrainSelector uig
-  EntityPaletteModal -> EV.drawEntityPaintSelector uig
+  MidScenarioModal x -> case x of
+    HelpModal -> helpWidget h $ gs ^. randomness . seed
+    RobotsModal -> drawRobotsModal $ uig ^. uiDialogs . uiRobot
+    RecipesModal -> availableListWidget gs RecipeList
+    CommandsModal -> commandsListWidget gs
+    MessagesModal -> availableListWidget gs MessageList
+    StructuresModal -> SR.renderStructuresDisplay gs $ uig ^. uiDialogs . uiStructure
+    DescriptionModal e -> descriptionWidget ps e
+    GoalModal ->
+      GR.renderGoalsDisplay (uig ^. uiDialogs . uiGoal) $
+        view (getScenario . scenarioOperation . scenarioDescription) <$> uig ^. scenarioRef
+    TerrainPaletteModal -> EV.drawTerrainSelector uig
+    EntityPaletteModal -> EV.drawEntityPaintSelector uig
+  EndScenarioModal x -> case x of
+    ScenarioFinishModal outcome ->
+      padBottom (Pad 1) $
+        vBox $
+          map
+            (hCenter . txt)
+            content
+     where
+      content = case outcome of
+        WinModal -> ["Congratulations!"]
+        LoseModal ->
+          [ "Condolences!"
+          , "This scenario is no longer winnable."
+          ]
+    QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg isNoMenu)
+    KeepPlayingModal ->
+      padLeftRight 1 $
+        displayParagraphs $
+          pure
+            "Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."
  where
   gs = ps ^. gameState
   uig = ps ^. uiGameplay
@@ -836,7 +839,7 @@ commandsListWidget gs =
           constCaps cmd
 
 -- | Generate a pop-up widget to display the description of an entity.
-descriptionWidget :: PlayState -> Entity -> Widget Name
+descriptionWidget :: ScenarioState -> Entity -> Widget Name
 descriptionWidget s e = padLeftRight 1 (explainEntry uig gs e)
  where
   gs = s ^. gameState
@@ -913,7 +916,7 @@ drawModalMenu gs keyConf = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) g
 --
 -- This excludes the F-key modals that are shown elsewhere.
 drawKeyMenu ::
-  PlayState ->
+  ScenarioState ->
   KeyConfig SE.SwarmEvent ->
   Set DebugOption ->
   Widget Name
@@ -1100,7 +1103,7 @@ drawWorldPane ui g =
 -- | Draw info about the currently focused robot, such as its name,
 --   position, orientation, and inventory, as long as it is not too
 --   far away.
-drawRobotPanel :: PlayState -> Widget Name
+drawRobotPanel :: ScenarioState -> Widget Name
 drawRobotPanel s
   -- If the focused robot is too far away to communicate, just leave the panel blank.
   -- There should be no way to tell the difference between a robot that is too far
@@ -1155,7 +1158,7 @@ drawItem _ _ _ (EquippedEntry e) = drawLabelledEntityName e <+> padLeft Max (str
 
 -- | Draw the info panel in the bottom-left corner, which shows info
 --   about the currently focused inventory item.
-drawInfoPanel :: PlayState -> Widget Name
+drawInfoPanel :: ScenarioState -> Widget Name
 drawInfoPanel s
   | Just Far <- s ^. gameState . to focusedRange = blank
   | otherwise =
@@ -1166,7 +1169,7 @@ drawInfoPanel s
 
 -- | Display info about the currently focused inventory entity,
 --   such as its description and relevant recipes.
-explainFocusedItem :: PlayState -> Widget Name
+explainFocusedItem :: ScenarioState -> Widget Name
 explainFocusedItem s = case focusedItem s of
   Just (InventoryEntry _ e) -> explainEntry uig gs e
   Just (EquippedEntry e) -> explainEntry uig gs e
@@ -1528,7 +1531,7 @@ renderREPLPrompt focus theRepl = ps1 <+> replE
       replEditor
 
 -- | Draw the REPL.
-drawREPL :: PlayState -> Widget Name
+drawREPL :: ScenarioState -> Widget Name
 drawREPL ps =
   vBox
     [ withLeftPaddedVScrollBars

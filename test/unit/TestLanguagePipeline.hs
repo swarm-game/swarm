@@ -272,6 +272,10 @@ testLanguagePipeline =
                 "atomic (salvage)"
                 "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: `salvage`"
             )
+        , testCase
+            "atomic with comment #2412"
+            ( valid "atomic (if true {c <- scan down; /* COMMENT */ noop } {})"
+            )
         ]
     , testGroup
         "integer literals"

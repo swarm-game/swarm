@@ -28,6 +28,7 @@ import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Palette
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.Util (hoistMaybe)
@@ -38,23 +39,23 @@ import System.Clock
 -- World Editor panel events
 ------------------------------------------------------------
 
-activateWorldEditorFunction :: Menu -> WorldEditorFocusable -> EventM Name PlayState ()
-activateWorldEditorFunction m BrushSelector = openModal m TerrainPaletteModal
-activateWorldEditorFunction m EntitySelector = openModal m EntityPaletteModal
-activateWorldEditorFunction _ AreaSelector =
+activateWorldEditorFunction :: WorldEditorFocusable -> EventM Name ScenarioState ()
+activateWorldEditorFunction BrushSelector = openMidScenarioModal TerrainPaletteModal
+activateWorldEditorFunction EntitySelector = openMidScenarioModal EntityPaletteModal
+activateWorldEditorFunction AreaSelector =
   Brick.zoom (uiGameplay . uiWorldEditor . editingBounds) $ do
     selectorStage <- use boundsSelectionStep
     case selectorStage of
       SelectionComplete -> boundsSelectionStep .= UpperLeftPending
       _ -> return ()
-activateWorldEditorFunction _ OutputPathSelector =
+activateWorldEditorFunction OutputPathSelector =
   -- TODO: #1371
   liftIO $ putStrLn "File selection"
-activateWorldEditorFunction _ MapSaveButton = saveMapFile
-activateWorldEditorFunction _ ClearEntityButton =
+activateWorldEditorFunction MapSaveButton = saveMapFile
+activateWorldEditorFunction ClearEntityButton =
   uiGameplay . uiWorldEditor . entityPaintList . BL.listSelectedL .= Nothing
 
-handleCtrlLeftClick :: B.Location -> EventM Name PlayState ()
+handleCtrlLeftClick :: B.Location -> EventM Name ScenarioState ()
 handleCtrlLeftClick mouseLoc = do
   worldEditor <- use $ uiGameplay . uiWorldEditor
   _ <- runMaybeT $ do
@@ -69,7 +70,7 @@ handleCtrlLeftClick mouseLoc = do
       lastWorldEditorMessage .= Nothing
   Brick.zoom gameState immediatelyRedrawWorld
 
-handleRightClick :: B.Location -> EventM Name PlayState ()
+handleRightClick :: B.Location -> EventM Name ScenarioState ()
 handleRightClick mouseLoc = do
   worldEditor <- use $ uiGameplay . uiWorldEditor
   _ <- runMaybeT $ do
@@ -79,7 +80,7 @@ handleRightClick mouseLoc = do
   Brick.zoom gameState immediatelyRedrawWorld
 
 -- | "Eye Dropper" tool:
-handleMiddleClick :: B.Location -> EventM Name PlayState ()
+handleMiddleClick :: B.Location -> EventM Name ScenarioState ()
 handleMiddleClick mouseLoc = do
   worldEditor <- use $ uiGameplay . uiWorldEditor
   when (worldEditor ^. worldOverdraw . isWorldEditorEnabled) $ do
@@ -103,13 +104,13 @@ handleMiddleClick mouseLoc = do
     whenJust mouseCoordsM setTerrainPaint
 
 -- | Handle user input events in the robot panel.
-handleWorldEditorPanelEvent :: BrickEvent Name AppEvent -> Menu -> EventM Name PlayState ()
-handleWorldEditorPanelEvent e m = case e of
+handleWorldEditorPanelEvent :: BrickEvent Name AppEvent -> EventM Name ScenarioState ()
+handleWorldEditorPanelEvent = \case
   Key V.KEsc -> uiGameplay . uiWorldEditor . editingBounds . boundsSelectionStep .= SelectionComplete
   Key V.KEnter -> do
     fring <- use $ uiGameplay . uiWorldEditor . editorFocusRing
     case focusGetCurrent fring of
-      Just (WorldEditorPanelControl x) -> activateWorldEditorFunction m x
+      Just (WorldEditorPanelControl x) -> activateWorldEditorFunction x
       _ -> return ()
   ControlChar 's' -> saveMapFile
   CharKey '\t' -> uiGameplay . uiWorldEditor . editorFocusRing %= focusNext
@@ -117,7 +118,7 @@ handleWorldEditorPanelEvent e m = case e of
   _ -> return ()
 
 -- | Return value: whether the cursor position should be updated
-updateAreaBounds :: Maybe (Cosmic Coords) -> EventM Name PlayState Bool
+updateAreaBounds :: Maybe (Cosmic Coords) -> EventM Name ScenarioState Bool
 updateAreaBounds = \case
   Nothing -> return True
   Just mouseCoords -> do
@@ -140,7 +141,7 @@ updateAreaBounds = \case
         return False
       SelectionComplete -> return True
 
-saveMapFile :: EventM Name PlayState ()
+saveMapFile :: EventM Name ScenarioState ()
 saveMapFile = do
   uig <- use uiGameplay
   land <- use $ gameState . landscape

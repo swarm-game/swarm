@@ -15,7 +15,6 @@ import Data.Time.Format (defaultTimeLocale, formatTime)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Description
-import Swarm.Game.State.Runtime
 import Swarm.TUI.Model
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.Util (drawMarkdown)
@@ -44,7 +43,7 @@ drawAchievementsMenuUI s l =
           ]
     ]
  where
-  attainedMap = s ^. runtimeState . progression . attainedAchievements
+  attainedMap = s ^. playState . progression . attainedAchievements
 
 drawAchievementListItem ::
   Map CategorizedAchievement Attainment ->

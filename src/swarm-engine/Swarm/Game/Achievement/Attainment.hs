@@ -12,7 +12,7 @@ module Swarm.Game.Achievement.Attainment (
   obtainedAt,
 ) where
 
-import Control.Lens hiding (from, (<.>))
+import Control.Lens (makeLenses)
 import Data.Aeson (
   Options (..),
   defaultOptions,
@@ -23,7 +23,9 @@ import Data.Function (on)
 import Data.Time (ZonedTime, zonedTimeToUTC)
 import Data.Yaml as Y
 import GHC.Generics (Generic)
-import Swarm.Game.Achievement.Definitions
+import Swarm.Game.Achievement.Definitions (
+  CategorizedAchievement,
+ )
 
 -- | A record holding an achievement along with some metadata to
 --   record the time at which the achievement was obtained, and the

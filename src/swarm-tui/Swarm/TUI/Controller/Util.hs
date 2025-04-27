@@ -38,18 +38,18 @@ import Swarm.Language.Syntax hiding (Key)
 import Swarm.TUI.Model (
   AppState,
   PlayState,
+  ScenarioState,
   gameState,
   modalScroll,
   playState,
+  scenarioState,
   uiGameplay,
-  uiState,
  )
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl (REPLHistItem, REPLPrompt, REPLState, addREPLItem, replHistory, replPromptText, replPromptType)
-import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
-import Swarm.TUI.View.Util (generateModal)
+import Swarm.TUI.View.Util (generateModal, generateScenarioEndModal)
 import System.Clock (Clock (..), getTime)
 
 -- | Pattern synonyms to simplify brick event handler
@@ -76,15 +76,15 @@ pattern BackspaceKey = VtyEvent (V.EvKey V.KBS [])
 pattern FKey :: Int -> BrickEvent n e
 pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
-openModal :: Menu -> ModalType -> EventM Name PlayState ()
-openModal m mt = do
+openEndScenarioModal :: Menu -> EndScenarioModalType -> EventM Name PlayState ()
+openEndScenarioModal m mt = do
   resetViewport modalScroll
-  newModal <- gets $ flip (generateModal m) mt
-  ensurePause
-  uiGameplay . uiDialogs . uiModal ?= newModal
+  newModal <- gets $ flip (generateScenarioEndModal m) mt
+  Brick.zoom scenarioState ensurePause
+  scenarioState . uiGameplay . uiDialogs . uiModal ?= newModal
   -- Beep
   case mt of
-    ScenarioEndModal _ -> do
+    ScenarioFinishModal _ -> do
       vty <- getVtyHandle
       liftIO $ V.ringTerminalBell $ V.outputIface vty
     _ -> return ()
@@ -92,13 +92,25 @@ openModal m mt = do
   -- Set the game to AutoPause if needed
   ensurePause = do
     pause <- use $ gameState . temporal . paused
-    unless (pause || isRunningModal mt) $ gameState . temporal . runStatus .= AutoPause
+    unless pause $ gameState . temporal . runStatus .= AutoPause
+
+openMidScenarioModal :: MidScenarioModalType -> EventM Name ScenarioState ()
+openMidScenarioModal mt = do
+  resetViewport modalScroll
+  newModal <- gets $ flip generateModal mt
+  ensurePause
+  uiGameplay . uiDialogs . uiModal ?= newModal
+ where
+  -- Set the game to AutoPause if needed
+  ensurePause = do
+    pause <- use $ gameState . temporal . paused
+    unless (pause || isRunningModal (MidScenarioModal mt)) $ gameState . temporal . runStatus .= AutoPause
 
 -- | The running modals do not autopause the game.
 isRunningModal :: ModalType -> Bool
 isRunningModal = \case
-  RobotsModal -> True
-  MessagesModal -> True
+  MidScenarioModal RobotsModal -> True
+  MidScenarioModal MessagesModal -> True
   _ -> False
 
 -- | Set the game to Running if it was (auto) paused otherwise to paused.
@@ -107,31 +119,38 @@ isRunningModal = \case
 -- doesn't matter; if we are unpausing, this is critical to
 -- ensure the next frame doesn't think it has to catch up from
 -- whenever the game was paused!
-safeTogglePause :: EventM Name PlayState ()
+safeTogglePause :: EventM Name ScenarioState ()
 safeTogglePause = do
   curTime <- liftIO $ getTime Monotonic
   uiGameplay . uiTiming . lastFrameTime .= curTime
   uiGameplay . uiShowDebug .= False
   p <- gameState . temporal . runStatus Lens.<%= toggleRunStatus
-  when (p == Running) $ zoomGameStateFromPlayState finishGameTick
+  when (p == Running) $ zoomGameStateFromScenarioState finishGameTick
 
 -- | Only unpause the game if leaving autopaused modal.
 --
 -- Note that the game could have been paused before opening
 -- the modal, in that case, leave the game paused.
-safeAutoUnpause :: EventM Name PlayState ()
+safeAutoUnpause :: EventM Name ScenarioState ()
 safeAutoUnpause = do
   runs <- use $ gameState . temporal . runStatus
   when (runs == AutoPause) safeTogglePause
 
-toggleModal :: ModalType -> Menu -> EventM Name PlayState ()
-toggleModal mt m = do
+toggleMidScenarioModal :: MidScenarioModalType -> EventM Name ScenarioState ()
+toggleMidScenarioModal mt = do
   modal <- use $ uiGameplay . uiDialogs . uiModal
   case modal of
-    Nothing -> openModal m mt
+    Nothing -> openMidScenarioModal mt
     Just _ -> uiGameplay . uiDialogs . uiModal .= Nothing >> safeAutoUnpause
 
-setFocus :: FocusablePanel -> EventM Name PlayState ()
+toggleEndScenarioModal :: EndScenarioModalType -> Menu -> EventM Name PlayState ()
+toggleEndScenarioModal mt m = do
+  modal <- use $ scenarioState . uiGameplay . uiDialogs . uiModal
+  case modal of
+    Nothing -> openEndScenarioModal m mt
+    Just _ -> scenarioState . uiGameplay . uiDialogs . uiModal .= Nothing >> Brick.zoom scenarioState safeAutoUnpause
+
+setFocus :: FocusablePanel -> EventM Name ScenarioState ()
 setFocus name = uiGameplay . uiFocusRing %= focusSetCurrent (FocusablePanel name)
 
 immediatelyRedrawWorld :: EventM Name GameState ()
@@ -183,7 +202,18 @@ zoomGameStateFromAppState f = do
   return a
  where
   z :: Lens' AppState GameState
-  z = playState . gameState
+  z = playState . scenarioState . gameState
+
+-- | Modifies the game state using a fused-effect state action.
+zoomGameStateFromScenarioState ::
+  (MonadState ScenarioState m, MonadIO m) =>
+  Fused.StateC GameState (TimeIOC (Fused.LiftC IO)) a ->
+  m a
+zoomGameStateFromScenarioState f = do
+  gs <- use gameState
+  (gs', a) <- liftIO (Fused.runM (runTimeIO (Fused.runState gs f)))
+  gameState .= gs'
+  return a
 
 -- | Modifies the game state using a fused-effect state action.
 zoomGameStateFromPlayState ::
@@ -191,12 +221,12 @@ zoomGameStateFromPlayState ::
   Fused.StateC GameState (TimeIOC (Fused.LiftC IO)) a ->
   m a
 zoomGameStateFromPlayState f = do
-  gs <- use gameState
+  gs <- use $ scenarioState . gameState
   (gs', a) <- liftIO (Fused.runM (runTimeIO (Fused.runState gs f)))
-  gameState .= gs'
+  scenarioState . gameState .= gs'
   return a
 
-onlyCreative :: (MonadState PlayState m) => m () -> m ()
+onlyCreative :: (MonadState ScenarioState m) => m () -> m ()
 onlyCreative a = do
   c <- use $ gameState . creativeMode
   when c a
@@ -211,7 +241,7 @@ allHandlers eEmbed f = map handleEvent1 enumerate
  where
   handleEvent1 e1 = let (n, a) = f e1 in onEvent (eEmbed e1) n a
 
-runBaseTerm :: (MonadState PlayState m) => Maybe TSyntax -> m ()
+runBaseTerm :: (MonadState ScenarioState m) => Maybe TSyntax -> m ()
 runBaseTerm = mapM_ startBaseProgram
  where
   -- The player typed something at the REPL and hit Enter; this
@@ -231,18 +261,9 @@ modifyResetREPL :: Text -> REPLPrompt -> REPLState -> REPLState
 modifyResetREPL t r = (replPromptText .~ t) . (replPromptType .~ r)
 
 -- | Reset the REPL state to the given text and REPL prompt type.
-resetREPL :: MonadState PlayState m => Text -> REPLPrompt -> m ()
+resetREPL :: MonadState ScenarioState m => Text -> REPLPrompt -> m ()
 resetREPL t p = uiGameplay . uiREPL %= modifyResetREPL t p
 
 -- | Add an item to the REPL history.
-addREPLHistItem :: MonadState PlayState m => REPLHistItem -> m ()
+addREPLHistItem :: MonadState ScenarioState m => REPLHistItem -> m ()
 addREPLHistItem item = uiGameplay . uiREPL . replHistory %= addREPLItem item
-
--- | Run an action that only depends on a 'PlayState'
--- and read-only access to the 'Menu'.
-playStateWithMenu ::
-  (Menu -> EventM Name PlayState ()) ->
-  EventM Name AppState ()
-playStateWithMenu f = do
-  m <- use $ uiState . uiMenu
-  Brick.zoom playState $ f m
