@@ -184,9 +184,12 @@ updateRobotLocation oldLoc newLoc
   | otherwise = do
       newlocWithPortal <- applyPortal newLoc
       rid <- use robotID
+      t <- use $ temporal . ticks
+      invis <- use $ robotDisplay . invisible
       zoomRobots $ do
         removeRobotFromLocationMap oldLoc rid
         addRobotToLocation rid newlocWithPortal
+        unless invis $ wakeWatchingRobots rid t newLoc
       modify (unsafeSetRobotLocation newlocWithPortal)
       flagRedraw
  where
