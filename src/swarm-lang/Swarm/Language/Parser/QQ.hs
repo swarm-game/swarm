@@ -36,12 +36,7 @@ tyQ =
 quoteTypeExp :: String -> TH.ExpQ
 quoteTypeExp s = do
   loc <- TH.location
-  let pos =
-        ( TH.loc_filename loc
-        , fst (TH.loc_start loc)
-        , snd (TH.loc_start loc)
-        )
-  parsed <- runParserTH pos (fully sc parsePolytype) s
+  parsed <- runParserTH loc (fully sc parsePolytype) s
   dataToExpQ (fmap liftText . cast) parsed
 
 astQ :: QuasiQuoter
@@ -56,12 +51,7 @@ astQ =
 quoteASTExp :: String -> TH.ExpQ
 quoteASTExp s = do
   loc <- TH.location
-  let pos =
-        ( TH.loc_filename loc
-        , fst (TH.loc_start loc)
-        , snd (TH.loc_start loc)
-        )
-  parsed <- runParserTH pos (fully sc parseTerm) s
+  parsed <- runParserTH loc (fully sc parseTerm) s
   dataToExpQ ((fmap liftText . cast) `extQ` antiASTExp) parsed
 
 antiASTExp :: Syntax -> Maybe TH.ExpQ

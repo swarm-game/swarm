@@ -38,12 +38,7 @@ tmQ =
 quoteTermExp :: String -> TH.ExpQ
 quoteTermExp s = do
   loc <- TH.location
-  let pos =
-        ( TH.loc_filename loc
-        , fst (TH.loc_start loc)
-        , snd (TH.loc_start loc)
-        )
-  parsed <- runParserTH pos (fully sc parseTerm) s
+  parsed <- runParserTH loc (fully sc parseTerm) s
   case processParsedTerm parsed of
     Left err -> failT [prettyTypeErrText (from s) err]
     Right ptm -> dataToExpQ ((fmap liftText . cast) `extQ` antiTermExp) ptm

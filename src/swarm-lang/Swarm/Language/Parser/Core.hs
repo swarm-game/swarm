@@ -38,6 +38,7 @@ import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Void (Void)
+import Language.Haskell.TH qualified as TH
 import Swarm.Language.Syntax (Comment)
 import Text.Megaparsec hiding (runParser, runParser')
 import Text.Megaparsec qualified as MP
@@ -124,8 +125,8 @@ runParser' cfg p t =
 -- | A utility for running a parser in an arbitrary 'MonadFail' (which
 --   is going to be the TemplateHaskell 'Language.Haskell.TH.Q' monad --- see
 --   "Swarm.Language.Parser.QQ"), with a specified source position.
-runParserTH :: (Monad m, MonadFail m) => (String, Int, Int) -> Parser a -> String -> m a
-runParserTH (file, line, col) p s =
+runParserTH :: (Monad m, MonadFail m) => TH.Loc -> Parser a -> String -> m a
+runParserTH loc p s =
   either (fail . errorBundlePretty) (return . fst)
     . snd
     . flip MP.runParser' initState
@@ -133,6 +134,8 @@ runParserTH (file, line, col) p s =
     . flip runReaderT defaultParserConfig {_antiquoting = AllowAntiquoting}
     $ p
  where
+  file = TH.loc_filename loc
+  (line, col) = TH.loc_start loc
   initState :: State Text Void
   initState =
     (initialState file (from s))
