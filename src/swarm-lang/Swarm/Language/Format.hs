@@ -91,7 +91,7 @@ addProjections_v7 :: Syntax -> Syntax
 addProjections_v7 ast = foldl' addDefn ast (reverse $ S.toList freeProjs)
  where
   -- Any free occurrences of 'fst' or 'snd'?
-  freeProjs = setOf freeVarsV ast `S.intersection` (S.fromList ["fst", "snd"])
+  freeProjs = setOf freeVarsV ast `S.intersection` S.fromList ["fst", "snd"]
 
   addDefn :: Syntax -> Var -> Syntax
   addDefn ast = \case
