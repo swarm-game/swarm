@@ -228,14 +228,17 @@ and the letter location.
 It is assumed that one of the candidates will meet
 this criteria, so we only need check the first.
 */
-def avoidCollinear = λmatch \blankx. \blanky. λmatch \tilex. \tiley. \loc1. \loc2.
-    match loc1 \loc1x. \loc1y.
+def avoidCollinear =
+    λmatch \blankx. \blanky.
+    λmatch \tilex. \tiley.
+    λmatch \loc1x. \loc1y.
+    \loc2.
     let firstOk = if (blankx == tilex) {
             loc1x != tilex
         } $ elif (blanky == tiley) {
             loc1y != tiley
         } $ else {true} in
-    if firstOk {loc1} {loc2};
+    if firstOk {(loc1x, loc1y)} {loc2};
     end;
 
 /**
