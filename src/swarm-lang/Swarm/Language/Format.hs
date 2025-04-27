@@ -16,6 +16,7 @@ import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
+import Prelude hiding (Foldable(..))
 import Prettyprinter
 import Prettyprinter.Render.Text qualified as RT
 import Swarm.Language.Parser (readTerm')
