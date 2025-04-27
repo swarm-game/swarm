@@ -25,7 +25,7 @@ testQQ =
         let t = [astQ| 3 + 6 |]
          in assertEqual
               "foo"
-              (prettyText [astQ| def x : Int -> Cmd Bool = \x. pure (x == `t) end |])
+              (prettyText [astQ| def x : Int -> Cmd Bool = \x. pure (x == $syn:t) end |])
               (prettyText [astQ| def x : Int -> Cmd Bool = \x. pure (x == 3 + 6) end |])
     ]
 
