@@ -1389,12 +1389,12 @@ benchmark benchmark
 
   type: exitcode-stdio-1.0
   build-depends:
+    fused-effects,
     swarm:swarm-engine,
     swarm:swarm-lang,
     swarm:swarm-scenario,
     swarm:swarm-topography,
     swarm:swarm-util,
-    fused-effects,
 
   default-language: Haskell2010
   ghc-options:
