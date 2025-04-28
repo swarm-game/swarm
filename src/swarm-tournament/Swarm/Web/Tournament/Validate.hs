@@ -8,7 +8,7 @@
 module Swarm.Web.Tournament.Validate where
 
 import Control.Arrow (left)
-import Control.Carrier.Accum.FixedStrict (evalAccum)
+import Control.Carrier.Accum.Strict (evalAccum)
 import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens
 import Control.Monad (unless)

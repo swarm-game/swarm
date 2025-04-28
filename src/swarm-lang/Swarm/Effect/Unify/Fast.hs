@@ -20,7 +20,7 @@ module Swarm.Effect.Unify.Fast where
 
 import Control.Algebra
 import Control.Applicative (Alternative)
-import Control.Carrier.Accum.FixedStrict (AccumC, runAccum)
+import Control.Carrier.Accum.Strict (AccumC, runAccum)
 import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.State.Strict (StateC, evalState)
 import Control.Carrier.Throw.Either (ThrowC, runThrow)

@@ -24,7 +24,7 @@ import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Applicative ((<|>))
 import Control.Arrow ((&&&))
-import Control.Carrier.Accum.FixedStrict (runAccum)
+import Control.Carrier.Accum.Strict (runAccum)
 import Control.Effect.Accum
 import Control.Effect.Lift
 import Control.Effect.Throw
