@@ -5,7 +5,7 @@
 module Swarm.Util.Effect where
 
 import Control.Algebra
-import Control.Carrier.Accum.FixedStrict
+import Control.Carrier.Accum.Strict
 import Control.Carrier.Error.Either (ErrorC (..))
 import Control.Carrier.Throw.Either (ThrowC (..), runThrow)
 import Control.Effect.Throw

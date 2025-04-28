@@ -18,7 +18,7 @@ roots = [
     # =====================================
     "^Main.prop_hittingSetMinimal$",
     "^Main.printAllLogs$",
-    "^Control.Carrier.Accum.FixedStrict.execAccum$",
+    "^Control.Carrier.Accum.Strict.execAccum$",
     "^Swarm.App.demoWeb$",
     "^Swarm.Effect.Unify.Common.dom$",
     "^Swarm.Effect.Unify.Fast.@@$",

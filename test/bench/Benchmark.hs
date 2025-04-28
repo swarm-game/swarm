@@ -5,7 +5,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Main where
 
-import Control.Carrier.Accum.FixedStrict (runAccum)
+import Control.Carrier.Accum.Strict (runAccum)
 import Control.Lens (view, (&), (.~))
 import Control.Monad (replicateM_)
 import Control.Monad.State (evalStateT, execStateT)
