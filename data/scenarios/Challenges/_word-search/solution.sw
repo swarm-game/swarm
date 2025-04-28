@@ -39,9 +39,10 @@ def whichOrdinal =
 // Go to upper-left corner
 def goToCorner =
     myLoc <- whereami;
-    doN (fst myLoc) move;
+    match myLoc \x. \y.
+    doN x move;
     turn right;
-    doN (-(snd myLoc)) move;
+    doN (-y) move;
     turn right;
     end;
 

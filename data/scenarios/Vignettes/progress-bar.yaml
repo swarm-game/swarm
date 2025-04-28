@@ -32,7 +32,8 @@ robots:
     program: |
       let repeat = \n.\c. if (n == 0) {} {c; repeat (n-1) c} in
       p <- whereami;
-      repeat 10 (place "tree"; wait (- snd p); move)
+      match p \_. \y.
+      repeat 10 (place "tree"; wait (-y); move)
 known: [tree]
 entities:
   - {name: Letter A, display: {char: "A"}, description: ["The letter A"], properties: [known]}

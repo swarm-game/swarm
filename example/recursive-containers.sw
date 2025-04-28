@@ -9,6 +9,19 @@
 // only first element of tuple). It is based on Haskell code in:
 // https://abhiroop.github.io/Haskell-Red-Black-Tree/
 
+// Flipped versions of match and case come in handy for
+// writing functions where we want to immediately match or case on
+// the argument.  e.g. instead of  `\p. match p \x. \y. ...` we can
+// write `λmatch \x. \y. ...`
+
+def λmatch : (a -> b -> c) -> (a * b) -> c =
+  \f. \p. match p f
+end
+
+def λcase : (a -> c) -> (b -> c) -> (a + b) -> c =
+  \f. \g. \s. case s f g
+end
+
 /*******************************************************************/
 /*                    (TYPE) DECLARATIONS                          */
 /*******************************************************************/
@@ -19,9 +32,9 @@ tydef List a = rec l. Maybe (a * l) end
 
 tydef RBTree k = rec b. Maybe [red: Bool, k: k, l: b, r: b] end
 
-tydef ISet s a = 
+tydef ISet s a =
   [ empty: s
-  , insert: a -> s -> s 
+  , insert: a -> s -> s
   , delete: a -> s -> s
   , contains: a -> s -> Bool
   , from_list: List a -> s
@@ -63,8 +76,7 @@ def tree_dict : IDict (Dict k v) k v = undefined_dict (inl ()) end
 /*                              MAYBE                              */
 /*******************************************************************/
 
-def mmap : (a -> b) -> Maybe a -> Maybe b = \f.\m. case m (\_. inl ()) (\a. inr (f a)) end
-
+def mmap : (a -> b) -> Maybe a -> Maybe b = \f. λcase (\_. inl ()) (\a. inr (f a)) end
 
 /*******************************************************************/
 /*                              LISTS                              */
@@ -74,16 +86,14 @@ def emptyL : List a = inl () end
 def cons : a -> List a -> List a = \a.\l. inr (a, l) end
 def pureL : a -> List a = \a. cons a emptyL end
 
-def foldr : (a -> b -> b) -> b -> List a -> b = \f. \z. \xs.
-  case xs
-    (\_. z)
-    (\c. f (fst c) (foldr f z (snd c)))
+def foldr : (a -> b -> b) -> b -> List a -> b = \f. \z. λcase
+  (\_. z)
+  (λmatch \hd. \tl. f hd (foldr f z tl))
 end
 
-def foldl : (b -> a -> b) -> b -> List a -> b = \f. \z. \xs.
-  case xs
-    (\_. z)
-    (\c. (foldl f (f z $ fst c) (snd c)))
+def foldl : (b -> a -> b) -> b -> List a -> b = \f. \z. λcase
+  (\_. z)
+  (λmatch \hd. \tl. (foldl f (f z hd) tl))
 end
 
 def flip : (a -> b -> c) -> (b -> a -> c) = \f. (\b.\a.f a b) end
@@ -96,19 +106,20 @@ def appendL : List a -> List a -> List a = \xs. \ys.
   foldr cons ys xs
 end
 
-def lengthL : List a -> Int = foldl (\acc.\_. acc + 1) 0 end 
+def lengthL : List a -> Int = foldl (\acc.\_. acc + 1) 0 end
 
-def safeGetL : Int -> List a -> Maybe a = \i.\l.
-  case l (\_. inl ()) (\n. if (i <= 0) {inr $ fst n} {safeGetL (i - 1) (snd n)})
-end 
+def safeGetL : Int -> List a -> Maybe a = \i. λcase
+  (\_. inl ())
+  (λmatch \hd. \tl. if (i <= 0) {inr hd} {safeGetL (i - 1) tl})
+end
 
 def getL : Int -> List a -> a = \i.\l.
   case (safeGetL i l) (\_. fail $ "INDEX " ++ format i ++ " OUT OF BOUNDS!") (\a. a)
 end
 
 def formatL : List a -> Text = \l.
- let f : List a -> Text = \l. case l (\_. "]") (\n. ", " ++ format (fst n) ++ f (snd n))
- in case l (\_. "[]") (\n. "[" ++ format (fst n) ++ f (snd n))
+ let f : List a -> Text = λcase (\_. "]") (λmatch \hd. \tl. ", " ++ format hd ++ f tl)
+ in case l (\_. "[]") (λmatch \hd. \tl. "[" ++ format hd ++ f tl)
 end
 
 /*******************************************************************/
@@ -116,16 +127,17 @@ end
 /*******************************************************************/
 
 // get from ordered list
-def getKeyL : (a -> k) -> k -> List a -> Maybe a = \p.\x.\l.
-  case l (\_. inl ()) (\n.
-    let nx = p (fst n) in
+def getKeyL : (a -> k) -> k -> List a -> Maybe a = \p. \x. λcase
+  (\_. inl ())
+  (λmatch \hd. \tl.
+    let nx = p hd in
     if (nx < x) {
-      getKeyL p x $ snd n
+      getKeyL p x tl
     } {
       if (nx > x) {
         inl ()
       } {
-        inr $ fst n
+        inr hd
       }
     }
   )
@@ -136,33 +148,35 @@ def containsKeyL : (a -> k) -> k -> List a -> Bool = \p.\x.\l.
 end
 
 // insert into ordered list - replaces elements, like set
-def insertKeyL : (a -> k) -> a -> List a -> List a = \p.\y.\l.
-  case l (\_. pureL y) (\n.
-    let nx = p (fst n) in
+def insertKeyL : (a -> k) -> a -> List a -> List a = \p.\y.\l. case l
+  (\_. pureL y)
+  (λmatch \hd. \tl.
+    let nx = p hd in
     let x = p y in
     if (nx == x) {
-      inr (y, snd n)
+      inr (y, tl)
     } {
       if (nx > x) {
         cons y l
       } {
-        cons (fst n) (insertKeyL p y $ snd n)
+        cons hd (insertKeyL p y tl)
       }
     }
   )
 end
 
 // delete in ordered list
-def deleteKeyL : (a -> k) -> k -> List a -> List a = \p.\x.\l.
-  case l (\_. emptyL) (\n.
-    let nx = p (fst n) in
+def deleteKeyL : (a -> k) -> k -> List a -> List a = \p.\x. \l. case l
+  (\_. emptyL)
+  (λmatch \hd. \tl.
+    let nx = p hd in
     if (nx == x) {
-      snd n
+      tl
     } {
       if (nx > x) {
         l
       } {
-        cons (fst n) (deleteKeyL p x $ snd n)
+        cons hd (deleteKeyL p x tl)
       }
     }
   )
@@ -182,6 +196,9 @@ end
 
 tydef FlatDict k v = List (k * v) end
 
+def fst = λmatch \a. \_. a end
+def snd = λmatch \_. \b. b end
+
 def flat_dict : IDict (FlatDict k v) k v =
   [ empty=emptyL
   , insert=\k.\v. insertKeyL fst (k,v)
@@ -189,9 +206,9 @@ def flat_dict : IDict (FlatDict k v) k v =
   , get=\k.\d. mmap snd (getKeyL fst k d)
   , contains=containsKeyL fst
   , pretty=\d.
-    let p : (k * v) -> Text = \kv. format (fst kv) ++ ": " ++ format (snd kv) in 
-    let f : List (k * v) -> Text = \l. case l (\_. "}") (\n. ", " ++ p (fst n) ++ f (snd n))
-    in case d (\_. "{}") (\n. "{" ++ p (fst n) ++ f (snd n))
+    let p : (k * v) -> Text = λmatch \k. \v. format k ++ ": " ++ format v in
+    let f : List (k * v) -> Text = λcase (\_. "}") (λmatch \hd. \tl. ", " ++ p hd ++ f tl)
+    in case d (\_. "{}") (λmatch \hd. \tl. "{" ++ p hd ++ f tl)
   ]
 end
 
@@ -205,8 +222,9 @@ tydef RBNode k = rec n. [red: Bool, k: k, l: Maybe n, r: Maybe n] end
 
 def emptyT : RBTree k = inl () end
 
-def getT : (k -> a) -> a -> RBTree k -> Maybe k = \p.\x.\t.
-  case t (\_. inl ()) (\n.
+def getT : (k -> a) -> a -> RBTree k -> Maybe k = \p. \x. \t. case t
+  (\_. inl ())
+  (\n .
     let nx = p n.k in
     if (x < nx) {
         getT p x n.l
@@ -222,29 +240,32 @@ end
 
 def containsT : (k -> a) -> a -> RBTree k -> Bool = \p.\x.\t. getT p x t != inl () end
 
-def inorder : RBTree k -> List k = \t.
-  case t (\_. inl ()) (\n.
-    appendL (inorder n.l) (appendL (pureL n.k) $ inorder n.r)
-  )
+def inorder : RBTree k -> List k = \t. case t
+  (\_. inl ())
+  (\n. appendL (inorder n.l) (appendL (pureL n.k) $ inorder n.r))
 end
 
-def formatT : RBTree k -> Text = \t.
-  case t (\_. "N") (\n.
+def formatT : RBTree k -> Text = \t. case t
+  (\_. "N")
+  (\n.
     "(T "
     ++ if n.red {"R "} {"B "}
     ++ formatT n.l ++ " " ++ format n.k ++ " " ++ formatT n.r ++ ")"
-  ) 
+  )
 end
 
 def indent_ = \c.\i. if (i <= 0) {" "} {c ++ indent_ c (i - 1)} end
 def indent = indent_ " " end
 
 def debugT : RBTree k -> Cmd Unit =
-  let d : Text -> Text -> Text -> RBTree k -> Cmd Unit = \i.\li.\ri.\t. case t (\_. log $ i ++ "+ N") (\n.
-    d (i ++ li) "  " "| " n.l;
-    log $ i ++ "+ " ++ if n.red {"R "} {"B "} ++ format n.k;
-    d (i ++ ri) "| " "  " n.r;
-  ) in d "" "" ""
+  let d : Text -> Text -> Text -> RBTree k -> Cmd Unit = \i.\li.\ri.\t. case t
+    (\_. log $ i ++ "+ N")
+    (\n.
+      d (i ++ li) "  " "| " n.l;
+      log $ i ++ "+ " ++ if n.red {"R "} {"B "} ++ format n.k;
+      d (i ++ ri) "| " "  " n.r;
+    )
+  in d "" "" ""
 end
 
 /*
@@ -323,7 +344,8 @@ def insertT : (k -> a) -> k -> RBTree k -> RBTree k = \p.\x.\t.
   let ins : (k -> a) -> k -> RBTree k -> RBTree k =\p.\x.\t. case t
     (\_.
       inr [red=true, k=x, l=inl (), r=inl ()]
-    ) (\n.
+    )
+    (\n.
       if (p x == p n.k) { inr [red=n.red, k=x, l=n.l, r=n.r] } {
         if (x < n.k) {
             balanceT [red=n.red, k=n.k, l=ins p x n.l, r=n.r]
@@ -332,11 +354,9 @@ def insertT : (k -> a) -> k -> RBTree k -> RBTree k = \p.\x.\t.
         }
       }
     )
-  in let makeBlack : RBTree k -> RBTree k = \t. case t (\_.
-        fail "makeBlack will always be called on nonempty"
-      ) (\n.
-        inr [red=false, k=n.k, l=n.l, r=n.r]
-      )
+  in let makeBlack : RBTree k -> RBTree k = \t. case t
+    (\_. fail "makeBlack will always be called on nonempty")
+    (\n. inr [red=false, k=n.k, l=n.l, r=n.r] )
   in makeBlack $ ins p x t
 end
 
@@ -374,7 +394,7 @@ def deleteT : (k -> a) -> a -> RBTree k -> RBTree k = \p.\x.\t.
         }
       )
     in let balL1 : RBNode k -> RBTree k = \n.
-      case n.r (\_. inr n) (\rn. 
+      case n.r (\_. inr n) (\rn.
         if rn.red {balL2 n rn} {balanceT [red=false, k=n.k, l=n.l, r=makeRed rn]}
       )
     in case n.l (\_. balL1 n) (\ln. if ln.red {inr [red=true, k=n.k, l=makeBlack n.l, r=n.r]} {balL1 n})
@@ -410,7 +430,7 @@ def deleteT : (k -> a) -> a -> RBTree k -> RBTree k = \p.\x.\t.
         }
       )
     in let balR1 : RBNode k -> RBTree k = \n.
-      case n.l (\_. inr n) (\ln. 
+      case n.l (\_. inr n) (\ln.
         if ln.red {balR2 n ln} {balanceT [red=false, k=n.k, l=makeRed ln, r=n.r]}
       )
     in case n.r (\_. balR1 n) (\rn. if rn.red {inr [red=true, k=n.k, l=n.l, r=makeBlack n.r]} {balR1 n})
@@ -452,7 +472,7 @@ def deleteT : (k -> a) -> a -> RBTree k -> RBTree k = \p.\x.\t.
             } {
               force b_case
             }
-          ) 
+          )
         } {
           /* RED BLACK */
           inr [red=true, l=ln.l, k=ln.k, r=fuse ln.r (inr rn)]
@@ -477,7 +497,7 @@ def deleteT : (k -> a) -> a -> RBTree k -> RBTree k = \p.\x.\t.
     ))
   // ------------------------------------------------------------------------------------------------------------
   in let del : (k -> a) -> a -> RBTree k -> RBTree k = \p.\x.\t.
-    case t (\_.t) (\n. 
+    case t (\_.t) (\n.
       if (p n.k == x) {fuse n.l n.r} {
         if (x < p n.k) {delL del p x n} {delR del p x n}
       }
@@ -494,10 +514,10 @@ tydef Dict k v = RBTree (k * v) end
 
 def tree_dict : IDict (Dict k v) k v =
  [ empty = emptyT
- , get  = \k.\d. mmap snd (getT fst k d)  
- , contains = containsT fst 
- , insert = \k.\v. insertT fst (k, v) 
- , delete = \k. deleteT fst k 
+ , get  = \k.\d. mmap snd (getT fst k d)
+ , contains = containsT fst
+ , insert = \k.\v. insertT fst (k, v)
+ , delete = \k. deleteT fst k
  , pretty = \d. flat_dict.pretty (inorder d)
  ]
 end
@@ -524,7 +544,7 @@ end
 
 def assert = \i. \b. \m. if b {log $ indent i ++ "OK: " ++ m} {log "FAIL:"; fail m} end
 
-def assert_eq 
+def assert_eq
   = \i. \exp. \act. \m.
   if (exp == act) {log $ indent i ++ "OK: " ++ m} {
     log (indent i ++ "FAIL: expected " ++ format exp ++ " actual " ++ format act);
@@ -659,20 +679,22 @@ def benchmark: Int -> s -> (s -> s) -> Cmd (Int * (Int * Int)) = \times.\s.\act.
       //log $ "END " ++ format t1;
       let t = t1 - t0 in
       //log $ format s ++ " " ++ format t ++ " ticks";
-      let lim = case (snd acc) (\_. (t, t)) (\l. (min t $ fst l, max t $ snd l)) in
-      runM ((fst acc + t), inr lim) ns (n - 1)
+      match acc \acc1. \acc2.
+      let lim = case acc2 (\_. (t, t)) (λmatch \l1. \l2. (min t l1, max t l2)) in
+      runM ((acc1 + t), inr lim) ns (n - 1)
     } in
   //log "start run";
   res <- runM (0, inl ()) s times;
   //log "end run";
-  let avg = fst res / times in
-  let lim = case (snd res) (\_. fail "BENCHMARK NOT RUN") (\l.l) in
+  match res \res1. \res2.
+  let avg = res1 / times in
+  let lim = case res2 (\_. fail "BENCHMARK NOT RUN") (\l.l) in
   pure (avg, lim)
 end
 
 def cmp_bench : Int -> Text -> (Int * (Int * Int)) -> Text -> (Int * (Int * Int)) -> Cmd Unit
  = \i.\base_name.\base_res.\new_name.\new_res.
-  let formatLim = \l. "(min " ++ format (fst l) ++ ", max " ++ format (snd l) ++ ")" in
+  let formatLim = λmatch \a. \b. "(min " ++ format a ++ ", max " ++ format b ++ ")" in
   log $ indent i ++ "* " ++ base_name ++ ": "
     ++ format (fst base_res) ++ " ticks " ++ formatLim (snd base_res);
 
@@ -682,14 +704,14 @@ def cmp_bench : Int -> Text -> (Int * (Int * Int)) -> Text -> (Int * (Int * Int)
     } {
       format (100 - d) ++ "% faster"
     } in
-     
+  match new_res \res1. \res2.
   log $ indent i ++ "* " ++ new_name ++ ": "
-    ++ format (fst new_res) ++ " ticks " ++ formatLim (snd new_res)
+    ++ format res1 ++ " ticks " ++ formatLim res2
     ++ " <- " ++ cmp;
 end
 
 // Get a list of random integers of given length and maximum element number
-def gen_random_list: Int -> Int -> Cmd (List Int) = 
+def gen_random_list: Int -> Int -> Cmd (List Int) =
   let gen = \acc.\n.\rlim.
     if (n <= 0) { pure acc } {
       x <- random rlim;
@@ -712,10 +734,11 @@ end
 def bench_insert = \i.
   // Use the given function to construct (Flat)Set from the head of provided list of lists and return the tail
   let set_from_first_list : (List a -> s) -> List (List a) -> List (List a) =\from_list.\lls.
-    case lls (\_. lls) (\ls_nlls.
-      let ns = from_list (fst ls_nlls) in
-      snd ls_nlls
-    )
+    case lls
+      (\_. lls)
+      // The 'ns = from_list ls' binding is unused, but intentional:
+      // we want to benchmark how long it takes.
+      (λmatch \ls. \nlls. let ns = from_list ls in nlls)
   in
 
   group i "INSERT BENCHMARK" (\i.

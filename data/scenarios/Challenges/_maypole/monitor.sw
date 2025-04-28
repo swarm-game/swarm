@@ -6,6 +6,8 @@ def mod : Int -> Int -> Int = \i.\m.
   i - m * (i / m)
 end
 
+def λmatch = \f. \p. match p f end
+
 /*
 Quadrants are numbered counter-clockwise, staring in the northeast:
         |
@@ -17,12 +19,9 @@ Quadrants are numbered counter-clockwise, staring in the northeast:
 This is same as the standard graph quadrants in mathematics, except
 for 0-based numbering rather than 1-based.
 */
-def getQuadrant : (Int * Int) -> (Int * Int) -> Int = \baseLoc. \myLoc.
-    let baseX = fst baseLoc in
-    let baseY = snd baseLoc in
-
-    let myX = fst myLoc in
-    let myY = snd myLoc in
+def getQuadrant : (Int * Int) -> (Int * Int) -> Int =
+    λmatch \baseX. \baseY.
+    λmatch \myX. \myY.
 
     let isUp = myY < baseY in
     let isRight = myX < baseX in
@@ -83,8 +82,7 @@ with the absolute quadrant index.
 def monitorAngle : (Int * Int) -> Int -> Int -> Int -> Cmd Unit =
     \myLoc. \targetQuadrantCount. \prevQuadrant. \quadrantTraversalCount.
   result <- instant $ checkNewQuadrant myLoc prevQuadrant quadrantTraversalCount;
-  let currentQuadrant = fst result in
-  let newQuadrantCount = snd result in
+  match result \currentQuadrant. \newQuadrantCount.
 
   if (newQuadrantCount < targetQuadrantCount) {
     monitorAngle myLoc targetQuadrantCount currentQuadrant newQuadrantCount;

@@ -85,10 +85,12 @@ objectives:
         When all segments are placed, `drill` the switch on the western wall to
         commence rematerialization. `grab` the clone (once matured) as a souvenir!
     condition: |
-      def hasAll : (rec l. Unit + Text * l) -> Cmd Bool = \l.
-        case l
-          (\_. pure true)
-          (\c. b1 <- has (fst c); if b1 {hasAll (snd c)} {pure false})
+      def λmatch = \f. \p. match p f end
+      def λcase = \f. \g. \s. case s f g end
+
+      def hasAll : (rec l. Unit + Text * l) -> Cmd Bool = λcase
+        (\_. pure true)
+        (λmatch \hd. \tl. b1 <- has hd; if b1 {hasAll tl} {pure false})
       end;
 
       k <- robotnamed "keeper";
@@ -105,10 +107,12 @@ objectives:
         Find three more different `organism`{=tag}s to clone.
         Explore outside nearby the lab for specimens.
     condition: |
-      def hasCount : (rec l. Unit + Text * l) -> Cmd Int = \l.
-        case l
-          (\_. pure 0)
-          (\c. b <- has (fst c); n <- hasCount (snd c); pure (if b {1} {0} + n))
+      def λmatch = \f. \p. match p f end
+      def λcase = \f. \g. \s. case s f g end
+
+      def hasCount : (rec l. Unit + Text * l) -> Cmd Int = λcase
+        (\_. pure 0)
+        (λmatch \hd. \tl. b <- has hd; n <- hasCount tl; pure (if b {1} {0} + n))
       end;
 
       k <- robotnamed "keeper";

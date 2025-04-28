@@ -62,7 +62,7 @@ objectives:
       def hasAny : (rec l. Unit + Text * l) -> Cmd Bool = \items.
         case items
           (\_. pure false)
-          (\c. b <- has (fst c); if b {pure true} {hasAny (snd c)})
+          (\c. match c \hd. \tl. b <- has hd; if b {pure true} {hasAny tl})
       end;
 
       let prohibited = tagmembers "junk" in
@@ -77,11 +77,17 @@ objectives:
       - |
         Note that certain items can be burned with a `torch`{=entity} to make room.
     condition: |
-      def locIsInsideEnclosure = \loc. \dims. \boxPos.
-        pure $ snd loc >= snd boxPos
-          && snd loc < snd dims + snd boxPos
-          && fst loc >= fst boxPos
-          && fst loc < fst dims + fst boxPos;
+      def λmatch = \f. \p. match p f end
+      def λcase = \f. \g. \s. case s f g end
+
+      def locIsInsideEnclosure =
+        λmatch \locx. \locy.
+        λmatch \dimx. \dimy.
+        λmatch \boxx. \boxy.
+        pure $ locy >= boxy
+          && locy < dimy + boxy
+          && locx >= boxx
+          && locx < dimx + boxx;
         end;
 
       def junkOutsideEnclosure =
@@ -91,10 +97,10 @@ objectives:
           if isJunk {
             enclosures <- structures "rubbish enclosure";
 
-            case enclosures (\_. pure false) (\cons0.
-              let enclosure0 = fst cons0 in
-              case (snd cons0) (\_. pure false) (\cons1.
-                let enclosure1 = fst cons1 in
+            case enclosures (\_. pure false) (
+              λmatch \enclosure0.
+              λcase (\_. pure false) (
+                λmatch \enclosure1. \_.
 
                 dims <- floorplan "rubbish enclosure";
                 loc <- whereami;

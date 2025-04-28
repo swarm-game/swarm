@@ -89,7 +89,8 @@ objectives:
     condition: |
       as base {
         loc <- locateme;
-        pure $ fst loc == "silo";
+        match loc \l. \_.
+        pure $ l == "silo";
       }
   - teaser: Moldy
     prerequisite: silo
@@ -119,7 +120,8 @@ objectives:
     condition: |
       as base {
         loc <- locateme;
-        pure $ fst loc == "tunnel";
+        match loc \l. \_.
+        pure $ l == "tunnel";
       }
 solution: |
   run "scenarios/Challenges/Ranching/_pied-piper/solution.sw"

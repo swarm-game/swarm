@@ -27,13 +27,13 @@ def mod : Int -> Int -> Int = \i.\m.
 
 def abs = \n. if (n < 0) {-n} {n} end;
 
-def mapTuple = \f. \t.
-    (f $ fst t, f $ snd t)
+def λmatch = \f. \p. match p f end
+
+def sumTuples = λmatch \t11. \t12. λmatch \t21. \t22.
+    (t11 + t21, t12 + t22);
     end;
 
-def sumTuples = \t1. \t2.
-    (fst t1 + fst t2, snd t1 + snd t2);
-    end;
+def mapTuple = \f. λmatch \a. \b. (f a, f b) end;
 
 def getOrdinal : Text -> Cmd Int = \item.
     count $ item ++ "-ordinal";
@@ -82,9 +82,7 @@ def getLetterLocation = \idx.
     loc <- detect entName corners;
     end;
 
-def moveTuple = \tup.
-    let x = fst tup in
-    let y = snd tup in
+def moveTuple = λmatch \x. \y.
     turn $ if (x > 0) {east} {west};
     doN (abs x) move;
 
@@ -108,14 +106,12 @@ The first Boolean argument indicates whether
 we should extract the vertical or horizontal dimension.
 */
 def getRectDimension = \vertical. \rect.
-    let extractor = if vertical {snd} {fst} in
-    let tuple = mapTuple extractor rect in
-    abs $ snd tuple - fst tuple;
+    let extractor = if vertical {λmatch \a. \_. a} {λmatch \_. \b. b} in
+    match (mapTuple extractor rect) \a. \b.
+    abs $ b - a;
     end;
 
-def getOffsets = \rect.
-    subtractTuple (snd rect) (fst rect);
-    end;
+def getOffsets = λmatch \a. \b. subtractTuple b a end;
 
 def getAbsDelta = \rect.
     let difference = getOffsets rect in
@@ -124,7 +120,7 @@ def getAbsDelta = \rect.
 
 def distance = \loc1. \loc2.
     let d = getAbsDelta (loc1, loc2) in
-    fst d + snd d;
+    match d \a. \b. a + b
     end;
 
 // NOT USED
@@ -146,17 +142,13 @@ def getDimensions = \rect.
     mapTuple (\x. x + 1) absDifference;
     end;
 
-def getRectArea = \dims.
-    fst dims * snd dims;
-    end;
+def getRectArea = λmatch \w. \h. w * h end;
 
 /**
 Determines whether the vertical dimension is larger
 than the horizontal dimension.
 */
-def isVerticalLarger = \dims.
-    snd dims > fst dims;
-    end;
+def isVerticalLarger = λmatch \w. \h. h > w; end;
 
 /**
 Returns a tuple of the two rectangle partitions.
@@ -168,21 +160,21 @@ Rectangle corners are specified in the order:
 The "rightward/downward offset" (i.e. +1 horizontally, -1 vertically)
 to the "avg" for the second rectangle depends on this assumption.
 */
-def splitRectangle = \vertically. \rect.
-    let cornerA = fst rect in
-    let cornerB = snd rect in
+def splitRectangle = \vertically. λmatch \cornerA. \cornerB.
+    match cornerA \ax. \ay.
+    match cornerB \bx. \by.
     if vertically {
         // TODO: We should "round down" the height of the second partition
         // so that the first partition is more likely to contain
         // the target (i.e. we perform one fewer iteration).
-        let avgY = (snd cornerA + snd cornerB) / 2 in
-        let firstRect = (cornerA, (fst cornerB, avgY)) in
-        let secondRect = ((fst cornerA, avgY - 1), cornerB) in
+        let avgY = (ay + by) / 2 in
+        let firstRect = (cornerA, (bx, avgY)) in
+        let secondRect = ((ax, avgY - 1), cornerB) in
         (firstRect, secondRect)
     } {
-        let avgX = (fst cornerA + fst cornerB) / 2 in
-        let firstRect = (cornerA, (avgX, snd cornerB)) in
-        let secondRect = ((avgX + 1, snd cornerA), cornerB) in
+        let avgX = (ax + bx) / 2 in
+        let firstRect = (cornerA, (avgX, by)) in
+        let secondRect = ((avgX + 1, ay), cornerB) in
         (firstRect, secondRect)
     };
     end;
@@ -204,7 +196,7 @@ The "first" partition in a vertical split is the "top" partition.
 The "first" partition in a horizontal split is the "left" partition.
 */
 def findEmptyCell = \foundCriteria. \rect.
-    
+
     let dims = getDimensions rect in
     let tileCount = getRectArea dims in
 
@@ -213,15 +205,14 @@ def findEmptyCell = \foundCriteria. \rect.
     } $ elif (tileCount == 1) {
         foundHere <- foundCriteria rect;
         pure $ if foundHere {
-            inR $ fst rect;
+            match rect \w. \_. inR w;
         } {
             inL ();
         };
     } $ else {
         let isBiggerVertically = isVerticalLarger dims in
         let splitted = splitRectangle isBiggerVertically rect in
-        let firstPartition = fst splitted in
-        let secondPartition = snd splitted in
+        match splitted \firstPartition. \secondPartition.
 
         foundInFirst <- foundCriteria firstPartition;
         let selectedPartition = if foundInFirst {firstPartition} {secondPartition} in
@@ -237,13 +228,17 @@ and the letter location.
 It is assumed that one of the candidates will meet
 this criteria, so we only need check the first.
 */
-def avoidCollinear = \blankloc. \tileloc. \loc1. \loc2.
-    let firstOk = if (fst blankloc == fst tileloc) {
-            fst loc1 != fst tileloc
-        } $ elif (snd blankloc == snd tileloc) {
-            snd loc1 != snd tileloc
+def avoidCollinear =
+    λmatch \blankx. \blanky.
+    λmatch \tilex. \tiley.
+    λmatch \loc1x. \loc1y.
+    \loc2.
+    let firstOk = if (blankx == tilex) {
+            loc1x != tilex
+        } $ elif (blanky == tiley) {
+            loc1y != tiley
         } $ else {true} in
-    if firstOk {loc1} {loc2};
+    if firstOk {(loc1x, loc1y)} {loc2};
     end;
 
 /**
@@ -258,11 +253,14 @@ letter's ultimate destination.
 */
 def getInitialBlankDestination = \blankLoc. \letterloc. \targetloc.
     let getCoord = \f. signum (f targetloc - f letterloc) + f letterloc in
-    avoidCollinear blankLoc letterloc (getCoord fst, snd letterloc) (fst letterloc, getCoord snd);
+    let fst = λmatch \a. \_. a in
+    let snd = λmatch \_. \b. b in
+    match letterloc \letterx. \lettery.
+    avoidCollinear blankLoc letterloc (getCoord fst, lettery) (letterx, getCoord snd);
     end;
 
 def moveSpaceToTile = \blankLoc. \targetRelativeLoc. \letterloc.
-    
+
     log $ "first letter loc: " ++ format letterloc;
 
     // Note: this rectangle might not be "normalized" in terms

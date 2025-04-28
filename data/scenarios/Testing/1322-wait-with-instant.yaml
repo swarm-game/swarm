@@ -17,9 +17,11 @@ objectives:
       t <- robotnamed "tortoise";
       tortoiseloc <- as t {whereami};
 
-      let xDiff = fst hareloc - fst tortoiseloc in
+      match hareloc \harex. \_.
+      match tortoiseloc \tortoisex. \_.
+      let xDiff = harex - tortoisex in
 
-      pure $ fst hareloc == 0 && xDiff == 3;
+      pure $ harex == 0 && xDiff == 3;
 solution: |
   noop;
 robots:

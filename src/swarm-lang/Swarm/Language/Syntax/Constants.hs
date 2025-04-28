@@ -218,10 +218,8 @@ data Const
     Inr
   | -- | Case analysis on a sum type.
     Case
-  | -- | First projection.
-    Fst
-  | -- | Second projection.
-    Snd
+  | -- | Pair eliminator.
+    Match
   | -- | Force a delayed evaluation.
     Force
   | -- | Pure for the cmd monad.
@@ -793,8 +791,7 @@ constInfo c = case c of
   Inl -> function 1 $ shortDoc Set.empty "Put the value into the left component of a sum type."
   Inr -> function 1 $ shortDoc Set.empty "Put the value into the right component of a sum type."
   Case -> function 3 $ shortDoc Set.empty "Evaluate one of the given functions on a value of sum type."
-  Fst -> function 1 $ shortDoc Set.empty "Get the first value of a pair."
-  Snd -> function 1 $ shortDoc Set.empty "Get the second value of a pair."
+  Match -> function 2 $ shortDoc Set.empty "Do something with both components of a pair."
   Force -> function 1 $ shortDoc Set.empty "Force the evaluation of a delayed value."
   Not -> function 1 $ shortDoc Set.empty "Negate the boolean value."
   Neg -> unaryOp "-" 7 P $ shortDoc Set.empty "Negate the given integer value."

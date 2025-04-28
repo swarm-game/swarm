@@ -11,7 +11,7 @@ objectives:
       def all : (rec l. Unit + a * l) -> (a -> Cmd Bool) -> Cmd Bool =
         \xs. \f. case xs
           (\_. pure true)
-          (\cons. b <- f (fst cons); if b {all (snd cons) f} {pure false})
+          (\cons. match cons \hd. \tl. b <- f hd; if b {all tl f} {pure false})
       end;
       rs <- meetAll;
       b1 <- all rs (\r. as r {has "boat"});
@@ -23,7 +23,7 @@ solution: |
   def forM_ : (rec l. Unit + a * l) -> (a -> Cmd b) -> Cmd Unit =
     \xs. \f. case xs
       (\_. pure ())
-      (\cons. f (fst cons); forM_ (snd cons) f)
+      (\cons. match cons \hd. \tl. f hd; forM_ tl f)
   end;
   rs <- meetAll;
   forM_ rs (\r. give r "boat")

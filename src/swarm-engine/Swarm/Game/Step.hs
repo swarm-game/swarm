@@ -629,6 +629,9 @@ stepCESK cesk = case cesk of
   In (TApp t1 t2) e s k -> return $ In t1 e s (FArg t2 e : k)
   -- Once that's done, switch to evaluating the argument.
   Out v1 s (FArg t2 e : k) -> return $ In t2 e s (FApp v1 : k)
+  -- Or, if there is an FVArg frame, the argument is already
+  -- evaluated, so send it directly to an FApp.
+  Out v1 s (FVArg v2 : k) -> return $ Out v2 s (FApp v1 : k)
   -- We can evaluate an application of a closure in the usual way.
   Out v2 s (FApp (VClo x t e) : k) -> return $ In t (addValueBinding x v2 e) s k
   -- We can also evaluate an application of a constant by collecting

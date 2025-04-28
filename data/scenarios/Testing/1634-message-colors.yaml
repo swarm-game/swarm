@@ -14,7 +14,8 @@ robots:
       attr: blue
     program: |
       loc <- whereami;
-      let idx = -(snd loc) in
+      match loc \_. \y.
+      let idx = -y in
       wait $ idx + 1;
       say $ "Hello saybot" ++ format idx;
 world:
