@@ -1394,6 +1394,7 @@ benchmark benchmark
     swarm:swarm-scenario,
     swarm:swarm-topography,
     swarm:swarm-util,
+    fused-effects,
 
   default-language: Haskell2010
   ghc-options:
