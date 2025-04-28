@@ -736,7 +736,9 @@ def bench_insert = \i.
   let set_from_first_list : (List a -> s) -> List (List a) -> List (List a) =\from_list.\lls.
     case lls
       (\_. lls)
-      (λmatch \_. \nlls. nlls)
+      // The 'ns = from_list ls' binding is unused, but intentional:
+      // we want to benchmark how long it takes.
+      (λmatch \ls. \nlls. let ns = from_list ls in nlls)
   in
 
   group i "INSERT BENCHMARK" (\i.
