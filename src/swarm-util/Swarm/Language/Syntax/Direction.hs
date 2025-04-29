@@ -27,7 +27,7 @@ import Data.Data (Data)
 import Data.Hashable (Hashable)
 import Data.List qualified as L (drop)
 import Data.List.Extra (enumerate)
-import Data.Text hiding (filter, length, map)
+import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Prettyprinter (pretty)

@@ -380,6 +380,9 @@ failT :: MonadFail m => [Text] -> m a
 failT = fail . from @Text . T.unwords
 
 -- | Show a value, but as Text.
+--
+--   Note: Data.Text.show was added in text-2.1.2.  Eventually we can
+--   require that version of text and get rid of showT.
 showT :: Show a => a -> Text
 showT = from @String . show
 
