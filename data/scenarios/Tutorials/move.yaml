@@ -27,11 +27,15 @@ objectives:
 
         `move; move`
 
-        To reuse that command without having to retype it press the upward arrow on your keyboard.
-        This will allow you to select previous commands.
+        To reuse that command without having to retype it, press the up arrow on your keyboard.
+        This will allow you to select previously entered commands.
 
         Ahead of you is a six steps long corridor. Move to its end, i.e. the coordinates `(8,0)` marked
         with the second purple `flower`{=entity}.
+
+        Note that you do not need to type everything in one go; you
+        can enter multiple commands, as long as they eventually get
+        you to the flower.
 
         You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
     condition: |
@@ -42,7 +46,7 @@ objectives:
     goal:
       - |
         Well done! In addition to `move`, you can use the `turn` command to turn your robot, for example,
-        `turn right` or `turn east`.
+        `turn right` or (if you have a `compass`{=entity}) `turn east`.
 
         Switch to the inventory view in the upper left (by clicking on it or typing **Alt+E**) and select
         the `treads`{=entity} device to read about the details.
