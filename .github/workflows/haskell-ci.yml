@@ -1,6 +1,6 @@
 #####################################################################
 ## NOTE:                                                            #
-## When changing versions, do not forget to update .mergify.yaml    #
+## When changing versions, also update .github/mergify.yaml         #
 ##                                                                  #
 ## WARNING:                                                         #
 ## Hand-edited to add filter in on.push and on.pull_request.        #
@@ -58,6 +58,11 @@ jobs:
     strategy:
       matrix:
         include:
+          - compiler: ghc-9.12.1
+            compilerKind: ghc
+            compilerVersion: 9.12.1
+            setup-method: ghcup
+            allow-failure: false
           - compiler: ghc-9.10.1
             compilerKind: ghc
             compilerVersion: 9.10.1
@@ -71,11 +76,6 @@ jobs:
           - compiler: ghc-9.6.6
             compilerKind: ghc
             compilerVersion: 9.6.6
-            setup-method: ghcup
-            allow-failure: false
-          - compiler: ghc-9.4.8
-            compilerKind: ghc
-            compilerVersion: 9.4.8
             setup-method: ghcup
             allow-failure: false
       fail-fast: false
