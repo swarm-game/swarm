@@ -26,8 +26,6 @@ module Swarm.TUI.Controller (
   handleInfoPanelEvent,
 ) where
 
--- See Note [liftA2 re-export from Prelude]
-
 import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Keybindings qualified as B
@@ -36,7 +34,7 @@ import Brick.Widgets.Edit (Editor, applyEdit, editContentsL, handleEditorEvent)
 import Brick.Widgets.List (handleListEvent, listElements)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.TabularList.Mixed
-import Control.Applicative (pure, (<|>))
+import Control.Applicative ((<|>))
 import Control.Category ((>>>))
 import Control.Lens as Lens
 import Control.Monad (forM_, unless, void, when)
@@ -111,18 +109,6 @@ import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Robot (getList)
 import Swarm.TUI.View.Robot.Type
 import Swarm.Util hiding (both, (<<.=))
-import Prelude hiding (Applicative (..))
-
--- ~~~~ Note [liftA2 re-export from Prelude]
---
--- As of base-4.18 (GHC 9.6), liftA2 is re-exported from Prelude.  See
--- https://github.com/haskell/core-libraries-committee/issues/50 .  In
--- order to compile warning-free on both GHC 9.6 and older versions,
--- we hide the import of Applicative functions from Prelude and import
--- explicitly from Control.Applicative.  In theory, if at some point
--- in the distant future we end up dropping support for GHC < 9.6 then
--- we could get rid of both explicit imports and just get liftA2 and
--- pure implicitly from Prelude.
 
 -- | The top-level event handler for the TUI.
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()

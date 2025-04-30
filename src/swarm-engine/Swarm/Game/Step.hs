@@ -19,7 +19,6 @@
 -- See <https://github.com/swarm-game/swarm/issues/495>.
 module Swarm.Game.Step where
 
-import Control.Applicative (Applicative (..))
 import Control.Carrier.Error.Either (ErrorC, runError)
 import Control.Carrier.State.Lazy
 import Control.Carrier.Throw.Either (runThrow)
@@ -75,7 +74,7 @@ import Swarm.Util hiding (both)
 import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec)
 import Witch (From (from))
-import Prelude hiding (Applicative (..), lookup)
+import Prelude hiding (lookup)
 
 -- | The main function to do one game tick.
 --
