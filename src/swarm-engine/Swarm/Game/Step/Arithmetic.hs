@@ -9,7 +9,6 @@
 -- Arithmetic and Comparison commands
 module Swarm.Game.Step.Arithmetic where
 
-import Control.Applicative (Applicative (..))
 import Control.Carrier.State.Lazy
 import Control.Effect.Error
 import Control.Monad (zipWithM)
@@ -21,7 +20,7 @@ import Swarm.Game.Step.Util
 import Swarm.Language.Syntax
 import Swarm.Language.Value
 import Witch (From (from))
-import Prelude hiding (Applicative (..), lookup)
+import Prelude hiding (lookup)
 
 ------------------------------------------------------------
 -- Comparison

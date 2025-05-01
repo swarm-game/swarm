@@ -34,7 +34,7 @@ import Data.Int (Int32)
 import Data.List.Extra (enumerate)
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.Text hiding (filter, length, map)
+import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Prettyprinter (pretty)
@@ -919,7 +919,7 @@ constInfo c = case c of
       }
 
   lowShow :: Show a => a -> Text
-  lowShow = toLower . showT
+  lowShow = T.toLower . showT
 
 -- | Maximum perception distance for
 -- 'Chirp' and 'Sniff' commands

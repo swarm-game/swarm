@@ -5,14 +5,13 @@
 module Main where
 
 import Data.Proxy
-import Data.Typeable (Typeable)
 import Lib (compareToReferenceImage)
 import Test.Tasty
 import Test.Tasty.HUnit (testCase)
 import Test.Tasty.Options
 
 newtype UpdateGoldenTests = UpdateGoldenTests Bool
-  deriving (Eq, Ord, Typeable)
+  deriving (Eq, Ord)
 
 instance IsOption UpdateGoldenTests where
   parseValue = fmap UpdateGoldenTests . safeRead

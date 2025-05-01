@@ -11,7 +11,6 @@ module Swarm.Game.World.Interpret (
   interpConst,
 ) where
 
-import Control.Applicative (Applicative (..))
 import Data.ByteString (ByteString)
 import Data.Hash.Murmur (murmur3)
 import Data.Tagged (unTagged)
@@ -24,7 +23,6 @@ import Swarm.Game.World.Syntax (Axis (..))
 import Swarm.Game.World.Typecheck (Const (..), Empty (..), Over (..))
 import Witch (from)
 import Witch.Encoding qualified as Encoding
-import Prelude hiding (Applicative (..))
 
 -- | Interpret an abstracted term into the host language.
 interpBTerm :: Seed -> BTerm a -> a

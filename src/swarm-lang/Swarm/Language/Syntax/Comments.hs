@@ -27,7 +27,7 @@ import Data.Aeson.Types hiding (Key)
 import Data.Data (Data)
 import Data.Hashable (Hashable)
 import Data.Sequence (Seq)
-import Data.Text hiding (filter, length, map)
+import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter (pretty)
 import Swarm.Language.Syntax.Loc

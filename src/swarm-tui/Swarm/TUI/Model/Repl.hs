@@ -58,7 +58,6 @@ module Swarm.TUI.Model.Repl (
 ) where
 
 import Brick.Widgets.Edit (Editor, applyEdit, editorText, getEditContents)
-import Control.Applicative (Applicative (liftA2))
 import Control.Lens hiding (from, (.=), (<.>))
 import Data.Aeson (ToJSON, object, toJSON, (.=))
 import Data.Foldable (toList)
@@ -75,7 +74,6 @@ import Swarm.Language.Types
 import Swarm.TUI.Model.Name
 import Swarm.Util (applyWhen)
 import Swarm.Util.Lens (makeLensesNoSigs)
-import Prelude hiding (Applicative (..))
 
 ------------------------------------------------------------
 -- REPL History

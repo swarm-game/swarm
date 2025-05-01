@@ -15,7 +15,6 @@ module Swarm.TUI.Controller.UpdateUI (
 import Brick hiding (Direction, Location, on)
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
-import Control.Applicative (liftA2, pure)
 import Control.Lens as Lens
 import Control.Monad (forM_, unless, when)
 import Control.Monad.IO.Class (liftIO)
@@ -56,7 +55,6 @@ import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Robot.Type
 import Swarm.Util (applyJust)
 import Witch (into)
-import Prelude hiding (Applicative (..))
 
 -- | Update the UI and redraw if needed.
 --

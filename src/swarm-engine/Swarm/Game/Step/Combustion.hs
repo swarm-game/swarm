@@ -16,7 +16,6 @@
 -- well as to initiate the delayed combustion of its neighbors.
 module Swarm.Game.Step.Combustion where
 
-import Control.Applicative (Applicative (..))
 import Control.Carrier.State.Lazy
 import Control.Effect.Lens
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
@@ -46,7 +45,7 @@ import Swarm.Language.Syntax.Direction (Direction)
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Util hiding (both)
 import System.Clock (TimeSpec)
-import Prelude hiding (Applicative (..), lookup)
+import Prelude hiding (lookup)
 
 igniteCommand :: (HasRobotStepState sig m, Has Effect.Time sig m) => Const -> Direction -> m ()
 igniteCommand c d = do

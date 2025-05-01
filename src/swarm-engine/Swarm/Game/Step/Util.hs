@@ -9,7 +9,6 @@
 -- Utilities for implementing robot commands.
 module Swarm.Game.Step.Util where
 
-import Control.Applicative (Applicative (..))
 import Control.Carrier.State.Lazy
 import Control.Effect.Error
 import Control.Effect.Lens
@@ -48,7 +47,7 @@ import Swarm.Language.Syntax.Direction (Direction)
 import Swarm.ResourceLoading (NameGenerator (..))
 import Swarm.Util hiding (both)
 import System.Random (UniformRange, uniformR)
-import Prelude hiding (Applicative (..), lookup)
+import Prelude hiding (lookup)
 
 deriveHeading :: HasRobotStepState sig m => Direction -> m Heading
 deriveHeading d = do

@@ -12,7 +12,6 @@
 -- Helper functions for "Swarm.Game.Step.Const" commands
 module Swarm.Game.Step.Util.Command where
 
-import Control.Applicative (Applicative (..))
 import Control.Carrier.State.Lazy
 import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Effect.Error
@@ -67,7 +66,7 @@ import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Log
 import Swarm.Util (applyWhen)
 import System.Clock (TimeSpec)
-import Prelude hiding (Applicative (..), lookup)
+import Prelude hiding (lookup)
 
 data GrabbingCmd
   = Grab'

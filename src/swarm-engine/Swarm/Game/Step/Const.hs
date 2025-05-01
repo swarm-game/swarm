@@ -13,7 +13,6 @@ module Swarm.Game.Step.Const where
 
 import Swarm.Game.Scenario (RecognizableStructureContent)
 
-import Control.Applicative (Applicative (..))
 import Control.Arrow ((&&&))
 import Control.Carrier.State.Lazy
 import Control.Effect.Error
@@ -105,7 +104,7 @@ import Swarm.Util.Effect (throwToMaybe)
 import Swarm.Util.Lens (inherit)
 import Text.Megaparsec (runParser)
 import Witch (From (from), into)
-import Prelude hiding (Applicative (..), lookup)
+import Prelude hiding (lookup)
 
 -- | How to handle failure, for example when moving into liquid or
 --   attempting to move to a blocked location
