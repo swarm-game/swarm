@@ -25,7 +25,7 @@ import Swarm.Game.Entity qualified as E
 import Swarm.Game.Land
 import Swarm.Game.Recipe (Recipe, recipeCatalysts, recipeInputs, recipeOutputs)
 import Swarm.Game.Robot (TRobot, tequippedDevices, trobotInventory)
-import Swarm.Game.Scenario (GameStateInputs (..), Scenario, ScenarioInputs (..), ScenarioLandscape, loadStandaloneScenario, scenarioLandscape, scenarioRobots, scenarioWorlds)
+import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Topography.Cell (PCell (..))
 import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Structure.Overlay (gridContent)
@@ -70,11 +70,12 @@ scenarioRecipeGraph scenario (GameStateInputs (ScenarioInputs _ (TerrainEntityMa
     { startingDevices = devs
     , startingInventory = inv
     , worldEntities = ents
-    , levels = recipeLevels emap recipeList (Set.unions [ents, devs, inv])
-    , allEntities = Set.fromList . Map.elems $ entitiesByName emap
-    , recipes = recipeList
+    , levels = recipeLevels scenarioEMap recipeList (Set.unions [ents, devs, inv])
+    , allEntities = Set.fromList . Map.elems $ entitiesByName scenarioEMap
+    , recipes = recipeList ++ (scenario ^. scenarioOperation . scenarioRecipes)
     }
  where
+  scenarioEMap = (scenario ^. scenarioLandscape . scenarioTerrainAndEntities . entityMap) <> emap
   landscape = scenario ^. scenarioLandscape
   baseRobot = baseRobotTemplate landscape
   devs = maybe Set.empty robotStartingDevices baseRobot
