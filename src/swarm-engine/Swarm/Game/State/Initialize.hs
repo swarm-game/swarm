@@ -33,7 +33,7 @@ import Swarm.Game.Recipe (
   inRecipeMap,
   outRecipeMap,
  )
-import Swarm.Game.Recipe.Graph (scenarioRecipeGraph, RecipeGraph(..))
+import Swarm.Game.Recipe.Graph (RecipeGraph (..), scenarioRecipeGraph)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Scenario

@@ -164,7 +164,7 @@ filterEdge ef i o = case ef of
 
 -- | Ignore utility entities that are just used for tutorials and challenges.
 ignoredEntities :: Set Text
-ignoredEntities = Set.fromList [ "wall" ]
+ignoredEntities = Set.fromList ["wall"]
 
 recipesToDot :: RecipeGraphData -> EdgeFilter -> Dot ()
 recipesToDot graphData ef = do

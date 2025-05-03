@@ -16,7 +16,7 @@ import Data.Aeson (
   genericToJSON,
  )
 import Data.Function (on)
-import Data.String (IsString(..))
+import Data.String (IsString (..))
 import Data.Time (ZonedTime, diffUTCTime, zonedTimeToUTC)
 import Data.Yaml as Y
 import GHC.Generics (Generic)
