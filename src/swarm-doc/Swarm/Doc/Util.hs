@@ -8,13 +8,8 @@
 module Swarm.Doc.Util where
 
 import Control.Effect.Throw (Has, Throw, throwError)
-import Control.Lens (view)
-import Data.Maybe (listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Swarm.Failure (SystemFailure (CustomFailure))
-import Swarm.Game.Robot (Robot)
-import Swarm.Game.Scenario (ScenarioLandscape, scenarioRobots)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 
