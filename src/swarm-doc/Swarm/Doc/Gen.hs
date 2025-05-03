@@ -14,7 +14,6 @@ module Swarm.Doc.Gen (
 
   -- ** Wiki pages
   PageAddress (..),
-
 ) where
 
 import Control.Lens (view, (^.))
