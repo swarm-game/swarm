@@ -1,7 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
-
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 -- Description: calculate the graph of craftable entities
@@ -15,12 +11,12 @@ module Swarm.Game.Recipe.Graph (
 import Control.Lens (view, (^.))
 import Data.Map.Lazy (Map)
 import Data.Map.Lazy qualified as Map
-import Data.Maybe (catMaybes, listToMaybe)
+import Data.Maybe (catMaybes, listToMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Tuple (swap)
 import Swarm.Failure (simpleErrorHandle)
-import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityYields)
+import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityProperties, entityYields, EntityProperty(Pickable))
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Land
 import Swarm.Game.Recipe (Recipe, recipeCatalysts, recipeInputs, recipeOutputs)
@@ -103,8 +99,7 @@ landscapeEntities = foldMap harvestable . view scenarioWorlds
     static :: WorldDescription -> [Entity]
     static =
       filter (Set.member Pickable . view entityProperties)
-        . catMaybes
-        . map (erasableToMaybe . cellEntity)
+        . mapMaybe (erasableToMaybe . cellEntity)
         . catMaybes
         . allMembers
         . gridContent
