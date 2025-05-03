@@ -15,11 +15,6 @@ module Swarm.Doc.Gen (
   -- ** Wiki pages
   PageAddress (..),
 
-  -- ** Recipe graph data
-  RecipeGraphData (..),
-  EdgeFilter (..),
-  classicScenarioRecipeGraphData,
-  ignoredEntities,
 ) where
 
 import Control.Lens (view, (^.))
@@ -29,7 +24,6 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (toList)
 import Data.List qualified as List
 import Data.List.Extra (enumerate)
-import Data.Map.Lazy (Map, (!))
 import Data.Map.Lazy qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
@@ -38,22 +32,13 @@ import Data.Text (Text, unpack)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Text.Lazy.IO qualified as TL
-import Data.Tuple (swap)
 import Swarm.Doc.Command (getCatalog)
 import Swarm.Doc.Keyword
 import Swarm.Doc.Pedagogy
-import Swarm.Doc.Util
 import Swarm.Doc.Wiki.Cheatsheet
-import Swarm.Failure (simpleErrorHandle)
-import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityName, entityYields)
-import Swarm.Game.Entity qualified as E
-import Swarm.Game.Land
-import Swarm.Game.Recipe (Recipe, recipeCatalysts, recipeInputs, recipeOutputs)
-import Swarm.Game.Recipe.Graph
-import Swarm.Game.Robot (Robot, equippedDevices, robotInventory)
-import Swarm.Game.Scenario (GameStateInputs (..), ScenarioInputs (..), loadStandaloneScenario, scenarioLandscape)
-import Swarm.Game.World.Gen (extractEntities)
-import Swarm.Game.World.Typecheck (Some (..))
+import Swarm.Game.Entity (Entity, entityName, entityYields)
+import Swarm.Game.Recipe (recipeCatalysts, recipeInputs, recipeOutputs)
+import Swarm.Game.Recipe.Graph qualified as RG
 import Swarm.Language.Key (specialKeyNames)
 import Swarm.Util (both)
 import Text.Dot (Dot, NodeId, (.->.))
@@ -150,7 +135,7 @@ generateSpecialKeyNames =
 
 generateRecipe :: EdgeFilter -> IO String
 generateRecipe ef = do
-  graphData <- classicScenarioRecipeGraphData
+  graphData <- RG.classicScenarioRecipeGraph
   return . Dot.showDot $ recipesToDot graphData ef
 
 data EdgeFilter = NoFilter | FilterForward | FilterNext
@@ -166,7 +151,7 @@ filterEdge ef i o = case ef of
 ignoredEntities :: Set Text
 ignoredEntities = Set.fromList ["wall"]
 
-recipesToDot :: RecipeGraphData -> EdgeFilter -> Dot ()
+recipesToDot :: RG.RecipeGraph -> EdgeFilter -> Dot ()
 recipesToDot graphData ef = do
   Dot.attribute ("rankdir", "LR")
   Dot.attribute ("ranksep", "2")
@@ -174,7 +159,7 @@ recipesToDot graphData ef = do
   base <- diamond "Base"
   -- --------------------------------------------------------------------------
   -- add nodes with for all the known entities
-  let enames' = map (view entityName) . toList $ rgAllEntities graphData
+  let enames' = map (view entityName) . toList $ RG.allEntities graphData
       enames = filter (`Set.notMember` ignoredEntities) enames'
   ebmap <- Map.fromList . zip enames <$> mapM (box . unpack) enames
   -- --------------------------------------------------------------------------
@@ -185,11 +170,11 @@ recipesToDot graphData ef = do
   -- --------------------------------------------------------------------------
   -- Get the starting inventories, entities present in the world and compute
   -- how hard each entity is to get - see 'recipeLevels'.
-  let devs = rgStartingDevices graphData
-      inv = rgStartingInventory graphData
-      worldEntities = rgWorldEntities graphData
-      levels = rgLevels graphData
-      recipes = rgRecipes graphData
+  let devs = RG.startingDevices graphData
+      inv = RG.startingInventory graphData
+      worldEntities = RG.worldEntities graphData
+      levels = RG.levels graphData
+      recipes = RG.recipes graphData
   -- --------------------------------------------------------------------------
   -- Base inventory
   (_bc, ()) <- Dot.cluster $ do
@@ -253,7 +238,7 @@ recipesToDot graphData ef = do
   mapM_ (uncurry (---<>)) (recipesToPairs recipeReqOut recipes)
   -- --------------------------------------------------------------------------
   -- also draw an edge for each entity that "yields" another entity
-  let yieldPairs = mapMaybe (\e -> (e ^. entityName,) <$> (e ^. entityYields)) . toList $ rgAllEntities graphData
+  let yieldPairs = mapMaybe (\e -> (e ^. entityName,) <$> (e ^. entityYields)) . toList $ RG.allEntities graphData
   mapM_ (uncurry (.-<>.)) (both getE <$> yieldPairs)
 
 -- ----------------------------------------------------------------------------

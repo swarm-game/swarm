@@ -32,18 +32,18 @@ import Swarm.Util.Erasable (erasableToMaybe)
 
 -- | A description of a recipe graph for a given scenario.
 data RecipeGraph = RecipeGraph
-  { rgWorldEntities :: Set Entity
+  { worldEntities :: Set Entity
   -- ^ Entities available in the world
-  , rgStartingDevices :: Set Entity
+  , startingDevices :: Set Entity
   -- ^ Which devices the base starts with
-  , rgStartingInventory :: Set Entity
+  , startingInventory :: Set Entity
   -- ^ What inventory the base starts with
-  , rgLevels :: [Set Entity]
+  , levels :: [Set Entity]
   -- ^ Recursively craftable entities, organized by distance from
   -- starting inventory (i.e. number of crafting steps needed)
-  , rgAllEntities :: Set Entity
+  , allEntities :: Set Entity
   -- ^ All known entities
-  , rgRecipes :: [Recipe Entity]
+  , recipes :: [Recipe Entity]
   -- ^ All known recipes
   }
 
@@ -56,38 +56,22 @@ classicScenarioRecipeGraph = simpleErrorHandle $ do
   (classic, gsi) <- loadStandaloneScenario "data/scenarios/classic.yaml"
   pure $ scenarioRecipeGraph classic gsi
 
--- baseRobot <- baseRobotTemplate (classic ^. scenarioLandscape)
--- let classicTerm = worlds ! "classic"
--- let devs = startingDevices baseRobot
--- let inv = Map.keysSet $ startingInventory baseRobot
--- let worldEntities = case classicTerm of Some _ t -> extractEntities t
--- return
---   RecipeGraph
---     { rgStartingDevices = devs
---     , rgStartingInventory = inv
---     , rgWorldEntities = worldEntities
---     , rgLevels = recipeLevels emap recipes (Set.unions [worldEntities, devs, inv])
---     , rgAllEntities = Set.fromList . Map.elems $ entitiesByName emap
---     , rgRecipes = recipes
---     }
-
 scenarioRecipeGraph :: Scenario -> GameStateInputs -> RecipeGraph
-scenarioRecipeGraph scenario (GameStateInputs (ScenarioInputs _ (TerrainEntityMaps _ emap)) recipes) =
+scenarioRecipeGraph scenario (GameStateInputs (ScenarioInputs _ (TerrainEntityMaps _ emap)) recipeList) =
   RecipeGraph
-    { rgStartingDevices = devs
-    , rgStartingInventory = inv
-    , rgWorldEntities = worldEntities
-    , rgLevels = recipeLevels emap recipes (Set.unions [worldEntities, devs, inv])
-    , rgAllEntities = Set.fromList . Map.elems $ entitiesByName emap
-    , rgRecipes = recipes
+    { startingDevices = devs
+    , startingInventory = inv
+    , worldEntities = ents
+    , levels = recipeLevels emap recipeList (Set.unions [ents, devs, inv])
+    , allEntities = Set.fromList . Map.elems $ entitiesByName emap
+    , recipes = recipeList
     }
  where
   landscape = scenario ^. scenarioLandscape
-  -- Run Throw computation + turn into Either
   baseRobot = baseRobotTemplate landscape
-  worldEntities = landscapeEntities landscape
-  devs = maybe Set.empty startingDevices baseRobot
-  inv = maybe Set.empty (Map.keysSet . startingInventory) baseRobot
+  devs = maybe Set.empty robotStartingDevices baseRobot
+  inv = maybe Set.empty (Map.keysSet . robotStartingInventory) baseRobot
+  ents = landscapeEntities landscape
 
 -- | Get the set of all entities which can be harvested from the world.
 landscapeEntities :: ScenarioLandscape -> Set Entity
@@ -125,13 +109,13 @@ landscapeEntities = foldMap harvestable . view scenarioWorlds
 -- as some BFS-like algorithm with added recipe nodes, but you would
 -- need to enforce the condition that recipes need ALL incoming edges.
 recipeLevels :: EntityMap -> [Recipe Entity] -> Set Entity -> [Set Entity]
-recipeLevels emap recipes start = levels
+recipeLevels emap recipeList start = levs
  where
   recipeParts r = ((r ^. recipeInputs) <> (r ^. recipeCatalysts), r ^. recipeOutputs)
   m :: [(Set Entity, Set Entity)]
-  m = map (both (Set.fromList . map snd) . recipeParts) recipes
-  levels :: [Set Entity]
-  levels = reverse $ go [start] start
+  m = map (both (Set.fromList . map snd) . recipeParts) recipeList
+  levs :: [Set Entity]
+  levs = reverse $ go [start] start
    where
     isKnown known (i, _o) = null $ i Set.\\ known
     lookupYield e = case view entityYields e of
@@ -147,8 +131,8 @@ recipeLevels emap recipes start = levels
             then ls
             else go (n : ls) (Set.union n known)
 
-startingDevices :: TRobot -> Set Entity
-startingDevices = Set.fromList . map snd . E.elems . view tequippedDevices
+robotStartingDevices :: TRobot -> Set Entity
+robotStartingDevices = Set.fromList . map snd . E.elems . view tequippedDevices
 
-startingInventory :: TRobot -> Map Entity Int
-startingInventory = Map.fromList . map swap . E.elems . view trobotInventory
+robotStartingInventory :: TRobot -> Map Entity Int
+robotStartingInventory = Map.fromList . map swap . E.elems . view trobotInventory
