@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 -- Description: calculate the graph of craftable entities
@@ -6,6 +8,7 @@ module Swarm.Game.Recipe.Graph (
   RecipeGraph (..),
   classicScenarioRecipeGraph,
   scenarioRecipeGraph,
+  ignoredEntities,
 ) where
 
 import Control.Lens (view, (^.))
@@ -14,6 +17,7 @@ import Data.Map.Lazy qualified as Map
 import Data.Maybe (catMaybes, listToMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
+import Data.Text (Text)
 import Data.Tuple (swap)
 import Swarm.Failure (simpleErrorHandle)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), EntityProperty (Pickable), entityProperties, entityYields)
@@ -29,6 +33,10 @@ import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.World.Gen (extractEntities)
 import Swarm.Util (both)
 import Swarm.Util.Erasable (erasableToMaybe)
+
+-- | Ignore utility entities that are just used for tutorials and challenges.
+ignoredEntities :: Set Text
+ignoredEntities = Set.fromList ["wall"]
 
 -- | A description of a recipe graph for a given scenario.
 data RecipeGraph = RecipeGraph

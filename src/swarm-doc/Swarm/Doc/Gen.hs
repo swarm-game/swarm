@@ -28,7 +28,6 @@ import Data.Map.Lazy qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.Text (Text, unpack)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Text.Lazy.IO qualified as TL
@@ -147,10 +146,6 @@ filterEdge ef i o = case ef of
   FilterForward -> i <= o
   FilterNext -> i + 1 == o
 
--- | Ignore utility entities that are just used for tutorials and challenges.
-ignoredEntities :: Set Text
-ignoredEntities = Set.fromList ["wall"]
-
 recipesToDot :: RG.RecipeGraph -> EdgeFilter -> Dot ()
 recipesToDot graphData ef = do
   Dot.attribute ("rankdir", "LR")
@@ -160,8 +155,8 @@ recipesToDot graphData ef = do
   -- --------------------------------------------------------------------------
   -- add nodes with for all the known entities
   let enames' = map (view entityName) . toList $ RG.allEntities graphData
-      enames = filter (`Set.notMember` ignoredEntities) enames'
-  ebmap <- Map.fromList . zip enames <$> mapM (box . unpack) enames
+      enames = filter (`Set.notMember` RG.ignoredEntities) enames'
+  ebmap <- Map.fromList . zip enames <$> mapM (box . T.unpack) enames
   -- --------------------------------------------------------------------------
   -- getters for the NodeId based on entity name or the whole entity
   let safeGetEntity m e = fromMaybe (error $ show e <> " is not an entity!?") $ m Map.!? e

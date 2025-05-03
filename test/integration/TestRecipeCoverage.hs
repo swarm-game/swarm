@@ -10,7 +10,7 @@ import Control.Lens (view)
 import Data.List qualified as List
 import Data.Set qualified as Set
 import Data.Text qualified as T
-import Swarm.Doc.Gen
+import Swarm.Game.Recipe.Graph qualified as RG
 import Swarm.Game.Entity (Entity, EntityName, entityName)
 import Swarm.Util (applyWhen, quote)
 import Test.Tasty
@@ -26,9 +26,9 @@ import Test.Tasty.HUnit
 -- the dot graph of entity recipes in 'Swarm.Doc.Gen' that this test uses.
 testRecipeCoverage :: IO TestTree
 testRecipeCoverage = do
-  graphData <- classicScenarioRecipeGraphData
+  graphData <- RG.classicScenarioRecipeGraph
   let sortE = List.sortOn (T.unpack . view entityName)
-      allEntities = sortE . Set.toList $ rgAllEntities graphData
+      allEntities = sortE . Set.toList $ RG.allEntities graphData
       nonCovered = getNonCoveredEntities graphData
   return . testGroup "Ensure all entities have recipes" $
     map (\e -> expectNonCovered e $ checkCoverage nonCovered e) allEntities
@@ -37,7 +37,7 @@ testRecipeCoverage = do
   checkCoverage s e =
     let name = view entityName e
      in testCase (T.unpack name) $ do
-          assertBool (errMessage name) (name `elem` ignoredEntities || e `Set.notMember` s)
+          assertBool (errMessage name) (name `elem` RG.ignoredEntities || e `Set.notMember` s)
    where
     errMessage missing = T.unpack $ "Can not make " <> quote missing <> " from starting entities."
 
@@ -60,5 +60,5 @@ nonCoveredList =
     , "wedge"
     ]
 
-getNonCoveredEntities :: RecipeGraphData -> Set.Set Entity
-getNonCoveredEntities graphData = rgAllEntities graphData `Set.difference` Set.unions (rgLevels graphData)
+getNonCoveredEntities :: RG.RecipeGraph -> Set.Set Entity
+getNonCoveredEntities graphData = RG.allEntities graphData `Set.difference` Set.unions (RG.levels graphData)
