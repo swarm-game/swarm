@@ -14,6 +14,9 @@ module Swarm.Doc.Gen (
 
   -- ** Wiki pages
   PageAddress (..),
+
+  -- ** Recipe graph drawing
+  EdgeFilter (..)
 ) where
 
 import Control.Lens (view, (^.))
