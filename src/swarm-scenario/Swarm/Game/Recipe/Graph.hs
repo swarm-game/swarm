@@ -100,11 +100,10 @@ landscapeEntities = foldMap harvestable . view scenarioWorlds
   harvestable :: WorldDescription -> Set Entity
   harvestable wd = Set.fromList (static wd) <> dynamic wd
    where
-    -- XXX filter by which can be picked up?
-
     static :: WorldDescription -> [Entity]
     static =
-      catMaybes
+      filter (Set.member Pickable . view entityProperties)
+        . catMaybes
         . map (erasableToMaybe . cellEntity)
         . catMaybes
         . allMembers
