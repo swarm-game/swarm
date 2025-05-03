@@ -7,7 +7,6 @@
 -- Utilities for generating doc markup
 module Swarm.Doc.Util where
 
-import Control.Effect.Throw (Has, Throw, throwError)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Language.Syntax (Const (..))
