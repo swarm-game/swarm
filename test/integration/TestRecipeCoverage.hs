@@ -10,8 +10,8 @@ import Control.Lens (view)
 import Data.List qualified as List
 import Data.Set qualified as Set
 import Data.Text qualified as T
-import Swarm.Game.Recipe.Graph qualified as RG
 import Swarm.Game.Entity (Entity, EntityName, entityName)
+import Swarm.Game.Recipe.Graph qualified as RG
 import Swarm.Util (applyWhen, quote)
 import Test.Tasty
 import Test.Tasty.ExpectedFailure (expectFailBecause)
