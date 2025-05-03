@@ -16,7 +16,7 @@ module Swarm.Doc.Gen (
   PageAddress (..),
 
   -- ** Recipe graph drawing
-  EdgeFilter (..)
+  EdgeFilter (..),
 ) where
 
 import Control.Lens (view, (^.))
