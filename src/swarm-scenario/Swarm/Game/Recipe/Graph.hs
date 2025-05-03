@@ -16,7 +16,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Tuple (swap)
 import Swarm.Failure (simpleErrorHandle)
-import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityProperties, entityYields, EntityProperty(Pickable))
+import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), EntityProperty (Pickable), entityProperties, entityYields)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Land
 import Swarm.Game.Recipe (Recipe, recipeCatalysts, recipeInputs, recipeOutputs)
