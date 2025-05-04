@@ -39,13 +39,18 @@ import Swarm.TUI.View.CellDisplay
 import Swarm.Util (maximum0)
 import Witch (from, into)
 
+data ScenarioSeriesContext = ScenarioSeriesContext
+  { scenarioSeries :: [ScenarioWith ScenarioPath]
+  , currentMenuName :: Maybe Text
+  , hasMenu :: Bool
+  }
+
 generateScenarioEndModal ::
-  Menu ->
-  [ScenarioWith ScenarioPath] ->
+  ScenarioSeriesContext ->
   EndScenarioModalType ->
   ScenarioState ->
   Modal
-generateScenarioEndModal m scenarioList mt s =
+generateScenarioEndModal (ScenarioSeriesContext scenarioList scenarioMenuName isNoMenu) mt s =
   Modal (EndScenarioModal mt) $
     dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth)
  where
@@ -91,17 +96,13 @@ generateScenarioEndModal m scenarioList mt s =
     , sum (map length [stopMsg, continueMsg]) + 32
     )
 
-  stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName m) ++ " menu") haltingMessage
+  stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> scenarioMenuName) ++ " menu") haltingMessage
   continueMsg = "Keep playing"
 
   haltingMessage =
     if isNoMenu
       then Just "Quit"
       else Nothing
-
-  isNoMenu = case m of
-    NoMenu -> True
-    _ -> False
 
   mkQuitModal =
     ( ""

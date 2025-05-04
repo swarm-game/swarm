@@ -51,7 +51,7 @@ import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl (REPLHistItem, REPLPrompt, REPLState, addREPLItem, replHistory, replPromptText, replPromptType)
 import Swarm.TUI.Model.UI.Gameplay
-import Swarm.TUI.View.Util (generateModal, generateScenarioEndModal)
+import Swarm.TUI.View.Util (ScenarioSeriesContext (..), curMenuName, generateModal, generateScenarioEndModal)
 import System.Clock (Clock (..), getTime)
 
 -- | Pattern synonyms to simplify brick event handler
@@ -78,13 +78,15 @@ pattern BackspaceKey = VtyEvent (V.EvKey V.KBS [])
 pattern FKey :: Int -> BrickEvent n e
 pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
+-- | Requires 'PlayState' for access to remaining scenario sequence
 openEndScenarioModal :: Menu -> EndScenarioModalType -> EventM Name PlayState ()
 openEndScenarioModal m mt = do
   resetViewport modalScroll
   remainingScenarios <- use $ progression . scenarioSequence
+  let sequenceContext = ScenarioSeriesContext remainingScenarios (curMenuName m) isNoMenu
 
   Brick.zoom scenarioState $ do
-    newModal <- gets $ generateScenarioEndModal m remainingScenarios mt
+    newModal <- gets $ generateScenarioEndModal sequenceContext mt
     ensurePause
     uiGameplay . uiDialogs . uiModal ?= newModal
 
@@ -95,10 +97,14 @@ openEndScenarioModal m mt = do
       liftIO $ V.ringTerminalBell $ V.outputIface vty
     _ -> return ()
  where
+  isNoMenu = case m of
+    NoMenu -> True
+    _ -> False
+
   -- Set the game to AutoPause if needed
-  ensurePause = do
-    pause <- use $ gameState . temporal . paused
-    unless pause $ gameState . temporal . runStatus .= AutoPause
+  ensurePause = Brick.zoom (gameState . temporal) $ do
+    pause <- use paused
+    unless pause $ runStatus .= AutoPause
 
 openMidScenarioModal :: MidScenarioModalType -> EventM Name ScenarioState ()
 openMidScenarioModal mt = do
@@ -142,23 +148,28 @@ safeAutoUnpause = do
   runs <- use $ gameState . temporal . runStatus
   when (runs == AutoPause) safeTogglePause
 
+dismissScenarioDialog :: EventM Name ScenarioState ()
+dismissScenarioDialog = do
+  uiGameplay . uiDialogs . uiModal .= Nothing
+  safeAutoUnpause
+
+isUIModalClosed :: ScenarioState -> Bool
+isUIModalClosed s = null $ s ^. uiGameplay . uiDialogs . uiModal
+
 toggleMidScenarioModal :: MidScenarioModalType -> EventM Name ScenarioState ()
 toggleMidScenarioModal mt = do
-  modal <- use $ uiGameplay . uiDialogs . uiModal
-  case modal of
-    Nothing -> openMidScenarioModal mt
-    Just _ -> do
-      uiGameplay . uiDialogs . uiModal .= Nothing
-      safeAutoUnpause
+  s <- get
+  if isUIModalClosed s
+    then openMidScenarioModal mt
+    else dismissScenarioDialog
 
+-- | Requires 'PlayState' for access to remaining scenario sequence
 toggleEndScenarioModal :: EndScenarioModalType -> Menu -> EventM Name PlayState ()
 toggleEndScenarioModal mt m = do
-  modal <- use $ scenarioState . uiGameplay . uiDialogs . uiModal
-  case modal of
-    Nothing -> openEndScenarioModal m mt
-    Just _ -> do
-      scenarioState . uiGameplay . uiDialogs . uiModal .= Nothing
-      Brick.zoom scenarioState safeAutoUnpause
+  s <- use scenarioState
+  if isUIModalClosed s
+    then openEndScenarioModal m mt
+    else Brick.zoom scenarioState dismissScenarioDialog
 
 setFocus :: FocusablePanel -> EventM Name ScenarioState ()
 setFocus name = uiGameplay . uiFocusRing %= focusSetCurrent (FocusablePanel name)
