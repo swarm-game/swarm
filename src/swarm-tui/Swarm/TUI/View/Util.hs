@@ -39,14 +39,23 @@ import Swarm.TUI.View.CellDisplay
 import Swarm.Util (maximum0)
 import Witch (from, into)
 
-generateScenarioEndModal :: Menu -> PlayState -> EndScenarioModalType -> Modal
-generateScenarioEndModal m s mt =
-  Modal (EndScenarioModal mt) (dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth))
- where
-  currentScenario = s ^. scenarioState . uiGameplay . scenarioRef
-  currentSeed = s ^. scenarioState . gameState . randomness . seed
+data ScenarioSeriesContext = ScenarioSeriesContext
+  { scenarioSeries :: [ScenarioWith ScenarioPath]
+  , currentMenuName :: Maybe Text
+  , hasMenu :: Bool
+  }
 
-  scenarioList = s ^. progression . scenarioSequence
+generateScenarioEndModal ::
+  ScenarioSeriesContext ->
+  EndScenarioModalType ->
+  ScenarioState ->
+  Modal
+generateScenarioEndModal (ScenarioSeriesContext scenarioList scenarioMenuName isNoMenu) mt s =
+  Modal (EndScenarioModal mt) $
+    dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth)
+ where
+  currentScenario = s ^. uiGameplay . scenarioRef
+  currentSeed = s ^. gameState . randomness . seed
 
   (title, buttons, requiredWidth) = case mt of
     ScenarioFinishModal WinModal -> mkWinModal
@@ -69,8 +78,6 @@ generateScenarioEndModal m s mt =
     )
    where
     nextMsg = "Next challenge!"
-    stopMsg = fromMaybe "Return to the menu" haltingMessage
-    continueMsg = "Keep playing"
 
   maybeStartOver = do
     cs <- currentScenario
@@ -88,18 +95,14 @@ generateScenarioEndModal m s mt =
         )
     , sum (map length [stopMsg, continueMsg]) + 32
     )
-   where
-    stopMsg = fromMaybe "Return to the menu" haltingMessage
-    continueMsg = "Keep playing"
+
+  stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> scenarioMenuName) ++ " menu") haltingMessage
+  continueMsg = "Keep playing"
 
   haltingMessage =
     if isNoMenu
       then Just "Quit"
       else Nothing
-
-  isNoMenu = case m of
-    NoMenu -> True
-    _ -> False
 
   mkQuitModal =
     ( ""
@@ -113,13 +116,12 @@ generateScenarioEndModal m s mt =
         )
     , T.length (quitMsg isNoMenu) + 4
     )
-   where
-    stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName m) ++ " menu") haltingMessage
 
 -- | Generate a fresh modal window of the requested type.
 generateModal :: ScenarioState -> MidScenarioModalType -> Modal
 generateModal s mt =
-  Modal (MidScenarioModal mt) (dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth))
+  Modal (MidScenarioModal mt) $
+    dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth)
  where
   currentScenario = s ^. uiGameplay . scenarioRef
 
@@ -210,7 +212,12 @@ curMenuName m = case m of
   _ -> Nothing
 
 quitMsg :: Bool -> Text
-quitMsg isNoMenu = "Are you sure you want to " <> quitAction <> "? All progress on this scenario will be lost!"
+quitMsg isNoMenu =
+  T.unwords
+    [ "Are you sure you want to"
+    , quitAction <> "?"
+    , "All progress on this scenario will be lost!"
+    ]
  where
   quitAction =
     if isNoMenu
