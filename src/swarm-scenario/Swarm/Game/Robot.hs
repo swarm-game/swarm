@@ -42,7 +42,9 @@ module Swarm.Game.Robot (
   trobotLocation,
   robotOrientation,
   robotInventory,
+  trobotInventory,
   equippedDevices,
+  tequippedDevices,
   inventoryHash,
   robotCapabilities,
   walkabilityContext,
@@ -239,6 +241,10 @@ robotOrientation = robotEntity . entityOrientation
 robotInventory :: Lens' Robot Inventory
 robotInventory = robotEntity . entityInventory
 
+-- | A robot template's inventory.
+trobotInventory :: Lens' TRobot Inventory
+trobotInventory = robotEntity . entityInventory
+
 -- | The (unique) ID number of the robot.  This is only a Getter since
 --   the robot ID is immutable.
 robotID :: Getter Robot RID
@@ -266,6 +272,10 @@ equippedDevices = lens _equippedDevices setEquipped
       { _equippedDevices = inst
       , _robotCapabilities = inventoryCapabilities inst
       }
+
+-- | A robot template's equipped devices.
+tequippedDevices :: Getter TRobot Inventory
+tequippedDevices = to _equippedDevices
 
 -- | A hash of a robot's entity record and equipped devices, to
 --   facilitate quickly deciding whether we need to redraw the robot

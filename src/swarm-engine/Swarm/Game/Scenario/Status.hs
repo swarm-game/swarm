@@ -16,6 +16,7 @@ import Data.Aeson (
   genericToJSON,
  )
 import Data.Function (on)
+import Data.String (IsString (..))
 import Data.Time (ZonedTime, diffUTCTime, zonedTimeToUTC)
 import Data.Yaml as Y
 import GHC.Generics (Generic)
@@ -79,6 +80,10 @@ getLaunchParams = \case
 newtype ScenarioPath = ScenarioPath
   { getScenarioPath :: FilePath
   }
+  deriving (Eq, Show)
+
+instance IsString ScenarioPath where
+  fromString = ScenarioPath
 
 data ScenarioWith a = ScenarioWith
   { _getScenario :: Scenario

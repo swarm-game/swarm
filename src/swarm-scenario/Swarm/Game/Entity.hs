@@ -75,6 +75,7 @@ module Swarm.Game.Entity (
   contains,
   contains0plus,
   elems,
+  nonzeroEntities,
   isSubsetOf,
   isEmpty,
   inventoryCapabilities,

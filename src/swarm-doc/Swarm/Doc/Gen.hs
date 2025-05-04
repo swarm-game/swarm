@@ -15,11 +15,8 @@ module Swarm.Doc.Gen (
   -- ** Wiki pages
   PageAddress (..),
 
-  -- ** Recipe graph data
-  RecipeGraphData (..),
+  -- ** Recipe graph drawing
   EdgeFilter (..),
-  classicScenarioRecipeGraphData,
-  ignoredEntities,
 ) where
 
 import Control.Lens (view, (^.))
@@ -29,30 +26,20 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (toList)
 import Data.List qualified as List
 import Data.List.Extra (enumerate)
-import Data.Map.Lazy (Map, (!))
 import Data.Map.Lazy qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.Text (Text, unpack)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Text.Lazy.IO qualified as TL
-import Data.Tuple (swap)
 import Swarm.Doc.Command (getCatalog)
 import Swarm.Doc.Keyword
 import Swarm.Doc.Pedagogy
-import Swarm.Doc.Util
 import Swarm.Doc.Wiki.Cheatsheet
-import Swarm.Failure (simpleErrorHandle)
-import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityName, entityYields)
-import Swarm.Game.Entity qualified as E
-import Swarm.Game.Land
-import Swarm.Game.Recipe (Recipe, recipeCatalysts, recipeInputs, recipeOutputs)
-import Swarm.Game.Robot (Robot, equippedDevices, robotInventory)
-import Swarm.Game.Scenario (GameStateInputs (..), ScenarioInputs (..), loadStandaloneScenario, scenarioLandscape)
-import Swarm.Game.World.Gen (extractEntities)
-import Swarm.Game.World.Typecheck (Some (..))
+import Swarm.Game.Entity (Entity, entityName, entityYields)
+import Swarm.Game.Recipe (recipeCatalysts, recipeInputs, recipeOutputs)
+import Swarm.Game.Recipe.Graph qualified as RG
 import Swarm.Language.Key (specialKeyNames)
 import Swarm.Util (both)
 import Text.Dot (Dot, NodeId, (.->.))
@@ -149,7 +136,7 @@ generateSpecialKeyNames =
 
 generateRecipe :: EdgeFilter -> IO String
 generateRecipe ef = do
-  graphData <- classicScenarioRecipeGraphData
+  graphData <- RG.classicScenarioRecipeGraph
   return . Dot.showDot $ recipesToDot graphData ef
 
 data EdgeFilter = NoFilter | FilterForward | FilterNext
@@ -161,7 +148,7 @@ filterEdge ef i o = case ef of
   FilterForward -> i <= o
   FilterNext -> i + 1 == o
 
-recipesToDot :: RecipeGraphData -> EdgeFilter -> Dot ()
+recipesToDot :: RG.RecipeGraph -> EdgeFilter -> Dot ()
 recipesToDot graphData ef = do
   Dot.attribute ("rankdir", "LR")
   Dot.attribute ("ranksep", "2")
@@ -169,9 +156,9 @@ recipesToDot graphData ef = do
   base <- diamond "Base"
   -- --------------------------------------------------------------------------
   -- add nodes with for all the known entities
-  let enames' = map (view entityName) . toList $ rgAllEntities graphData
-      enames = filter (`Set.notMember` ignoredEntities) enames'
-  ebmap <- Map.fromList . zip enames <$> mapM (box . unpack) enames
+  let enames' = map (view entityName) . toList $ RG.allEntities graphData
+      enames = filter (`Set.notMember` RG.ignoredEntities) enames'
+  ebmap <- Map.fromList . zip enames <$> mapM (box . T.unpack) enames
   -- --------------------------------------------------------------------------
   -- getters for the NodeId based on entity name or the whole entity
   let safeGetEntity m e = fromMaybe (error $ show e <> " is not an entity!?") $ m Map.!? e
@@ -180,11 +167,11 @@ recipesToDot graphData ef = do
   -- --------------------------------------------------------------------------
   -- Get the starting inventories, entities present in the world and compute
   -- how hard each entity is to get - see 'recipeLevels'.
-  let devs = rgStartingDevices graphData
-      inv = rgStartingInventory graphData
-      worldEntities = rgWorldEntities graphData
-      levels = rgLevels graphData
-      recipes = rgRecipes graphData
+  let devs = RG.startingDevices graphData
+      inv = RG.startingInventory graphData
+      worldEntities = RG.worldEntities graphData
+      levels = RG.levels graphData
+      recipes = RG.recipes graphData
   -- --------------------------------------------------------------------------
   -- Base inventory
   (_bc, ()) <- Dot.cluster $ do
@@ -248,98 +235,8 @@ recipesToDot graphData ef = do
   mapM_ (uncurry (---<>)) (recipesToPairs recipeReqOut recipes)
   -- --------------------------------------------------------------------------
   -- also draw an edge for each entity that "yields" another entity
-  let yieldPairs = mapMaybe (\e -> (e ^. entityName,) <$> (e ^. entityYields)) . toList $ rgAllEntities graphData
+  let yieldPairs = mapMaybe (\e -> (e ^. entityName,) <$> (e ^. entityYields)) . toList $ RG.allEntities graphData
   mapM_ (uncurry (.-<>.)) (both getE <$> yieldPairs)
-
-data RecipeGraphData = RecipeGraphData
-  { rgWorldEntities :: Set Entity
-  , rgStartingDevices :: Set Entity
-  , rgStartingInventory :: Set Entity
-  , rgLevels :: [Set Entity]
-  , rgAllEntities :: Set Entity
-  , rgRecipes :: [Recipe Entity]
-  }
-
-classicScenarioRecipeGraphData :: IO RecipeGraphData
-classicScenarioRecipeGraphData = simpleErrorHandle $ do
-  (classic, GameStateInputs (ScenarioInputs worlds (TerrainEntityMaps _ emap)) recipes) <-
-    loadStandaloneScenario "data/scenarios/classic.yaml"
-  baseRobot <- instantiateBaseRobot (classic ^. scenarioLandscape)
-  let classicTerm = worlds ! "classic"
-  let devs = startingDevices baseRobot
-  let inv = Map.keysSet $ startingInventory baseRobot
-  let worldEntities = case classicTerm of Some _ t -> extractEntities t
-  return
-    RecipeGraphData
-      { rgStartingDevices = devs
-      , rgStartingInventory = inv
-      , rgWorldEntities = worldEntities
-      , rgLevels = recipeLevels emap recipes (Set.unions [worldEntities, devs, inv])
-      , rgAllEntities = Set.fromList . Map.elems $ entitiesByName emap
-      , rgRecipes = recipes
-      }
-
--- ----------------------------------------------------------------------------
--- RECIPE LEVELS
--- ----------------------------------------------------------------------------
-
--- | Order entities in sets depending on how soon it is possible to obtain them.
---
--- So:
---  * Level 0 - starting entities (for example those obtainable in the world)
---  * Level N+1 - everything possible to make (or drill or harvest) from Level N
---
--- This is almost a BFS, but the requirement is that the set of entities
--- required for recipe is subset of the entities known in Level N.
---
--- If we ever depend on some graph library, this could be rewritten
--- as some BFS-like algorithm with added recipe nodes, but you would
--- need to enforce the condition that recipes need ALL incoming edges.
-recipeLevels :: EntityMap -> [Recipe Entity] -> Set Entity -> [Set Entity]
-recipeLevels emap recipes start = levels
- where
-  recipeParts r = ((r ^. recipeInputs) <> (r ^. recipeCatalysts), r ^. recipeOutputs)
-  m :: [(Set Entity, Set Entity)]
-  m = map (both (Set.fromList . map snd) . recipeParts) recipes
-  levels :: [Set Entity]
-  levels = reverse $ go [start] start
-   where
-    isKnown known (i, _o) = null $ i Set.\\ known
-    lookupYield e = case view entityYields e of
-      Nothing -> e
-      Just yn -> case E.lookupEntityName yn emap of
-        Nothing -> error "unknown yielded entity"
-        Just ye -> ye
-    yielded = Set.map lookupYield
-    nextLevel known = Set.unions $ yielded known : map snd (filter (isKnown known) m)
-    go ls known =
-      let n = nextLevel known Set.\\ known
-       in if null n
-            then ls
-            else go (n : ls) (Set.union n known)
-
-startingDevices :: Robot -> Set Entity
-startingDevices = Set.fromList . map snd . E.elems . view equippedDevices
-
-startingInventory :: Robot -> Map Entity Int
-startingInventory = Map.fromList . map swap . E.elems . view robotInventory
-
--- | Ignore utility entities that are just used for tutorials and challenges.
-ignoredEntities :: Set Text
-ignoredEntities =
-  Set.fromList
-    [ "wall"
-    , "upper left corner"
-    , "upper right corner"
-    , "lower left corner"
-    , "lower right corner"
-    , "horizontal wall"
-    , "vertical wall"
-    , "left and vertical wall"
-    , "up and horizontal wall"
-    , "right and vertical wall"
-    , "down and horizontal wall"
-    ]
 
 -- ----------------------------------------------------------------------------
 -- GRAPHVIZ HELPERS
