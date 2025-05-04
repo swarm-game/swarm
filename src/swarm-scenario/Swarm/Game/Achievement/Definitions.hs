@@ -126,6 +126,7 @@ data GameplayAchievement
   | GetDisoriented
   | SwapSame
   | GaveToSelf
+  | EquippedAllDevices
   deriving (Eq, Ord, Show, Bounded, Enum, Generic)
 
 instance FromJSON GameplayAchievement

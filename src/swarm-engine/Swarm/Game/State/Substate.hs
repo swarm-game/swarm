@@ -66,6 +66,7 @@ module Swarm.Game.State.Substate (
   availableRecipes,
   availableCommands,
   knownEntities,
+  craftableDevices,
   gameAchievements,
   structureRecognition,
   tagMembers,
@@ -339,6 +340,7 @@ data Discovery = Discovery
   , _availableRecipes :: Notifications (Recipe Entity)
   , _availableCommands :: Notifications Const
   , _knownEntities :: S.Set EntityName
+  , _craftableDevices :: S.Set EntityName
   , _gameAchievements :: Map GameplayAchievement Attainment
   , _structureRecognition :: RecognitionState RecognizableStructureContent Entity
   , _tagMembers :: Map Text (NonEmpty EntityName)
@@ -358,6 +360,10 @@ availableCommands :: Lens' Discovery (Notifications Const)
 -- | The names of entities that should be considered \"known\", that is,
 --   robots know what they are without having to scan them.
 knownEntities :: Lens' Discovery (S.Set EntityName)
+
+-- | The set of all entities that can be crafted in the current
+--   scenario.
+craftableDevices :: Lens' Discovery (S.Set EntityName)
 
 -- | Map of in-game achievements that were obtained
 gameAchievements :: Lens' Discovery (Map GameplayAchievement Attainment)
@@ -441,6 +447,7 @@ initDiscovery =
     , _availableCommands = mempty
     , _allDiscoveredEntities = empty
     , _knownEntities = mempty
+    , _craftableDevices = mempty
     , -- This does not need to be initialized with anything,
       -- since the master list of achievements is stored in UIState
       _gameAchievements = mempty
