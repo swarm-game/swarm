@@ -813,6 +813,7 @@ type TDCtx = Ctx TydefInfo
 
 -- | Expand an application "T ty1 ty2 ... tyn" by looking up the
 --   definition of T and substituting ty1 .. tyn for its arguments.
+--   If T is not found, just return the original unexpanded application.
 --
 --   Note that this has already been kind-checked so we know the
 --   number of arguments must match up; we don't worry about what
@@ -822,18 +823,9 @@ expandTydef :: (Has (Reader TDCtx) sig m, Typical t) => Var -> [t] -> m t
 expandTydef userTyCon tys = do
   mtydefInfo <- Ctx.lookupR userTyCon
   tdCtx <- ask @TDCtx
-  -- In theory, if everything has kind checked, we should never encounter an undefined
-  -- type constructor here.
-  let errMsg =
-        into @String $
-          T.unwords
-            [ "Encountered undefined type constructor"
-            , userTyCon
-            , "in expandTyDef"
-            , parens ("tdCtx = " <> showT tdCtx)
-            ]
-      tydefInfo = fromMaybe (error errMsg) mtydefInfo
-  return $ substTydef tydefInfo tys
+  case mtydefInfo of
+    Nothing -> pure $ rollT (TyConF (TCUser userTyCon) tys)
+    Just tydefInfo -> pure $ substTydef tydefInfo tys
 
 -- | Expand *all* applications of user-defined type constructors
 --   everywhere in a type.

@@ -136,8 +136,7 @@ instance GHC.Exts.IsString (Document Syntax) where
 instance GHC.Exts.IsString (Paragraph Syntax) where
   fromString s = case paragraphs $ GHC.Exts.fromString s of
     [] -> mempty
-    [p] -> p
-    ps -> error $ "Error: expected one paragraph, but found " <> show (length ps)
+    (p:_) -> p
 
 -- | Surround some text in double quotes if it is not empty.
 quoteMaybe :: Text -> Text

@@ -36,7 +36,12 @@
   - {name: Data.Colour.SRGB.sRGB24read, within: []}
   - {name: Data.IntMap.!, within: []}
   - {name: Data.Map.!, within: [Swarm.Language.Context.rehydrate, Swarm.Language.Typecheck.check]} # TODO: #1494
-# - {name: error, within: []} # TODO: #1494
+  # - {name: error, within:
+  #     [ Swarm.Language.Parser.QQ  # quasiquoters only run at compile time
+  #     , Swarm.Language.Pipeline.QQ
+  #     , Swarm.Doc.Gen
+  #     ]
+  #   } # TODO: #1494
 
 # Add custom hints for this project
 #
