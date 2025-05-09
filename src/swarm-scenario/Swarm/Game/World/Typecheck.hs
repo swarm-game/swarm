@@ -268,6 +268,7 @@ data CheckErr where
   Unbound :: Text -> CheckErr
   BadType :: Some (TTerm g) -> TTy b -> CheckErr
   BadDivType :: TTy a -> CheckErr
+  BadInferOp :: [SomeTy] -> Op -> CheckErr
   UnknownImport :: Text -> CheckErr
   NotAThing :: Text -> CellTag -> CheckErr
   NotAnything :: Text -> CheckErr
@@ -289,6 +290,7 @@ instance PrettyPrec CheckErr where
       hsep
         [squotes (ppr t), "has type", squotes (ppr tty), "and cannot be given type", squotes (ppr ty)]
     BadDivType ty -> "Division operator used at type" <+> squotes (ppr ty)
+    BadInferOp tys op -> "Bad call to inferOp" <+> pretty (show tys) <+> pretty (show op)
     UnknownImport key -> "Import" <+> squotes (pretty key) <+> "not found"
     NotAThing item tag -> squotes (pretty item) <+> "is not" <+> ppr tag
     NotAnything item -> "Cannot resolve cell item" <+> squotes (pretty item)
@@ -541,7 +543,8 @@ inferOp _ Perlin = return $ Some (TTyInt :->: TTyInt :->: TTyFloat :->: TTyFloat
 inferOp [SomeTy tyA] Mask = Some (TTyWorld TTyBool :->: TTyWorld tyA :->: TTyWorld tyA) <$> checkEmpty tyA (return $ embed CMask)
 inferOp [SomeTy tyA] Overlay = Some (tyA :->: tyA :->: tyA) <$> checkOver tyA (return $ embed COver)
 inferOp [SomeTy tyA] IMap = Some (TTyWorld TTyInt :->: TTyWorld TTyInt :->: TTyWorld tyA :->: TTyWorld tyA) <$> checkNotFun tyA (return $ embed CIMap)
-inferOp tys op = error $ "bad call to inferOp: " ++ show tys ++ " " ++ show op
+-- In theory, this last case should never happen.
+inferOp tys op = throwError $ BadInferOp tys op
 
 -- | Given a raw operator and the terms the operator is applied to,
 --   select which types should be supplied as the type arguments to

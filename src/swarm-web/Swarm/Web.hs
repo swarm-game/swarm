@@ -51,6 +51,7 @@ import Data.Map.NonEmpty qualified as NEM
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Tree (Tree (Node), drawTree)
 import Network.HTTP.Types (ok200)
@@ -134,7 +135,7 @@ api = Proxy
 swarmApiHtml :: ByteString
 swarmApiHtml =
   encodeUtf8
-    . either (error . show) (Mark.renderHtml @())
+    . either (TL.pack . show) (Mark.renderHtml @())
     . Mark.commonmark ""
     $ T.pack swarmApiMarkdown
 

@@ -14,7 +14,7 @@ module Swarm.Game.Recipe.Graph (
 import Control.Lens (view, (^.))
 import Data.Map.Lazy (Map)
 import Data.Map.Lazy qualified as Map
-import Data.Maybe (catMaybes, listToMaybe, mapMaybe)
+import Data.Maybe (catMaybes, fromMaybe, listToMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -129,9 +129,7 @@ recipeLevels emap recipeList start = levs
     isKnown known (i, _o) = null $ i Set.\\ known
     lookupYield e = case view entityYields e of
       Nothing -> e
-      Just yn -> case E.lookupEntityName yn emap of
-        Nothing -> error "unknown yielded entity"
-        Just ye -> ye
+      Just yn -> fromMaybe e (E.lookupEntityName yn emap)
     yielded = Set.map lookupYield
     nextLevel known = Set.unions $ yielded known : map snd (filter (isKnown known) m)
     go ls known =

@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.Topography.WorldPalette where
@@ -71,11 +69,13 @@ constructWorldMap mappedPairs maskChar =
  where
   invertedMappedPairs = map (swap . fmap toKey) mappedPairs
 
+  renderMapCell :: Maybe CellPaintDisplay -> Char
   renderMapCell maybeC = case maybeC of
     Nothing -> maskChar
     Just c ->
-      -- NOTE: This lookup should never fail
-      M.findWithDefault (error "Palette lookup failed!") k $
+      -- NOTE: This lookup should never fail; if it does for some
+      -- reason, return Z rather than crash the game
+      M.findWithDefault 'Z' k $
         M.fromList invertedMappedPairs
      where
       k = toKey $ cellToTerrainPair c

@@ -155,7 +155,7 @@ tutorialsDirname = "Tutorials"
 getTutorials :: ScenarioCollection a -> ScenarioCollection a
 getTutorials sc = case OM.lookup tutorialsDirname (scMap sc) of
   Just (SICollection _ c) -> c
-  _ -> error "No tutorials exist"
+  _ -> SC OM.empty
 
 -- | Canonicalize a scenario path, making it usable as a unique key.
 normalizeScenarioPath ::

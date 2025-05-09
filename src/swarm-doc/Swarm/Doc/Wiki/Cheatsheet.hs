@@ -67,7 +67,7 @@ makeWikiPage address s = case s of
   Commands -> T.putStrLn commandsPage
   CommandMatrix -> case pandocToText commandsMatrix of
     Right x -> T.putStrLn x
-    Left x -> error $ T.unpack x
+    Left x -> T.putStrLn x
   Capabilities -> simpleErrorHandle $ do
     entities <- loadEntities
     sendIO $ T.putStrLn $ capabilityPage address entities

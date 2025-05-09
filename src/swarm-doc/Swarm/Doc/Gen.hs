@@ -155,13 +155,16 @@ recipesToDot graphData ef = do
   world <- diamond "World"
   base <- diamond "Base"
   -- --------------------------------------------------------------------------
-  -- add nodes with for all the known entities
+  -- add nodes for all the known entities
   let enames' = map (view entityName) . toList $ RG.allEntities graphData
       enames = filter (`Set.notMember` RG.ignoredEntities) enames'
   ebmap <- Map.fromList . zip enames <$> mapM (box . T.unpack) enames
   -- --------------------------------------------------------------------------
   -- getters for the NodeId based on entity name or the whole entity
   let safeGetEntity m e = fromMaybe (error $ show e <> " is not an entity!?") $ m Map.!? e
+      -- The above call to `error` (1) should never happen, and (2)
+      -- even if it does, it will only crash recipe cheatsheet
+      -- generation, not the game itself.
       getE = safeGetEntity ebmap
       nid = getE . view entityName
   -- --------------------------------------------------------------------------

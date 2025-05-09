@@ -136,8 +136,7 @@ instance GHC.Exts.IsString (Document Syntax) where
 instance GHC.Exts.IsString (Paragraph Syntax) where
   fromString s = case paragraphs $ GHC.Exts.fromString s of
     [] -> mempty
-    [p] -> p
-    ps -> error $ "Error: expected one paragraph, but found " <> show (length ps)
+    (p : _) -> p
 
 -- | Surround some text in double quotes if it is not empty.
 quoteMaybe :: Text -> Text
@@ -163,7 +162,7 @@ instance Mark.IsBlock (Paragraph Text) (Document Text) where
   blockQuote (Document ns) = Document $ map Mark.emph ns
   codeBlock f = Mark.plain . pureP . LeafCodeBlock (T.unpack f)
   heading _lvl = Mark.plain . Mark.strong
-  rawBlock (Mark.Format f) t = error . T.unpack $ "Unsupported raw " <> f <> " block:\n" <> t
+  rawBlock _ _ = mempty
   referenceLinkDefinition = mempty
   list _type _spacing = mconcat
 
@@ -200,9 +199,12 @@ instance FromJSON (Document Syntax) where
       (ts :: [Text]) <- mapM parseJSON $ toList a
       fromTextM $ T.intercalate "\n\n" ts
 
--- | Parse Markdown document, but throw on invalid code.
+-- | Parse Markdown document, but re-inject a generated error into the
+--   document itself.
 fromText :: Text -> Document Syntax
-fromText = either error id . fromTextE
+fromText = either injectErr id . fromTextE
+ where
+  injectErr err = Document [Paragraph [LeafRaw "" (T.pack err)]]
 
 -- | Read Markdown document and parse&validate the code.
 --
