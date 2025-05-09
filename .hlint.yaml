@@ -44,7 +44,7 @@
       , Swarm.Game.Scenario.Topography.WorldPalette
       , Swarm.Game.World.Typecheck
       ]
-    } # TODO: #1494
+    }
 
 # Add custom hints for this project
 #
