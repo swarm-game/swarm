@@ -71,11 +71,13 @@ constructWorldMap mappedPairs maskChar =
  where
   invertedMappedPairs = map (swap . fmap toKey) mappedPairs
 
+  renderMapCell :: Maybe CellPaintDisplay -> Char
   renderMapCell maybeC = case maybeC of
     Nothing -> maskChar
     Just c ->
-      -- NOTE: This lookup should never fail
-      M.findWithDefault (error "Palette lookup failed!") k $
+      -- NOTE: This lookup should never fail; if it does for some
+      -- reason, silently return a space rather than crash the game
+      M.findWithDefault ' ' k $
         M.fromList invertedMappedPairs
      where
       k = toKey $ cellToTerrainPair c

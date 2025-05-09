@@ -312,6 +312,8 @@ doLocalDevelopmentLogin ::
 doLocalDevelopmentLogin authStorage envType maybeRefererUrl =
   case envType of
     ProdDeployment -> error "Login bypass not available in production"
+    -- The above call to `error` can cause the tournament server to
+    -- crash on startup, but not the game itself.
     LocalDevelopment user ->
       doLoginResponse authStorage refererUrl user
  where

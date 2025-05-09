@@ -41,8 +41,6 @@
       , Swarm.Language.Pipeline.QQ
       , Swarm.Doc.Gen
       , Swarm.Web.Tournament
-      , Swarm.Game.Scenario.Topography.WorldPalette
-      , Swarm.Game.World.Typecheck
       ]
     }
 
