@@ -143,7 +143,6 @@ import Data.List.NonEmpty ((<|))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
-import Data.Maybe (fromMaybe)
 import Data.Ord.Deriving (deriveOrd1)
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -155,7 +154,7 @@ import Prettyprinter (align, braces, brackets, concatWith, flatAlt, hsep, pretty
 import Swarm.Language.Context (Ctx, Var)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Pretty (PrettyPrec (..), pparens, pparens', ppr, prettyBinding)
-import Swarm.Util (parens, showT, unsnocNE)
+import Swarm.Util (unsnocNE)
 import Swarm.Util.JSON (optionsMinimize, optionsUnwrapUnary)
 import Text.Show.Deriving (deriveShow1)
 import Witch (into)
@@ -822,7 +821,6 @@ type TDCtx = Ctx TydefInfo
 expandTydef :: (Has (Reader TDCtx) sig m, Typical t) => Var -> [t] -> m t
 expandTydef userTyCon tys = do
   mtydefInfo <- Ctx.lookupR userTyCon
-  tdCtx <- ask @TDCtx
   case mtydefInfo of
     Nothing -> pure $ rollT (TyConF (TCUser userTyCon) tys)
     Just tydefInfo -> pure $ substTydef tydefInfo tys
