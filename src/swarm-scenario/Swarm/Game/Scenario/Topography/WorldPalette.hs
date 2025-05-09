@@ -74,8 +74,8 @@ constructWorldMap mappedPairs maskChar =
     Nothing -> maskChar
     Just c ->
       -- NOTE: This lookup should never fail; if it does for some
-      -- reason, silently return a space rather than crash the game
-      M.findWithDefault ' ' k $
+      -- reason, return Z rather than crash the game
+      M.findWithDefault 'Z' k $
         M.fromList invertedMappedPairs
      where
       k = toKey $ cellToTerrainPair c
