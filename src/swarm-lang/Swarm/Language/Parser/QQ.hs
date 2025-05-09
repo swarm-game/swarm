@@ -28,13 +28,13 @@ tyQ :: QuasiQuoter
 tyQ =
   QuasiQuoter
     { quoteExp = quoteTypeExp
+    -- Using `error` is OK here since a quasiquoter will only ever run
+    -- at compile time; hence it can only make compilation fail, not
+    -- crash the game at runtime.
     , quotePat = error "quotePat  not implemented for polytypes"
     , quoteType = error "quoteType not implemented for polytypes"
     , quoteDec = error "quoteDec  not implemented for polytypes"
     }
-    -- Using `error` is OK here since a quasiquoter will only ever run
-    -- at compile time; hence it can only make compilation fail, not
-    -- crash the game at runtime.
 
 quoteTypeExp :: String -> TH.ExpQ
 quoteTypeExp s = do

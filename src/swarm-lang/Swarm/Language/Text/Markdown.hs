@@ -136,7 +136,7 @@ instance GHC.Exts.IsString (Document Syntax) where
 instance GHC.Exts.IsString (Paragraph Syntax) where
   fromString s = case paragraphs $ GHC.Exts.fromString s of
     [] -> mempty
-    (p:_) -> p
+    (p : _) -> p
 
 -- | Surround some text in double quotes if it is not empty.
 quoteMaybe :: Text -> Text
@@ -203,8 +203,8 @@ instance FromJSON (Document Syntax) where
 --   document itself.
 fromText :: Text -> Document Syntax
 fromText = either injectErr id . fromTextE
-  where
-    injectErr err = Document [Paragraph [LeafRaw "" (T.pack err)]]
+ where
+  injectErr err = Document [Paragraph [LeafRaw "" (T.pack err)]]
 
 -- | Read Markdown document and parse&validate the code.
 --

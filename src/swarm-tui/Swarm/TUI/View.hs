@@ -1237,11 +1237,11 @@ explainCapabilities gs e
   eitherCosts = (traverse . traverse) eLookup $ e ^. entityCapabilities
   capabilitiesAndCommands = case eitherCosts of
     Right eCaps -> M.elems . getMap . commandsForDeviceCaps $ eCaps
+    -- The Left case should never happen - we check when parsing a
+    -- scenario that all entity references are defined.  However, if
+    -- it does happen, there's no sense crashing the game; just
+    -- return an empty list of capabilities + commands.
     Left _ -> []
-      -- The Left case should never happen - we check when parsing a
-      -- scenario that all entity references are defined.  However, if
-      -- it does happen, there's no sense crashing the game; just
-      -- return an empty list of capabilities + commands.
 
   drawSingleCapabilityWidget cmdsAndCost =
     vBox

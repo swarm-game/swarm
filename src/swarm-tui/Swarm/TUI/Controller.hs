@@ -210,7 +210,6 @@ handleMainMenuEvent menu = \case
           -- correct data files aren't installed.  In that case, log
           -- an error.
           _ -> runtimeState . eventLog %= logEvent SystemLog Error "Tutorials" "No tutorials found!"
-
       Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
       Messages -> do
         runtimeState . eventLog . notificationsCount .= 0
@@ -318,9 +317,9 @@ handleMainEvent forceRedraw ev = do
           then updateAndRedrawUI forceRedraw
           else runFrameUI forceRedraw
       Web (RunWebCode e r) -> Brick.zoom (playState . scenarioState) $ runBaseWebCode e r
+      -- UpstreamVersion event should already be handled by top-level handler, so
+      -- in theory this case cannot happen.
       UpstreamVersion _ -> pure ()
-        -- UpstreamVersion event should already be handled by top-level handler, so
-        -- in theory this case cannot happen.
     VtyEvent (V.EvResize _ _) -> invalidateCache
     EscapeKey
       | Just m <- s ^. playState . scenarioState . uiGameplay . uiDialogs . uiModal ->
