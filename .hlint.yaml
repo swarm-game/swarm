@@ -41,6 +41,7 @@
       , Swarm.Language.Pipeline.QQ
       , Swarm.Doc.Gen
       , Swarm.Web.Tournament
+      , TestLanguagePipeline
       ]
     }
 
