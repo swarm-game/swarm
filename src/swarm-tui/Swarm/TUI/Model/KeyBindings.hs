@@ -110,9 +110,7 @@ keyBindingEventINI kc (ev, description) =
           else listBindings $ allDefaultBindings kc ev
       )
   listBindings = T.intercalate "," . fmap ppBinding
-  name = case keyEventName (keyConfigEvents kc) ev of
-    Just n -> n
-    Nothing -> error $ "unnamed event: " <> T.unpack description
+  name = fromMaybe "(unnamed)" $ keyEventName (keyConfigEvents kc) ev
 
 handlerNameKeysDescription :: Ord k => KeyConfig k -> KeyEventHandler k m -> (Text, Text, Text)
 handlerNameKeysDescription kc keh = (name, keys, desc)

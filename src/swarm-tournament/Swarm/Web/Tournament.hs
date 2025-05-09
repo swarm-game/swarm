@@ -127,7 +127,7 @@ type ToplevelAPI =
 tournamentsApiHtml :: LBS.ByteString
 tournamentsApiHtml =
   encodeUtf8
-    . either (error . show) (Mark.renderHtml @())
+    . either (TL.pack . show) (Mark.renderHtml @())
     . Mark.commonmark ""
     $ T.pack "No documentation at this time."
 

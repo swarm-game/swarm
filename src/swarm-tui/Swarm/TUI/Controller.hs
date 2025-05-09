@@ -183,28 +183,34 @@ handleMainMenuEvent menu = \case
                   | otherwise -> True
                 _ -> True
               _ -> False
-            firstUnsolvedInfo = case firstUnsolved of
-              Just (SISingle siPair) -> siPair
-              _ -> error "No first tutorial found!"
-            firstUnsolvedName = firstUnsolvedInfo ^. getScenario . scenarioMetadata . scenarioName
 
-        -- Now set up the menu stack as if the user had chosen "New Game > Tutorials > t"
-        -- where t is the tutorial scenario we identified as the first unsolved one
-        let topMenu =
-              BL.listFindBy
-                ((== tutorialsDirname) . T.unpack . scenarioItemName)
-                (mkScenarioList $ pathifyCollection ss)
-            tutorialMenu =
-              BL.listFindBy
-                ((== firstUnsolvedName) . scenarioItemName)
-                (mkScenarioList $ pathifyCollection tutorialCollection)
-            menuStack = tutorialMenu :| pure topMenu
+        case firstUnsolved of
+          Just (SISingle firstUnsolvedInfo) -> do
+            let firstUnsolvedName = firstUnsolvedInfo ^. getScenario . scenarioMetadata . scenarioName
 
-        -- Finally, set the menu stack, and start the scenario!
-        uiState . uiMenu .= NewGameMenu menuStack
+            -- Now set up the menu stack as if the user had chosen "New Game > Tutorials > t"
+            -- where t is the tutorial scenario we identified as the first unsolved one
+            let topMenu =
+                  BL.listFindBy
+                    ((== tutorialsDirname) . T.unpack . scenarioItemName)
+                    (mkScenarioList $ pathifyCollection ss)
+                tutorialMenu =
+                  BL.listFindBy
+                    ((== firstUnsolvedName) . scenarioItemName)
+                    (mkScenarioList $ pathifyCollection tutorialCollection)
+                menuStack = tutorialMenu :| pure topMenu
 
-        let remainingTutorials = maybe mempty (getScenariosAfterSelection tutorialMenu) $ BL.listSelected tutorialMenu
-        startGame (pathifyCollection firstUnsolvedInfo :| remainingTutorials) Nothing
+            -- Finally, set the menu stack, and start the scenario!
+            uiState . uiMenu .= NewGameMenu menuStack
+
+            let remainingTutorials = maybe mempty (getScenariosAfterSelection tutorialMenu) $ BL.listSelected tutorialMenu
+            startGame (pathifyCollection firstUnsolvedInfo :| remainingTutorials) Nothing
+
+          -- This shouldn't normally happen, but it could if the
+          -- correct data files aren't installed.  In that case, log
+          -- an error.
+          _ -> runtimeState . eventLog %= logEvent SystemLog Error "Tutorials" "No tutorials found!"
+
       Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
       Messages -> do
         runtimeState . eventLog . notificationsCount .= 0
@@ -312,7 +318,9 @@ handleMainEvent forceRedraw ev = do
           then updateAndRedrawUI forceRedraw
           else runFrameUI forceRedraw
       Web (RunWebCode e r) -> Brick.zoom (playState . scenarioState) $ runBaseWebCode e r
-      UpstreamVersion _ -> error "version event should be handled by top-level handler"
+      UpstreamVersion _ -> pure ()
+        -- UpstreamVersion event should already be handled by top-level handler, so
+        -- in theory this case cannot happen.
     VtyEvent (V.EvResize _ _) -> invalidateCache
     EscapeKey
       | Just m <- s ^. playState . scenarioState . uiGameplay . uiDialogs . uiModal ->
