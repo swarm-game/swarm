@@ -32,3 +32,132 @@ world:
   scrollable: false
   dsl: |
     "classic"
+objectives:
+  - id: trees
+    teaser: Trees
+    goal:
+      - |
+        Some goals will be shown here, to gently nudge you towards
+        some useful accomplishments if you'd like some guidance.
+        However, these goals are optional!  Feel free to ignore them
+        and choose your own path.
+      - |
+        One of the first things you will probably want is a few `tree`{=entity}s.
+        Collect at least 10.
+    optional: true
+    condition: |
+      as base { n <- count "tree"; pure (n >= 10) }
+  - id: lambda
+    teaser: Lambda
+    goal:
+      - |
+        It's useful to be able to give names to sequences of commands,
+        *i.e.* procedures, via `def`{=snippet}.  But what's *really*
+        useful is the ability to define parameterized *functions*!
+        For that, you'll need to find a `lambda`{=entity}.
+    optional: true
+    condition: |
+      as base { has "lambda" }
+  - id: harvester
+    teaser: Harvester
+    goal:
+      - |
+        Construct a `harvester`{=entity}, so you can grow things like
+        trees and lambdas in a sustainable way.
+    optional: true
+    prerequisite: trees
+    condition: |
+      as base { has "harvester" }
+  - id: boat
+    teaser: Boat
+    goal:
+      - |
+        Construct a `boat`{=entity}, which can be used by robots to
+        float across `water`{=entity}.
+    optional: true
+    prerequisite: trees
+    condition: |
+      as base { has "boat" }
+  - id: logs
+    teaser: Tree farm
+    goal:
+      - |
+        What you really need is a steady *supply* of wood.  Collect
+        at least 256 `log`{=entity}s.
+    optional: true
+    prerequisite: trees
+    condition: |
+      as base { n <- count "log"; pure (n >= 256) }
+  - id: furnace
+    teaser: Furnace
+    goal:
+      - |
+        Collect at least five `rock`{=entity}s and make a `furnace`{=entity}.
+    optional: true
+    condition: |
+      as base { h <- has "furnace"; e <- equipped "furnace"; pure (h || e) }
+  - id: bits
+    teaser: Bits
+    goal:
+      - |
+        Collect some bits: at least eight 0 bits and eight 1 bits.
+    optional: true
+    condition: |
+      as base {
+        zs <- count "bit (0)";
+        os <- count "bit (1)";
+        pure (zs >= 8 && os >= 8)
+      }
+  - id: wire
+    teaser: Wire
+    goal:
+      - |
+        Now that you have a furnace, you can use it to craft a few
+        different items requiring heat.  Collect some `copper
+        ore`{=entity} and make some `copper wire`{=entity}.
+    optional: true
+    prerequisite: furnace
+    condition: |
+      as base { has "copper wire" }
+  - id: drill
+    teaser: Drill
+    goal:
+      - |
+        Now make a `drill`{=entity}, which can be used to clear
+        `boulder`{=entity}s out of the way and mine for resources in
+        the mountains.  Making a `drill`{=entity} requires first
+        making several intermediate components, but you're well on
+        your way.  Try exploring the available recipes for each item
+        in your inventory.
+    optional: true
+    prerequisite:
+      logic:
+        and:
+          - wire
+          - bits
+          - trees
+    condition: |
+      as base { has "drill" }
+  - id: ore
+    teaser: Ore
+    goal:
+      - |
+        Now that you have a `drill`{=entity}, you can use it to search
+        for mines: `drill forward` while next to a
+        `mountain`{=entity}, which will yield either a `mountain
+        tunnel`{=entity} that no longer blocks your way, or some kind
+        of mine.  `drill down` in a mine to extract ore.
+      - |
+        Establish some mines and collect both `copper ore`{=entity}
+        and `iron ore`{=entity}.
+    optional: true
+    prerequisite: drill
+    condition: |
+      as base { i <- has "iron ore"; c <- has "copper ore"; pure (i && c) }
+  - id: unwinnable
+    goal:
+      - |
+        The classic scenario is not actually winnable (yet).
+    hidden: true
+    condition: |
+      pure false
