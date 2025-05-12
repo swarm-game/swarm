@@ -20,6 +20,7 @@ import Prettyprinter (hsep, nest, pretty, vsep, (<+>))
 import Swarm.Language.Types
 import Swarm.Pretty (PrettyPrec (..), ppr)
 import Swarm.Util (number)
+import Swarm.Util.Effect (withThrow)
 
 -- | Kind checking errors that can occur.
 data KindError
@@ -123,16 +124,20 @@ checkRecTy x ty = do
 
 -- | Check whether a type contains a specific bound recursive type
 --   variable.
-containsVar :: Has (Reader TDCtx) sig m => Nat -> Type -> m Bool
-containsVar i (Fix tyF) = case tyF of
+containsVar ::
+  (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) =>
+  Nat -> Type -> m Bool
+containsVar i ty@(Fix tyF) = case tyF of
   TyRecVarF j -> pure (i == j)
   TyVarF {} -> pure False
   TyConF (TCUser u) tys -> do
-    ty' <- expandTydef u tys
+    ty' <- withThrow
+      (\(UnexpandedUserType _) -> UndefinedTyCon (TCUser u) ty)
+      (expandTydef u tys)
     containsVar i ty'
   TyConF _ tys -> or <$> mapM (containsVar i) tys
   TyRcdF m -> or <$> mapM (containsVar i) m
-  TyRecF _ ty -> containsVar (NS i) ty
+  TyRecF _ ty' -> containsVar (NS i) ty'
 
 -- | @nonVacuous ty@ checks that the recursive type @rec x. ty@ is
 --   non-vacuous, /i.e./ that it doesn't look like @rec x. x@.  Put
@@ -143,18 +148,22 @@ containsVar i (Fix tyF) = case tyF of
 --   like @rec x. x@ since we must also (1) expand type aliases and
 --   (2) ignore additional intervening @rec@s.  For example, given
 --   @tydef Id a = a@, the type @rec x. rec y. Id x@ is also vacuous.
-nonVacuous :: (Has (Reader TDCtx) sig m) => Nat -> Type -> m Bool
-nonVacuous i (Fix tyF) = case tyF of
+nonVacuous ::
+  (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) =>
+  Nat -> Type -> m Bool
+nonVacuous i ty@(Fix tyF) = case tyF of
   -- The type simply consists of a variable bound by some @rec@.
   -- Check if it's the variable we're currently looking for.
   TyRecVarF j -> pure (i /= j)
   -- Expand a user-defined type and keep looking.
   TyConF (TCUser u) tys -> do
-    ty' <- expandTydef u tys
+    ty' <- withThrow
+      (\(UnexpandedUserType _) -> UndefinedTyCon (TCUser u) ty)
+      (expandTydef u tys)
     nonVacuous i ty'
   -- Increment the variable we're looking for when going under a @rec@
   -- binder.
-  TyRecF _ ty -> nonVacuous (NS i) ty
+  TyRecF _ ty' -> nonVacuous (NS i) ty'
   -- If we encounter any other kind of type constructor or record
   -- type, rejoice!
   TyConF {} -> pure True

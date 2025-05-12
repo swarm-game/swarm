@@ -14,6 +14,7 @@ module Swarm.Language.Requirements.Analysis (
 import Control.Algebra (Has, run)
 import Control.Carrier.Accum.Strict (execAccum)
 import Control.Carrier.Reader (runReader)
+import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Accum (Accum, add)
 import Control.Effect.Reader (Reader, ask, local)
 import Control.Monad (when)
@@ -180,8 +181,16 @@ typeRequirements = go
     TyVarF _ _ -> pure ()
     TyConF (TCUser u) tys -> do
       mapM_ go tys
-      ty' <- expandTydef u tys
-      go ty'
+      res <- runThrow @ExpandTydefErr (expandTydef u tys)
+      case res of
+        -- If the user tycon is undefined, just return 0 requirements.
+        -- This is not really correct---it should be some kind of
+        -- error---but in theory it should be impossible for a user
+        -- tycon to be undefined, and adding error propagation here
+        -- would be annoying.  The undefined tycon can be caught
+        -- somewhere else.
+        Left _ -> pure ()
+        Right ty' -> go ty'
     TyConF c tys -> do
       case c of
         TCSum -> add (singletonCap CSum)
