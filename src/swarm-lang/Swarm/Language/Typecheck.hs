@@ -76,7 +76,7 @@ import Swarm.Effect.Unify qualified as U
 import Swarm.Effect.Unify.Fast qualified as U
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Kindcheck (KindError, checkKind, checkPolytypeKind)
+import Swarm.Language.Kindcheck (KindError (..), checkKind, checkPolytypeKind)
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Requirements.Analysis (requirements)
@@ -448,11 +448,13 @@ generalize uty = do
 data TypeErr
   = -- | An undefined variable was encountered.
     UnboundVar Var
+  | -- | An undefined type was encountered.
+    UnboundType Var
   | -- | A kind error was encountered.
     KindErr KindError
   | -- | A Skolem variable escaped its local context.
     EscapedSkolem Var
-  | -- | Occurs check failure, i.e. infinite type.
+  | -- | Failure during unification.
     UnificationErr UnificationError
   | -- | Type mismatch caught by 'unify'.  The given term was
     --   expected to have a certain type, but has a different type
@@ -512,6 +514,8 @@ instance PrettyPrec TypeErr where
       "Skolem variable" <+> pretty x <+> "would escape its scope"
     UnboundVar x ->
       "Unbound variable" <+> pretty x
+    UnboundType x ->
+      "Undefined type" <+> pretty x
     DefNotTopLevel t ->
       "Definitions may only be at the top level:" <+> pprCode t
     CantInfer t ->
@@ -710,7 +714,7 @@ decomposeTyConApp1 ::
   Sourced UType ->
   m UType
 decomposeTyConApp1 c t (src, UTyConApp (TCUser u) as) = do
-  ty2 <- expandTydef u as
+  ty2 <- adaptToTypeErr NoLoc (UnboundType . getUnexpanded) $ expandTydef u as
   decomposeTyConApp1 c t (src, ty2)
 decomposeTyConApp1 c _ (_, UTyConApp c' [a])
   | c == c' = return a
@@ -757,7 +761,7 @@ decomposeRcdTy ms = \case
   ty@(UTyConApp tc as) -> case tc of
     -- User-defined type: expand it
     TCUser u -> do
-      ty2 <- expandTydef u as
+      ty2 <- adaptToTypeErr NoLoc (UnboundType . getUnexpanded) $ expandTydef u as
       decomposeRcdTy ms ty2
     -- Any other type constructor application is definitely not a record type
     _ -> throwTypeErr (maybe NoLoc (view sLoc) ms) $ MismatchRcd ms ty
@@ -782,7 +786,7 @@ decomposeTyConApp2 ::
   Sourced UType ->
   m (UType, UType)
 decomposeTyConApp2 c t (src, UTyConApp (TCUser u) as) = do
-  ty2 <- expandTydef u as
+  ty2 <- adaptToTypeErr NoLoc (UnboundType . getUnexpanded) $ expandTydef u as
   decomposeTyConApp2 c t (src, ty2)
 decomposeTyConApp2 c _ (_, UTyConApp c' [ty1, ty2])
   | c == c' = return (ty1, ty2)

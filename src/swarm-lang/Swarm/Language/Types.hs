@@ -112,6 +112,7 @@ module Swarm.Language.Types (
   tydefType,
   tydefArity,
   substTydef,
+  ExpandTydefErr (..),
   expandTydef,
   expandTydefs,
   elimTydef,
@@ -126,7 +127,9 @@ module Swarm.Language.Types (
 
 import Control.Algebra (Has, run)
 import Control.Carrier.Reader (runReader)
+import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Reader (Reader, ask)
+import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (Plated (..), makeLenses, rewriteM, view)
 import Control.Monad.Free
 import Data.Aeson (FromJSON (..), FromJSON1 (..), ToJSON (..), ToJSON1 (..), genericLiftParseJSON, genericLiftToJSON, genericParseJSON, genericToJSON)
@@ -466,6 +469,9 @@ class Typical t where
   --   value).
   refoldT :: (TypeF t -> t) -> t -> t
 
+  -- | Unroll one level of structure.
+  unrollT :: t -> Maybe (TypeF t)
+
   -- | Roll up one level of structure.
   rollT :: TypeF t -> t
 
@@ -475,12 +481,15 @@ class Typical t where
 instance Typical Type where
   foldT _ = foldFix
   refoldT = foldFix
+  unrollT (Fix t) = Just t
   rollT = Fix
   fromType = id
 
 instance Typical UType where
   foldT e = ucata (const e)
   refoldT = ucata Pure
+  unrollT (Free t) = Just t
+  unrollT _ = Nothing
   rollT = Free
   fromType = toU
 
@@ -810,29 +819,42 @@ makeLenses ''TydefInfo
 --   to their definitions and arities/kinds.
 type TDCtx = Ctx TydefInfo
 
+data ExpandTydefErr = UnexpandedUserType { getUnexpanded :: Var }
+  deriving (Eq, Show)
+
 -- | Expand an application "T ty1 ty2 ... tyn" by looking up the
 --   definition of T and substituting ty1 .. tyn for its arguments.
---   If T is not found, just return the original unexpanded application.
 --
 --   Note that this has already been kind-checked so we know the
---   number of arguments must match up; we don't worry about what
---   happens if the lists have different lengths since in theory that
---   can never happen.
-expandTydef :: (Has (Reader TDCtx) sig m, Typical t) => Var -> [t] -> m t
+--   number of arguments must match up, and user types must be
+--   defined; we don't worry about what happens if the lists have
+--   different lengths since in theory that can never happen.
+--   However, if T does not exist, we throw an error containing its
+--   name.
+expandTydef ::
+  ( Has (Reader TDCtx) sig m
+  , Has (Throw ExpandTydefErr) sig m
+  , Typical t
+  ) =>
+  Var ->
+  [t] ->
+  m t
 expandTydef userTyCon tys = do
   mtydefInfo <- Ctx.lookupR userTyCon
   case mtydefInfo of
-    Nothing -> pure $ rollT (TyConF (TCUser userTyCon) tys)
+    Nothing -> throwError (UnexpandedUserType userTyCon)
     Just tydefInfo -> pure $ substTydef tydefInfo tys
 
 -- | Expand *all* applications of user-defined type constructors
 --   everywhere in a type.
-expandTydefs :: forall sig m. (Has (Reader TDCtx) sig m) => Type -> m Type
+expandTydefs ::
+  (Has (Reader TDCtx) sig m, Has (Throw ExpandTydefErr) sig m, Typical t, Plated t) =>
+  t -> m t
 expandTydefs = rewriteM expand
  where
-  expand :: Type -> m (Maybe Type)
-  expand = \case
-    TyUser u tys -> Just <$> expandTydef u tys
+  -- expand :: t -> m (Maybe t)
+  expand t = case unrollT t of
+    Just (TyConF (TCUser u) tys) -> Just <$> expandTydef u tys
     _ -> pure Nothing
 
 -- | Given the definition of a type alias, substitute the given
@@ -883,12 +905,17 @@ tcArity tydefs =
 
 -- | Reduce a type to weak head normal form, i.e. keep unfolding type
 --   aliases and recursive types just until the top-level constructor
---   of the type is neither @rec@ nor an application of a type alias.
+--   of the type is neither @rec@ nor an application of a defined type
+--   alias.
 whnfType :: TDCtx -> Type -> Type
 whnfType tdCtx = run . runReader tdCtx . go
  where
   go :: Has (Reader TDCtx) sig m => Type -> m Type
   go = \case
-    TyUser u tys -> expandTydef u tys >>= go
+    TyUser u tys -> do
+      res <- runThrow @ExpandTydefErr (expandTydef u tys)
+      case res of
+        Left _ -> pure $ TyUser u tys
+        Right expTy -> go expTy
     TyRec x ty -> go (unfoldRec x ty)
     ty -> pure ty
