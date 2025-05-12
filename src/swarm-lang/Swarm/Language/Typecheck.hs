@@ -822,7 +822,10 @@ inferTop ctx reqCtx tdCtx = runTC ctx reqCtx tdCtx Ctx.empty . infer
 checkTop :: TCtx -> ReqCtx -> TDCtx -> Syntax -> Type -> Either ContextualTypeErr TSyntax
 checkTop ctx reqCtx tdCtx t ty = runTC ctx reqCtx tdCtx Ctx.empty $ check t (toU ty)
 
--- | Infer the type of a term, returning a type-annotated term.
+-- | Infer the type of a term, returning a type-annotated term.  It is
+--   guaranteed that all user-defined types have been completely
+--   expanded away; no user-defined type names will show up in any
+--   annotations.
 --
 --   The only cases explicitly handled in 'infer' are those where
 --   pushing an expected type down into the term can't possibly help,
@@ -883,9 +886,11 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- type.
   SLam x (Just argTy) body -> do
     adaptToTypeErr l KindErr $ checkKind argTy
-    let uargTy = toU argTy
+    -- Make sure we expand user-defined types
+    argTy' <- adaptToTypeErr l (UnboundType . getUnexpanded) $ expandTydefs argTy
+    let uargTy = toU argTy'
     body' <- withBinding @UPolytype (lvVar x) (mkTrivPoly uargTy) $ infer body
-    return $ Syntax' l (SLam x (Just argTy) body') cs (UTyFun uargTy (body' ^. sType))
+    return $ Syntax' l (SLam x (Just argTy') body') cs (UTyFun uargTy (body' ^. sType))
 
   -- Need special case here for applying 'atomic' or 'instant' so we
   -- don't handle it with the case for generic type application.
@@ -1003,8 +1008,10 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     -- Free variables should be able to unify with anything in
     -- following typechecking steps.
     iuty <- instantiate upty
-    c' <- check c iuty
-    return $ Syntax' l (SAnnotate c' (forgetQ qpty)) cs iuty
+    -- Make sure to expand tydefs so none end up in the result.
+    iuty' <- adaptToTypeErr l (UnboundType . getUnexpanded) $ expandTydefs iuty
+    c' <- check c iuty'
+    return $ Syntax' l (SAnnotate c' (forgetQ qpty)) cs iuty'
 
   -- Fallback: to infer the type of anything else, make up a fresh unification
   -- variable for its type and check against it.
@@ -1132,7 +1139,9 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   arithBinT = [tyQ| Int -> Int -> Int |]
 
 -- | @check t ty@ checks that @t@ has type @ty@, returning a
---   type-annotated AST if so.
+--   type-annotated AST if so. It is guaranteed that all user-defined
+--   types have been completely expanded away; no user-defined type
+--   names will show up in any annotations.
 --
 --   We try to stay in checking mode as far as possible, decomposing
 --   the expected type as we go and pushing it through the recursion.
@@ -1148,180 +1157,184 @@ check ::
   Syntax ->
   UType ->
   m (Syntax' UType)
-check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
-  -- Once we're typechecking, we don't need to keep around explicit
-  -- parens any more
-  SParens t1 -> check t1 expected
-  -- If t : ty, then  {t} : {ty}.
-  SDelay s1 -> do
-    ty1 <- decomposeDelayTy s (Expected, expected)
-    s1' <- check s1 ty1
-    return $ Syntax' l (SDelay s1') cs (UTyDelay ty1)
+check s@(CSyntax l t cs) expectedRaw = addLocToTypeErr l $ do
+  expected <- adaptToTypeErr l (UnboundType . getUnexpanded) $ expandTydefs expectedRaw
+  case t of
+    -- Once we're typechecking, we don't need to keep around explicit
+    -- parens any more
+    SParens t1 -> check t1 expected
+    -- If t : ty, then  {t} : {ty}.
+    SDelay s1 -> do
+      ty1 <- decomposeDelayTy s (Expected, expected)
+      s1' <- check s1 ty1
+      return $ Syntax' l (SDelay s1') cs (UTyDelay ty1)
 
-  -- To check the type of a pair, make sure the expected type is a
-  -- product type, and push the two types down into the left and right.
-  SPair s1 s2 -> do
-    (ty1, ty2) <- decomposeProdTy s (Expected, expected)
-    s1' <- check s1 ty1
-    s2' <- check s2 ty2
-    return $ Syntax' l (SPair s1' s2') cs (UTyProd ty1 ty2)
+    -- To check the type of a pair, make sure the expected type is a
+    -- product type, and push the two types down into the left and right.
+    SPair s1 s2 -> do
+      (ty1, ty2) <- decomposeProdTy s (Expected, expected)
+      s1' <- check s1 ty1
+      s2' <- check s2 ty2
+      return $ Syntax' l (SPair s1' s2') cs (UTyProd ty1 ty2)
 
-  -- To check a lambda, make sure the expected type is a function type.
-  SLam x mxTy body -> do
-    (argTy, resTy) <- decomposeFunTy s (Expected, expected)
-    traverse_ (adaptToTypeErr l KindErr . checkKind) mxTy
-    forM_ (toU mxTy) $ \xTy -> do
-      res <- argTy U.=:= xTy
-      case res of
-        -- Generate a special error when the explicit type annotation
-        -- on a lambda doesn't match the expected type,
-        -- e.g. (\x:Int. x + 2) : Text -> Int, since the usual
-        -- "expected/but got" language would probably be confusing.
-        Left _ -> throwTypeErr l $ LambdaArgMismatch (joined argTy xTy)
-        Right _ -> return ()
+    -- To check a lambda, make sure the expected type is a function type.
+    SLam x mxTy body -> do
+      (argTy, resTy) <- decomposeFunTy s (Expected, expected)
+      traverse_ (adaptToTypeErr l KindErr . checkKind) mxTy
+      forM_ (toU mxTy) $ \xTy -> do
+        res <- argTy U.=:= xTy
+        case res of
+          -- Generate a special error when the explicit type annotation
+          -- on a lambda doesn't match the expected type,
+          -- e.g. (\x:Int. x + 2) : Text -> Int, since the usual
+          -- "expected/but got" language would probably be confusing.
+          Left _ -> throwTypeErr l $ LambdaArgMismatch (joined argTy xTy)
+          Right _ -> return ()
 
-    body' <- withBinding @UPolytype (lvVar x) (mkTrivPoly argTy) $ check body resTy
-    return $ Syntax' l (SLam x mxTy body') cs (UTyFun argTy resTy)
+      body' <- withBinding @UPolytype (lvVar x) (mkTrivPoly argTy) $ check body resTy
+      return $ Syntax' l (SLam x mxTy body') cs (UTyFun argTy resTy)
 
-  -- Special case for checking the argument to 'atomic' (or
-  -- 'instant').  'atomic t' has the same type as 't', which must have
-  -- a type of the form 'Cmd a' for some 'a'.
+    -- Special case for checking the argument to 'atomic' (or
+    -- 'instant').  'atomic t' has the same type as 't', which must have
+    -- a type of the form 'Cmd a' for some 'a'.
 
-  TConst c :$: at
-    | c `elem` [Atomic, Instant] -> do
-        argTy <- decomposeCmdTy s (Expected, expected)
-        at' <- check at (UTyCmd argTy)
-        atomic' <- infer (Syntax l (TConst c))
-        -- It's important that we typecheck the subterm @at@ *before* we
-        -- check that it is a valid argument to @atomic@: this way we can
-        -- ensure that we have already inferred the types of any variables
-        -- referenced.
-        --
-        -- When c is Atomic we validate that the argument to atomic is
-        -- guaranteed to operate within a single tick.  When c is Instant
-        -- we skip this check.
-        when (c == Atomic) $ validAtomic at
-        return $ Syntax' l (SApp atomic' at') cs (UTyCmd argTy)
+    TConst c :$: at
+      | c `elem` [Atomic, Instant] -> do
+          argTy <- decomposeCmdTy s (Expected, expected)
+          at' <- check at (UTyCmd argTy)
+          atomic' <- infer (Syntax l (TConst c))
+          -- It's important that we typecheck the subterm @at@ *before* we
+          -- check that it is a valid argument to @atomic@: this way we can
+          -- ensure that we have already inferred the types of any variables
+          -- referenced.
+          --
+          -- When c is Atomic we validate that the argument to atomic is
+          -- guaranteed to operate within a single tick.  When c is Instant
+          -- we skip this check.
+          when (c == Atomic) $ validAtomic at
+          return $ Syntax' l (SApp atomic' at') cs (UTyCmd argTy)
 
-  -- Checking the type of a let- or def-expression.
-  SLet ls r x mxTy _ _ t1 t2 -> withFrame l (TCLet (lvVar x)) $ do
-    mqxTy <- traverse quantify mxTy
-    (skolems, upty, t1') <- case mqxTy of
-      -- No type annotation was provided for the let binding, so infer its type.
-      Nothing -> do
-        -- The let could be recursive, so we must generate a fresh
-        -- unification variable for the type of x and infer the type
-        -- of t1 with x in the context.
-        xTy <- fresh
-        t1' <- withBinding @UPolytype (lvVar x) (mkTrivPoly xTy) $ infer t1
-        let uty = t1' ^. sType
-        uty' <- unify (Just t1) (joined xTy uty)
-        upty <- generalize uty'
-        return ([], upty, t1')
-      -- An explicit polytype annotation has been provided. Perform
-      -- implicit quantification, kind checking, and skolemization,
-      -- then check definition and body under an extended context.
-      Just pty -> do
-        _ <- adaptToTypeErr l KindErr . checkPolytypeKind $ pty
-        let upty = toU pty
-        (ss, uty) <- skolemize upty
-        t1' <- withBinding (lvVar x) upty . withBindings ss $ check t1 uty
-        return (Ctx.vars ss, upty, t1')
+    -- Checking the type of a let- or def-expression.
+    SLet ls r x mxTy _ _ t1 t2 -> withFrame l (TCLet (lvVar x)) $ do
+      mqxTy <- traverse quantify mxTy
+      (skolems, upty, t1') <- case mqxTy of
+        -- No type annotation was provided for the let binding, so infer its type.
+        Nothing -> do
+          -- The let could be recursive, so we must generate a fresh
+          -- unification variable for the type of x and infer the type
+          -- of t1 with x in the context.
+          xTy <- fresh
+          t1' <- withBinding @UPolytype (lvVar x) (mkTrivPoly xTy) $ infer t1
+          let uty = t1' ^. sType
+          uty' <- unify (Just t1) (joined xTy uty)
+          upty <- generalize uty'
+          return ([], upty, t1')
+        -- An explicit polytype annotation has been provided. Perform
+        -- implicit quantification, kind checking, and skolemization,
+        -- then check definition and body under an extended context.
+        Just pty -> do
+          _ <- adaptToTypeErr l KindErr . checkPolytypeKind $ pty
+          let upty = toU pty
+          -- Expand any user types in the provided type annotation
+          upty' <- adaptToTypeErr l (UnboundType . getUnexpanded) $ mapM expandTydefs upty
+          (ss, uty) <- skolemize upty'
+          t1' <- withBinding (lvVar x) upty' . withBindings ss $ check t1 uty
+          return (Ctx.vars ss, upty', t1')
 
-    -- Check the requirements of t1.
-    tdCtx <- ask @TDCtx
-    reqCtx <- ask @ReqCtx
-    let Syntax' _ tt1 _ _ = t1
-        reqs = requirements tdCtx reqCtx tt1
+      -- Check the requirements of t1.
+      tdCtx <- ask @TDCtx
+      reqCtx <- ask @ReqCtx
+      let Syntax' _ tt1 _ _ = t1
+          reqs = requirements tdCtx reqCtx tt1
 
-    -- If we are checking a 'def', ensure t2 has a command type.  This ensures that
-    -- something like 'def ... end; x + 3' is not allowed, since this
-    -- would result in the whole thing being wrapped in pure, like
-    -- 'pure (def ... end; x + 3)', which means the def would be local and
-    -- not persist to the next REPL input, which could be surprising.
+      -- If we are checking a 'def', ensure t2 has a command type.  This ensures that
+      -- something like 'def ... end; x + 3' is not allowed, since this
+      -- would result in the whole thing being wrapped in pure, like
+      -- 'pure (def ... end; x + 3)', which means the def would be local and
+      -- not persist to the next REPL input, which could be surprising.
+      --
+      -- On the other hand, 'let x = y in x + 3' is perfectly fine.
+      when (ls == LSDef) $ void $ decomposeCmdTy t2 (Expected, expected)
+
+      -- Now check the type of the body, under a context extended with
+      -- the type and requirements of the bound variable.
+      t2' <-
+        withBinding (lvVar x) upty $
+          withBinding (lvVar x) reqs $
+            check t2 expected
+
+      -- Make sure none of the generated skolem variables have escaped.
+      ask @UCtx >>= mapM_ (noSkolems l skolems)
+
+      -- Annotate a 'def' with requirements, but not 'let'.  The reason
+      -- is so that let introduces truly "local" bindings which never
+      -- persist, but def introduces "global" bindings.  Variables bound
+      -- in the environment can only be used to typecheck future REPL
+      -- terms if the environment holds not only a value but also a type
+      -- + requirements for them.  For example:
+      --
+      -- > def x : Int = 3 end; pure (x + 2)
+      -- 5
+      -- > x
+      -- 3
+      -- > let y : Int = 3 in y + 2
+      -- 5
+      -- > y
+      -- 1:1: Unbound variable y
+      -- > let y = 3 in def x = 5 end; pure (x + y)
+      -- 8
+      -- > y
+      -- 1:1: Unbound variable y
+      -- > x
+      -- 5
+      let mreqs = case ls of
+            LSDef -> Just reqs
+            LSLet -> Nothing
+
+      -- Return the annotated let.
+      return $ Syntax' l (SLet ls r x mxTy mqxTy mreqs t1' t2') cs expected
+
+    -- Kind-check a type definition and then check the body under an
+    -- extended context.
+    STydef x pty _ t1 -> do
+      tydef <- adaptToTypeErr l KindErr $ checkPolytypeKind pty
+      t1' <- withBinding (lvVar x) tydef (check t1 expected)
+      -- Eliminate the type alias in the reported type, since it is not
+      -- in scope in the ambient context to which we report back the type.
+      expected' <- elimTydef (lvVar x) tydef <$> applyBindings expected
+      return $ Syntax' l (STydef x pty (Just tydef) t1') cs expected'
+
+    -- To check a record, ensure the expected type is a record type,
+    -- ensure all the right fields are present, and push the expected
+    -- types of all the fields down into recursive checks.
     --
-    -- On the other hand, 'let x = y in x + 3' is perfectly fine.
-    when (ls == LSDef) $ void $ decomposeCmdTy t2 (Expected, expected)
+    -- We have to be careful here --- if the expected type is not
+    -- manifestly a record type but might unify with one (i.e. if the
+    -- expected type is a variable) then we can't generate type
+    -- variables for its subparts and push them, we have to switch
+    -- completely into inference mode.  See Note [Checking and inference
+    -- for record literals].
+    SRcd fields
+      | UTyRcd tyMap <- expected -> do
+          let expectedFields = M.keysSet tyMap
+              actualFields = M.keysSet fields
+          when (actualFields /= expectedFields) $
+            throwTypeErr l $
+              FieldsMismatch (joined expectedFields actualFields)
+          m' <- itraverse (\x ms -> check (fromMaybe (STerm (TVar x)) ms) (tyMap ! x)) fields
+          return $ Syntax' l (SRcd (Just <$> m')) cs expected
 
-    -- Now check the type of the body, under a context extended with
-    -- the type and requirements of the bound variable.
-    t2' <-
-      withBinding (lvVar x) upty $
-        withBinding (lvVar x) reqs $
-          check t2 expected
+    -- The type of @suspend t@ is @Cmd T@ if @t : T@.
+    SSuspend s1 -> do
+      argTy <- decomposeCmdTy s (Expected, expected)
+      s1' <- check s1 argTy
+      return $ Syntax' l (SSuspend s1') cs expected
 
-    -- Make sure none of the generated skolem variables have escaped.
-    ask @UCtx >>= mapM_ (noSkolems l skolems)
-
-    -- Annotate a 'def' with requirements, but not 'let'.  The reason
-    -- is so that let introduces truly "local" bindings which never
-    -- persist, but def introduces "global" bindings.  Variables bound
-    -- in the environment can only be used to typecheck future REPL
-    -- terms if the environment holds not only a value but also a type
-    -- + requirements for them.  For example:
-    --
-    -- > def x : Int = 3 end; pure (x + 2)
-    -- 5
-    -- > x
-    -- 3
-    -- > let y : Int = 3 in y + 2
-    -- 5
-    -- > y
-    -- 1:1: Unbound variable y
-    -- > let y = 3 in def x = 5 end; pure (x + y)
-    -- 8
-    -- > y
-    -- 1:1: Unbound variable y
-    -- > x
-    -- 5
-    let mreqs = case ls of
-          LSDef -> Just reqs
-          LSLet -> Nothing
-
-    -- Return the annotated let.
-    return $ Syntax' l (SLet ls r x mxTy mqxTy mreqs t1' t2') cs expected
-
-  -- Kind-check a type definition and then check the body under an
-  -- extended context.
-  STydef x pty _ t1 -> do
-    tydef <- adaptToTypeErr l KindErr $ checkPolytypeKind pty
-    t1' <- withBinding (lvVar x) tydef (check t1 expected)
-    -- Eliminate the type alias in the reported type, since it is not
-    -- in scope in the ambient context to which we report back the type.
-    expected' <- elimTydef (lvVar x) tydef <$> applyBindings expected
-    return $ Syntax' l (STydef x pty (Just tydef) t1') cs expected'
-
-  -- To check a record, ensure the expected type is a record type,
-  -- ensure all the right fields are present, and push the expected
-  -- types of all the fields down into recursive checks.
-  --
-  -- We have to be careful here --- if the expected type is not
-  -- manifestly a record type but might unify with one (i.e. if the
-  -- expected type is a variable) then we can't generate type
-  -- variables for its subparts and push them, we have to switch
-  -- completely into inference mode.  See Note [Checking and inference
-  -- for record literals].
-  SRcd fields
-    | UTyRcd tyMap <- expected -> do
-        let expectedFields = M.keysSet tyMap
-            actualFields = M.keysSet fields
-        when (actualFields /= expectedFields) $
-          throwTypeErr l $
-            FieldsMismatch (joined expectedFields actualFields)
-        m' <- itraverse (\x ms -> check (fromMaybe (STerm (TVar x)) ms) (tyMap ! x)) fields
-        return $ Syntax' l (SRcd (Just <$> m')) cs expected
-
-  -- The type of @suspend t@ is @Cmd T@ if @t : T@.
-  SSuspend s1 -> do
-    argTy <- decomposeCmdTy s (Expected, expected)
-    s1' <- check s1 argTy
-    return $ Syntax' l (SSuspend s1') cs expected
-
-  -- Fallback: switch into inference mode, and check that the type we
-  -- get is what we expected.
-  _ -> do
-    Syntax' l' t' _ actual <- infer s
-    Syntax' l' t' cs <$> unify (Just s) (joined expected actual)
+    -- Fallback: switch into inference mode, and check that the type we
+    -- get is what we expected.
+    _ -> do
+      Syntax' l' t' _ actual <- infer s
+      Syntax' l' t' cs <$> unify (Just s) (joined expected actual)
 
 -- ~~~~ Note [Checking and inference for record literals]
 --
