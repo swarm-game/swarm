@@ -336,7 +336,7 @@
     attr: gold
   description:
     - Edible grain
-  properties: [known, pickable, growable]
+  properties: [pickable, growable]
   growth:
     duration: [20, 30]
     spread:
@@ -349,14 +349,14 @@
     attr: rock
   description:
     - Grinds grain
-  properties: [known, pickable]
+  properties: [pickable]
 - name: flour
   display:
     char: 'f'
     attr: snow
   description:
     - Edible, ground wheat
-  properties: [known, pickable]
+  properties: [pickable]
 - name: parsley
   display:
     attr: plant
