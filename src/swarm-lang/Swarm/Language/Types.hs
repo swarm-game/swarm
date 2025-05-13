@@ -849,7 +849,8 @@ expandTydef userTyCon tys = do
 --   everywhere in a type.
 expandTydefs ::
   (Has (Reader TDCtx) sig m, Has (Throw ExpandTydefErr) sig m, Typical t, Plated t) =>
-  t -> m t
+  t ->
+  m t
 expandTydefs = rewriteM expand
  where
   -- expand :: t -> m (Maybe t)
