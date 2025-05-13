@@ -819,7 +819,7 @@ makeLenses ''TydefInfo
 --   to their definitions and arities/kinds.
 type TDCtx = Ctx TydefInfo
 
-data ExpandTydefErr = UnexpandedUserType { getUnexpanded :: Var }
+newtype ExpandTydefErr = UnexpandedUserType {getUnexpanded :: Var}
   deriving (Eq, Show)
 
 -- | Expand an application "T ty1 ty2 ... tyn" by looking up the
