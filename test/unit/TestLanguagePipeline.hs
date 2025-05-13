@@ -631,9 +631,9 @@ testLanguagePipeline =
             )
         , testCase
             "redefinition of user type does not break type soundness #2437"
-            (process
-               "tydef Foo = Int end; def f : Int -> Foo = \\x. x + 1 end; tydef Foo = Bool end; if (f 3) {} {}"
-               "1:84: Type mismatch:\n  From context, expected `f 3` to have type `Bool`"
+            ( process
+                "tydef Foo = Int end; def f : Int -> Foo = \\x. x + 1 end; tydef Foo = Bool end; if (f 3) {} {}"
+                "1:84: Type mismatch:\n  From context, expected `f 3` to have type `Bool`"
             )
         ]
     , testGroup

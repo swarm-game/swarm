@@ -819,7 +819,7 @@ makeLenses ''TydefInfo
 --   to their definitions and arities/kinds.
 type TDCtx = Ctx TydefInfo
 
-data ExpandTydefErr = UnexpandedUserType { getUnexpanded :: Var }
+data ExpandTydefErr = UnexpandedUserType {getUnexpanded :: Var}
   deriving (Eq, Show)
 
 -- | Expand an application "T ty1 ty2 ... tyn" by looking up the
@@ -849,7 +849,8 @@ expandTydef userTyCon tys = do
 --   everywhere in a type.
 expandTydefs ::
   (Has (Reader TDCtx) sig m, Has (Throw ExpandTydefErr) sig m, Typical t, Plated t) =>
-  t -> m t
+  t ->
+  m t
 expandTydefs = rewriteM expand
  where
   -- expand :: t -> m (Maybe t)

@@ -126,14 +126,17 @@ checkRecTy x ty = do
 --   variable.
 containsVar ::
   (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) =>
-  Nat -> Type -> m Bool
+  Nat ->
+  Type ->
+  m Bool
 containsVar i ty@(Fix tyF) = case tyF of
   TyRecVarF j -> pure (i == j)
   TyVarF {} -> pure False
   TyConF (TCUser u) tys -> do
-    ty' <- withThrow
-      (\(UnexpandedUserType _) -> UndefinedTyCon (TCUser u) ty)
-      (expandTydef u tys)
+    ty' <-
+      withThrow
+        (\(UnexpandedUserType _) -> UndefinedTyCon (TCUser u) ty)
+        (expandTydef u tys)
     containsVar i ty'
   TyConF _ tys -> or <$> mapM (containsVar i) tys
   TyRcdF m -> or <$> mapM (containsVar i) m
@@ -150,16 +153,19 @@ containsVar i ty@(Fix tyF) = case tyF of
 --   @tydef Id a = a@, the type @rec x. rec y. Id x@ is also vacuous.
 nonVacuous ::
   (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) =>
-  Nat -> Type -> m Bool
+  Nat ->
+  Type ->
+  m Bool
 nonVacuous i ty@(Fix tyF) = case tyF of
   -- The type simply consists of a variable bound by some @rec@.
   -- Check if it's the variable we're currently looking for.
   TyRecVarF j -> pure (i /= j)
   -- Expand a user-defined type and keep looking.
   TyConF (TCUser u) tys -> do
-    ty' <- withThrow
-      (\(UnexpandedUserType _) -> UndefinedTyCon (TCUser u) ty)
-      (expandTydef u tys)
+    ty' <-
+      withThrow
+        (\(UnexpandedUserType _) -> UndefinedTyCon (TCUser u) ty)
+        (expandTydef u tys)
     nonVacuous i ty'
   -- Increment the variable we're looking for when going under a @rec@
   -- binder.

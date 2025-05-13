@@ -403,7 +403,7 @@ testEval g =
             )
         , testCase
             "read at user-defined type works #2223"
-            ( "tydef Foo = Int end; read \"3\" : Foo" `evaluatesToV` (3 :: Integer) )
+            ("tydef Foo = Int end; read \"3\" : Foo" `evaluatesToV` (3 :: Integer))
         , testCase
             "read at wrong user-defined type fails normally #2223"
             ( "tydef Foo = Bool end; read \"3\" : Foo"
