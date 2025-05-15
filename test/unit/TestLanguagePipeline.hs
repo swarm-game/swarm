@@ -730,7 +730,7 @@ testLanguagePipeline =
             "missing end"
             $ do
               source <- TIO.readFile "data/test/language-snippets/errors/missing-end.sw"
-              processCompare T.isInfixOf source "end"
+              processCompare T.isInfixOf source "missing 'end' keyword for definition of 'tL'"
         ]
     ]
  where
