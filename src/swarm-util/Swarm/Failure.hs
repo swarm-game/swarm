@@ -78,7 +78,7 @@ data SystemFailure
   | ScenarioNotFound FilePath
   | OrderFileWarning FilePath OrderFileWarning
   | CanNotParseMegaparsec (ParseErrorBundle Text Void)
-  | DoesNotTypecheck Text -- See Note [Typechecking errors]
+  | DoesNotTypecheck Text -- See Note [Pretty-printing typechecking errors]
   | CustomFailure Text
   deriving (Show)
 

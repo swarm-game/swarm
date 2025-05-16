@@ -42,6 +42,7 @@ import Data.Set qualified as S
 import Swarm.Effect.Unify
 import Swarm.Effect.Unify.Common
 import Swarm.Language.Types hiding (Type)
+import Swarm.Util.Effect (withThrow)
 import Prelude hiding (lookup)
 
 ------------------------------------------------------------
@@ -253,7 +254,10 @@ unify ty1 ty2 = do
         (UTyRec x ty, _) -> unify (unfoldRec x ty) ty2
         (_, UTyRec x ty) -> unify ty1 (unfoldRec x ty)
         (UTyUser x1 tys, _) -> do
-          ty1' <- expandTydef x1 tys
+          ty1' <-
+            withThrow
+              (\(UnexpandedUserType _) -> UndefinedUserType (UTyUser x1 tys))
+              (expandTydef x1 tys)
           unify ty1' ty2
         (_, UTyUser {}) -> unify ty2 ty1
         (Free t1, Free t2) -> Free <$> unifyF t1 t2
