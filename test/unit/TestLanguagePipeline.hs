@@ -15,7 +15,6 @@ import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
-import Data.Text.IO qualified as TIO
 import Swarm.Language.JSON ()
 import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ (tyQ)
@@ -729,8 +728,10 @@ testLanguagePipeline =
         [ testCase
             "missing end"
             $ do
-              source <- TIO.readFile "data/test/language-snippets/errors/missing-end.sw"
-              processCompare T.isInfixOf source "missing 'end' keyword for definition of 'tL'"
+              processCompare
+                T.isInfixOf
+                "def x = 3;\n def y = 3 end;\n def z = 3 end"
+                "missing 'end' keyword for definition of 'x'"
         ]
     ]
  where
