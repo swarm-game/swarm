@@ -29,3 +29,8 @@ docs/ott/*.tex
 node_modules/
 package-lock.json
 package.json
+
+*.hp
+*.eventlog
+*.eventlog.html
+*.prof
