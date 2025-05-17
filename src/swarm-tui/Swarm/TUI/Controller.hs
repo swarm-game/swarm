@@ -1,5 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- |
@@ -460,11 +460,11 @@ handleModalEvent = \case
         robotDialog <- use $ playState . scenarioState . uiGameplay . uiDialogs . uiRobot
         unless (robotDialog ^. isDetailsOpened) $ do
           g <- use $ playState . scenarioState . gameState
-          let widget = robotDialog ^. robotListContent . robotsGridList
+          let widget = robotDialog ^. robotsGridList
           forM_ (getSelectedRobot g widget) $ \rob -> do
             Brick.zoom (playState . scenarioState . uiGameplay . uiDialogs . uiRobot) $ do
               isDetailsOpened .= True
-              Brick.zoom (robotListContent . robotDetailsPaneState) $ updateRobotDetailsPane rob
+              Brick.zoom (robotDetailsPaneState) $ updateRobotDetailsPane rob
       _ -> do
         menu <- use $ uiState . uiMenu
 
@@ -524,13 +524,13 @@ handleModalEvent = \case
           _ -> do
             isInDetailsMode <- use isDetailsOpened
             if isInDetailsMode
-              then Brick.zoom (robotListContent . robotDetailsPaneState . logsList) $ handleListEvent ev
+              then Brick.zoom (robotDetailsPaneState . logsList) $ handleListEvent ev
               else do
-                Brick.zoom (robotListContent . robotsGridList) $
+                Brick.zoom (robotsGridList) $
                   BG.handleGridListEvent (robotGridRenderers uiGame g) ev
                 -- Ensure list widget content is updated immediately
-                mRob <- use $ robotListContent . robotsGridList . to (getSelectedRobot g)
-                forM_ mRob $ Brick.zoom (robotListContent . robotDetailsPaneState) . updateRobotDetailsPane
+                mRob <- use $ robotsGridList . to (getSelectedRobot g)
+                forM_ mRob $ Brick.zoom (robotDetailsPaneState) . updateRobotDetailsPane
       _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
    where
     refreshGoalList lw = nestEventM' lw $ handleListEventWithSeparators ev shouldSkipSelection

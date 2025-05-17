@@ -1,6 +1,6 @@
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoGeneralizedNewtypeDeriving #-}
 
@@ -14,18 +14,17 @@ module Swarm.TUI.View.Robot (
   robotGridRenderers,
   drawRobotsDisplayModal,
   getSelectedRobot,
-  
-  unusedLegacy,
 ) where
 
 import Brick
-import Brick.Widgets.Center
+import Brick.Focus
 import Brick.Widgets.Border
+import Brick.Widgets.Center
 import Brick.Widgets.List qualified as BL
-import Brick.Widgets.TabularList.Types (ColWidth(..))
 import Brick.Widgets.TabularList.Grid qualified as BL
 import Brick.Widgets.TabularList.Mixed
-import Control.Lens ( (^?), (^.), view, makeLenses )
+import Brick.Widgets.TabularList.Types (ColWidth (..))
+import Control.Lens (makeLenses, view, (^.), (^?))
 import Control.Lens as Lens hiding (Const, from)
 import Data.IntMap qualified as IM
 import Data.List (mapAccumL)
@@ -104,33 +103,29 @@ colWidth = textWidth . colName
 -- , rowActivity = Col "Activity" Grow
 -- , rowLog = Col "Log" Minimal
 colWidths :: Seq ColWidth
-colWidths = S.fromList enumerate <&> ColW . \case
-  ColID -> 5
-  ColName -> 25
-  ColAge -> 7
-  ColPos -> 9
-  ColStatus -> 10
-  c -> 1 + colWidth c
+colWidths =
+  S.fromList enumerate
+    <&> ColW . \case
+      ColID -> 5
+      ColName -> 25
+      ColAge -> 7
+      ColPos -> 9
+      ColStatus -> 10
+      c -> 1 + colWidth c
 
 {--------------------------------------------------------------------
 EMPTY
 --------------------------------------------------------------------}
 
-emptyRobotDisplay :: RobotListContent
+emptyRobotDisplay :: RobotDisplay
 emptyRobotDisplay =
-  RobotListContent
-  { _robotsGridList = BL.gridTabularList (RobotsListDialog RobotList) mempty (LstItmH 1) colWidths
-    -- { _robotsGridList = mixedTabularList (RobotsListDialog RobotList) mempty (LstItmH 1) (computeColumnWidths uiDebug) assignRowWidthForConstructor
-    -- , _robotsListRenderers =
-    --     MixedRenderers
-    --       { cell = drawCell uiDebug
-    --       , rowHdr = Just rowHdr
-    --       , colHdr = Just $ colHdr uiDebug
-    --       , colHdrRowHdr = Just $ ColHdrRowHdr $ \_ _ -> vLimit 1 (fill ' ') <=> hBorder
-    --       }
+  RobotDisplay
+    { _isDetailsOpened = False
+    , _robotsGridList = BL.gridTabularList (RobotsListDialog RobotList) mempty (LstItmH 1) colWidths
     , _robotDetailsPaneState =
         RobotDetailsPaneState
-          { _logsList = BL.list (RobotsListDialog $ SingleRobotDetails RobotLogPane) mempty 1
+          { _detailFocus = focusRing $ map (RobotsListDialog . SingleRobotDetails) enumerate
+          , _logsList = BL.list (RobotsListDialog $ SingleRobotDetails RobotLogPane) mempty 1
           , _cmdHistogramList = BL.list (RobotsListDialog $ SingleRobotDetails RobotCommandHistogramPane) mempty 1
           }
     }
@@ -148,7 +143,7 @@ getSelectedRobot g gl = do
   g ^. robotInfo . robotMap . at rid
 
 updateRobotList :: GameState -> BL.GridTabularList Name RID -> BL.GridTabularList Name RID
-updateRobotList g l = l { BL.list = updatedList}
+updateRobotList g l = l {BL.list = updatedList}
  where
   updatedList :: BL.GenericList Name Seq RID
   updatedList = BL.listReplace rids sel l.list
@@ -174,27 +169,28 @@ drawRobotsDisplayModal t g robDisplay =
     else robList
  where
   robDetail :: Widget Name
-  robDetail = 
-        let detailsContent = case getSelectedRobot g (robDisplay ^. robotListContent . robotsGridList) of
-              Nothing -> str "No selection"
-              Just r -> renderRobotDetails (robDisplay ^. robotDetailsFocus) r $ robDisplay ^. robotListContent . robotDetailsPaneState
-         in vBox
-              [ detailsContent
-              , tabControlFooter
-              ]
+  robDetail =
+    let detailsContent = case getSelectedRobot g (robDisplay ^. robotsGridList) of
+          Nothing -> str "No selection"
+          Just r -> renderRobotDetails r $ robDisplay ^. robotDetailsPaneState
+     in vBox
+          [ detailsContent
+          , tabControlFooter
+          ]
   robList :: Widget Name
-  robList = drawRobotsList t g $ robDisplay ^. robotListContent . robotsGridList
+  robList = drawRobotsList t g $ robDisplay ^. robotsGridList
 
 drawRobotsList :: UIGameplay -> GameState -> BL.GridTabularList Name RID -> Widget Name
-drawRobotsList t g = vLimit 30 . BL.renderGridTabularList (robotGridRenderers t g) (LstFcs True) 
+drawRobotsList t g = vLimit 30 . BL.renderGridTabularList (robotGridRenderers t g) (LstFcs True)
 
 robotGridRenderers :: UIGameplay -> GameState -> BL.GridRenderers Name RID
-robotGridRenderers t g = BL.GridRenderers
-  { BL.cell = drawRobotGridCell t g
-  , BL.rowHdr = Just rowHdr
-  , BL.colHdr = Just colHdr
-  , BL.colHdrRowHdr = Just colRowHdr
-  }
+robotGridRenderers t g =
+  BL.GridRenderers
+    { BL.cell = drawRobotGridCell t g
+    , BL.rowHdr = Just rowHdr
+    , BL.colHdr = Just colHdr
+    , BL.colHdrRowHdr = Just colRowHdr
+    }
 
 -- | Enumerates the rows by position (not 'RID').
 rowHdr :: RowHdr Name a
@@ -211,17 +207,17 @@ colHdr :: BL.GridColHdr Name
 colHdr =
   BL.GridColHdr
     { draw =
-      \_ (WdthD widthDef) (BL.GColC (BL.Ix i) (BL.Sel _sel)) -> 
-        let colGap = padLeft (Pad $ if widthDef > 0 then 0 else 1) 
-        in withAttr columnHdrAttr (colGap . txt . colName $ toEnum i) <=> hBorder
+        \_ (WdthD widthDef) (BL.GColC (BL.Ix i) (BL.Sel _sel)) ->
+          let colGap = padLeft (Pad $ if widthDef > 0 then 0 else 1)
+           in withAttr columnHdrAttr (colGap . txt . colName $ toEnum i) <=> hBorder
     , height = ColHdrH 2
-    }    
+    }
 
 colRowHdr :: BL.ColHdrRowHdr Name
 colRowHdr = BL.ColHdrRowHdr $ \_ (WdthD _wd) -> (fill ' ') <=> hBorder
 
 drawRobotGridCell :: UIGameplay -> GameState -> ListFocused -> WidthDeficit -> BL.GridCtxt -> RID -> Widget Name
-drawRobotGridCell t g _foc (WdthD widthDef) ctx rid = 
+drawRobotGridCell t g _foc (WdthD widthDef) ctx rid =
   colGap . withSelectedAttr $ case col of
     ColID -> padRight Max $ showW $ r ^. robotID
     ColName -> padRight Max $ nameWidget
@@ -233,7 +229,7 @@ drawRobotGridCell t g _foc (WdthD widthDef) ctx rid =
     ColCmds -> padLeft Max . showW . sum . M.elems $ r ^. activityCounts . commandsHistogram
     ColCycles -> padLeft Max . showW $ r ^. activityCounts . lifetimeStepCount
     ColActivity -> padLeft Max $ renderDutyCycle (g ^. temporal) r
-    ColLog -> hCenter $ rLog 
+    ColLog -> hCenter $ rLog
  where
   (BL.GColC (BL.Ix cIx) (BL.Sel cSel)) = ctx.col
   (BL.GRowC (BL.Ix _ix) (BL.Sel rSel)) = ctx.row
@@ -245,7 +241,7 @@ drawRobotGridCell t g _foc (WdthD widthDef) ctx rid =
   r = case g ^. robotInfo . robotMap . at rid of
     Just jr -> jr
     Nothing -> error $ "Could not find RID in map: " <> show rid
-  
+
   showW :: Show a => a -> Widget Name
   showW = str . show
   highlightSystem :: Widget Name -> Widget Name
@@ -254,13 +250,14 @@ drawRobotGridCell t g _foc (WdthD widthDef) ctx rid =
 
   -- WithWidth (2 + T.length nameTxt)
   nameWidget :: Widget Name
-  nameWidget = hBox
-    [ renderDisplay (r ^. robotDisplay)
-    , highlightSystem . txt $ " " <> r ^. robotName
-    ]
+  nameWidget =
+    hBox
+      [ renderDisplay (r ^. robotDisplay)
+      , highlightSystem . txt $ " " <> r ^. robotName
+      ]
 
   ageWidget :: Widget Name
-  ageWidget = str ageStr 
+  ageWidget = str ageStr
    where
     TimeSpec createdAtSec _ = r ^. robotCreatedAt
     TimeSpec nowSec _ = t ^. uiTiming . lastFrameTime
@@ -276,16 +273,16 @@ drawRobotGridCell t g _foc (WdthD widthDef) ctx rid =
 
   rLog :: Widget Name
   rLog = str $ if r ^. robotLogUpdated then "x" else " "
-  
+
   -- WithWidth (2 + length locStr)
   locWidget :: Widget Name
   locWidget = hBox [worldCell, str $ " " <> locStr]
-    where
+   where
     rCoords = fmap locToCoords rLoc
     rLoc = r ^. robotLocation
     worldCell = drawLoc t g rCoords
     locStr = renderCoordsString rLoc
-  
+
   statusWidget :: Widget Name
   statusWidget = case r ^. machine of
     Waiting {} -> str "waiting"
@@ -319,275 +316,3 @@ renderDutyCycle temporalState r = withAttr dutyCycleAttr $ str tx
 
   dutyCyclePercentage :: Double
   dutyCyclePercentage = 100 * getValue dutyCycleRatio
-
-{--------------------------------------------------------------------
-OLD MIXED LIST
---------------------------------------------------------------------}
-
-extractColWidth :: ColWidth -> Int
-extractColWidth (ColW x) = x
-
-getMaxWidth :: ColWidth -> ColWidth -> ColWidth
-getMaxWidth (ColW w1) (ColW w2) = ColW $ max w1 w2
-
-data RobotRenderingContext = RobotRenderingContext
-  { _mygs :: GameState
-  , _gameplay :: UIGameplay
-  , _timing :: UITiming
-  , _uiDbg :: Set DebugOption
-  }
-
-makeLenses ''RobotRenderingContext
-
-unusedLegacy =
-  ( undefined :: RobotRenderingContext
-  , mkRobotDisplay undefined,
-  , updateList id (mkRobotDisplay undefined),
-  , drawRobotsModal undefined
-  )
-
-mkRobotDisplay :: RobotRenderingContext -> MixedTabularList Name RobotWidgetRow Widths
-mkRobotDisplay c =
-  mixedTabularList
-    (RobotsListDialog RobotList)
-    (mkLibraryEntries c)
-    (LstItmH 1)
-    (computeColumnWidths $ c ^. uiDbg)
-    assignRowWidthForConstructor
-
--- renderRobotsList :: RobotListContent -> Widget Name
--- renderRobotsList rd =
---   vLimit 30 $
---     renderMixedTabularList (rd ^. robotsListRenderers) (LstFcs True) (rd ^. robotsListWidget)
-
-
--- | Note that with the current two constructors, this happens to be analogous
--- to 'Brick.Types.Size'. However, we'd like to reserve the right to add
--- more constructors/growth modes and not be bound by the Brick semantics, so
--- we have our own definition here.
-data ColumnExpansion
-  = Grow
-  | Minimal
-  deriving (Eq)
-
-data ColumnAttributes = Col
-  { headingString :: String
-  , expansionPolicy :: ColumnExpansion
-  }
-
-getColumnAttrList :: Set DebugOption -> NonEmpty ColumnAttributes
-getColumnAttrList dbgOptions =
-  NE.map ($ headingStrings) $ getAccessorList dbgOptions
- where
-  headingStrings =
-    RobotRow
-      { rowID = Col "ID" Minimal
-      , rowName = Col "Name" Grow
-      , rowAge = Col "Age" Minimal
-      , rowPos = Col "Pos" Minimal
-      , rowItems = Col "Items" Minimal
-      , rowStatus = Col "Status" Minimal
-      , rowActns = Col "Actns" Minimal
-      , rowCmds = Col "Cmds" Minimal
-      , rowCycles = Col "Cycles" Minimal
-      , rowActivity = Col "Activity" Grow
-      , rowLog = Col "Log" Minimal
-      }
-
-colHdrs :: Set DebugOption -> Vector String
-colHdrs =
-  V.fromList
-    . NE.toList
-    . NE.map headingString
-    . getColumnAttrList
-
-getAccessorList :: Set DebugOption -> NonEmpty (RobotRow a -> a)
-getAccessorList dbgOptions =
-  applyWhen debugRID (NE.cons rowID) mainListSuffix
- where
-  debugRID = dbgOptions ^. Lens.contains ListRobotIDs
-
-  mainListSuffix =
-    rowName
-      :| [ rowAge
-         , rowPos
-         , rowItems
-         , rowStatus
-         , rowActns
-         , rowCmds
-         , rowCycles
-         , rowActivity
-         , rowLog
-         ]
-
-drawCell :: Set DebugOption -> ListFocused -> MixedCtxt -> RobotWidgetRow -> Widget Name
-drawCell uiDebug _ (MxdCtxt _ (MColC (Ix ci))) r =
-  maybe emptyWidget (renderPlainCell . wWidget . ($ view row r)) (indexedAccessors V.!? ci)
- where
-  indexedAccessors = V.fromList $ NE.toList accessors
-  accessors = getAccessorList uiDebug
-  renderPlainCell = padRight Max
-
--- | For a single-constructor datatype like 'RobotWidgetRow',
--- this implementation is trivial.
-assignRowWidthForConstructor :: WidthsPerRow RobotWidgetRow Widths
-assignRowWidthForConstructor = WsPerR $ \(Widths x) _ -> x
-
--- |
--- First, computes the minimum width for each column, using
--- both the header string width and the widest visible cell content,
--- then adding 1 to the result of each column for padding.
---
--- Second, to utilize the full available width for the table, distributes
--- the extra space equally among columns marked as 'Grow'.
-computeColumnWidths :: Set DebugOption -> WidthsPerRowKind RobotWidgetRow Widths
-computeColumnWidths uiDebug = WsPerRK $ \availableWidth allRows ->
-  let output = maybe [] (NE.toList . distributeWidths availableWidth) $ NE.nonEmpty allRows
-   in Widths {robotRowWidths = output}
- where
-  distributeWidths (AvlW availableWidth) allRows =
-    NE.zipWith (\(ColW w) extra -> ColW $ w + extra) minWidthsPerColum distributedRemainderSpace
-   where
-    minWidthsPerColum = mkWidths allRows
-    totalRequiredWidth = sum $ NE.map extractColWidth minWidthsPerColum
-    spareWidth = availableWidth - totalRequiredWidth
-
-    growPolicies = NE.map expansionPolicy colAttrList
-    growableColumnCount = length $ filter (== Grow) $ NE.toList growPolicies
-    (spacePerGrowable, remainingSpace) = spareWidth `divMod` growableColumnCount
-
-    distributedRemainderSpace = snd $ mapAccumL addedWidth remainingSpace growPolicies
-    addedWidth remainder policy = case policy of
-      Grow -> (remainder - 1, spacePerGrowable + extra)
-       where
-        extra = fromEnum $ remainder > 0
-      Minimal -> (remainder, 0)
-
-  colAttrList = getColumnAttrList uiDebug
-  colHeaderRowLengths = NE.map (length . headingString) colAttrList
-
-  -- We take the maximum of all cell widths, including the headers, and
-  -- add 1 for "padding".
-  -- NOTE: We don't necessarily need to pad the last column, but it's
-  -- simpler this way and it looks fine.
-  mkWidths :: NonEmpty RobotWidgetRow -> NonEmpty ColWidth
-  mkWidths =
-    NE.map (ColW . (+ 1) . maximumNE)
-      . NE.transpose
-      . (colHeaderRowLengths `NE.cons`)
-      . NE.map getColWidthsForRow
-   where
-    getColWidthsForRow :: RobotWidgetRow -> NonEmpty Int
-    getColWidthsForRow r = NE.map (wWidth . ($ view row r)) $ getAccessorList uiDebug
-
-getList :: MixedTabularList n e w -> BL.GenericList n Seq e
-getList (MixedTabularList oldList _ _) = oldList
-
-updateList ::
-  (BL.GenericList n1 Seq e -> BL.GenericList n2 Seq e) ->
-  MixedTabularList n1 e w ->
-  MixedTabularList n2 e w
-updateList f (MixedTabularList ls a b) = MixedTabularList (f ls) a b
-
-strWidget :: String -> WidthWidget
-strWidget tx = WithWidth (length tx) (str tx)
-
-mkLibraryEntries :: RobotRenderingContext -> Seq RobotWidgetRow
-mkLibraryEntries c =
-  mkRobotRow <$> S.fromList robots
- where
-  mkRobotRow r =
-    RobotRowPayload r $
-      RobotRow
-        { rowID = strWidget $ show $ r ^. robotID
-        , rowName = nameWidget
-        , rowAge = strWidget ageStr
-        , rowPos = locWidget
-        , rowItems = increaseWidth 1 $ strWidget $ show rInvCount
-        , rowStatus = statusWidget
-        , rowActns = strWidget $ show $ r ^. activityCounts . tangibleCommandCount
-        , rowCmds = strWidget $ show . sum . M.elems $ r ^. activityCounts . commandsHistogram
-        , rowCycles = strWidget $ show $ r ^. activityCounts . lifetimeStepCount
-        , rowActivity = WithWidth (1) $ renderDutyCycle (c ^. mygs . temporal) r
-        , rowLog = strWidget $ pure rLog
-        }
-   where
-    nameWidget = WithWidth (2 + T.length nameTxt) w
-     where
-      w =
-        hBox
-          [ renderDisplay (r ^. robotDisplay)
-          , highlightSystem . txt $ " " <> nameTxt
-          ]
-      nameTxt = r ^. robotName
-
-    highlightSystem = applyWhen (r ^. systemRobot) $ withAttr highlightAttr
-
-    ageStr
-      | age < 60 = show age <> "sec"
-      | age < 3600 = show (age `div` 60) <> "min"
-      | age < 3600 * 24 = show (age `div` 3600) <> "hour"
-      | otherwise = show (age `div` 3600 * 24) <> "day"
-     where
-      TimeSpec createdAtSec _ = r ^. robotCreatedAt
-      TimeSpec nowSec _ = c ^. timing . lastFrameTime
-      age = nowSec - createdAtSec
-
-    rInvCount = sum $ map fst . E.elems $ r ^. robotEntity . entityInventory
-    rLog
-      | r ^. robotLogUpdated = 'x'
-      | otherwise = ' '
-
-    locWidget =
-      WithWidth (2 + length locStr) w
-     where
-      w = hBox [worldCell, str $ " " <> locStr]
-      rCoords = fmap locToCoords rLoc
-      rLoc = r ^. robotLocation
-      worldCell =
-        drawLoc
-          (c ^. gameplay)
-          g
-          rCoords
-      locStr = renderCoordsString rLoc
-
-    statusWidget = case r ^. machine of
-      Waiting {} -> strWidget "waiting"
-      _
-        | isActive r -> withAttr notifAttr <$> strWidget "busy"
-        | otherwise -> withAttr greenAttr <$> strWidget "idle"
-
-  basePos :: Point V2 Double
-  basePos = realToFrac <$> fromMaybe origin (g ^? baseRobot . robotLocation . planar)
-  -- Keep the base and non system robot (e.g. no seed)
-  isRelevant r = r ^. robotID == 0 || not (r ^. systemRobot)
-  -- Keep the robot that are less than 32 unit away from the base
-  isNear r = creative || distance (realToFrac <$> r ^. robotLocation . planar) basePos < 32
-  robots :: [Robot]
-  robots =
-    filter (\r -> debugAllRobots || (isRelevant r && isNear r))
-      . IM.elems
-      $ g ^. robotInfo . robotMap
-  creative = g ^. creativeMode
-  debugAllRobots = c ^. uiDbg . Lens.contains ListAllRobots
-  g = c ^. mygs
-
-drawRobotsModal :: RobotDisplay -> Widget Name
-drawRobotsModal robotDialog =
-  mainContent
- where
-  rFocusRing = robotDialog ^. robotDetailsFocus
-
-  mainContent =
-    if robotDialog ^. isDetailsOpened
-      then
-        let oldList = getList $ robotDialog ^. robotListContent . undefined -- robotsListWidget
-            maybeSelectedRobot = view robot . snd <$> BL.listSelectedElement oldList
-            detailsContent = case maybeSelectedRobot of
-              Nothing -> str "No selection"
-              Just r -> renderRobotDetails rFocusRing r $ robotDialog ^. robotListContent . robotDetailsPaneState
-         in vBox
-              [ detailsContent
-              , tabControlFooter
-              ]
-      else {- renderRobotsList -} undefined $ robotDialog ^. robotListContent

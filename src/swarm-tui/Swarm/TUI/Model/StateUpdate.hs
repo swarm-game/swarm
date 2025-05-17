@@ -262,12 +262,7 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mCha
             { _uiModal = Nothing
             , _uiGoal = emptyGoalDisplay
             , _uiStructure = emptyStructureDisplay
-            , _uiRobot =
-                RobotDisplay
-                  { _robotDetailsFocus = focusRing $ map (RobotsListDialog . SingleRobotDetails) enumerate
-                  , _isDetailsOpened = False
-                  , _robotListContent = emptyRobotDisplay
-                  }
+            , _uiRobot = emptyRobotDisplay
             }
       , _uiIsAutoPlay = False
       , _uiAutoShowObjectives = autoShowObjectives
