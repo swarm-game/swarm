@@ -1,3 +1,6 @@
+def λcase = \f. \g. \s. case s f g end
+def λmatch = \f. \p. match p f end
+
 def elif = \p.\t.\f. {if p t f} end;
 
 // A for cycle from start to end (excluded) that carries a state.
@@ -33,20 +36,17 @@ def defaultState: RobotState =
 end;
 
 def query : Actor -> RobotsStateList -> RobotState = \rob.\l.
-  case l (\_. defaultState) (\n.
-    if (fst n == rob) {fst (snd n)} {query rob (snd (snd n))}
+  case l (\_. defaultState) (λmatch \r. λmatch \s.\tail.
+    if (r == rob) {s} {query rob tail}
   )
 end;
 
 def update : Actor -> RobotState -> RobotsStateList -> RobotsStateList = \rob.\s.\l.
-  case l (\_. inr (rob, s, emptyList)) (\n.
-    let nr = fst n in
-    let ns = fst $ snd n in
-    let nnl = snd $ snd n in
+  case l (\_. inr (rob, s, emptyList)) (λmatch \nr. λmatch \ns. \tail.
     if (nr == rob) {
-      inr (rob, s, nnl)
+      inr (rob, s, tail)
     } {
-      inr (nr, ns, update rob s nnl)
+      inr (nr, ns, update rob s tail)
     }
   )
 end;
@@ -56,7 +56,7 @@ myLoc <- whereami;
 def foldM : (rec l. Unit + a * l) -> b -> (b -> a -> Cmd b) -> Cmd b =
   \xs. \b. \f. case xs
     (\_. pure b)
-    (\cons. b' <- f b (fst cons); foldM (snd cons) b' f)
+    (λmatch \h.\t. b2 <- f b h; foldM t b2 f)
 end
 
 // Try to give a robot a Win, filtering out those that were already given a Win.
