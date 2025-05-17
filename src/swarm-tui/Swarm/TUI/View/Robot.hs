@@ -1,13 +1,15 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoGeneralizedNewtypeDeriving #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A UI-centric model for presentation of Robot details.
+--
+-- It stores robot IDs to identify rows, which makes
+-- it relatively light-weight.
 module Swarm.TUI.View.Robot (
   emptyRobotDisplay,
   updateRobotList,
@@ -23,28 +25,21 @@ import Brick.Widgets.Center
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.TabularList.Grid qualified as BL
 import Brick.Widgets.TabularList.Mixed
-import Brick.Widgets.TabularList.Types (ColWidth (..))
-import Control.Lens (makeLenses, view, (^.), (^?))
 import Control.Lens as Lens hiding (Const, from)
 import Data.IntMap qualified as IM
-import Data.List (mapAccumL)
 import Data.List.Extra (dropPrefix, enumerate)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
+import Data.Map qualified as M
 import Data.Sequence (Seq)
 import Data.Sequence qualified as S
-import Data.Set (Set)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Vector (Vector)
-import Data.Vector qualified as V
-import Linear (V2 (..), distance)
 import Numeric (showFFloat)
 import Swarm.Game.CESK (CESK (..))
 import Swarm.Game.Entity as E
-import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
@@ -54,7 +49,6 @@ import Swarm.Game.State.Substate
 import Swarm.Game.Tick (addTicks)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
-import Swarm.TUI.Model.DebugOption
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr
@@ -62,7 +56,7 @@ import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.Robot.Details
 import Swarm.TUI.View.Robot.Type
 import Swarm.TUI.View.Shared (tabControlFooter)
-import Swarm.Util (applyWhen, maximum0, maximumNE)
+import Swarm.Util (applyWhen, maximum0)
 import Swarm.Util.UnitInterval
 import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec (..))
@@ -91,17 +85,7 @@ colName = T.pack . dropPrefix "Col" . show
 colWidth :: RobotColumn -> Int
 colWidth = textWidth . colName
 
--- { rowID = Col "ID" Minimal
--- , rowName = Col "Name" Grow
--- , rowAge = Col "Age" Minimal
--- , rowPos = Col "Pos" Minimal
--- , rowItems = Col "Items" Minimal
--- , rowStatus = Col "Status" Minimal
--- , rowActns = Col "Actns" Minimal
--- , rowCmds = Col "Cmds" Minimal
--- , rowCycles = Col "Cycles" Minimal
--- , rowActivity = Col "Activity" Grow
--- , rowLog = Col "Log" Minimal
+-- | TODO: optionally hide ID based on Debug Options
 colWidths :: Seq ColWidth
 colWidths =
   S.fromList enumerate
@@ -131,7 +115,7 @@ emptyRobotDisplay =
     }
 
 {--------------------------------------------------------------------
-UPDATE
+GET SELECTED
 --------------------------------------------------------------------}
 
 getSelectedRID :: BL.GridTabularList Name RID -> Maybe RID
@@ -141,6 +125,10 @@ getSelectedRobot :: GameState -> BL.GridTabularList Name RID -> Maybe Robot
 getSelectedRobot g gl = do
   rid <- getSelectedRID gl
   g ^. robotInfo . robotMap . at rid
+
+{--------------------------------------------------------------------
+UPDATE
+--------------------------------------------------------------------}
 
 updateRobotList :: GameState -> BL.GridTabularList Name RID -> BL.GridTabularList Name RID
 updateRobotList g l = l {BL.list = updatedList}
@@ -214,50 +202,50 @@ colHdr =
     }
 
 colRowHdr :: BL.ColHdrRowHdr Name
-colRowHdr = BL.ColHdrRowHdr $ \_ (WdthD _wd) -> (fill ' ') <=> hBorder
+colRowHdr = BL.ColHdrRowHdr $ \_ (WdthD _wd) -> fill ' ' <=> hBorder
 
 drawRobotGridCell :: UIGameplay -> GameState -> ListFocused -> WidthDeficit -> BL.GridCtxt -> RID -> Widget Name
 drawRobotGridCell t g _foc (WdthD widthDef) ctx rid =
-  colGap . withSelectedAttr $ case col of
-    ColID -> padRight Max $ showW $ r ^. robotID
-    ColName -> padRight Max $ nameWidget
-    ColAge -> hCenter $ ageWidget
-    ColPos -> hCenter $ locWidget
-    ColItems -> padLeft Max $ rInvCount -- increaseWidth 1 $
-    ColStatus -> hCenter $ statusWidget
-    ColActns -> padLeft Max . showW $ r ^. activityCounts . tangibleCommandCount
-    ColCmds -> padLeft Max . showW . sum . M.elems $ r ^. activityCounts . commandsHistogram
-    ColCycles -> padLeft Max . showW $ r ^. activityCounts . lifetimeStepCount
-    ColActivity -> padLeft Max $ renderDutyCycle (g ^. temporal) r
-    ColLog -> hCenter $ rLog
+  colGap . withSelectedAttr $
+    case g ^. robotInfo . robotMap . at rid of
+      -- this would be a synchronisation error, but crashing the game is not worth it
+      Nothing -> case col of
+        ColID -> padRight Max $ showW rid
+        _ -> fill '?'
+      Just r -> case col of
+        ColID -> padRight Max $ showW rid
+        ColName -> padRight Max $ nameWidget r
+        ColAge -> hCenter $ ageWidget r
+        ColPos -> hCenter $ locWidget r
+        ColItems -> padLeft Max $ rInvCount r
+        ColStatus -> hCenter $ statusWidget r
+        ColActns -> padLeft Max . showW $ r ^. activityCounts . tangibleCommandCount
+        ColCmds -> padLeft Max . showW . sum . M.elems $ r ^. activityCounts . commandsHistogram
+        ColCycles -> padLeft Max . showW $ r ^. activityCounts . lifetimeStepCount
+        ColActivity -> padLeft Max $ renderDutyCycle (g ^. temporal) r
+        ColLog -> hCenter $ rLog r
  where
   (BL.GColC (BL.Ix cIx) (BL.Sel cSel)) = ctx.col
   (BL.GRowC (BL.Ix _ix) (BL.Sel rSel)) = ctx.row
   withSelectedAttr = if cSel && rSel then withAttr BL.listSelectedAttr else id
   col :: RobotColumn
-  col = toEnum cIx
-
-  r :: Robot
-  r = case g ^. robotInfo . robotMap . at rid of
-    Just jr -> jr
-    Nothing -> error $ "Could not find RID in map: " <> show rid
+  col = if cIx <= fromEnum (maxBound :: RobotColumn) then toEnum cIx else ColLog
 
   showW :: Show a => a -> Widget Name
   showW = str . show
-  highlightSystem :: Widget Name -> Widget Name
-  highlightSystem = applyWhen (r ^. systemRobot) $ withAttr highlightAttr
+  highlightSystem :: Robot -> Widget Name -> Widget Name
+  highlightSystem r = applyWhen (r ^. systemRobot) $ withAttr highlightAttr
   colGap = padLeft (Pad $ if widthDef > 0 then 0 else 1)
 
-  -- WithWidth (2 + T.length nameTxt)
-  nameWidget :: Widget Name
-  nameWidget =
+  nameWidget :: Robot -> Widget Name
+  nameWidget r =
     hBox
       [ renderDisplay (r ^. robotDisplay)
-      , highlightSystem . txt $ " " <> r ^. robotName
+      , highlightSystem r . txt $ " " <> r ^. robotName
       ]
 
-  ageWidget :: Widget Name
-  ageWidget = str ageStr
+  ageWidget :: Robot -> Widget Name
+  ageWidget r = str ageStr
    where
     TimeSpec createdAtSec _ = r ^. robotCreatedAt
     TimeSpec nowSec _ = t ^. uiTiming . lastFrameTime
@@ -268,23 +256,22 @@ drawRobotGridCell t g _foc (WdthD widthDef) ctx rid =
       | age < 3600 * 24 = show (age `div` 3600) <> "hour"
       | otherwise = show (age `div` 3600 * 24) <> "day"
 
-  rInvCount :: Widget Name
-  rInvCount = showW . sum . map fst . E.elems $ r ^. robotEntity . entityInventory
+  rInvCount :: Robot -> Widget Name
+  rInvCount r = showW . sum . map fst . E.elems $ r ^. robotEntity . entityInventory
 
-  rLog :: Widget Name
-  rLog = str $ if r ^. robotLogUpdated then "x" else " "
+  rLog :: Robot -> Widget Name
+  rLog r = str $ if r ^. robotLogUpdated then "x" else " "
 
-  -- WithWidth (2 + length locStr)
-  locWidget :: Widget Name
-  locWidget = hBox [worldCell, str $ " " <> locStr]
+  locWidget :: Robot -> Widget Name
+  locWidget r = hBox [worldCell, str $ " " <> locStr]
    where
     rCoords = fmap locToCoords rLoc
     rLoc = r ^. robotLocation
     worldCell = drawLoc t g rCoords
     locStr = renderCoordsString rLoc
 
-  statusWidget :: Widget Name
-  statusWidget = case r ^. machine of
+  statusWidget :: Robot -> Widget Name
+  statusWidget r = case r ^. machine of
     Waiting {} -> str "waiting"
     _ | isActive r -> withAttr notifAttr $ str "busy"
     _ | otherwise -> withAttr greenAttr $ str "idle"
