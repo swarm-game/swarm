@@ -189,7 +189,10 @@ updateUI = do
 
   newPopups <- Brick.zoom playState generateNotificationPopups
 
-  Brick.zoom (playState . scenarioState) $ doRobotListUpdate dOps g
+  -- Update the robots modal only when it is enabled.  See #2370.
+  curModal <- use $ playState . scenarioState . uiGameplay . uiDialogs . uiModal
+  when ((view modalType <$> curModal) == Just (MidScenarioModal RobotsModal)) $ do
+    Brick.zoom (playState . scenarioState) $ doRobotListUpdate dOps g
 
   let redraw =
         g ^. needsRedraw
