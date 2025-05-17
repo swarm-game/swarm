@@ -1,5 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -194,7 +194,7 @@ updateUI = do
   -- Update the robots modal only when it is enabled.  See #2370.
   curModal <- use $ playState . scenarioState . uiGameplay . uiDialogs . uiModal
   when ((view modalType <$> curModal) == Just (MidScenarioModal RobotsModal)) $
-    Brick.zoom (playState . scenarioState . uiGameplay . uiDialogs . uiRobot . robotListContent) $
+    Brick.zoom (playState . scenarioState . uiGameplay . uiDialogs . uiRobot) $
       doRobotListUpdate g
 
   let redraw =
@@ -206,8 +206,8 @@ updateUI = do
           || newPopups
   pure redraw
 
--- 
-doRobotListUpdate :: GameState -> EventM Name RobotListContent ()
+--
+doRobotListUpdate :: GameState -> EventM Name RobotDisplay ()
 doRobotListUpdate g = do
   robotsGridList %= updateRobotList g
   rList <- use robotsGridList
