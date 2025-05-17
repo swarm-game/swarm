@@ -16,12 +16,10 @@ module Swarm.TUI.Controller.UpdateUI (
 import Brick hiding (Direction, Location, on)
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
-import Brick.Widgets.TabularList.Grid qualified as BG
 import Control.Lens as Lens
 import Control.Monad (forM_, unless, when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (toList)
-import Data.Function (on)
 import Data.List.Extra (enumerate)
 import Data.Map.Strict qualified as M
 import Data.Maybe (isNothing)
@@ -55,7 +53,6 @@ import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Robot.Type
-import Swarm.Util (applyJust)
 import Witch (into)
 
 -- | Update the UI and redraw if needed.
