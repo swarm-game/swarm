@@ -62,36 +62,39 @@ end
 // Try to give a robot a Win, filtering out those that were already given a Win.
 // The robot will also receive instructions, so it **must have a logger!**
 def tryGive: Text -> RobotsStateList -> Cmd RobotsStateList = \msg. \ok.
-  rs <- meetAll;
-  foldM rs ok $ \stateList.\rob.
-    let state = query rob stateList in
-    robLoc <- as rob {whereami};
-    hasLog <- as rob {try {log "test"; pure true} {pure false}};
-    if (state.gave_win) {
-      // log $ "skipping the robot " ++ format rob ++ "because it already has a Win";
-      pure stateList
-    }
-    $elif (robLoc != myLoc && state.said_loc != robLoc) {
-      log $ "the robot" ++ format rob ++ "is not in my cell";
-      pure (update rob (set_said_loc robLoc state) stateList);
-    }
-    $elif (not hasLog && state.said_log_missing)
-    {
-      say $ "the robot " ++ format rob ++ "is missing a logger!";
-      pure (update rob (set_said_log_missing true state) stateList)
-    }
-    { // else 
-      try {
-        reprogram rob { log msg; };
-        log $ "successfully reprogrammed robot " ++ format rob;
-        give rob "Win";
-        log $ "successfully gave Win to robot " ++ format rob;
-        pure (update rob (set_gave_win true state) stateList)
-      } {
-        say $ "the robot " ++ format rob ++ "is probably still active!";
+  instant (
+    rs <- meetAll;
+    foldM rs ok (\stateList.\rob.
+      let state = query rob stateList in
+      robLoc <- as rob {whereami};
+      hasLog <- as rob {try {log "test"; pure true} {pure false}};
+      if (state.gave_win) {
+        // log $ "skipping the robot " ++ format rob ++ "because it already has a Win";
         pure stateList
-      };
-    }
+      }
+      $elif (robLoc != myLoc && state.said_loc != robLoc) {
+        log $ "the robot " ++ format rob ++ " is not in my cell";
+        pure (update rob (set_said_loc robLoc state) stateList);
+      }
+      $elif (not hasLog && state.said_log_missing)
+      {
+        say $ "the robot " ++ format rob ++ " is missing a logger!";
+        pure (update rob (set_said_log_missing true state) stateList)
+      }
+      { // else 
+        try {
+          reprogram rob { log msg; };
+          log $ "successfully reprogrammed robot " ++ format rob;
+          give rob "Win";
+          log $ "successfully gave Win to robot " ++ format rob;
+          pure (update rob (set_gave_win true state) stateList)
+        } {
+          say $ "the robot " ++ format rob ++ " is probably still active!";
+          pure stateList
+        };
+      }
+    )
+  )
 end;
 
 // -------------------------------------------------------------------------
