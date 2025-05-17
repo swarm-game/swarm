@@ -526,7 +526,7 @@ handleModalEvent = \case
             if isInDetailsMode
               then Brick.zoom (robotDetailsPaneState . logsList) $ handleListEvent ev
               else do
-                Brick.zoom robotsGridList $ BG.handleGridListEventVi (robotGridRenderers uiGame g) ev
+                Brick.zoom robotsGridList $ BG.handleGridListEvent (robotGridRenderers uiGame g) ev
                 -- Ensure list widget content is updated immediately
                 mRob <- use $ robotsGridList . to (getSelectedRobot g)
                 forM_ mRob $ Brick.zoom (robotDetailsPaneState) . updateRobotDetailsPane
