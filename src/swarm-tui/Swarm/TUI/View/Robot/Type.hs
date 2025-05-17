@@ -7,7 +7,7 @@ module Swarm.TUI.View.Robot.Type where
 import Brick (Widget)
 import Brick.Focus (FocusRing)
 import Brick.Widgets.List qualified as BL
-import Brick.Widgets.TabularList.Mixed
+import Brick.Widgets.TabularList.Grid
 import Control.Lens hiding (Const, from, (<.>))
 import Data.Sequence (Seq)
 import GHC.Generics (Generic)
@@ -77,8 +77,7 @@ data RobotDetailsPaneState = RobotDetailsPaneState
 makeLenses ''RobotDetailsPaneState
 
 data RobotListContent = RobotListContent
-  { _robotsListWidget :: MixedTabularList Name RobotWidgetRow Widths
-  , _robotsListRenderers :: MixedRenderers Name RobotWidgetRow Widths
+  { _robotsGridList :: GridTabularList Name RID
   , _robotDetailsPaneState :: RobotDetailsPaneState
   }
 

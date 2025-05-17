@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- |
@@ -34,7 +35,7 @@ import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (Editor, applyEdit, editContentsL, handleEditorEvent)
 import Brick.Widgets.List (handleListEvent, listElements)
 import Brick.Widgets.List qualified as BL
-import Brick.Widgets.TabularList.Mixed
+import Brick.Widgets.TabularList.Grid qualified as BG
 import Control.Applicative ((<|>))
 import Control.Category ((>>>))
 import Control.Lens as Lens
@@ -108,7 +109,7 @@ import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Popup (startPopupAnimation)
-import Swarm.TUI.View.Robot (getList)
+import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Robot.Type
 import Swarm.Util hiding (both, (<<.=))
 
@@ -458,11 +459,12 @@ handleModalEvent = \case
       Just (MidScenarioModal RobotsModal) -> do
         robotDialog <- use $ playState . scenarioState . uiGameplay . uiDialogs . uiRobot
         unless (robotDialog ^. isDetailsOpened) $ do
-          let widget = robotDialog ^. robotListContent . robotsListWidget
-          forM_ (BL.listSelectedElement $ getList widget) $ \x -> do
+          g <- use $ playState . scenarioState . gameState
+          let widget = robotDialog ^. robotListContent . robotsGridList
+          forM_ (getSelectedRobot g widget) $ \rob -> do
             Brick.zoom (playState . scenarioState . uiGameplay . uiDialogs . uiRobot) $ do
               isDetailsOpened .= True
-              updateRobotDetailsPane $ snd x
+              Brick.zoom (robotListContent . robotDetailsPaneState) $ updateRobotDetailsPane rob
       _ -> do
         menu <- use $ uiState . uiMenu
 
@@ -514,19 +516,21 @@ handleModalEvent = \case
                 refreshList $ uiGameplay . uiDialogs . uiStructure . structurePanelListWidget
               StructureSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
             _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
-      Just (MidScenarioModal RobotsModal) -> Brick.zoom (uiGameplay . uiDialogs . uiRobot) $ case ev of
-        V.EvKey (V.KChar '\t') [] -> robotDetailsFocus %= focusNext
-        _ -> do
-          isInDetailsMode <- use isDetailsOpened
-          if isInDetailsMode
-            then Brick.zoom (robotListContent . robotDetailsPaneState . logsList) $ handleListEvent ev
-            else do
-              Brick.zoom (robotListContent . robotsListWidget) $
-                handleMixedListEvent ev
-
-              -- Ensure list widget content is updated immediately
-              widget <- use $ robotListContent . robotsListWidget
-              forM_ (BL.listSelectedElement $ getList widget) $ updateRobotDetailsPane . snd
+      Just (MidScenarioModal RobotsModal) -> do
+        uiGame <- use uiGameplay
+        g <- use gameState
+        Brick.zoom (uiGameplay . uiDialogs . uiRobot) $ case ev of
+          V.EvKey (V.KChar '\t') [] -> robotDetailsFocus %= focusNext
+          _ -> do
+            isInDetailsMode <- use isDetailsOpened
+            if isInDetailsMode
+              then Brick.zoom (robotListContent . robotDetailsPaneState . logsList) $ handleListEvent ev
+              else do
+                Brick.zoom (robotListContent . robotsGridList) $
+                  BG.handleGridListEvent (robotGridRenderers uiGame g) ev
+                -- Ensure list widget content is updated immediately
+                mRob <- use $ robotListContent . robotsGridList . to (getSelectedRobot g)
+                forM_ mRob $ Brick.zoom (robotListContent . robotDetailsPaneState) . updateRobotDetailsPane
       _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
    where
     refreshGoalList lw = nestEventM' lw $ handleListEventWithSeparators ev shouldSkipSelection
