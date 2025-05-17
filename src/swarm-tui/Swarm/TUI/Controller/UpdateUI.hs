@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -15,6 +16,7 @@ module Swarm.TUI.Controller.UpdateUI (
 import Brick hiding (Direction, Location, on)
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
+import Brick.Widgets.TabularList.Grid qualified as BG
 import Control.Lens as Lens
 import Control.Monad (forM_, unless, when)
 import Control.Monad.IO.Class (liftIO)
@@ -191,8 +193,9 @@ updateUI = do
 
   -- Update the robots modal only when it is enabled.  See #2370.
   curModal <- use $ playState . scenarioState . uiGameplay . uiDialogs . uiModal
-  when ((view modalType <$> curModal) == Just (MidScenarioModal RobotsModal)) $ do
-    Brick.zoom (playState . scenarioState) $ doRobotListUpdate dOps g
+  when ((view modalType <$> curModal) == Just (MidScenarioModal RobotsModal)) $
+    Brick.zoom (playState . scenarioState . uiGameplay . uiDialogs . uiRobot . robotListContent) $
+      doRobotListUpdate g
 
   let redraw =
         g ^. needsRedraw
@@ -203,36 +206,19 @@ updateUI = do
           || newPopups
   pure redraw
 
-doRobotListUpdate :: Set DebugOption -> GameState -> EventM Name ScenarioState ()
-doRobotListUpdate dOps g = do
-  gp <- use uiGameplay
+-- 
+doRobotListUpdate :: GameState -> EventM Name RobotListContent ()
+doRobotListUpdate g = do
+  robotsGridList %= updateRobotList g
+  rList <- use robotsGridList
+  let mRob = getSelectedRobot g rList
+  forM_ mRob $ \r -> do
+    Brick.zoom robotDetailsPaneState $ updateRobotDetailsPane r
 
-  let rd =
-        mkRobotDisplay $
-          RobotRenderingContext
-            { _mygs = g
-            , _gameplay = gp
-            , _timing = gp ^. uiTiming
-            , _uiDbg = dOps
-            }
-      oldList = getList $ gp ^. uiDialogs . uiRobot . robotListContent . robotsListWidget
-      maybeOldSelected = snd <$> BL.listSelectedElement oldList
-
-      -- Since we're replacing the entire contents of the list, we need to preserve the
-      -- selected row here.
-      maybeModificationFunc =
-        updateList . BL.listFindBy . ((==) `on` view (robot . robotID)) <$> maybeOldSelected
-
-  uiGameplay . uiDialogs . uiRobot . robotListContent . robotsListWidget .= applyJust maybeModificationFunc rd
-
-  Brick.zoom (uiGameplay . uiDialogs . uiRobot) $
-    forM_ maybeOldSelected updateRobotDetailsPane
-
-updateRobotDetailsPane :: RobotWidgetRow -> EventM Name RobotDisplay ()
-updateRobotDetailsPane robotPayload =
-  Brick.zoom robotListContent $ do
-    robotDetailsPaneState . cmdHistogramList . BL.listElementsL .= V.fromList (M.toList (robotPayload ^. robot . activityCounts . commandsHistogram))
-    robotDetailsPaneState . logsList . BL.listElementsL .= robotPayload ^. robot . robotLog
+updateRobotDetailsPane :: Robot -> EventM Name RobotDetailsPaneState ()
+updateRobotDetailsPane rob = do
+  cmdHistogramList . BL.listElementsL .= V.fromList (M.toList (rob ^. activityCounts . commandsHistogram))
+  logsList . BL.listElementsL .= (rob ^. robotLog)
 
 -- | Either pops up the updated Goals modal
 -- or pops up the Congratulations (Win) modal, or pops

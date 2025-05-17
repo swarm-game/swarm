@@ -253,7 +253,7 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) = do
                 RobotDisplay
                   { _robotDetailsFocus = focusRing $ map (RobotsListDialog . SingleRobotDetails) enumerate
                   , _isDetailsOpened = False
-                  , _robotListContent = emptyRobotDisplay debugOptions
+                  , _robotListContent = emptyRobotDisplay
                   }
             }
       , _uiIsAutoPlay = False
