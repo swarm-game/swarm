@@ -4,13 +4,11 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.View.Robot.Type where
 
-import Brick (Widget)
 import Brick.Focus (FocusRing)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.TabularList.Grid
 import Control.Lens hiding (Const, from, (<.>))
 import Data.Sequence (Seq)
-import GHC.Generics (Generic)
 import Swarm.Game.Robot
 import Swarm.Language.Syntax (Const)
 import Swarm.Log
