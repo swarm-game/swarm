@@ -727,6 +727,16 @@ testLanguagePipeline =
             "nested polymorphic def/annot"
             (valid "def id : a -> a * Int = \\y. (y, 3 : Int) end")
         ]
+    , testGroup
+        "Custom error message for missing end #1141"
+        [ testCase
+            "missing end"
+            $ do
+              processCompare
+                T.isInfixOf
+                "def x = 3;\n def y = 3 end;\n def z = 3 end"
+                "missing 'end' keyword for definition of 'x'"
+        ]
     ]
  where
   valid = flip process ""
