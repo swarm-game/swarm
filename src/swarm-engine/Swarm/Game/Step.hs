@@ -68,6 +68,7 @@ import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
+import Swarm.Language.Var (varName)
 import Swarm.Log
 import Swarm.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Util hiding (both)
@@ -581,7 +582,7 @@ stepCESK cesk = case cesk of
   In (TVar x) e s k -> withExceptions s k $ do
     v <-
       lookupValue x e
-        `isJustOr` Fatal (T.unwords ["Undefined variable", x, "encountered while running the interpreter."])
+        `isJustOr` Fatal (T.unwords ["Undefined variable", varName x, "encountered while running the interpreter."])
 
     -- Now look up any indirections and make sure it's not a blackhole.
     case resolveValue s v of
@@ -659,7 +660,7 @@ stepCESK cesk = case cesk of
   -- Do a record projection
   Out v s (FProj x : k) -> case v of
     VRcd m -> case M.lookup x m of
-      Nothing -> badMachineState s $ T.unwords ["Record projection for variable", x, "that does not exist"]
+      Nothing -> badMachineState s $ T.unwords ["Record projection for variable", varName x, "that does not exist"]
       Just xv -> return $ Out xv s k
     _ -> badMachineState s "FProj frame with non-record value"
   -- To evaluate non-recursive let expressions, we start by focusing on the

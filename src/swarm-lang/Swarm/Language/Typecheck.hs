@@ -83,6 +83,7 @@ import Swarm.Language.Requirements.Analysis (requirements)
 import Swarm.Language.Requirements.Type (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
+import Swarm.Language.Var (mkVar)
 import Swarm.Pretty
 import Prelude hiding (lookup)
 
@@ -104,7 +105,7 @@ data TCFrame where
 
 instance PrettyPrec TCFrame where
   prettyPrec _ = \case
-    TCLet x -> "While checking the definition of" <+> pretty x
+    TCLet x -> "While checking the definition of" <+> ppr x
     TCAppL s -> "While checking a function applied to an argument: _" <+> prettyPrec 11 s
     TCAppR s -> "While checking the argument to a function:" <+> prettyPrec 10 s <+> "_"
 
@@ -425,7 +426,7 @@ generalize uty = do
   let fvs = S.toList $ tmfvs \\ ctxfvs
       alphabet = ['a' .. 'z']
       -- Infinite supply of pretty names a, b, ..., z, a0, ... z0, a1, ... z1, ...
-      prettyNames = map T.pack (map (: []) alphabet ++ [x : show n | n <- [0 :: Int ..], x <- alphabet])
+      prettyNames = map (mkVar . T.pack) (map (: []) alphabet ++ [x : show n | n <- [0 :: Int ..], x <- alphabet])
       -- Associate each free variable with a new pretty name
       renaming = zip fvs prettyNames
   return . absQuantify $
@@ -511,11 +512,11 @@ instance PrettyPrec TypeErr where
     FieldsMismatch (getJoin -> (expFs, actFs)) ->
       fieldMismatchMsg expFs actFs
     EscapedSkolem x ->
-      "Skolem variable" <+> pretty x <+> "would escape its scope"
+      "Skolem variable" <+> ppr x <+> "would escape its scope"
     UnboundVar x ->
-      "Unbound variable" <+> pretty x
+      "Unbound variable" <+> ppr x
     UnboundType x ->
-      "Undefined type" <+> pretty x
+      "Undefined type" <+> ppr x
     DefNotTopLevel t ->
       "Definitions may only be at the top level:" <+> pprCode t
     CantInfer t ->
@@ -526,7 +527,7 @@ instance PrettyPrec TypeErr where
     CantInferProj t ->
       "In the record projection" <+> pprCode t <> ", can't infer whether the LHS has a record type.  Try adding a type annotation."
     UnknownProj x t ->
-      "Record does not have a field with name" <+> pretty x <> ":" <+> pprCode t
+      "Record does not have a field with name" <+> ppr x <> ":" <+> pprCode t
     InvalidAtomic reason t ->
       "Invalid atomic block:" <+> ppr reason <> ":" <+> pprCode t
     Impredicative ->
@@ -564,7 +565,7 @@ tyConNounPhrase = \case
   TCSum -> "a sum"
   TCProd -> "a pair"
   TCFun -> "a function"
-  TCUser t -> pretty t
+  TCUser t -> ppr t
 
 -- | Return an English noun phrase describing things with the given
 --   base type.
@@ -591,7 +592,7 @@ fieldMismatchMsg expFs actFs =
  where
   extraFs = actFs `S.difference` expFs
   missingFs = expFs `S.difference` actFs
-  prettyFieldSet = hsep . punctuate "," . map (bquote . pretty) . S.toList
+  prettyFieldSet = hsep . punctuate "," . map (bquote . ppr) . S.toList
 
 --------------------------------------------------
 -- Errors for 'atomic'

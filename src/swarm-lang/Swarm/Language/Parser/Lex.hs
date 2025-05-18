@@ -59,6 +59,7 @@ import Swarm.Language.Parser.Core
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Types (baseTyName)
+import Swarm.Language.Var (mkVar)
 import Swarm.Util (failT, squote)
 import Text.Megaparsec
 import Text.Megaparsec.Char
@@ -232,7 +233,7 @@ locIdentifier idTy =
     | IDTyVar <- idTy
     , isUpper (T.head t) =
         failT ["Type variable names must start with a lowercase letter"]
-    | otherwise = return t
+    | otherwise = pure $ mkVar t
 
 -- | Parse a term variable together with its source location info.
 locTmVar :: Parser LocVar

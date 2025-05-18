@@ -57,7 +57,7 @@ instance PrettyPrec KindError where
     TrivialRecTy x ty ->
       nest 2 . vsep $
         [ "Encountered trivial recursive type" <+> ppr (TyRec x ty)
-        , "Did you forget to use" <+> pretty x <+> "in the body of the type?"
+        , "Did you forget to use" <+> ppr x <+> "in the body of the type?"
         ]
     VacuousRecTy x ty ->
       nest 2 . vsep $

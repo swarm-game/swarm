@@ -34,9 +34,9 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Semigroup (Sum (..))
-import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
+import Swarm.Language.Var
 import Swarm.Pretty (PrettyPrec (..))
 import Swarm.Util (failT, showT)
 import Swarm.Util.JSON (optionsMinimize)
@@ -44,9 +44,6 @@ import Swarm.Util.Yaml (FromJSONE, getE, liftE, parseJSONE)
 import Text.Printf (printf)
 import Text.Read (readMaybe)
 import Prelude hiding (lookup)
-
--- | We use 'Text' values to represent variables.
-type Var = Text
 
 ------------------------------------------------------------
 -- Context hash

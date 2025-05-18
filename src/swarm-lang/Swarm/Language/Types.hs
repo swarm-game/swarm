@@ -154,10 +154,11 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic, Generic1)
 import Prettyprinter (align, braces, brackets, concatWith, flatAlt, hsep, pretty, punctuate, softline, (<+>))
-import Swarm.Language.Context (Ctx, Var)
+import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
+import Swarm.Language.Var (Var, mkVar)
 import Swarm.Pretty (PrettyPrec (..), pparens, pparens', ppr, prettyBinding)
-import Swarm.Util (unsnocNE)
+import Swarm.Util (unsnocNE, showT)
 import Swarm.Util.JSON (optionsMinimize, optionsUnwrapUnary)
 import Text.Show.Deriving (deriveShow1)
 import Witch (into)
@@ -231,7 +232,7 @@ instance PrettyPrec TyCon where
     TCSum -> "Sum"
     TCProd -> "Prod"
     TCFun -> "Fun"
-    TCUser t -> pretty t
+    TCUser t -> ppr t
 
 -- | The arity of a type, /i.e./ the number of type parameters it
 --   expects.
@@ -315,7 +316,7 @@ newtype IntVar = IntVar Int
   deriving (Show, Data, Eq, Ord, Generic, Hashable)
 
 instance PrettyPrec IntVar where
-  prettyPrec _ = pretty . mkVarName "u"
+  prettyPrec _ = ppr . mkVarName "u"
 
 -- | 'UType's are like 'Type's, but also contain unification
 --   variables.  'UType' is defined via 'Free', which is also a kind
@@ -339,7 +340,7 @@ ucata f g (Free t) = g (fmap (ucata f g) t)
 --   as a unification variable) into a unique variable name, by
 --   appending a number to the given name.
 mkVarName :: Text -> IntVar -> Var
-mkVarName nm (IntVar v) = T.append nm (into @Var (show v))
+mkVarName nm (IntVar v) = mkVar $ T.append nm (showT v)
 
 -- | Get all the free unification variables in a 'UType'.
 fuvs :: UType -> Set IntVar
@@ -363,10 +364,10 @@ isPure _ = False
 
 -- | For convenience, so we can write /e.g./ @"a"@ instead of @TyVar "a"@.
 instance IsString Type where
-  fromString = TyVar . into @Var
+  fromString = TyVar . mkVar . into @Text
 
 instance IsString UType where
-  fromString = UTyVar . into @Var
+  fromString = UTyVar . mkVar . into @Text
 
 --------------------------------------------------
 -- Recursive type utilities
@@ -417,7 +418,7 @@ instance UnchainableFun (Free TypeF ty) where
 
 instance (UnchainableFun t, PrettyPrec t, SubstRec t) => PrettyPrec (TypeF t) where
   prettyPrec p = \case
-    TyVarF v _ -> pretty v
+    TyVarF v _ -> ppr v
     TyRcdF m -> brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
     -- Special cases for type constructors with special syntax.
     -- Always use parentheses around sum and product types, see #1625
@@ -437,7 +438,7 @@ instance (UnchainableFun t, PrettyPrec t, SubstRec t) => PrettyPrec (TypeF t) wh
             flatAlt (concatWith multiLine funs) (concatWith inLine funs)
     TyRecF x ty ->
       pparens (p > 0) $
-        "rec" <+> pretty x <> "." <+> prettyPrec 0 (substRec (TyVarF x x) ty NZ)
+        "rec" <+> ppr x <> "." <+> prettyPrec 0 (substRec (TyVarF x x) ty NZ)
     -- This case shouldn't be possible, since TyRecVar should only occur inside a TyRec,
     -- and pretty-printing the TyRec (above) will substitute a variable name for
     -- any bound TyRecVars before recursing.
@@ -570,14 +571,14 @@ type RawPolytype = Poly 'Unquantified Type
 
 instance PrettyPrec (Poly q Type) where
   prettyPrec _ (Forall [] t) = ppr t
-  prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
+  prettyPrec _ (Forall xs t) = hsep ("∀" : map ppr xs) <> "." <+> ppr t
 
 -- | A polytype with unification variables.
 type UPolytype = Poly 'Quantified UType
 
 instance PrettyPrec (Poly q UType) where
   prettyPrec _ (Forall [] t) = ppr t
-  prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
+  prettyPrec _ (Forall xs t) = hsep ("∀" : map ppr xs) <> "." <+> ppr t
 
 ------------------------------------------------------------
 -- WithU

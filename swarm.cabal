@@ -487,6 +487,7 @@ library swarm-lang
     Swarm.Language.Typed
     Swarm.Language.Types
     Swarm.Language.Value
+    Swarm.Language.Var
 
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm

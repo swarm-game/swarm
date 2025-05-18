@@ -197,7 +197,7 @@ instance Monoid Env where
 
 instance AsEmpty Env
 
-type instance Index Env = Ctx.Var
+type instance Index Env = Var
 type instance IxValue Env = Typed Value
 
 instance Ixed Env

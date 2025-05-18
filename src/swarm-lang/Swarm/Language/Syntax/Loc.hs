@@ -17,7 +17,7 @@ import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Data (Data)
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
-import Swarm.Language.Context (Var)
+import Swarm.Language.Var (Var)
 import Swarm.Util.JSON (optionsUntagged)
 
 ------------------------------------------------------------

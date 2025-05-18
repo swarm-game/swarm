@@ -10,9 +10,9 @@ module Swarm.Language.Parser.Record (
 
 import Data.Map (Map)
 import Data.Map qualified as M
-import Swarm.Language.Context (Var)
 import Swarm.Language.Parser.Core (Parser)
 import Swarm.Language.Parser.Lex (symbol, tmVar)
+import Swarm.Language.Var (Var, varName)
 import Swarm.Util (failT, findDup, squote)
 import Text.Megaparsec (sepBy)
 
@@ -28,4 +28,4 @@ parseRecord p = (parseBinding `sepBy` symbol ",") >>= fromListUnique
   parseBinding = (,) <$> tmVar <*> p
   fromListUnique kvs = case findDup (map fst kvs) of
     Nothing -> return $ M.fromList kvs
-    Just x -> failT ["duplicate field name", squote x, "in record literal"]
+    Just x -> failT ["duplicate field name", squote (varName x), "in record literal"]

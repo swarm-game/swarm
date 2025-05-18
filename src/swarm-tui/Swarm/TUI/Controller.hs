@@ -86,6 +86,7 @@ import Swarm.Language.Typecheck (
   ContextualTypeErr (..),
  )
 import Swarm.Language.Value (Value (VKey), envTypes)
+import Swarm.Language.Var (varName)
 import Swarm.Log
 import Swarm.ResourceLoading (getSwarmHistoryPath)
 import Swarm.TUI.Controller.EventHandlers
@@ -701,7 +702,7 @@ handleREPLEventTyping m = \case
               replPromptType .= SearchPrompt (removeEntry found rh)
       CharKey '\t' -> Brick.zoom scenarioState $ do
         s <- get
-        let names = s ^.. gameState . baseEnv . envTypes . to assocs . traverse . _1
+        let names = s ^.. gameState . baseEnv . envTypes . to assocs . traverse . _1 . to varName
         uiGameplay . uiREPL %= tabComplete (CompletionContext (s ^. gameState . creativeMode)) names (s ^. gameState . landscape . terrainAndEntities . entityMap)
         modify validateREPLForm
       EscapeKey -> Brick.zoom scenarioState $ do
@@ -773,7 +774,7 @@ creativeWords =
 -- | Try to complete the last word in a partially-entered REPL prompt using
 --   reserved words and names in scope (in the case of function names) or
 --   entity names (in the case of string literals).
-tabComplete :: CompletionContext -> [Var] -> EntityMap -> REPLState -> REPLState
+tabComplete :: CompletionContext -> [Text] -> EntityMap -> REPLState -> REPLState
 tabComplete CompletionContext {..} names em theRepl = case theRepl ^. replPromptType of
   SearchPrompt _ -> theRepl
   CmdPrompt mms
