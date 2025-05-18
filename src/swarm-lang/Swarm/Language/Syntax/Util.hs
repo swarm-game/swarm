@@ -32,11 +32,11 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set qualified as S
 import Data.Tree
-import Swarm.Language.Context (Var)
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern
+import Swarm.Language.Var (Var)
 
 -- Setup for doctests
 

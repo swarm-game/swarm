@@ -117,6 +117,12 @@ module Swarm.Language.Types (
   expandTydefs,
   elimTydef,
   TDCtx,
+  emptyTDCtx,
+  lookupTD,
+  lookupTDR,
+  addBindingTD,
+  withBindingTD,
+  resolveUserTy,
 
   -- * WHNF
   whnfType,
@@ -128,7 +134,7 @@ module Swarm.Language.Types (
 import Control.Algebra (Has, run)
 import Control.Carrier.Reader (runReader)
 import Control.Carrier.Throw.Either (runThrow)
-import Control.Effect.Reader (Reader, ask)
+import Control.Effect.Reader (Reader, ask, local)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (Plated (..), makeLenses, rewriteM, view)
 import Control.Monad.Free
@@ -146,6 +152,7 @@ import Data.List.NonEmpty ((<|))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
+import Data.Maybe (fromMaybe)
 import Data.Ord.Deriving (deriveOrd1)
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -154,10 +161,11 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic, Generic1)
 import Prettyprinter (align, braces, brackets, concatWith, flatAlt, hsep, pretty, punctuate, softline, (<+>))
-import Swarm.Language.Context (Ctx, Var)
+import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
+import Swarm.Language.Var (Var, mkVar, mkVar', varName)
 import Swarm.Pretty (PrettyPrec (..), pparens, pparens', ppr, prettyBinding)
-import Swarm.Util (unsnocNE)
+import Swarm.Util (unsnocNE, showT)
 import Swarm.Util.JSON (optionsMinimize, optionsUnwrapUnary)
 import Text.Show.Deriving (deriveShow1)
 import Witch (into)
@@ -231,7 +239,7 @@ instance PrettyPrec TyCon where
     TCSum -> "Sum"
     TCProd -> "Prod"
     TCFun -> "Fun"
-    TCUser t -> pretty t
+    TCUser t -> ppr t
 
 -- | The arity of a type, /i.e./ the number of type parameters it
 --   expects.
@@ -315,7 +323,7 @@ newtype IntVar = IntVar Int
   deriving (Show, Data, Eq, Ord, Generic, Hashable)
 
 instance PrettyPrec IntVar where
-  prettyPrec _ = pretty . mkVarName "u"
+  prettyPrec _ = ppr . mkVarName "u"
 
 -- | 'UType's are like 'Type's, but also contain unification
 --   variables.  'UType' is defined via 'Free', which is also a kind
@@ -339,7 +347,7 @@ ucata f g (Free t) = g (fmap (ucata f g) t)
 --   as a unification variable) into a unique variable name, by
 --   appending a number to the given name.
 mkVarName :: Text -> IntVar -> Var
-mkVarName nm (IntVar v) = T.append nm (into @Var (show v))
+mkVarName nm (IntVar v) = mkVar $ T.append nm (showT v)
 
 -- | Get all the free unification variables in a 'UType'.
 fuvs :: UType -> Set IntVar
@@ -363,10 +371,10 @@ isPure _ = False
 
 -- | For convenience, so we can write /e.g./ @"a"@ instead of @TyVar "a"@.
 instance IsString Type where
-  fromString = TyVar . into @Var
+  fromString = TyVar . mkVar . into @Text
 
 instance IsString UType where
-  fromString = UTyVar . into @Var
+  fromString = UTyVar . mkVar . into @Text
 
 --------------------------------------------------
 -- Recursive type utilities
@@ -417,7 +425,7 @@ instance UnchainableFun (Free TypeF ty) where
 
 instance (UnchainableFun t, PrettyPrec t, SubstRec t) => PrettyPrec (TypeF t) where
   prettyPrec p = \case
-    TyVarF v _ -> pretty v
+    TyVarF v _ -> ppr v
     TyRcdF m -> brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
     -- Special cases for type constructors with special syntax.
     -- Always use parentheses around sum and product types, see #1625
@@ -437,7 +445,7 @@ instance (UnchainableFun t, PrettyPrec t, SubstRec t) => PrettyPrec (TypeF t) wh
             flatAlt (concatWith multiLine funs) (concatWith inLine funs)
     TyRecF x ty ->
       pparens (p > 0) $
-        "rec" <+> pretty x <> "." <+> prettyPrec 0 (substRec (TyVarF x x) ty NZ)
+        "rec" <+> ppr x <> "." <+> prettyPrec 0 (substRec (TyVarF x x) ty NZ)
     -- This case shouldn't be possible, since TyRecVar should only occur inside a TyRec,
     -- and pretty-printing the TyRec (above) will substitute a variable name for
     -- any bound TyRecVars before recursing.
@@ -570,14 +578,14 @@ type RawPolytype = Poly 'Unquantified Type
 
 instance PrettyPrec (Poly q Type) where
   prettyPrec _ (Forall [] t) = ppr t
-  prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
+  prettyPrec _ (Forall xs t) = hsep ("∀" : map ppr xs) <> "." <+> ppr t
 
 -- | A polytype with unification variables.
 type UPolytype = Poly 'Quantified UType
 
 instance PrettyPrec (Poly q UType) where
   prettyPrec _ (Forall [] t) = ppr t
-  prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
+  prettyPrec _ (Forall xs t) = hsep ("∀" : map ppr xs) <> "." <+> ppr t
 
 ------------------------------------------------------------
 -- WithU
@@ -816,8 +824,50 @@ data TydefInfo = TydefInfo
 makeLenses ''TydefInfo
 
 -- | A @TDCtx@ is a mapping from user-defined type constructor names
---   to their definitions and arities/kinds.
-type TDCtx = Ctx TydefInfo
+--   to their definitions and arities/kinds.  It also stores the
+--   latest version of each name (for any names with more than one
+--   version), so we can tell when a type definition has been
+--   shadowed.
+data TDCtx = TDCtx {getTDCtx :: Ctx TydefInfo, getTDVersions :: Map Text Int}
+  deriving (Eq, Generic, Hashable, ToJSON, Show)
+
+-- | The empty type definition context.
+emptyTDCtx :: TDCtx
+emptyTDCtx = TDCtx Ctx.empty M.empty
+
+-- | Look up a variable in the type definition context.
+lookupTD :: Var -> TDCtx -> Maybe TydefInfo
+lookupTD x = Ctx.lookup x . getTDCtx
+
+-- | Look up a variable in an ambient type definition context.
+lookupTDR :: Has (Reader TDCtx) sig m => Var -> m (Maybe TydefInfo)
+lookupTDR x = lookupTD x <$> ask
+
+-- | Add a binding of a variable name to a type definition, giving it
+--   an appropriate version number if it shadows other variables with
+--   the same name.
+addBindingTD :: Text -> TydefInfo -> TDCtx -> TDCtx
+addBindingTD x info (TDCtx tdCtx tdVersions) =
+  case Ctx.lookup (mkVar x) tdCtx of
+    Nothing -> TDCtx (Ctx.addBinding (mkVar x) info tdCtx) tdVersions
+    Just _ ->
+      let newVersion = 1 + fromMaybe 0 (M.lookup x tdVersions)
+      in  TDCtx (Ctx.addBinding (mkVar' newVersion x) info tdCtx) (M.insert x newVersion tdVersions)
+
+-- | Locally extend the ambient type definition context with an
+--   additional binding, via 'addBindingTD'.
+withBindingTD :: Has (Reader TDCtx) sig m => Text -> TydefInfo -> m a -> m a
+withBindingTD x info = local (addBindingTD x info)
+
+-- | Given a parsed variable representing a user-defined type, figure
+--   out which version is currently in scope and set the version
+--   number of the variable appropriately.
+resolveUserTy :: Has (Reader TDCtx) sig m => Var -> m Var
+resolveUserTy v = do
+  tdCtx <- ask
+  let x = varName v
+  let ver = fromMaybe 0 (M.lookup x (getTDVersions tdCtx))
+  pure $ mkVar' ver x
 
 newtype ExpandTydefErr = UnexpandedUserType {getUnexpanded :: Var}
   deriving (Eq, Show)
@@ -840,7 +890,7 @@ expandTydef ::
   [t] ->
   m t
 expandTydef userTyCon tys = do
-  mtydefInfo <- Ctx.lookupR userTyCon
+  mtydefInfo <- lookupTDR userTyCon
   case mtydefInfo of
     Nothing -> throwError (UnexpandedUserType userTyCon)
     Just tydefInfo -> pure $ substTydef tydefInfo tys
@@ -898,7 +948,7 @@ tcArity tydefs =
     TCSum -> Just 2
     TCProd -> Just 2
     TCFun -> Just 2
-    TCUser t -> getArity . view tydefArity <$> Ctx.lookup t tydefs
+    TCUser t -> getArity . view tydefArity <$> lookupTD t tydefs
 
 ------------------------------------------------------------
 -- Reducing types to WHNF

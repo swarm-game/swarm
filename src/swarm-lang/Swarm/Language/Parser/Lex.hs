@@ -59,6 +59,7 @@ import Swarm.Language.Parser.Core
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Types (baseTyName)
+import Swarm.Language.Var (mkVar)
 import Swarm.Util (failT, squote)
 import Text.Megaparsec
 import Text.Megaparsec.Char
@@ -212,6 +213,13 @@ data IdentifierType = IDTyVar | IDTyName | IDTmVar
   deriving (Eq, Ord, Show)
 
 -- | Parse an identifier together with its source location info.
+--
+--   Note that this always produces a variable with version number 0,
+--   via 'mkVar'.  We cannot properly version variables at parsing
+--   time since we don't know what else is in scope.  There is a
+--   separate name resolution pass later that assigns correct version
+--   numbers to user type names.  The version number is currently
+--   unused for other kinds of variables.
 locIdentifier :: IdentifierType -> Parser LocVar
 locIdentifier idTy =
   uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "variable name")
@@ -232,7 +240,7 @@ locIdentifier idTy =
     | IDTyVar <- idTy
     , isUpper (T.head t) =
         failT ["Type variable names must start with a lowercase letter"]
-    | otherwise = return t
+    | otherwise = pure $ mkVar t
 
 -- | Parse a term variable together with its source location info.
 locTmVar :: Parser LocVar

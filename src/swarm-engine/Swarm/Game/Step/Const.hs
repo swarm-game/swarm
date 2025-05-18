@@ -808,7 +808,7 @@ execConst runChildProg c vs s k = do
           mm = limitLast . Seq.filter (liftA2 (&&) notMine isClose) $ Seq.takeWhileR (messageIsRecent gs) mq
       return $
         maybe
-          (In (TConst Listen) mempty s (FExec : k)) -- continue listening
+          (In (TConst Listen) emptyEnv s (FExec : k)) -- continue listening
           (\m -> Out (VText m) s k) -- return found message
           mm
     Log -> case vs of
@@ -1165,7 +1165,7 @@ execConst runChildProg c vs s k = do
                 . at (target ^. robotID)
                 . traverse
                 . machine
-                .= In giveInventory mempty emptyStore [FExec]
+                .= In giveInventory emptyEnv emptyStore [FExec]
 
               activateRobot $ target ^. robotID
 

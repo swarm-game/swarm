@@ -30,13 +30,13 @@ import Data.Text.Lines qualified as R
 import Data.Text.Utf16.Rope.Mixed qualified as R
 import Language.LSP.Protocol.Types qualified as J
 import Language.LSP.VFS
-import Swarm.Language.Context as Ctx
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Pipeline (processParsedTerm)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types
+import Swarm.Language.Var (mkVar, varName)
 import Swarm.Pretty (prettyText, prettyTextLine)
 import Swarm.Util qualified as U
 
@@ -223,11 +223,11 @@ explain trm = case trm ^. sTerm of
   SLam (LV _s v) _mType _syn ->
     pure $
       typeSignature v ty $
-        "A lambda expression binding the variable " <> U.bquote v <> "."
+        "A lambda expression binding the variable " <> U.bquote (varName v) <> "."
   SBind mv _ _ _ rhs _cmds ->
     pure $
       typeSignature (maybe "__rhs" lvVar mv) (getInnerType $ rhs ^. sType) $
-        "A monadic bind for commands" <> maybe "." (\(LV _s v) -> ", that binds variable " <> U.bquote v <> ".") mv
+        "A monadic bind for commands" <> maybe "." (\(LV _s v) -> ", that binds variable " <> U.bquote (varName v) <> ".") mv
   -- composite types
   SPair {} ->
     Node
@@ -253,11 +253,11 @@ explain trm = case trm ^. sTerm of
   SSuspend {} -> internal "A suspension."
  where
   ty = trm ^. sType
-  literal = pure . typeSignature (prettyText . void $ trm ^. sTerm) ty
+  literal = pure . typeSignature (mkVar . prettyText . void $ trm ^. sTerm) ty
   internal description = literal $ description <> "\n**These should never show up in surface syntax.**"
   constGenSig c =
     let ity = inferConst c
-     in U.applyWhen (not $ ty `eq` ity) $ typeSignature (prettyText c) ity
+     in U.applyWhen (not $ ty `eq` ity) $ typeSignature (mkVar $ prettyText c) ity
 
 -- | Helper function to explain function application.
 --
@@ -294,4 +294,4 @@ explainDefinition ls isRecursive (LV _s var) ty maybeTypeAnnotation =
 typeSignature :: ExplainableType ty => Var -> ty -> Text -> Text
 typeSignature v typ body = T.unlines ["```", short, "```", body]
  where
-  short = v <> ": " <> prettyType typ
+  short = varName v <> ": " <> prettyType typ

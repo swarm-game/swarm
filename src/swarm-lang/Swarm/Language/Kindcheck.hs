@@ -4,11 +4,11 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Kind checking for the Swarm language.
+-- Kind checking + type name resolution for the Swarm language.
 module Swarm.Language.Kindcheck (
   KindError (..),
-  checkPolytypeKind,
-  checkKind,
+  processPolytype,
+  processType,
 ) where
 
 import Control.Algebra (Has)
@@ -21,6 +21,46 @@ import Swarm.Language.Types
 import Swarm.Pretty (PrettyPrec (..), ppr)
 import Swarm.Util (number)
 import Swarm.Util.Effect (withThrow)
+
+------------------------------------------------------------
+-- Type processing
+
+-- | Process a polytype, by doing name resolution and kind checking,
+--   and returning an appropriate 'TydefInfo' record to be used in the
+--   case of a type definition.
+processPolytype :: (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) => Polytype -> m (TydefInfo, Polytype)
+processPolytype pty@(unPoly -> (xs, ty)) = do
+  ty' <- processType ty
+  pure $ (TydefInfo pty (Arity $ length xs), mkQPoly ty')
+
+-- | Process a type by doing name resolution and kind checking.
+processType :: (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) => Type -> m Type
+processType ty = do
+  ty' <- resolveTydefs ty
+  checkKind ty'
+  pure ty'
+
+------------------------------------------------------------
+-- Tydef name resolution
+
+-- | Name resolution for user-defined type names: for each
+--   user-defined type name found anywhere in the type, resolve it to
+--   the correct version number depending on what is in scope, by
+--   calling 'resolveUserTy'.
+resolveTydefs :: Has (Reader TDCtx) sig m => Type -> m Type
+resolveTydefs (Fix tyF) = Fix <$> case tyF of
+  TyConF tc tys -> do
+    tc' <- case tc of
+      TCUser u -> TCUser <$> resolveUserTy u
+      _ -> pure tc
+    TyConF tc' <$> mapM resolveTydefs tys
+  TyRcdF m -> TyRcdF <$> mapM resolveTydefs m
+  TyRecF x t -> TyRecF x <$> resolveTydefs t
+  TyVarF {} -> pure tyF
+  TyRecVarF {} -> pure tyF
+
+------------------------------------------------------------
+-- Kind checking
 
 -- | Kind checking errors that can occur.
 data KindError
@@ -57,17 +97,13 @@ instance PrettyPrec KindError where
     TrivialRecTy x ty ->
       nest 2 . vsep $
         [ "Encountered trivial recursive type" <+> ppr (TyRec x ty)
-        , "Did you forget to use" <+> pretty x <+> "in the body of the type?"
+        , "Did you forget to use" <+> ppr x <+> "in the body of the type?"
         ]
     VacuousRecTy x ty ->
       nest 2 . vsep $
         [ "Encountered vacuous recursive type" <+> ppr (TyRec x ty)
         , "Recursive types must be productive, i.e. must not expand to themselves."
         ]
-
--- | Check that a polytype is well-kinded.
-checkPolytypeKind :: (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) => Polytype -> m TydefInfo
-checkPolytypeKind pty@(unPoly -> (xs, t)) = TydefInfo pty (Arity $ length xs) <$ checkKind t
 
 -- | Check that a type is well-kinded. For now, we don't allow
 --   higher-kinded types, *i.e.* all kinds will be of the form @Type
