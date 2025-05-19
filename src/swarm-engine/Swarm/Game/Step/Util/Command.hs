@@ -184,6 +184,7 @@ updateRobotLocation oldLoc newLoc
       newlocWithPortal <- applyPortal newLoc
       rid <- use robotID
       zoomRobots $ do
+        -- wakeWatchingRobots?
         removeRobotFromLocationMap oldLoc rid
         addRobotToLocation rid newlocWithPortal
       modify (unsafeSetRobotLocation newlocWithPortal)
