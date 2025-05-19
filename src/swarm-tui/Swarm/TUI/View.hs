@@ -20,7 +20,6 @@ module Swarm.TUI.View (
   -- * Robot panel
   drawRobotPanel,
   drawItem,
-  renderDutyCycle,
 
   -- * Info panel
   drawInfoPanel,
@@ -652,7 +651,7 @@ drawModal ::
 drawModal h ps isNoMenu = \case
   MidScenarioModal x -> case x of
     HelpModal -> helpWidget h $ gs ^. randomness . seed
-    RobotsModal -> drawRobotsModal $ uig ^. uiDialogs . uiRobot
+    RobotsModal -> drawRobotsDisplayModal uig gs $ uig ^. uiDialogs . uiRobot
     RecipesModal -> availableListWidget gs RecipeList
     CommandsModal -> commandsListWidget gs
     MessagesModal -> availableListWidget gs MessageList
