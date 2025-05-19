@@ -43,6 +43,7 @@ solution: |
     turn east; move; move; move; log "brace for impact"; move
   };
   salvager <- build {
+    log "I will bring home the Win!"; // This allows log messages to transfer over
     turn right; turn right; turn right; turn right;
     turn east; move; move; move; salvage; turn back; move; move; give base "Win"
   };

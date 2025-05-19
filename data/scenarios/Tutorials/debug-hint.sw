@@ -89,7 +89,7 @@ def tryGive: Text -> RobotsStateList -> Cmd RobotsStateList = \msg. \ok.
           log $ "successfully gave Win to robot " ++ format rob;
           pure (update rob (set_gave_win true state) stateList)
         } {
-          say $ "the robot " ++ format rob ++ " is probably still active!";
+          log $ "the robot " ++ format rob ++ " is probably still active!";
           pure stateList
         };
       }

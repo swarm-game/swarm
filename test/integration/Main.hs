@@ -214,6 +214,7 @@ testScenarioSolutions ps =
         , testTutorialSolution Default "Tutorials/build"
         , testTutorialSolution Default "Tutorials/bind2"
         , testTutorialSolution' Default "Tutorials/debug" CheckForBadErrors $ \g -> do
+            -- printAllLogs g
             let robots = toList $ g ^. robotInfo . robotMap
             let hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
             let win = isJust $ find hints robots
