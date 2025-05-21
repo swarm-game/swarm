@@ -64,7 +64,8 @@ app eventHandler =
 --   some communication channels, and runs the UI.
 appMain :: AppOpts -> IO ()
 appMain opts = do
-  res <- runM . runThrow $ initAppState opts
+  chan <- createChannel
+  res <- runM . runThrow $ initAppState opts chan
   case res of
     Left err -> do
       T.hPutStrLn stderr (prettyText @SystemFailure err)
@@ -73,7 +74,6 @@ appMain opts = do
       -- NOTE: The state reference is read-only by the web service;
       -- the brick app has the real state and updates the reference.
       appStateRef <- newIORef s
-      chan <- createChannel
       sendFrameEvents chan
       sendUpstreamVersion chan (repoGitInfo opts)
       -- Start web service
@@ -103,12 +103,12 @@ appMain opts = do
 demoWeb :: IO ()
 demoWeb = do
   let demoPort = 8080
+  chan <- createChannel
   res <-
-    runM . runThrow $ initAppState (defaultAppOpts {userScenario = demoScenario})
+    runM . runThrow $ initAppState (defaultAppOpts {userScenario = demoScenario}) chan
   case res of
     Left err -> T.putStrLn (prettyText @SystemFailure err)
     Right s -> do
-      chan <- createChannel
       webMain
         Nothing
         demoPort

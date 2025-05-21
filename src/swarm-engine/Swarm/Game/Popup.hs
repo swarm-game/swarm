@@ -11,15 +11,14 @@ module Swarm.Game.Popup (
   popupQueue,
   initPopupState,
   addPopup,
+  nextPopup,
 
   -- * Popup animation
   popupFrames,
-  progressPopups,
 ) where
 
-import Control.Lens (makeLenses, use, (%~), (+=), (.=), _2, _Just)
+import Control.Lens (makeLenses, use, (%~), (.=))
 import Control.Monad.State (MonadState)
-import Data.Functor (($>))
 import Data.Maybe (isJust)
 import Data.Sequence (Seq, (|>), pattern (:<|))
 import Data.Sequence qualified as Seq
@@ -37,7 +36,7 @@ data Popup
 -- | State to track pending popup queue as well as any
 --   popup which is currently being displayed.
 data PopupState = PopupState
-  { _currentPopup :: Maybe (Popup, Int)
+  { _currentPopup :: Maybe Popup
   , _popupQueue :: Seq Popup
   }
 
@@ -59,25 +58,6 @@ addPopup notif = popupQueue %~ (|> notif)
 popupFrames :: Int
 popupFrames = 100
 
--- | Progress the popup state by one frame: pull the next
---   popup from the queue if there is no current popup
---   or the current popup has reached the max frame count;
---   otherwise just increment the frame count of the current
---   popup.
---
---   Return True if something was updated that might require redrawing
---   the UI.
-progressPopups :: MonadState PopupState m => m Bool
-progressPopups = do
-  cur <- use currentPopup
-  case cur of
-    Nothing -> nextPopup
-    Just (_, frameCount)
-      | frameCount == popupFrames -> nextPopup $> True
-      | otherwise -> do
-          currentPopup . _Just . _2 += 1
-          pure True
-
 -- | Move the next popup (if any) from the queue to the
 --   currently displayed popup.  Return True if there was any
 --   popup to move.
@@ -92,6 +72,6 @@ nextPopup = do
           pure True
       | otherwise -> pure False
     n :<| ns -> do
-      currentPopup .= Just (n, 0)
+      currentPopup .= Just n
       popupQueue .= ns
       pure True

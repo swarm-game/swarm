@@ -7,15 +7,17 @@
 module Swarm.TUI.View.Popup where
 
 import Brick (Widget (..), cropTopTo, padLeftRight, txt, vBox)
+import Brick.Animation (AnimationManager, Clip, RunMode (..), newClip, renderAnimation, startAnimation)
 import Brick.Widgets.Border (border)
 import Brick.Widgets.Center (hCenterLayer)
 import Brick.Widgets.Core (emptyWidget, hBox, withAttr)
 import Control.Lens ((^.))
+import Control.Monad.IO.Class (MonadIO)
 import Swarm.Game.Achievement.Definitions (title)
 import Swarm.Game.Achievement.Description (describe)
-import Swarm.Game.Popup (Popup (..), currentPopup, popupFrames)
+import Swarm.Game.Popup (Popup (..), popupFrames)
 import Swarm.Language.Syntax (constInfo, syntax)
-import Swarm.TUI.Model (AppState, keyConfig, keyEventHandling, playState, progression, uiPopups)
+import Swarm.TUI.Model (AppEvent, AppState, keyConfig, keyEventHandling, playState, progression, runningAnimation, uiPopupAnimationState)
 import Swarm.TUI.Model.Event qualified as SE
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Attribute.Attr (notifAttr)
@@ -25,15 +27,27 @@ import Swarm.Util (commaList, squote)
 -- | The number of frames taken by each step of the notification popup
 --   animation.
 animFrames :: Int
-animFrames = 3
+animFrames = 1 -- 3
+
+-- | The number of milliseconds taken by each frame of the notification popup
+popupFrameDuration :: Integer
+popupFrameDuration = 50
 
 -- | Draw the current notification popup (if any).
 drawPopups :: AppState -> Widget Name
-drawPopups s = hCenterLayer $
-  case s ^. playState . progression . uiPopups . currentPopup of
-    Just (notif, f) ->
-      cropTopTo (popupRows f) . border . padLeftRight 2 $ drawPopup s notif
-    _ -> emptyWidget
+drawPopups s = renderAnimation (const defaultWidget) s mAnim
+ where
+  defaultWidget = emptyWidget
+  mAnim = s ^. playState . progression . uiPopupAnimationState . runningAnimation
+
+-- TODO
+startPopupAnimation :: MonadIO m => AnimationManager AppState AppEvent Name -> Popup -> m ()
+startPopupAnimation mgr p = startAnimation mgr (makePopupClip p) popupFrameDuration Once (playState . progression . uiPopupAnimationState . runningAnimation)
+
+makePopupClip :: Popup -> Clip AppState Name
+makePopupClip p = newClip $ map drawPopupFrame [0 .. popupFrames]
+ where
+  drawPopupFrame f s = hCenterLayer $ cropTopTo (popupRows f) . border . padLeftRight 2 $ drawPopup s p
 
 drawPopup :: AppState -> Popup -> Widget Name
 drawPopup s = \case

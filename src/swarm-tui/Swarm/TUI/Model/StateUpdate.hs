@@ -16,10 +16,13 @@ module Swarm.TUI.Model.StateUpdate (
   attainAchievement',
   getScenarioInfoFromPath,
   scenarioToAppState,
+  animMgrTickDuration,
   PersistentState (..),
 ) where
 
+import Brick.Animation (startAnimationManager)
 import Brick.AttrMap (applyAttrMappings)
+import Brick.BChan (BChan)
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Applicative ((<|>))
@@ -105,14 +108,19 @@ import Swarm.Util
 import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
 
+-- | The resolution at which the animation manager checks animations for updates, in miliseconds
+animMgrTickDuration :: Int
+animMgrTickDuration = 250
+
 -- | Initialize the 'AppState' from scratch.
 initAppState ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   AppOpts ->
+  BChan AppEvent ->
   m AppState
-initAppState opts = do
+initAppState opts chan = do
   persistentState <- initPersistentState opts
-  constructAppState persistentState opts
+  constructAppState persistentState opts chan
 
 -- | Add some system failures to the list of messages in the
 --   'RuntimeState'.
@@ -164,12 +172,18 @@ initPersistentState opts@(AppOpts {..}) = do
         (loadTestScenarios $ mkRuntimeOptions opts)
     achievements <- loadAchievementsInfo
 
+    let animState =
+          AnimationState
+            { _runningAnimation = Nothing
+            , _animationScheduled = False
+            }
     let progState =
           ProgressionState
             { _scenarios = s
             , _attainedAchievements = M.fromList $ map (view achievement &&& id) achievements
             , _uiPopups = initPopupState
             , _scenarioSequence = mempty
+            , _uiPopupAnimationState = animState
             }
     return $ PersistentState rs ui ks progState
   let initRS' = addWarnings initRS (F.toList warnings)
@@ -192,11 +206,13 @@ constructAppState ::
   ) =>
   PersistentState ->
   AppOpts ->
+  BChan AppEvent ->
   m AppState
-constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) = do
+constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) chan = do
   historyT <- sendIO $ readFileMayT =<< getSwarmHistoryPath False
   let history = maybe [] (map mkREPLSubmission . T.lines) historyT
   startTime <- sendIO $ getTime Monotonic
+  animMgr <- sendIO $ startAnimationManager animMgrTickDuration chan PopupEvent
 
   let gsc = rs ^. stdGameConfigInputs
       gs = initGameState gsc
@@ -207,7 +223,7 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) = do
           }
 
   case skipMenu opts of
-    False -> return $ AppState (ps & scenarioState . uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) ui key rs
+    False -> return $ AppState (ps & scenarioState . uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) ui key rs animMgr
     True -> do
       let tem = gs ^. landscape . terrainAndEntities
       (scenario, path) <-
@@ -227,7 +243,7 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) = do
       sendIO $
         execStateT
           (startGameWithSeed (ScenarioWith scenario si) $ LaunchParams (pure userSeed) (pure codeToRun))
-          (AppState ps ui key rs)
+          (AppState ps ui key rs animMgr)
  where
   initialUiGameplay startTime history =
     UIGameplay
@@ -433,9 +449,9 @@ scenarioToUIState siPair u = do
 --
 --   In normal play, an 'AppState' already exists and we simply need
 --   to update it using 'scenarioToAppState'.
-initAppStateForScenario :: String -> Maybe Seed -> Maybe FilePath -> ExceptT Text IO AppState
-initAppStateForScenario sceneName userSeed toRun =
-  asExceptT . withThrow (prettyText @SystemFailure) . initAppState $
+initAppStateForScenario :: String -> Maybe Seed -> Maybe FilePath -> BChan AppEvent -> ExceptT Text IO AppState
+initAppStateForScenario sceneName userSeed toRun chan =
+  asExceptT . withThrow (prettyText @SystemFailure) . flip initAppState chan $
     defaultAppOpts
       { userScenario = Just sceneName
       , userSeed = userSeed
@@ -444,5 +460,5 @@ initAppStateForScenario sceneName userSeed toRun =
 
 -- | For convenience, the 'AppState' corresponding to the classic game
 --   with seed 0.  This is used only for benchmarks and unit tests.
-classicGame0 :: ExceptT Text IO AppState
-classicGame0 = initAppStateForScenario "classic" (Just 0) Nothing
+classicGame0 :: BChan AppEvent -> ExceptT Text IO AppState
+classicGame0 chan = initAppStateForScenario "classic" (Just 0) Nothing chan

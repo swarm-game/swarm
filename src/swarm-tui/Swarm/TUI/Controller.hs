@@ -27,6 +27,7 @@ module Swarm.TUI.Controller (
 ) where
 
 import Brick hiding (Direction, Location)
+import Brick.Animation (stopAnimationManager)
 import Brick.Focus
 import Brick.Keybindings qualified as B
 import Brick.Widgets.Dialog
@@ -106,6 +107,7 @@ import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
+import Swarm.TUI.View.Popup (startPopupAnimation)
 import Swarm.TUI.View.Robot (getList)
 import Swarm.TUI.View.Robot.Type
 import Swarm.Util hiding (both, (<<.=))
@@ -118,17 +120,34 @@ handleEvent e = do
     -- the query for upstream version could finish at any time, so we have to handle it here
     AppEvent (UpstreamVersion ev) -> handleUpstreamVersionResponse ev
     AppEvent (Web (RunWebCode {..})) | not playing -> liftIO . webReply $ Rejected NoActiveGame
+    AppEvent (PopupEvent event) -> do
+      playState . progression . uiPopupAnimationState . animationScheduled .= False
+      event
     _ -> do
       -- Handle popup display at the very top level, so it is
       -- unaffected by any other state, e.g. even when starting or
       -- quitting a game, moving around the menu, the popup
       -- display will continue as normal.
-      upd <- case e of
-        AppEvent Frame -> Brick.zoom (playState . progression . uiPopups) progressPopups
-        _ -> pure False
+      popupScheduled <- use $ playState . progression . uiPopupAnimationState . animationScheduled
+      mRunningPopup <- use $ playState . progression . uiPopupAnimationState . runningAnimation
+      let startNextPopup = not popupScheduled && isn't _Just mRunningPopup
+      when startNextPopup $ do
+        void $ Brick.zoom (playState . progression . uiPopups) nextPopup
+        startPopupIfNeeded
+
       if playing
-        then handleMainEvent upd e
+        then handleMainEvent e
         else handleMenuEvent e
+
+startPopupIfNeeded :: EventM Name AppState ()
+startPopupIfNeeded = do
+  mPopup <- use $ playState . progression . uiPopups . currentPopup
+  case mPopup of
+    Just popup -> do
+      playState . progression . uiPopupAnimationState . animationScheduled .= True
+      animMgr <- use animationMgr
+      startPopupAnimation animMgr popup
+    Nothing -> pure ()
 
 handleUpstreamVersionResponse :: Either (Severity, Text) String -> EventM Name AppState ()
 handleUpstreamVersionResponse ev = do
@@ -305,8 +324,8 @@ pressAnyKey m (VtyEvent (V.EvKey _ _)) = uiState . uiMenu .= m
 pressAnyKey _ _ = pure ()
 
 -- | The top-level event handler while we are running the game itself.
-handleMainEvent :: Bool -> BrickEvent Name AppEvent -> EventM Name AppState ()
-handleMainEvent forceRedraw ev = do
+handleMainEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleMainEvent ev = do
   s <- get
   let keyHandler = s ^. keyEventHandling . keyDispatchers . to mainGameDispatcher
   case ev of
@@ -314,12 +333,14 @@ handleMainEvent forceRedraw ev = do
       -- If the game is paused, don't run any game ticks, but do redraw if needed.
       Frame ->
         if s ^. playState . scenarioState . gameState . temporal . paused
-          then updateAndRedrawUI forceRedraw
-          else runFrameUI forceRedraw
+          then updateAndRedrawUI False -- don't force redraw
+          else runFrameUI False
       Web (RunWebCode e r) -> Brick.zoom (playState . scenarioState) $ runBaseWebCode e r
       -- UpstreamVersion event should already be handled by top-level handler, so
       -- in theory this case cannot happen.
       UpstreamVersion _ -> pure ()
+      -- PopupEvent event should already be handled by top-level handler, so this shouldn't happen.
+      PopupEvent _ -> pure ()
     VtyEvent (V.EvResize _ _) -> invalidateCache
     EscapeKey
       | Just m <- s ^. playState . scenarioState . uiGameplay . uiDialogs . uiModal ->
@@ -528,6 +549,10 @@ quitGame isNoMenu = do
   case wc of
     WinConditions (Won _ _) _ -> uiState . uiMenu %= advanceMenu
     _ -> return ()
+
+  -- Stop the animation manager
+  animMgr <- use $ animationMgr
+  stopAnimationManager animMgr
 
   -- Either quit the entire app (if the scenario was chosen directly
   -- from the command line) or return to the menu (if the scenario was

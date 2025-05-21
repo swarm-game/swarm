@@ -60,6 +60,7 @@ module Swarm.TUI.Model (
   playState,
   keyEventHandling,
   runtimeState,
+  animationMgr,
   ScenarioState (ScenarioState),
   gameState,
   uiGameplay,
@@ -70,7 +71,11 @@ module Swarm.TUI.Model (
   scenarios,
   attainedAchievements,
   uiPopups,
+  uiPopupAnimationState,
   scenarioSequence,
+  AnimationState (..),
+  runningAnimation,
+  animationScheduled,
 
   -- ** Initialization
   AppOpts (..),
@@ -85,6 +90,7 @@ module Swarm.TUI.Model (
 ) where
 
 import Brick (EventM, ViewportScroll, viewportScroll)
+import Brick.Animation (Animation, AnimationManager)
 import Brick.Keybindings as BK
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
@@ -134,9 +140,11 @@ import Text.Fuzzy qualified as Fuzzy
 -- | 'Swarm.TUI.Model.AppEvent' represents a type for custom event types our app can
 --   receive. The primary custom event 'Frame' is sent by a separate thread as fast as
 --   it can, telling the TUI to render a new frame.
+-- TODO Expand on the custom event PopupEvent
 data AppEvent
   = Frame
   | Web WebCommand
+  | PopupEvent (EventM Name AppState ())
   | UpstreamVersion (Either (Severity, Text) String)
 
 infoScroll :: ViewportScroll Name
@@ -167,16 +175,11 @@ data ScenarioState = ScenarioState
   , _uiGameplay :: UIGameplay
   }
 
---------------------------------------------------
--- Lenses for ScenarioState
-
-makeLensesNoSigs ''ScenarioState
-
--- | The 'GameState' record.
-gameState :: Lens' ScenarioState GameState
-
--- | UI active during live gameplay
-uiGameplay :: Lens' ScenarioState UIGameplay
+-- | This enapsulates the state of a given animation that changes over time
+data AnimationState = AnimationState
+  { _runningAnimation :: Maybe (Animation AppState Name)
+  , _animationScheduled :: Bool
+  }
 
 -- | State that can evolve as the user progresses through scenarios.
 -- This includes achievements and completion records.
@@ -188,22 +191,9 @@ data ProgressionState = ProgressionState
   { _scenarios :: ScenarioCollection ScenarioInfo
   , _attainedAchievements :: Map CategorizedAchievement Attainment
   , _uiPopups :: PopupState
+  , _uiPopupAnimationState :: AnimationState
   , _scenarioSequence :: [ScenarioWith ScenarioPath]
   }
-
-makeLensesNoSigs ''ProgressionState
-
--- | Map of achievements that were attained
-attainedAchievements :: Lens' ProgressionState (Map CategorizedAchievement Attainment)
-
--- | The collection of scenarios that comes with the game.
-scenarios :: Lens' ProgressionState (ScenarioCollection ScenarioInfo)
-
--- | Queue of popups to display
-uiPopups :: Lens' ProgressionState PopupState
-
--- | Remaining scenarios in the current sequence
-scenarioSequence :: Lens' ProgressionState [ScenarioWith ScenarioPath]
 
 -- | This encapsulates both game and UI state for an actively-playing scenario, as well
 -- as state that evolves as a result of playing a scenario.
@@ -211,17 +201,6 @@ data PlayState = PlayState
   { _scenarioState :: ScenarioState
   , _progression :: ProgressionState
   }
-
---------------------------------------------------
--- Lenses for ScenarioState
-
-makeLensesNoSigs ''PlayState
-
--- | The 'ScenarioState' record.
-scenarioState :: Lens' PlayState ScenarioState
-
--- | State that can evolve as the user progresses through scenarios.
-progression :: Lens' PlayState ProgressionState
 
 -- ----------------------------------------------------------------------------
 --                                   APPSTATE                                --
@@ -237,6 +216,7 @@ data AppState = AppState
   , _uiState :: UIState
   , _keyEventHandling :: KeyEventHandlingState
   , _runtimeState :: RuntimeState
+  , _animationMgr :: AnimationManager AppState AppEvent Name
   }
 
 ------------------------------------------------------------
@@ -363,6 +343,47 @@ defaultAppOpts =
     }
 
 --------------------------------------------------
+-- Lenses for ScenarioState
+
+makeLensesNoSigs ''ScenarioState
+
+-- | The 'GameState' record.
+gameState :: Lens' ScenarioState GameState
+
+-- | UI active during live gameplay
+uiGameplay :: Lens' ScenarioState UIGameplay
+
+--------------------------------------------------
+-- Lenses for PlayState
+
+makeLensesNoSigs ''PlayState
+
+-- | The 'ScenarioState' record.
+scenarioState :: Lens' PlayState ScenarioState
+
+-- | State that can evolve as the user progresses through scenarios.
+progression :: Lens' PlayState ProgressionState
+
+--------------------------------------------------
+-- Lenses for Progression State
+makeLensesNoSigs ''ProgressionState
+
+-- | Map of achievements that were attained
+attainedAchievements :: Lens' ProgressionState (Map CategorizedAchievement Attainment)
+
+-- | The collection of scenarios that comes with the game.
+scenarios :: Lens' ProgressionState (ScenarioCollection ScenarioInfo)
+
+-- | Queue of popups to display
+uiPopups :: Lens' ProgressionState PopupState
+
+-- | Popup Animation State
+uiPopupAnimationState :: Lens' ProgressionState AnimationState
+
+-- | Remaining scenarios in the current sequence
+scenarioSequence :: Lens' ProgressionState [ScenarioWith ScenarioPath]
+
+--------------------------------------------------
 -- Lenses for KeyEventHandlingState
 
 makeLensesNoSigs ''KeyEventHandlingState
@@ -389,6 +410,20 @@ keyEventHandling :: Lens' AppState KeyEventHandlingState
 
 -- | The 'RuntimeState' record
 runtimeState :: Lens' AppState RuntimeState
+
+-- | The 'Brick.Animation.AnimationManager' record
+animationMgr :: Lens' AppState (AnimationManager AppState AppEvent Name)
+
+--------------------------------------------------
+-- Lenses for AnimationState
+
+makeLensesNoSigs ''AnimationState
+
+-- | A running 'Brick.Animation.Animation' animation.
+runningAnimation :: Lens' AnimationState (Maybe (Animation AppState Name))
+
+-- | Whether the animation is scheduled to be executed
+animationScheduled :: Lens' AnimationState Bool
 
 --------------------------------------------------
 -- Utility functions
