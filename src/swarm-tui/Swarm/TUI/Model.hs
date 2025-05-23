@@ -74,8 +74,9 @@ module Swarm.TUI.Model (
   uiPopupAnimationState,
   scenarioSequence,
   AnimationState (..),
-  runningAnimation,
-  animationScheduled,
+  _AnimActive,
+  _AnimScheduled,
+  _AnimInactive,
 
   -- ** Initialization
   AppOpts (..),
@@ -87,6 +88,7 @@ module Swarm.TUI.Model (
   -- ** Utility
   focusedItem,
   focusedEntity,
+  animTraversal,
 ) where
 
 import Brick (EventM, ViewportScroll, viewportScroll)
@@ -176,10 +178,10 @@ data ScenarioState = ScenarioState
   }
 
 -- | This enapsulates the state of a given animation that changes over time
-data AnimationState = AnimationState
-  { _runningAnimation :: Maybe (Animation AppState Name)
-  , _animationScheduled :: Bool
-  }
+data AnimationState
+  = AnimActive (Animation AppState Name)
+  | AnimScheduled
+  | AnimInactive
 
 -- | State that can evolve as the user progresses through scenarios.
 -- This includes achievements and completion records.
@@ -414,16 +416,10 @@ runtimeState :: Lens' AppState RuntimeState
 -- | The 'Brick.Animation.AnimationManager' record
 animationMgr :: Lens' AppState (AnimationManager AppState AppEvent Name)
 
---------------------------------------------------
--- Lenses for AnimationState
+-------------------------------------------------
 
-makeLensesNoSigs ''AnimationState
-
--- | A running 'Brick.Animation.Animation' animation.
-runningAnimation :: Lens' AnimationState (Maybe (Animation AppState Name))
-
--- | Whether the animation is scheduled to be executed
-animationScheduled :: Lens' AnimationState Bool
+-- | Prisms for AnimationState
+makePrisms ''AnimationState
 
 --------------------------------------------------
 -- Utility functions
@@ -445,3 +441,17 @@ focusedEntity =
     Separator _ -> Nothing
     InventoryEntry _ e -> Just e
     EquippedEntry e -> Just e
+
+-- | A very non-lawful traversal for use in animations that allows
+--   us to manage the state of an animation and update it properly
+--   when we process an event sent by the animation manager.
+--   Exploits some assumptions about Brick's implementation of animations.
+animTraversal :: Traversal' AnimationState (Maybe (Animation AppState Name))
+animTraversal = traversal go
+ where
+  go :: Applicative f => (Maybe (Animation AppState Name) -> f (Maybe (Animation AppState Name))) -> AnimationState -> f AnimationState
+  go focus = \case
+    AnimInactive -> maybe AnimInactive AnimActive <$> focus Nothing
+    -- Should never reach this branch
+    AnimScheduled -> maybe AnimInactive AnimActive <$> focus Nothing
+    AnimActive x -> maybe AnimInactive AnimActive <$> focus (Just x)

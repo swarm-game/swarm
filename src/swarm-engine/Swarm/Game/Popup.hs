@@ -19,7 +19,6 @@ module Swarm.Game.Popup (
 
 import Control.Lens (makeLenses, use, (%~), (.=))
 import Control.Monad.State (MonadState)
-import Data.Maybe (isJust)
 import Data.Sequence (Seq, (|>), pattern (:<|))
 import Data.Sequence qualified as Seq
 import Swarm.Game.Achievement.Definitions (CategorizedAchievement)
@@ -59,19 +58,12 @@ popupFrames :: Int
 popupFrames = 100
 
 -- | Move the next popup (if any) from the queue to the
---   currently displayed popup.  Return True if there was any
---   popup to move.
-nextPopup :: MonadState PopupState m => m Bool
+--   currently displayed popup.
+nextPopup :: MonadState PopupState m => m ()
 nextPopup = do
   q <- use popupQueue
-  cur <- use currentPopup
   case q of
-    Seq.Empty
-      | isJust cur -> do
-          currentPopup .= Nothing
-          pure True
-      | otherwise -> pure False
+    Seq.Empty -> currentPopup .= Nothing
     n :<| ns -> do
       currentPopup .= Just n
       popupQueue .= ns
-      pure True

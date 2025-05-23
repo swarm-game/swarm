@@ -172,11 +172,7 @@ initPersistentState opts@(AppOpts {..}) = do
         (loadTestScenarios $ mkRuntimeOptions opts)
     achievements <- loadAchievementsInfo
 
-    let animState =
-          AnimationState
-            { _runningAnimation = Nothing
-            , _animationScheduled = False
-            }
+    let animState = AnimInactive
     let progState =
           ProgressionState
             { _scenarios = s

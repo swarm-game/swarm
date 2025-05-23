@@ -121,19 +121,18 @@ handleEvent e = do
     AppEvent (UpstreamVersion ev) -> handleUpstreamVersionResponse ev
     AppEvent (Web (RunWebCode {..})) | not playing -> liftIO . webReply $ Rejected NoActiveGame
     AppEvent (PopupEvent event) -> do
-      playState . progression . uiPopupAnimationState . animationScheduled .= False
       event
     _ -> do
       -- Handle popup display at the very top level, so it is
       -- unaffected by any other state, e.g. even when starting or
       -- quitting a game, moving around the menu, the popup
       -- display will continue as normal.
-      popupScheduled <- use $ playState . progression . uiPopupAnimationState . animationScheduled
-      mRunningPopup <- use $ playState . progression . uiPopupAnimationState . runningAnimation
-      let startNextPopup = not popupScheduled && isn't _Just mRunningPopup
-      when startNextPopup $ do
-        void $ Brick.zoom (playState . progression . uiPopups) nextPopup
-        startPopupIfNeeded
+      popupAnimState <- use $ playState . progression . uiPopupAnimationState
+      case popupAnimState of
+        AnimInactive -> do
+          Brick.zoom (playState . progression . uiPopups) nextPopup
+          startPopupIfNeeded
+        _ -> pure ()
 
       if playing
         then handleMainEvent e
@@ -144,7 +143,7 @@ startPopupIfNeeded = do
   mPopup <- use $ playState . progression . uiPopups . currentPopup
   case mPopup of
     Just popup -> do
-      playState . progression . uiPopupAnimationState . animationScheduled .= True
+      playState . progression . uiPopupAnimationState .= AnimScheduled
       animMgr <- use animationMgr
       startPopupAnimation animMgr popup
     Nothing -> pure ()

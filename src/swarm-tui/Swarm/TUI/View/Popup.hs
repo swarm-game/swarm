@@ -11,13 +11,13 @@ import Brick.Animation (AnimationManager, Clip, RunMode (..), newClip, renderAni
 import Brick.Widgets.Border (border)
 import Brick.Widgets.Center (hCenterLayer)
 import Brick.Widgets.Core (emptyWidget, hBox, withAttr)
-import Control.Lens ((^.))
+import Control.Lens ((^.), (^?))
 import Control.Monad.IO.Class (MonadIO)
 import Swarm.Game.Achievement.Definitions (title)
 import Swarm.Game.Achievement.Description (describe)
 import Swarm.Game.Popup (Popup (..), popupFrames)
 import Swarm.Language.Syntax (constInfo, syntax)
-import Swarm.TUI.Model (AppEvent, AppState, keyConfig, keyEventHandling, playState, progression, runningAnimation, uiPopupAnimationState)
+import Swarm.TUI.Model (AppEvent, AppState, animTraversal, keyConfig, keyEventHandling, playState, progression, uiPopupAnimationState, _AnimActive)
 import Swarm.TUI.Model.Event qualified as SE
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Attribute.Attr (notifAttr)
@@ -38,11 +38,11 @@ drawPopups :: AppState -> Widget Name
 drawPopups s = renderAnimation (const defaultWidget) s mAnim
  where
   defaultWidget = emptyWidget
-  mAnim = s ^. playState . progression . uiPopupAnimationState . runningAnimation
+  mAnim = s ^? playState . progression . uiPopupAnimationState . _AnimActive
 
 -- TODO
 startPopupAnimation :: MonadIO m => AnimationManager AppState AppEvent Name -> Popup -> m ()
-startPopupAnimation mgr p = startAnimation mgr (makePopupClip p) popupFrameDuration Once (playState . progression . uiPopupAnimationState . runningAnimation)
+startPopupAnimation mgr p = startAnimation mgr (makePopupClip p) popupFrameDuration Once (playState . progression . uiPopupAnimationState . animTraversal)
 
 makePopupClip :: Popup -> Clip AppState Name
 makePopupClip p = newClip $ map drawPopupFrame [0 .. popupFrames]
