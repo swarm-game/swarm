@@ -4,7 +4,10 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Rendering (& animating) notification popups.
-module Swarm.TUI.View.Popup where
+module Swarm.TUI.View.Popup (
+  drawPopups,
+  startPopupAnimation,
+) where
 
 import Brick (Widget (..), cropTopTo, padLeftRight, txt, vBox)
 import Brick.Animation (AnimationManager, Clip, RunMode (..), newClip, renderAnimation, startAnimation)
@@ -27,7 +30,7 @@ import Swarm.Util (commaList, squote)
 -- | The number of frames taken by each step of the notification popup
 --   animation.
 animFrames :: Int
-animFrames = 1 -- 3
+animFrames = 1
 
 -- | The number of milliseconds taken by each frame of the notification popup
 popupFrameDuration :: Integer
@@ -35,12 +38,11 @@ popupFrameDuration = 50
 
 -- | Draw the current notification popup (if any).
 drawPopups :: AppState -> Widget Name
-drawPopups s = renderAnimation (const defaultWidget) s mAnim
+drawPopups s = renderAnimation (const emptyWidget) s mAnim
  where
-  defaultWidget = emptyWidget
   mAnim = s ^? playState . progression . uiPopupAnimationState . _AnimActive
 
--- TODO
+-- | Signal the animation manager to start the popup animation.
 startPopupAnimation :: MonadIO m => AnimationManager AppState AppEvent Name -> Popup -> m ()
 startPopupAnimation mgr p = startAnimation mgr (makePopupClip p) popupFrameDuration Once (playState . progression . uiPopupAnimationState . animTraversal)
 

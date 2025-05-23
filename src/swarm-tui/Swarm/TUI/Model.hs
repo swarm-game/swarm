@@ -142,7 +142,6 @@ import Text.Fuzzy qualified as Fuzzy
 -- | 'Swarm.TUI.Model.AppEvent' represents a type for custom event types our app can
 --   receive. The primary custom event 'Frame' is sent by a separate thread as fast as
 --   it can, telling the TUI to render a new frame.
--- TODO Expand on the custom event PopupEvent
 data AppEvent
   = Frame
   | Web WebCommand
