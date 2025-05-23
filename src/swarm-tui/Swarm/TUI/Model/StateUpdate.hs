@@ -7,6 +7,7 @@ module Swarm.TUI.Model.StateUpdate (
   initAppState,
   initPersistentState,
   constructAppState,
+  initNullChan,
   initAppStateForScenario,
   classicGame0,
   startGame,
@@ -22,7 +23,7 @@ module Swarm.TUI.Model.StateUpdate (
 
 import Brick.Animation (startAnimationManager)
 import Brick.AttrMap (applyAttrMappings)
-import Brick.BChan (BChan)
+import Brick.BChan (BChan, newBChan)
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Applicative ((<|>))
@@ -439,22 +440,29 @@ scenarioToUIState siPair u = do
           )
           swarmAttrMap
 
+-- | Create a BChan that cannot hold any events.
+--   This should only be used in unit tests, integration tests, and benchmarks
+initNullChan :: IO (BChan AppEvent)
+initNullChan = newBChan 0
+
 -- | Create an initial app state for a specific scenario.  Note that
 --   this function is used only for unit tests, integration tests, and
 --   benchmarks.
 --
 --   In normal play, an 'AppState' already exists and we simply need
 --   to update it using 'scenarioToAppState'.
-initAppStateForScenario :: String -> Maybe Seed -> Maybe FilePath -> BChan AppEvent -> ExceptT Text IO AppState
-initAppStateForScenario sceneName userSeed toRun chan =
-  asExceptT . withThrow (prettyText @SystemFailure) . flip initAppState chan $
+initAppStateForScenario :: String -> Maybe Seed -> Maybe FilePath -> ExceptT Text IO AppState
+initAppStateForScenario sceneName userSeed toRun =
+  asExceptT . withThrow (prettyText @SystemFailure) . initAppStateNullChan $
     defaultAppOpts
       { userScenario = Just sceneName
       , userSeed = userSeed
       , scriptToRun = toRun
       }
+ where
+  initAppStateNullChan opts = sendIO initNullChan >>= initAppState opts
 
 -- | For convenience, the 'AppState' corresponding to the classic game
 --   with seed 0.  This is used only for benchmarks and unit tests.
-classicGame0 :: BChan AppEvent -> ExceptT Text IO AppState
-classicGame0 chan = initAppStateForScenario "classic" (Just 0) Nothing chan
+classicGame0 :: ExceptT Text IO AppState
+classicGame0 = initAppStateForScenario "classic" (Just 0) Nothing

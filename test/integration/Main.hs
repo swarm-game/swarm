@@ -81,7 +81,7 @@ import Swarm.TUI.Model (
   userScenario,
  )
 import Swarm.TUI.Model.DebugOption (DebugOption (LoadTestingScenarios))
-import Swarm.TUI.Model.StateUpdate (PersistentState (..), constructAppState, initPersistentState)
+import Swarm.TUI.Model.StateUpdate (PersistentState (..), constructAppState, initNullChan, initPersistentState)
 import Swarm.Util (applyWhen, findAllWithExt)
 import Swarm.Util.RingBuffer qualified as RB
 import Swarm.Util.Yaml (decodeFileEitherE)
@@ -539,7 +539,8 @@ testScenarioSolutions ps =
     (GameState -> Assertion) ->
     TestTree
   testSolution' s p shouldCheckBadErrors verify = testCase p $ do
-    out <- runM . runThrow @SystemFailure $ constructAppState ps $ defaultAppOpts {userScenario = Just p}
+    nullChan <- initNullChan
+    out <- runM . runThrow @SystemFailure $ constructAppState ps (defaultAppOpts {userScenario = Just p}) nullChan
     case out of
       Left err -> assertFailure $ prettyString err
       Right appState -> case appState ^. playState . scenarioState . gameState . winSolution of
