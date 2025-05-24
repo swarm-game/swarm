@@ -12,9 +12,6 @@ module Swarm.Game.Popup (
   initPopupState,
   addPopup,
   nextPopup,
-
-  -- * Popup animation
-  popupFrames,
 ) where
 
 import Control.Lens (makeLenses, use, (%~), (.=))
@@ -52,10 +49,6 @@ initPopupState =
 -- | Add a popup to the end of the queue.
 addPopup :: Popup -> PopupState -> PopupState
 addPopup notif = popupQueue %~ (|> notif)
-
--- | The number of frames for which to display a popup.
-popupFrames :: Int
-popupFrames = 100
 
 -- | Move the next popup (if any) from the queue to the
 --   currently displayed popup.
