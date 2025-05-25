@@ -34,6 +34,7 @@ import Data.List qualified as L
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Map.NonEmpty qualified as NEM
+import Data.Map.Strict qualified as MS
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
 import Data.MonoidMap qualified as MM
 import Data.Ord (Down (Down))
@@ -138,7 +139,7 @@ execConst runChildProg c vs s k = do
   when (isTangible c) $
     activityCounts . tangibleCommandCount += 1
 
-  activityCounts . commandsHistogram %= M.insertWith (+) c 1
+  activityCounts . commandsHistogram %= MS.insertWith (+) c 1
 
   -- Now proceed to actually carry out the operation.
   case c of

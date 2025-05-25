@@ -11,7 +11,7 @@ import Brick.Widgets.Table qualified as BT
 
 import Brick.Focus
 import Control.Lens hiding (from, (<.>))
-import Data.Map qualified as M
+import Data.Map.Strict qualified as M
 import Prettyprinter (pretty)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity (commandsHistogram)
