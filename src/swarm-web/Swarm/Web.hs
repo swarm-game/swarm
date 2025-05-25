@@ -86,7 +86,7 @@ import Swarm.Language.Pipeline (processTermEither)
 import Swarm.Pretty (prettyTextLine)
 import Swarm.TUI.Model hiding (SwarmKeyDispatchers (..))
 import Swarm.TUI.Model.Dialog.Goal
-import Swarm.TUI.Model.Repl (REPLHistItem, replHistory, replSeq, getSessionREPLHistoryItems)
+import Swarm.TUI.Model.Repl (REPLHistItem, getSessionREPLHistoryItems, replHistory, replSeq)
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.Util (applyJust)
 import Swarm.Util.RingBuffer

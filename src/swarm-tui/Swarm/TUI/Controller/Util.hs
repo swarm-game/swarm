@@ -49,7 +49,7 @@ import Swarm.TUI.Model (
  )
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
-import Swarm.TUI.Model.Repl (REPLHistItem (..), REPLPrompt, REPLState, addREPLItem, replHistory, replPromptText, replPromptType, REPLHistItemType)
+import Swarm.TUI.Model.Repl (REPLHistItem (..), REPLHistItemType, REPLPrompt, REPLState, addREPLItem, replHistory, replPromptText, replPromptType)
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Util (ScenarioSeriesContext (..), curMenuName, generateModal, generateScenarioEndModal)
 import System.Clock (Clock (..), getTime)

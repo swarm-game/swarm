@@ -78,6 +78,7 @@ import Swarm.Game.State.Initialize
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
+import Swarm.Game.Tick (TickNumber (TickNumber))
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
 import Swarm.Pretty (prettyText)
@@ -104,7 +105,6 @@ import Swarm.TUI.View.Structure qualified as SR
 import Swarm.Util
 import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
-import Swarm.Game.Tick (TickNumber(TickNumber))
 
 -- | Initialize the 'AppState' from scratch.
 initAppState ::
