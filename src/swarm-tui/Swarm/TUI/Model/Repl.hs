@@ -65,12 +65,12 @@ import Data.Text qualified as T
 import Data.Text.Zipper qualified as TZ
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
+import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Language.Syntax (SrcLoc (..))
 import Swarm.Language.Types
 import Swarm.TUI.Model.Name
 import Swarm.Util (applyWhen)
 import Swarm.Util.Lens (makeLensesNoSigs)
-import Swarm.Game.Tick (TickNumber(..))
 
 ------------------------------------------------------------
 -- REPL History
@@ -111,20 +111,20 @@ instance ToSample REPLHistItem where
       [ REPLHistItem
           (REPLEntry Submitted)
           (TickNumber 0)
-          "grab",
-        REPLHistItem
+          "grab"
+      , REPLHistItem
           REPLOutput
           (TickNumber 0)
-          "it0 : text = \"tree\"",
-        REPLHistItem
+          "it0 : text = \"tree\""
+      , REPLHistItem
           (REPLEntry Stashed)
           (TickNumber 1)
-          "place",
-        REPLHistItem
+          "place"
+      , REPLHistItem
           (REPLEntry Submitted)
           (TickNumber 2)
-          "place tree",
-        REPLHistItem
+          "place tree"
+      , REPLHistItem
           REPLError
           (TickNumber 2)
           "1:7: Unbound variable tree"

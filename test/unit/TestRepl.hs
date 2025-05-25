@@ -8,7 +8,7 @@ module TestRepl where
 
 import Data.String (fromString)
 import Data.Text (Text)
-import Swarm.Game.Tick (TickNumber(..))
+import Swarm.Game.Tick (TickNumber (..))
 import Swarm.TUI.Model.Repl
 import Test.Tasty
 import Test.Tasty.HUnit
