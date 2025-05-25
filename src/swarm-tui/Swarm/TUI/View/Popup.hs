@@ -51,7 +51,10 @@ drawPopups s = renderAnimation (const emptyWidget) s mAnim
 
 -- | Signal the animation manager to start the popup animation.
 startPopupAnimation :: MonadIO m => AnimationManager AppState AppEvent Name -> Popup -> m ()
-startPopupAnimation mgr p = startAnimation mgr (makePopupClip p) popupFrameDuration Once (playState . progression . uiPopupAnimationState . animTraversal)
+startPopupAnimation mgr p = startAnimation mgr (makePopupClip p) popupFrameDuration Once trav
+ where
+  trav :: Traversal' AppState (Maybe (Animation AppState Name))
+  trav = playState . progression . uiPopupAnimationState . animTraversal
 
 makePopupClip :: Popup -> Clip AppState Name
 makePopupClip p = newClip $ map drawPopupFrame [0 .. popupFrames]
