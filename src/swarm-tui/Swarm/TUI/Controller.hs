@@ -632,7 +632,7 @@ runBaseWebCode uinput ureply = do
 
 runBaseCode :: (MonadState ScenarioState m) => T.Text -> m (Either Text ())
 runBaseCode uinput = do
-  addREPLHistItem (mkREPLSubmission uinput)
+  addREPLHistItem (REPLEntry Submitted) uinput
   resetREPL "" (CmdPrompt [])
   env <- use $ gameState . baseEnv
   case processTerm' env uinput of
@@ -641,7 +641,7 @@ runBaseCode uinput = do
       runBaseTerm mt
       return (Right ())
     Left err -> do
-      addREPLHistItem (mkREPLError err)
+      addREPLHistItem REPLError err
       return (Left err)
 
 -- | Handle a user input event for the REPL.
@@ -686,7 +686,7 @@ handleREPLEventTyping m = \case
                 -- Special case for hitting "Down" arrow while entering a new non-empty input:
                 -- save the input in the history and make the REPL blank.
                 do
-                  addREPLHistItem (mkREPLSaved uinput)
+                  addREPLHistItem (REPLEntry Stashed) uinput
                   resetREPL "" (CmdPrompt [])
                   modify validateREPLForm
           -- Otherwise, just move around in the history as normal.

@@ -8,6 +8,7 @@ module TestRepl where
 
 import Data.String (fromString)
 import Data.Text (Text)
+import Swarm.Game.Tick (TickNumber(..))
 import Swarm.TUI.Model.Repl
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -89,3 +90,15 @@ testRepl =
   toT = fromString . show
   addInOutInt :: Int -> REPLHistory -> REPLHistory
   addInOutInt i = addREPLItem (mkREPLOutput $ toT i <> ":Int") . addREPLItem (mkREPLSubmission $ toT i)
+
+mkREPLSubmission :: Text -> REPLHistItem
+mkREPLSubmission = REPLHistItem (REPLEntry Submitted) (TickNumber 0)
+
+mkREPLSaved :: Text -> REPLHistItem
+mkREPLSaved = REPLHistItem (REPLEntry Stashed) (TickNumber 0)
+
+mkREPLOutput :: Text -> REPLHistItem
+mkREPLOutput = REPLHistItem REPLOutput (TickNumber 0)
+
+mkREPLError :: Text -> REPLHistItem
+mkREPLError = REPLHistItem REPLError (TickNumber 0)

@@ -86,7 +86,7 @@ import Swarm.Language.Pipeline (processTermEither)
 import Swarm.Pretty (prettyTextLine)
 import Swarm.TUI.Model hiding (SwarmKeyDispatchers (..))
 import Swarm.TUI.Model.Dialog.Goal
-import Swarm.TUI.Model.Repl (REPLHistItem, replHistory, replSeq)
+import Swarm.TUI.Model.Repl (REPLHistItem, replHistory, replSeq, getSessionREPLHistoryItems)
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.Util (applyJust)
 import Swarm.Util.RingBuffer
@@ -118,6 +118,7 @@ type SwarmAPI =
     :<|> "code" :> "render" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
     :<|> "code" :> "run" :> ReqBody '[PlainText] T.Text :> StreamGet NewlineFraming JSON (SourceIO WebInvocationState)
     :<|> "paths" :> "log" :> Get '[JSON] (RingBuffer CacheLogEntry)
+    :<|> "repl" :> "history" :> "current" :> Get '[JSON] [REPLHistItem]
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [REPLHistItem]
     :<|> "map" :> Capture "size" AreaDimensions :> Get '[JSON] GridResponse
 
@@ -176,7 +177,8 @@ mkApp state events =
     :<|> codeRenderHandler
     :<|> codeRunHandler events
     :<|> pathsLogHandler state
-    :<|> replHistHandler state
+    :<|> replHistHandler Current state
+    :<|> replHistHandler Full state
     :<|> mapViewHandler state
 
 robotsHandler :: IO AppState -> Handler [Robot]
@@ -303,12 +305,15 @@ pathsLogHandler appStateRef = do
   appState <- liftIO appStateRef
   pure $ appState ^. playState . scenarioState . gameState . pathCaching . pathCachingLog
 
-replHistHandler :: IO AppState -> Handler [REPLHistItem]
-replHistHandler appStateRef = do
+data ReplHistoryType = Current | Full
+
+replHistHandler :: ReplHistoryType -> IO AppState -> Handler [REPLHistItem]
+replHistHandler historyType appStateRef = do
   appState <- liftIO appStateRef
-  let replHistorySeq = appState ^. playState . scenarioState . uiGameplay . uiREPL . replHistory . replSeq
-      items = toList replHistorySeq
-  pure items
+  let replHist = appState ^. playState . scenarioState . uiGameplay . uiREPL . replHistory
+  pure . toList $ case historyType of
+    Full -> replHist ^. replSeq
+    Current -> getSessionREPLHistoryItems replHist
 
 mapViewHandler :: IO AppState -> AreaDimensions -> Handler GridResponse
 mapViewHandler appStateRef areaSize = do

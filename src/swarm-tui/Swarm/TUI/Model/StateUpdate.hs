@@ -104,6 +104,7 @@ import Swarm.TUI.View.Structure qualified as SR
 import Swarm.Util
 import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
+import Swarm.Game.Tick (TickNumber(TickNumber))
 
 -- | Initialize the 'AppState' from scratch.
 initAppState ::
@@ -195,6 +196,7 @@ constructAppState ::
   m AppState
 constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) = do
   historyT <- sendIO $ readFileMayT =<< getSwarmHistoryPath False
+  let mkREPLSubmission = REPLHistItem (REPLEntry Submitted) (TickNumber $ -1)
   let history = maybe [] (map mkREPLSubmission . T.lines) historyT
   startTime <- sendIO $ getTime Monotonic
 
