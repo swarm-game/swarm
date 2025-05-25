@@ -9,6 +9,7 @@ concurrency:
 
 jobs:
   restyled:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,8 +24,7 @@ jobs:
 
       - if: |
           !cancelled() &&
-          steps.restyler.outputs.success == 'true' &&
-          github.event.pull_request.head.repo.full_name == github.repository          
+          steps.restyler.outputs.success == 'true'        
         uses: peter-evans/create-pull-request@v6
         with:
           base: ${{ steps.restyler.outputs.restyled-base }}
@@ -34,3 +34,13 @@ jobs:
           labels: "restyled"
           reviewers: ${{ github.event.pull_request.user.login }}
           delete-branch: true
+
+  restyled-fork:
+    if: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: restyled-io/actions/setup@v4
+      - uses: restyled-io/actions/run@v4
+        with:
+          fail-on-differences: true
