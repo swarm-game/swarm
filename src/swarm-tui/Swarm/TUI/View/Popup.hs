@@ -13,11 +13,11 @@ module Swarm.TUI.View.Popup (
 ) where
 
 import Brick (Widget (..), cropTopTo, padLeftRight, txt, vBox)
-import Brick.Animation (AnimationManager, Clip, RunMode (..), newClip, renderAnimation, startAnimation)
+import Brick.Animation (Animation, AnimationManager, Clip, RunMode (..), newClip, renderAnimation, startAnimation)
 import Brick.Widgets.Border (border)
 import Brick.Widgets.Center (hCenterLayer)
 import Brick.Widgets.Core (emptyWidget, hBox, withAttr)
-import Control.Lens ((^.), (^?))
+import Control.Lens (Traversal', (^.), (^?))
 import Control.Monad.IO.Class (MonadIO)
 import Swarm.Game.Achievement.Definitions (title)
 import Swarm.Game.Achievement.Description (describe)
@@ -33,15 +33,15 @@ import Swarm.Util (commaList, squote)
 -- | The number of frames taken by each step of the notification popup
 --   animation.
 animFrames :: Int
-animFrames = 1
+animFrames = 3
 
 -- | The number of milliseconds taken by each frame of the notification popup
 popupFrameDuration :: Integer
-popupFrameDuration = 50
+popupFrameDuration = 25
 
 -- | The number of frames for which to display a popup.
 popupFrames :: Int
-popupFrames = 100
+popupFrames = 125
 
 -- | Draw the current notification popup (if any).
 drawPopups :: AppState -> Widget Name

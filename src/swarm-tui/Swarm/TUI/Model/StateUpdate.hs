@@ -111,7 +111,7 @@ import System.Clock
 
 -- | The resolution at which the animation manager checks animations for updates, in miliseconds
 animMgrTickDuration :: Int
-animMgrTickDuration = 250
+animMgrTickDuration = 33
 
 -- | Initialize the 'AppState' from scratch.
 initAppState ::
