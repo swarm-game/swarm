@@ -7,7 +7,6 @@
 module Swarm.TUI.View.Popup (
   drawPopups,
   startPopupAnimation,
-  animFrames,
   popupFrameDuration,
   popupFrames,
 ) where
@@ -30,14 +29,9 @@ import Swarm.TUI.View.Attribute.Attr (notifAttr)
 import Swarm.TUI.View.Util (bindingText)
 import Swarm.Util (commaList, squote)
 
--- | The number of animation frames taken by each step of the notification popup
---   animation.
-animFrames :: Int
-animFrames = 3
-
 -- | The number of milliseconds taken by each animation frame of the notification popup
 popupFrameDuration :: Integer
-popupFrameDuration = 25
+popupFrameDuration = 50
 
 -- | The number of animation frames for which to display a popup.
 popupFrames :: Int
