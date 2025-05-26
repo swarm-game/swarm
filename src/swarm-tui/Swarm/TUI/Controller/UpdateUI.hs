@@ -21,7 +21,7 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (toList)
 import Data.Function (on)
 import Data.List.Extra (enumerate)
-import Data.Map qualified as M
+import Data.Map.Strict qualified as M
 import Data.Maybe (isNothing)
 import Data.Set (Set)
 import Data.Set qualified as S
