@@ -93,18 +93,13 @@ parseTermAtom2 =
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm)
           <*> (reserved "in" *> parseTerm)
-        -- <|> sLet LSDef
-        --   <$> (reserved "def" *> locTmVar)
-        --   <*> optional (symbol ":" *> parsePolytype)
-        --   <*> (symbol "=" *> parseTerm <* reserved "end")
-        --   <*> (optional (symbol ";") *> (parseTerm <|> (eof $> sNoop)))
         <|> do
           reserved "def"
           locVar@(LV _srcLoc nameText) <- locTmVar
           mTy <- optional (symbol ":" *> parsePolytype)
           _ <- symbol "="
           body <- parseTerm
-          reserved "end" <?> ("missing 'end' keyword for definition of '" <> T.unpack nameText <> "'")
+          reserved "end" <?> ("'end' keyword for definition of '" <> T.unpack nameText <> "'")
           rest <- optional (symbol ";") *> (parseTerm <|> (eof $> sNoop))
           return $ sLet LSDef locVar mTy body rest
         <|> STydef

@@ -727,11 +727,10 @@ testLanguagePipeline =
         "Custom error message for missing end #1141"
         [ testCase
             "missing end"
-            $ do
-              processCompare
-                T.isInfixOf
+            ( process
                 "def x = 3;\n def y = 3 end;\n def z = 3 end"
-                "missing 'end' keyword for definition of 'x'"
+                "3:15:\n  |\n3 |  def z = 3 end\n  |               ^\nunexpected end of input\nexpecting \"!=\", \"&&\", \"()\", \"++\", \"<=\", \"==\", \">=\", \"def\", \"false\", \"let\", \"require\", \"requirements\", \"true\", \"tydef\", \"||\", '\"', '$', '(', '*', '+', '-', '.', '/', ':', ';', '<', '>', '[', '\\', '^', 'end' keyword for definition of 'x', '{', built-in user function, direction constant, integer literal, or variable name\n"
+            )
         ]
     ]
  where
