@@ -142,6 +142,8 @@ startPopupIfNeeded = do
   mPopup <- use $ playState . progression . uiPopups . currentPopup
   case mPopup of
     Just popup -> do
+      -- Ensures we don't grab another popup while waiting for the animation manager to start the event.
+      -- The animation state will be set to AnimActive when the animation manager actually starts the animation
       playState . progression . uiPopupAnimationState .= AnimScheduled
       animMgr <- use animationMgr
       startPopupAnimation animMgr popup

@@ -30,16 +30,16 @@ import Swarm.TUI.View.Attribute.Attr (notifAttr)
 import Swarm.TUI.View.Util (bindingText)
 import Swarm.Util (commaList, squote)
 
--- | The number of frames taken by each step of the notification popup
+-- | The number of animation frames taken by each step of the notification popup
 --   animation.
 animFrames :: Int
 animFrames = 3
 
--- | The number of milliseconds taken by each frame of the notification popup
+-- | The number of milliseconds taken by each animation frame of the notification popup
 popupFrameDuration :: Integer
 popupFrameDuration = 25
 
--- | The number of frames for which to display a popup.
+-- | The number of animation frames for which to display a popup.
 popupFrames :: Int
 popupFrames = 125
 
@@ -90,18 +90,16 @@ drawPopup s = \case
   keyConf = s ^. keyEventHandling . keyConfig
 
 -- | Compute the number of rows of the notification popup we should be
---   showing, based on the number of frames the popup has existed.
+--   showing, based on the number of animation frames the popup has existed.
 --   This is what causes the popup to animate in and out of existence.
 popupRows :: Int -> Int
 popupRows f
-  -- If we're less than halfway through the lifetime of the popup,
-  -- divide the number of frames by the number of frames for each step
-  -- of the animation (rounded up).  This will become much larger than
-  -- the actual number of rows in the popup, but the 'cropTopTo' function
-  -- simply has no effect when given any value equal to or larger than the
-  -- number of rows of a widget.  This way the animation will continue to
-  -- work for popups with any (reasonable) number of rows.
-  | f <= popupFrames `div` 2 = (f + animFrames - 1) `div` animFrames
-  -- Otherwise, divide the number of frames remaining by the number of
-  -- frames for each step of the animation (rounded up).
-  | otherwise = (popupFrames - f + animFrames - 1) `div` animFrames
+  -- If we're less than halfway through the lifetime of the popup, use
+  -- the number of animation frames elapsed since the beginning of the popup animation.
+  -- This will become much larger than the actual number of rows in the
+  -- popup, but the 'cropTopTo' function simply has no effect when given any value
+  -- equal to or larger than the number of rows of a widget. This way the animation
+  -- will continue to work for popups with any (reasonable) number of rows.
+  | f <= popupFrames `div` 2 = f
+  -- Otherwise, use the number of frames remaining.
+  | otherwise = popupFrames - f
