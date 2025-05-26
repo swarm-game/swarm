@@ -120,7 +120,7 @@ handleEvent e = do
     -- the query for upstream version could finish at any time, so we have to handle it here
     AppEvent (UpstreamVersion ev) -> handleUpstreamVersionResponse ev
     AppEvent (Web (RunWebCode {..})) | not playing -> liftIO . webReply $ Rejected NoActiveGame
-    AppEvent (PopupEvent event) -> event
+    AppEvent (PopupEvent event) -> event >> continueWithoutRedraw
     _ -> do
       -- Handle popup display at the very top level, so it is
       -- unaffected by any other state, e.g. even when starting or
