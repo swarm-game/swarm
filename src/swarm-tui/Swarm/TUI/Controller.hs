@@ -149,6 +149,10 @@ startPopupIfNeeded = do
       startPopupAnimation animMgr popup
     Nothing -> pure ()
 
+-- | Halt the app, properly cleaning up the animation manager.
+haltApp :: EventM Name AppState ()
+haltApp = use animationMgr >>= stopAnimationManager >> halt
+
 handleUpstreamVersionResponse :: Either (Severity, Text) String -> EventM Name AppState ()
 handleUpstreamVersionResponse ev = do
   case ev of
@@ -162,7 +166,7 @@ handleMenuEvent e =
     -- If we reach the NoMenu case when uiPlaying is False, just
     -- quit the app.  We should actually never reach this code (the
     -- quitGame function would have already halted the app).
-    NoMenu -> halt
+    NoMenu -> haltApp
     MainMenu l -> handleMainMenuEvent l e
     NewGameMenu l -> do
       launchControls <- use $ uiState . uiLaunchConfig . controls
@@ -238,9 +242,9 @@ handleMainMenuEvent menu = \case
         Brick.zoom (playState . progression) $
           attainAchievement $
             GlobalAchievement LookedAtAboutScreen
-      Quit -> halt
-  CharKey 'q' -> halt
-  ControlChar 'q' -> halt
+      Quit -> haltApp
+  CharKey 'q' -> haltApp
+  ControlChar 'q' -> haltApp
   VtyEvent ev -> do
     menu' <- nestEventM' menu (handleListEvent ev)
     uiState . uiMenu .= MainMenu menu'
@@ -296,7 +300,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   CharKey 'O' -> showLaunchDialog
   Key V.KEsc -> exitNewGameMenu scenarioStack
   CharKey 'q' -> exitNewGameMenu scenarioStack
-  ControlChar 'q' -> halt
+  ControlChar 'q' -> haltApp
   VtyEvent ev -> do
     menu' <- nestEventM' curMenu (handleListEvent ev)
     uiState . uiMenu .= NewGameMenu (menu' :| rest)
@@ -550,15 +554,11 @@ quitGame isNoMenu = do
     WinConditions (Won _ _) _ -> uiState . uiMenu %= advanceMenu
     _ -> return ()
 
-  -- Stop the animation manager
-  animMgr <- use $ animationMgr
-  stopAnimationManager animMgr
-
   -- Either quit the entire app (if the scenario was chosen directly
   -- from the command line) or return to the menu (if the scenario was
   -- chosen from the menu).
   if isNoMenu
-    then halt
+    then haltApp
     else uiState . uiPlaying .= False
 
 ------------------------------------------------------------
