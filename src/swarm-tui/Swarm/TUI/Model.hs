@@ -178,7 +178,10 @@ data ScenarioState = ScenarioState
   , _uiGameplay :: UIGameplay
   }
 
--- | This enapsulates the state of a given animation that changes over time
+-- | This enapsulates the state of a given animation that changes over time. 'AnimInactive' means that
+--   the application is ready to start a new animation. 'AnimScheduled' means that the application
+--   has told the animation manager to start the animation, but it hasn't started yet. 'AnimActive' means
+--   that the animation is currently in progress.
 data AnimationState
   = AnimActive (Animation AppState Name)
   | AnimScheduled
@@ -443,16 +446,20 @@ focusedEntity =
     InventoryEntry _ e -> Just e
     EquippedEntry e -> Just e
 
--- | A very non-lawful traversal for use in animations that allows
+-- | A non-lawful traversal for use in animations that allows
 --   us to manage the state of an animation and update it properly
 --   when we process an event sent by the animation manager.
 --   Exploits some assumptions about Brick's implementation of animations.
+--   It is defined such that when the animation manager starts the animation
+--   by setting the target of the traversal to Just theAnimation, the traversal will actually
+--   set the AnimationState of the popup animation to AnimActive theAnimation.
+--   When the animation manager signals that the animation has stopped by setting the target of
+--   the traversal to Nothing, the traversal will set the AnimationState of the popup to AnimInactive.
 animTraversal :: Traversal' AnimationState (Maybe (Animation AppState Name))
 animTraversal = traversal go
  where
   go :: Applicative f => (Maybe (Animation AppState Name) -> f (Maybe (Animation AppState Name))) -> AnimationState -> f AnimationState
   go focus = \case
     AnimInactive -> maybe AnimInactive AnimActive <$> focus Nothing
-    -- Should never reach this branch
     AnimScheduled -> maybe AnimInactive AnimActive <$> focus Nothing
     AnimActive x -> maybe AnimInactive AnimActive <$> focus (Just x)
