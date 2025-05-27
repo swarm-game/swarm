@@ -13,19 +13,19 @@ import Data.Hashable
 import Data.String (IsString (..))
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Prettyprinter (Doc, pretty)
 import Swarm.Pretty (PrettyPrec (..))
 import Swarm.Util (showT)
-import Prettyprinter (pretty, Doc)
 
 -- | A variable is represented by a textual name as well as a version
 --   number which we can use to differentiate between names which are
 --   otherwise the same, when one shadows the other.
 --
 --   See Note [Shadowing for value-level and type-level variables]
-data Var = Var { varName :: Text, varVersion :: Int }
+data Var = Var {varName :: Text, varVersion :: Int}
   deriving (Eq, Ord, Show, Data, Generic, Hashable, ToJSON, FromJSON, ToJSONKey, FromJSONKey)
 
-  -- TODO(XXX): make custom To/FromJSON instances to omit the version if it is 0
+-- TODO(XXX): make custom To/FromJSON instances to omit the version if it is 0
 
 -- ~~~~ Note [Shadowing for value-level and type-level variables]
 --
@@ -81,7 +81,7 @@ mkVar' v x = Var x v
 prettyVar :: Int -> Var -> Doc ann
 prettyVar latest (Var x n)
   | latest > n = pretty (x <> "%" <> showT n)
-  | otherwise  = pretty x
+  | otherwise = pretty x
 
 -- TODO(#2452): overhaul pretty-printing to take extra
 -- environment/parameters, such as TDCtx to know when to print a user
