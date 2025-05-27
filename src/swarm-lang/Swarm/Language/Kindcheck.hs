@@ -48,16 +48,17 @@ processType ty = do
 --   the correct version number depending on what is in scope, by
 --   calling 'resolveUserTy'.
 resolveTydefs :: Has (Reader TDCtx) sig m => Type -> m Type
-resolveTydefs (Fix tyF) = Fix <$> case tyF of
-  TyConF tc tys -> do
-    tc' <- case tc of
-      TCUser u -> TCUser <$> resolveUserTy u
-      _ -> pure tc
-    TyConF tc' <$> mapM resolveTydefs tys
-  TyRcdF m -> TyRcdF <$> mapM resolveTydefs m
-  TyRecF x t -> TyRecF x <$> resolveTydefs t
-  TyVarF {} -> pure tyF
-  TyRecVarF {} -> pure tyF
+resolveTydefs (Fix tyF) =
+  Fix <$> case tyF of
+    TyConF tc tys -> do
+      tc' <- case tc of
+        TCUser u -> TCUser <$> resolveUserTy u
+        _ -> pure tc
+      TyConF tc' <$> mapM resolveTydefs tys
+    TyRcdF m -> TyRcdF <$> mapM resolveTydefs m
+    TyRecF x t -> TyRecF x <$> resolveTydefs t
+    TyVarF {} -> pure tyF
+    TyRecVarF {} -> pure tyF
 
 ------------------------------------------------------------
 -- Kind checking

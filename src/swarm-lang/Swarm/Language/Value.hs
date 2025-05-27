@@ -45,7 +45,7 @@ import Swarm.Language.Requirements.Type (ReqCtx, Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Typed
-import Swarm.Language.Types (Polytype, TCtx, TDCtx, emptyTDCtx, addBindingTD, TydefInfo, Type)
+import Swarm.Language.Types (Polytype, TCtx, TDCtx, TydefInfo, Type, addBindingTD, emptyTDCtx)
 import Swarm.Pretty (prettyText)
 import Prelude hiding (Foldable (..))
 

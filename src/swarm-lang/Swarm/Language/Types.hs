@@ -165,7 +165,7 @@ import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Var (Var, mkVar, mkVar', varName)
 import Swarm.Pretty (PrettyPrec (..), pparens, pparens', ppr, prettyBinding)
-import Swarm.Util (unsnocNE, showT)
+import Swarm.Util (showT, unsnocNE)
 import Swarm.Util.JSON (optionsMinimize, optionsUnwrapUnary)
 import Text.Show.Deriving (deriveShow1)
 import Witch (into)
@@ -852,7 +852,7 @@ addBindingTD x info (TDCtx tdCtx tdVersions) =
     Nothing -> TDCtx (Ctx.addBinding (mkVar x) info tdCtx) tdVersions
     Just _ ->
       let newVersion = 1 + fromMaybe 0 (M.lookup x tdVersions)
-      in  TDCtx (Ctx.addBinding (mkVar' newVersion x) info tdCtx) (M.insert x newVersion tdVersions)
+       in TDCtx (Ctx.addBinding (mkVar' newVersion x) info tdCtx) (M.insert x newVersion tdVersions)
 
 -- | Locally extend the ambient type definition context with an
 --   additional binding, via 'addBindingTD'.
