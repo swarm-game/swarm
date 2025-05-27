@@ -83,7 +83,7 @@ prettyVar latest (Var x n)
   | latest > n = pretty (x <> "%" <> showT n)
   | otherwise  = pretty x
 
--- TODO(XXX): overhaul pretty-printing to take extra
+-- TODO(#2452): overhaul pretty-printing to take extra
 -- environment/parameters, such as TDCtx to know when to print a user
 -- type name with its version number, to disambiguate when it has been
 -- shadowed.
