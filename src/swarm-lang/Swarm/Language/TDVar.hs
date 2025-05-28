@@ -26,8 +26,6 @@ import Swarm.Util (showT)
 data TDVar = TDVar {tdVarName :: Text, tdVarVersion :: Int}
   deriving (Eq, Ord, Show, Data, Generic, Hashable, ToJSON, FromJSON, ToJSONKey, FromJSONKey)
 
--- TODO(XXX): make custom To/FromJSON instances to omit the version if it is 0
-
 -- ~~~~ Note [Shadowing for value-level and type-level variables]
 --
 -- The problem we are solving here is: what happens when y is defined
