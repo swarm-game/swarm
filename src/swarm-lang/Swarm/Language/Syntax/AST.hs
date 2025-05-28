@@ -25,8 +25,8 @@ import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Syntax.Loc
-import Swarm.Language.Types
 import Swarm.Language.TDVar (TDVar)
+import Swarm.Language.Types
 
 ------------------------------------------------------------
 -- Syntax: annotation on top of Terms with SrcLoc, comments, + type
