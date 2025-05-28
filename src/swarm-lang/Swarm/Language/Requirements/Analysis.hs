@@ -26,8 +26,8 @@ import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirements.Type
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction (isCardinal)
-import Swarm.Language.Types
 import Swarm.Language.TDVar (tdVarName)
+import Swarm.Language.Types
 import Swarm.Util (applyWhen)
 
 -- | Infer the requirements to execute/evaluate a term in a given
