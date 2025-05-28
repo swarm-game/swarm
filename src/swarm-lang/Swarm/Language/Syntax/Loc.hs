@@ -8,7 +8,8 @@
 -- Types for working with locations of something in source code.
 module Swarm.Language.Syntax.Loc (
   SrcLoc (..),
-  LocVar (..),
+  Located (..),
+  LocVar,
   srcLocStartsBefore,
   srcLocEndsBefore,
 ) where
@@ -68,5 +69,7 @@ srcLocEndsBefore _ _ = False
 -- | A variable with associated source location, used for variable
 --   binding sites. (Variable occurrences are a bare TVar which gets
 --   wrapped in a Syntax node, so we don't need LocVar for those.)
-data LocVar = LV {lvSrcLoc :: SrcLoc, lvVar :: Var}
-  deriving (Eq, Ord, Show, Data, Generic, Hashable, FromJSON, ToJSON)
+data Located v = LV {lvSrcLoc :: SrcLoc, lvVar :: v}
+  deriving (Eq, Ord, Functor, Show, Data, Generic, Hashable, FromJSON, ToJSON)
+
+type LocVar = Located Var

@@ -23,7 +23,6 @@ import Swarm.Language.Parser.Type
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Types
-import Swarm.Language.Var (varName)
 import Swarm.Util (failT, findDup)
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
@@ -125,19 +124,19 @@ sNoop = STerm (TConst Noop)
 bindTydef :: [Var] -> Type -> Parser Polytype
 bindTydef xs ty
   | Just repeated <- findDup xs =
-      failT ["Duplicate variable on left-hand side of tydef:", varName repeated]
+      failT ["Duplicate variable on left-hand side of tydef:", repeated]
   | not (S.null free) =
       failT $
-        "Undefined type variable(s) on right-hand side of tydef:" : map varName (S.toList free)
+        "Undefined type variable(s) on right-hand side of tydef:" : S.toList free
   | otherwise = return . absQuantify $ mkPoly xs ty
  where
   free = tyVars ty `S.difference` S.fromList xs
 
 parseAntiquotation :: Parser Term
 parseAntiquotation =
-  TAntiText <$> (lexeme . try) (symbol "$str:" *> (varName <$> tmVar))
-    <|> TAntiInt <$> (lexeme . try) (symbol "$int:" *> (varName <$> tmVar))
-    <|> TAntiSyn <$> (lexeme . try) (symbol "$syn:" *> (varName <$> tmVar))
+  TAntiText <$> (lexeme . try) (symbol "$str:" *> tmVar)
+    <|> TAntiInt <$> (lexeme . try) (symbol "$int:" *> tmVar)
+    <|> TAntiSyn <$> (lexeme . try) (symbol "$syn:" *> tmVar)
 
 -- | Parse a Swarm language term.
 parseTerm :: Parser Syntax

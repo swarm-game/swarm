@@ -86,7 +86,6 @@ import Swarm.Language.Typecheck (
   ContextualTypeErr (..),
  )
 import Swarm.Language.Value (Value (VKey), emptyEnv, envTypes)
-import Swarm.Language.Var (varName)
 import Swarm.Log
 import Swarm.ResourceLoading (getSwarmHistoryPath)
 import Swarm.TUI.Controller.EventHandlers
@@ -702,7 +701,7 @@ handleREPLEventTyping m = \case
               replPromptType .= SearchPrompt (removeEntry found rh)
       CharKey '\t' -> Brick.zoom scenarioState $ do
         s <- get
-        let names = s ^.. gameState . baseEnv . envTypes . to assocs . traverse . _1 . to varName
+        let names = s ^.. gameState . baseEnv . envTypes . to assocs . traverse . _1
         uiGameplay . uiREPL %= tabComplete (CompletionContext (s ^. gameState . creativeMode)) names (s ^. gameState . landscape . terrainAndEntities . entityMap)
         modify validateREPLForm
       EscapeKey -> Brick.zoom scenarioState $ do

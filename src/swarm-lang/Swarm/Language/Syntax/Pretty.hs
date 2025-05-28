@@ -35,6 +35,7 @@ import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern (sComments, pattern STerm)
 import Swarm.Language.Syntax.Util (erase, unTuple)
 import Swarm.Language.Types
+import Swarm.Language.TDVar (TDVar)
 import Swarm.Pretty (PrettyPrec (..), encloseWithIndent, pparens, ppr, prettyEquality)
 import Text.Show.Unicode (ushow)
 
@@ -159,7 +160,7 @@ prettyDefinition defName x mty t1 =
   defEqLambdas = hsep ("=" : map prettyLambda defLambdaList)
   eqAndLambdaLine = if null defLambdaList then "=" else line <> defEqLambdas
 
-prettyTydef :: Var -> Polytype -> Doc ann
+prettyTydef :: TDVar -> Polytype -> Doc ann
 prettyTydef x (unPoly -> ([], ty)) = "tydef" <+> ppr x <+> "=" <+> ppr ty <+> "end"
 prettyTydef x (unPoly -> (xs, ty)) = "tydef" <+> ppr x <+> hsep (map ppr xs) <+> "=" <+> ppr ty <+> "end"
 

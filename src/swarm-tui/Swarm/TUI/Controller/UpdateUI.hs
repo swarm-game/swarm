@@ -39,7 +39,6 @@ import Swarm.Game.State.Substate
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value (VExc, VUnit), emptyEnv, envTydefs, prettyValue)
-import Swarm.Language.Var (mkVar)
 import Swarm.Pretty
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnFinishNocheat)
 import Swarm.TUI.Controller.Util
@@ -122,8 +121,8 @@ checkReplUpdated g = case g ^. gameControls . replStatus of
 
         Brick.zoom gameState $ do
           gameControls . replStatus .= REPLDone (Just (finalType, v))
-          baseEnv . at (mkVar itName) .= Just (Typed v finalType mempty)
-          baseEnv . at (mkVar "it") .= Just (Typed v finalType mempty)
+          baseEnv . at itName .= Just (Typed v finalType mempty)
+          baseEnv . at "it" .= Just (Typed v finalType mempty)
           gameControls . replNextValueIndex %= (+ 1)
         pure True
 

@@ -28,7 +28,6 @@ import Control.Monad (unless)
 import Data.Aeson (FromJSON (..), FromJSONKey, ToJSON (..), ToJSONKey, genericParseJSON, genericToJSON, withText)
 import Data.Data (Data)
 import Data.Function (on)
-import Data.Functor.Const
 import Data.Hashable
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -36,7 +35,6 @@ import Data.Map qualified as M
 import Data.Semigroup (Sum (..))
 import Data.Text qualified as T
 import GHC.Generics (Generic)
-import Swarm.Language.Var
 import Swarm.Pretty (PrettyPrec (..))
 import Swarm.Util (failT, showT)
 import Swarm.Util.JSON (optionsMinimize)
@@ -77,11 +75,11 @@ instance FromJSON CtxHash where
     Just h -> pure (CtxHash h)
 
 -- | The hash for a single variable -> value binding.
-singletonHash :: Hashable t => Var -> t -> CtxHash
+singletonHash :: (Hashable v, Hashable t) => v -> t -> CtxHash
 singletonHash x t = CtxHash $ hashWithSalt (hash x) t
 
 -- | The hash for an entire Map's worth of bindings.
-mapHash :: Hashable t => Map Var t -> CtxHash
+mapHash :: (Hashable v, Hashable t) => Map v t -> CtxHash
 mapHash = M.foldMapWithKey singletonHash
 
 ------------------------------------------------------------
@@ -89,21 +87,21 @@ mapHash = M.foldMapWithKey singletonHash
 
 -- | 'CtxF' represents one level of structure of a context: a context
 --   is either empty, a singleton, or built via deletion or union.
-data CtxF f t
+data CtxF f v t
   = CtxEmpty
-  | CtxSingle Var t
-  | CtxDelete Var t (f t)
-  | CtxUnion (f t) (f t)
+  | CtxSingle v t
+  | CtxDelete v t (f v t)
+  | CtxUnion (f v t) (f v t)
   deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic)
 
-instance (ToJSON t, ToJSON (f t)) => ToJSON (CtxF f t) where
+instance (ToJSON v, ToJSON t, ToJSON (f v t)) => ToJSON (CtxF f v t) where
   toJSON = genericToJSON optionsMinimize
 
-instance (FromJSON t, FromJSON (f t)) => FromJSON (CtxF f t) where
+instance (FromJSON v, FromJSON t, FromJSON (f v t)) => FromJSON (CtxF f v t) where
   parseJSON = genericParseJSON optionsMinimize
 
 -- | Map over the recursive structure stored in a 'CtxF'.
-restructureCtx :: (f t -> g t) -> CtxF f t -> CtxF g t
+restructureCtx :: (f v t -> g v t) -> CtxF f v t -> CtxF g v t
 restructureCtx _ CtxEmpty = CtxEmpty
 restructureCtx _ (CtxSingle x t) = CtxSingle x t
 restructureCtx h (CtxDelete x t f1) = CtxDelete x t (h f1)
@@ -118,7 +116,7 @@ restructureCtx h (CtxUnion f1 f2) = CtxUnion (h f1) (h f2)
 --
 --   It stores a top-level hash of the context, along with a recursive
 --   tree built via 'CtxF'.
-data CtxTree t = CtxTree CtxHash (CtxF CtxTree t)
+data CtxTree v t = CtxTree CtxHash (CtxF CtxTree v t)
   deriving (Eq, Functor, Foldable, Traversable, Data, Generic, ToJSON, FromJSON, Show)
 
 ------------------------------------------------------------
@@ -127,31 +125,31 @@ data CtxTree t = CtxTree CtxHash (CtxF CtxTree t)
 -- | A context is a mapping from variable names to things.  We store
 --   both a 'Map' (for efficient lookup) as well as a 'CtxTree' (for
 --   sharing-aware serializing/deserializing).
-data Ctx t = Ctx {unCtx :: Map Var t, ctxStruct :: CtxTree t}
+data Ctx v t = Ctx {unCtx :: Map v t, ctxStruct :: CtxTree v t}
   deriving (Functor, Traversable, Data, Generic)
 
 -- | Get the top-level hash of a context.
-ctxHash :: Ctx t -> CtxHash
+ctxHash :: Ctx v t -> CtxHash
 ctxHash (Ctx _ (CtxTree h _)) = h
 
-instance Show (Ctx t) where
+instance Show (Ctx v t) where
   -- An auto-derived, naive Show instance blows up as it loses all
   -- sharing, so have `show` simply output a placeholder.
   show _ = "<Ctx>"
 
 -- | Compare contexts for equality just by comparing their hashes.
-instance Eq (Ctx t) where
+instance Eq (Ctx v t) where
   (==) = (==) `on` ctxHash
 
-instance Hashable t => Hashable (Ctx t) where
+instance (Hashable v, Hashable t) => Hashable (Ctx v t) where
   hash = getCtxHash . ctxHash
   hashWithSalt s = hashWithSalt s . getCtxHash . ctxHash
 
-instance Foldable Ctx where
+instance Foldable (Ctx v) where
   foldMap f = foldMap f . unCtx
 
 -- | Rebuild a complete 'Ctx' from a 'CtxTree'.
-ctxFromTree :: CtxTree t -> Ctx t
+ctxFromTree :: Ord v => CtxTree v t -> Ctx v t
 ctxFromTree tree = Ctx (varMap tree) tree
  where
   varMap (CtxTree _ s) = case s of
@@ -169,7 +167,7 @@ ctxFromTree tree = Ctx (varMap tree) tree
 --   in the embedded 'Ctx' values.  'rollCtx' takes the single level
 --   of structure with recursive subtrees and "rolls them up" into one
 --   recursive tree.
-rollCtx :: Hashable t => CtxF Ctx t -> Ctx t
+rollCtx :: (Ord v, Hashable v, Hashable t) => CtxF Ctx v t -> Ctx v t
 rollCtx s = Ctx m (CtxTree h (restructureCtx ctxStruct s))
  where
   (m, h) = case s of
@@ -193,12 +191,12 @@ rollCtx s = Ctx m (CtxTree h (restructureCtx ctxStruct s))
 -- | Serialize a context simply as its hash; we assume that a
 --   top-level CtxMap has been seralized somewhere, from which we can
 --   recover this context by looking it up.
-instance ToJSON (Ctx t) where
+instance ToJSON (Ctx v t) where
   toJSON = toJSON . ctxHash
 
 -- | Deserialize a context.  We expect to see a hash, and look it up
 --   in the provided CtxMap.
-instance FromJSONE (CtxMap CtxTree t) (Ctx t) where
+instance Ord v => FromJSONE (CtxMap CtxTree v t) (Ctx v t) where
   parseJSONE v = do
     h <- liftE $ parseJSON @CtxHash v
     m <- getE
@@ -206,18 +204,18 @@ instance FromJSONE (CtxMap CtxTree t) (Ctx t) where
       Nothing -> failT ["Encountered unknown context hash", showT h]
       Just ctx -> pure ctx
 
-instance (PrettyPrec t) => PrettyPrec (Ctx t) where
+instance (PrettyPrec t) => PrettyPrec (Ctx v t) where
   prettyPrec _ _ = "<Ctx>"
 
 -- | The semigroup operation for contexts is /right/-biased union.
-instance Hashable t => Semigroup (Ctx t) where
+instance (Ord v, Hashable v, Hashable t) => Semigroup (Ctx v t) where
   (<>) = union
 
-instance Hashable t => Monoid (Ctx t) where
+instance (Ord v, Hashable v, Hashable t) => Monoid (Ctx v t) where
   mempty = empty
   mappend = (<>)
 
-instance AsEmpty (Ctx t) where
+instance AsEmpty (Ctx v t) where
   _Empty = prism (const empty) isEmpty
    where
     isEmpty c
@@ -228,59 +226,59 @@ instance AsEmpty (Ctx t) where
 -- Context operations
 
 -- | The empty context.
-empty :: Ctx t
+empty :: Ctx v t
 -- We could also define empty = rollCtx CtxEmpty but that would introduce an
 -- unnecessary Hashable t constraint.
 empty = Ctx M.empty (CtxTree mempty CtxEmpty)
 
 -- | A singleton context.
-singleton :: Hashable t => Var -> t -> Ctx t
+singleton :: (Ord v, Hashable v, Hashable t) => v -> t -> Ctx v t
 singleton x t = rollCtx $ CtxSingle x t
 
 -- | Create a 'Ctx' from a 'Map'.
-fromMap :: Hashable t => Map Var t -> Ctx t
+fromMap :: (Ord v, Hashable v, Hashable t) => Map v t -> Ctx v t
 fromMap m = case NE.nonEmpty (M.assocs m) of
   Nothing -> empty
   Just ne -> foldr1 union (NE.map (uncurry singleton) ne)
 
 -- | Look up a variable in a context.
-lookup :: Var -> Ctx t -> Maybe t
+lookup :: Ord v => v -> Ctx v t -> Maybe t
 lookup x = M.lookup x . unCtx
 
 -- | Look up a variable in a context in an ambient Reader effect.
-lookupR :: Has (Reader (Ctx t)) sig m => Var -> m (Maybe t)
+lookupR :: (Ord v, Has (Reader (Ctx v t)) sig m) => v -> m (Maybe t)
 lookupR x = lookup x <$> ask
 
 -- | Delete a variable from a context.
-delete :: Hashable t => Var -> Ctx t -> Ctx t
+delete :: (Ord v, Hashable v, Hashable t) => v -> Ctx v t -> Ctx v t
 delete x ctx@(Ctx m _) = case M.lookup x m of
   Nothing -> ctx
   Just t -> rollCtx $ CtxDelete x t ctx
 
 -- | Get the list of key-value associations from a context.
-assocs :: Ctx t -> [(Var, t)]
+assocs :: Ctx v t -> [(v, t)]
 assocs = M.assocs . unCtx
 
 -- | Get the list of bound variables from a context.
-vars :: Ctx t -> [Var]
+vars :: Ctx v t -> [v]
 vars = M.keys . unCtx
 
 -- | Add a key-value binding to a context (overwriting the old one if
 --   the key is already present).
-addBinding :: Hashable t => Var -> t -> Ctx t -> Ctx t
+addBinding :: (Ord v, Hashable v, Hashable t) => v -> t -> Ctx v t -> Ctx v t
 addBinding x t ctx = ctx `union` singleton x t
 
 -- | /Right/-biased union of contexts.
-union :: Hashable t => Ctx t -> Ctx t -> Ctx t
+union :: (Ord v, Hashable v, Hashable t) => Ctx v t -> Ctx v t -> Ctx v t
 union ctx1 ctx2 = rollCtx $ CtxUnion ctx1 ctx2
 
 -- | Locally extend the context with an additional binding.
-withBinding :: (Has (Reader (Ctx t)) sig m, Hashable t) => Var -> t -> m a -> m a
+withBinding :: (Has (Reader (Ctx v t)) sig m, Ord v, Hashable v, Hashable t) => v -> t -> m a -> m a
 withBinding x ty = local (addBinding x ty)
 
 -- | Locally extend the context with an additional context of
 --   bindings.
-withBindings :: (Has (Reader (Ctx t)) sig m, Hashable t) => Ctx t -> m a -> m a
+withBindings :: (Has (Reader (Ctx v t)) sig m, Ord v, Hashable v, Hashable t) => Ctx v t -> m a -> m a
 withBindings ctx = local (`union` ctx)
 
 ------------------------------------------------------------
@@ -289,16 +287,16 @@ withBindings ctx = local (`union` ctx)
 -- | A 'CtxMap' maps context hashes to context structures.  Those
 --   structures could either be complete context trees, or just a
 --   single level of structure containing more hashes.
-type CtxMap f t = Map CtxHash (CtxF f t)
+type CtxMap f v t = Map CtxHash (CtxF f v t)
 
 -- | Reconstitute the context corresponding to a particular hash, by
 --   looking it up in a context map.
-getCtx :: CtxHash -> CtxMap CtxTree t -> Maybe (Ctx t)
+getCtx :: Ord v => CtxHash -> CtxMap CtxTree v t -> Maybe (Ctx v t)
 getCtx h m = ctxFromTree . CtxTree h <$> M.lookup h m
 
 -- | Turn a context into a context map containing every subtree of its
 --   structure.
-toCtxMap :: Ctx t -> CtxMap CtxTree t
+toCtxMap :: Ord v => Ctx v t -> CtxMap CtxTree v t
 toCtxMap (Ctx m s) = run $ execState M.empty (buildCtxMap m s)
 
 -- | Build a context map by keeping track of the incrementally built
@@ -307,13 +305,13 @@ toCtxMap (Ctx m s) = run $ execState M.empty (buildCtxMap m s)
 --   recursing further whenever we see a hash that is already in the
 --   map.
 buildCtxMap ::
-  forall t m sig.
-  Has (State (CtxMap CtxTree t)) sig m =>
-  Map Var t ->
-  CtxTree t ->
+  forall v t m sig.
+  (Ord v, Has (State (CtxMap CtxTree v t)) sig m) =>
+  Map v t ->
+  CtxTree v t ->
   m ()
 buildCtxMap m (CtxTree h s) = do
-  cm <- get @(CtxMap CtxTree t)
+  cm <- get @(CtxMap CtxTree v t)
   unless (h `M.member` cm) $ do
     modify (M.insert h s)
     case s of
@@ -322,21 +320,23 @@ buildCtxMap m (CtxTree h s) = do
       CtxDelete x t s1 -> buildCtxMap (M.insert x t m) s1
       CtxUnion s1 s2 -> buildCtxMap m s1 *> buildCtxMap m s2
 
+newtype ConstHash v t = ConstHash CtxHash
+
 -- | "Dehydrate" a context map by replacing the actual context trees
 --   with single structure layers containing only hashes.  A
 --   dehydrated context map is very suitable for serializing, since it
 --   makes sharing completely explicit---even if a given context is
 --   referenced multiple times, the references are simply hash values,
 --   and the context is stored only once, under its hash.
-dehydrate :: CtxMap CtxTree t -> CtxMap (Const CtxHash) t
-dehydrate = M.map (restructureCtx (\(CtxTree h1 _) -> Const h1))
+dehydrate :: CtxMap CtxTree v t -> CtxMap ConstHash v t
+dehydrate = M.map (restructureCtx (\(CtxTree h1 _) -> ConstHash h1))
 
 -- | "Rehydrate" a dehydrated context map by replacing every hash with
 --   an actual context structure.  We do this by building the result
 --   as a lazy, recursive map, replacing each hash by the result we
 --   get when looking it up in the map being built.  A context which
 --   is referenced multiple times will thus be shared in memory.
-rehydrate :: CtxMap (Const CtxHash) t -> CtxMap CtxTree t
+rehydrate :: CtxMap ConstHash v t -> CtxMap CtxTree v t
 rehydrate m = m'
  where
-  m' = M.map (restructureCtx (\(Const h) -> CtxTree h (m' M.! h))) m
+  m' = M.map (restructureCtx (\(ConstHash h) -> CtxTree h (m' M.! h))) m

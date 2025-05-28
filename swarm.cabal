@@ -483,6 +483,7 @@ library swarm-lang
     Swarm.Language.Syntax.Pretty
     Swarm.Language.Syntax.Util
     Swarm.Language.Text.Markdown
+    Swarm.Language.TDVar
     Swarm.Language.Typecheck
     Swarm.Language.Typed
     Swarm.Language.Types

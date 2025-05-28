@@ -131,7 +131,7 @@ data Value where
 
 -- | A value context is a mapping from variable names to their runtime
 --   values.
-type VCtx = Ctx Value
+type VCtx = Ctx Var Value
 
 --------------------------------------------------
 -- Environments

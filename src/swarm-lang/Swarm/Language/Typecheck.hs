@@ -82,8 +82,8 @@ import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Requirements.Analysis (requirements)
 import Swarm.Language.Requirements.Type (ReqCtx)
 import Swarm.Language.Syntax
+import Swarm.Language.TDVar (TDVar, tdVarName)
 import Swarm.Language.Types
-import Swarm.Language.Var (mkVar, varName)
 import Swarm.Pretty
 import Prelude hiding (lookup)
 
@@ -401,7 +401,7 @@ instantiate (unPoly -> (xs, uty)) = do
 --
 --   Returns a context mapping from instantiated type variables to generated
 --   Skolem variables, along with the substituted type.
-skolemize :: (Has Unification sig m, Has (Reader TVCtx) sig m) => UPolytype -> m (Ctx UType, UType)
+skolemize :: (Has Unification sig m, Has (Reader TVCtx) sig m) => UPolytype -> m (Ctx Var UType, UType)
 skolemize (unPoly -> (xs, uty)) = do
   skolemNames <- forM xs $ \x -> do
     s <- mkVarName "s" <$> U.freshIntVar
@@ -426,7 +426,7 @@ generalize uty = do
   let fvs = S.toList $ tmfvs \\ ctxfvs
       alphabet = ['a' .. 'z']
       -- Infinite supply of pretty names a, b, ..., z, a0, ... z0, a1, ... z1, ...
-      prettyNames = map (mkVar . T.pack) (map (: []) alphabet ++ [x : show n | n <- [0 :: Int ..], x <- alphabet])
+      prettyNames = map T.pack (map (: []) alphabet ++ [x : show n | n <- [0 :: Int ..], x <- alphabet])
       -- Associate each free variable with a new pretty name
       renaming = zip fvs prettyNames
   return . absQuantify $
@@ -450,7 +450,7 @@ data TypeErr
   = -- | An undefined variable was encountered.
     UnboundVar Var
   | -- | An undefined type was encountered.
-    UnboundType Var
+    UnboundType TDVar
   | -- | A kind error was encountered.
     KindErr KindError
   | -- | A Skolem variable escaped its local context.
@@ -885,7 +885,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   SLam x (Just argTy) body -> do
     argTy' <- adaptToTypeErr l KindErr $ processType argTy
     let uargTy = toU argTy'
-    body' <- withBinding @UPolytype (lvVar x) (mkTrivPoly uargTy) $ infer body
+    body' <- withBinding @Var @UPolytype (lvVar x) (mkTrivPoly uargTy) $ infer body
     return $ Syntax' l (SLam x (Just argTy') body') cs (UTyFun uargTy (body' ^. sType))
 
   -- Need special case here for applying 'atomic' or 'instant' so we
@@ -1181,7 +1181,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         Left _ -> throwTypeErr l $ LambdaArgMismatch (joined argTy xTy)
         Right _ -> return ()
 
-    body' <- withBinding @UPolytype (lvVar x) (mkTrivPoly argTy) $ check body resTy
+    body' <- withBinding @Var @UPolytype (lvVar x) (mkTrivPoly argTy) $ check body resTy
     return $ Syntax' l (SLam x mxTy' body') cs (UTyFun argTy resTy)
 
   -- Special case for checking the argument to 'atomic' (or
@@ -1214,7 +1214,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         -- unification variable for the type of x and infer the type
         -- of t1 with x in the context.
         xTy <- fresh
-        t1' <- withBinding @UPolytype (lvVar x) (mkTrivPoly xTy) $ infer t1
+        t1' <- withBinding @Var @UPolytype (lvVar x) (mkTrivPoly xTy) $ infer t1
         let uty = t1' ^. sType
         uty' <- unify (Just t1) (joined xTy uty)
         upty <- generalize uty'
@@ -1286,7 +1286,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   -- extended context.
   STydef x pty _ t1 -> do
     (tydef, pty') <- adaptToTypeErr l KindErr $ processPolytype pty
-    t1' <- withBindingTD (varName (lvVar x)) tydef (check t1 expected)
+    t1' <- withBindingTD (tdVarName (lvVar x)) tydef (check t1 expected)
     -- Eliminate the type alias in the reported type, since it is not
     -- in scope in the ambient context to which we report back the type.
     expected' <- elimTydef (lvVar x) tydef <$> applyBindings expected

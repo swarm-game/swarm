@@ -15,7 +15,6 @@ import Data.Text qualified as T
 import Language.LSP.Protocol.Types qualified as J
 import Swarm.Language.Parser.Util qualified as P
 import Swarm.Language.Syntax
-import Swarm.Language.Var (varName)
 import Swarm.Util qualified as U
 
 data BindingType
@@ -47,7 +46,7 @@ instance Monoid Usage where
 toErrPos :: Text -> VarUsage -> Maybe (J.Range, Text)
 toErrPos code (VarUsage (LV loc v) scope) = do
   -- A leading underscore will suppress the unused variable warning
-  guard $ not $ "_" `T.isPrefixOf` (varName v)
+  guard $ not $ "_" `T.isPrefixOf` v
   rangePair <- case loc of
     SrcLoc s e -> Just (s, e)
     _ -> Nothing
@@ -62,7 +61,7 @@ toErrPos code (VarUsage (LV loc v) scope) = do
   txt =
     T.unwords
       [ "Unused variable"
-      , U.quote (varName v)
+      , U.quote v
       , "in"
       , T.pack $ show scope
       , "expression"

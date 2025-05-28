@@ -112,7 +112,7 @@ narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
   SApp s1 s2 -> d s1 <|> d s2
   SLet _ _ lv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
   SBind mlv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
-  STydef typ typBody _ti s1 -> d s1
+  STydef typ typBody _ti s1 -> d s1 -- XXX  <|> Just (locVarToSyntax' typ $ fromPoly typBody)
   SPair s1 s2 -> d s1 <|> d s2
   SDelay s -> d s
   SRcd m -> asum . map d . catMaybes . M.elems $ m
