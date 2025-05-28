@@ -634,7 +634,7 @@ runBaseCode :: (MonadState ScenarioState m) => T.Text -> m (Either Text ())
 runBaseCode uinput = do
   addREPLHistItem (mkREPLSubmission uinput)
   resetREPL "" (CmdPrompt [])
-  env <- fromMaybe emptyEnv <$> (preuse $ gameState . baseEnv)
+  env <- fromMaybe emptyEnv <$> preuse (gameState . baseEnv)
   case processTerm' env uinput of
     Right mt -> do
       uiGameplay . uiREPL . replHistory . replHasExecutedManualInput .= True

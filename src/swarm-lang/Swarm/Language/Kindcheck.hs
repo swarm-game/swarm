@@ -31,7 +31,7 @@ import Swarm.Util.Effect (withThrow)
 processPolytype :: (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) => Polytype -> m (TydefInfo, Polytype)
 processPolytype pty@(unPoly -> (xs, ty)) = do
   ty' <- processType ty
-  pure $ (TydefInfo pty (Arity $ length xs), mkQPoly ty')
+  pure (TydefInfo pty (Arity $ length xs), mkQPoly ty')
 
 -- | Process a type by doing name resolution and kind checking.
 processType :: (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) => Type -> m Type
