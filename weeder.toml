@@ -32,6 +32,7 @@ roots = [
     "^Swarm.Game.World.lookupTerrainM$",
     "^Swarm.Language.Context.withBindings$",
     "^Swarm.Language.Context.singleton$",
+    "^Swarm.Language.Context.lookupR$",
     "^Swarm.Language.Parser.readNonemptyTerm$",
     "^Swarm.Language.Parser.Util.showShortError$",
     "^Swarm.Language.Pipeline.extractTCtx$",
