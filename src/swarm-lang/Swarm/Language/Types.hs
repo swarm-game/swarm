@@ -838,7 +838,7 @@ data TDCtx = TDCtx
   }
   deriving (Eq, Generic, Show, ToJSON)
 
--- Need to write manual Hashable and ToJSON instances since MonoidMap
+-- Need to write manual Hashable instance since MonoidMap
 -- does not have instances of its own.
 
 instance Hashable TDCtx where
