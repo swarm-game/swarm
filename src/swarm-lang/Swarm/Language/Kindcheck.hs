@@ -28,10 +28,10 @@ import Swarm.Util.Effect (withThrow)
 -- | Process a polytype, by doing name resolution and kind checking,
 --   and returning an appropriate 'TydefInfo' record to be used in the
 --   case of a type definition.
-processPolytype :: (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) => Polytype -> m (TydefInfo, Polytype)
-processPolytype pty@(unPoly -> (xs, ty)) = do
-  ty' <- processType ty
-  pure (TydefInfo pty (Arity $ length xs), mkQPoly ty')
+processPolytype :: (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) => Polytype -> m TydefInfo
+processPolytype pty@(unPoly -> (xs, _)) = do
+  pty' <- traverse processType pty
+  pure $ TydefInfo pty' (Arity $ length xs)
 
 -- | Process a type by doing name resolution and kind checking.
 processType :: (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) => Type -> m Type

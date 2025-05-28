@@ -992,7 +992,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- type annotations.
   SAnnotate c pty -> do
     qpty <- quantify pty
-    (_, qpty') <- adaptToTypeErr l KindErr $ processPolytype qpty
+    TydefInfo qpty' _ <- adaptToTypeErr l KindErr $ processPolytype qpty
     let upty = toU qpty'
     -- Typecheck against skolemized polytype.
     (skolemSubst, uty) <- skolemize upty
@@ -1223,7 +1223,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
       -- implicit quantification, kind checking, and skolemization,
       -- then check definition and body under an extended context.
       Just pty -> do
-        (_, pty') <- adaptToTypeErr l KindErr . processPolytype $ pty
+        TydefInfo pty' _ <- adaptToTypeErr l KindErr . processPolytype $ pty
         let upty = toU pty'
         (ss, uty) <- skolemize upty
         t1' <- withBinding (lvVar x) upty . withBindings ss $ check t1 uty
@@ -1285,7 +1285,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   -- Kind-check a type definition and then check the body under an
   -- extended context.
   STydef x pty _ t1 -> do
-    (tydef, pty') <- adaptToTypeErr l KindErr $ processPolytype pty
+    tydef@(TydefInfo pty' _) <- adaptToTypeErr l KindErr $ processPolytype pty
     t1' <- withBindingTD (tdVarName (lvVar x)) tydef (check t1 expected)
     -- Eliminate the type alias in the reported type, since it is not
     -- in scope in the ambient context to which we report back the type.

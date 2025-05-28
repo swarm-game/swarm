@@ -321,6 +321,7 @@ buildCtxMap m (CtxTree h s) = do
       CtxUnion s1 s2 -> buildCtxMap m s1 *> buildCtxMap m s2
 
 newtype ConstHash v t = ConstHash CtxHash
+  deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 -- | "Dehydrate" a context map by replacing the actual context trees
 --   with single structure layers containing only hashes.  A
