@@ -42,6 +42,7 @@ roots = [
     "^Swarm.Language.Syntax.Pattern.UTerm$",
     "^Swarm.Language.Syntax.Util.asTree$",
     "^Swarm.Language.Syntax.Util.mapFreeS$",
+    "^Swarm.Language.TDVar.prettyTDVar$",
     "^Swarm.Language.Types.expandTydefs$",
     "^Swarm.Util.isSuccessOr$",
     "^Swarm.Util.replaceLast$",
