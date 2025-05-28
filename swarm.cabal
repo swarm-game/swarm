@@ -482,8 +482,8 @@ library swarm-lang
     Swarm.Language.Syntax.Pattern
     Swarm.Language.Syntax.Pretty
     Swarm.Language.Syntax.Util
-    Swarm.Language.Text.Markdown
     Swarm.Language.TDVar
+    Swarm.Language.Text.Markdown
     Swarm.Language.Typecheck
     Swarm.Language.Typed
     Swarm.Language.Types
