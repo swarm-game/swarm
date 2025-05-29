@@ -127,14 +127,16 @@ handleEvent e = do
       -- quitting a game, moving around the menu, the popup
       -- display will continue as normal.
       popupAnimState <- use $ playState . progression . uiPopupAnimationState
-      case popupAnimState of
+      forceRedraw <- case popupAnimState of
         AnimInactive -> do
           Brick.zoom (playState . progression . uiPopups) nextPopup
           startPopupIfNeeded
-        _ -> pure ()
+          pure False
+        AnimScheduled -> pure False
+        AnimActive _ -> pure True
 
       if playing
-        then handleMainEvent e
+        then handleMainEvent forceRedraw e
         else handleMenuEvent e
 
 startPopupIfNeeded :: EventM Name AppState ()
@@ -328,8 +330,8 @@ pressAnyKey m (VtyEvent (V.EvKey _ _)) = uiState . uiMenu .= m
 pressAnyKey _ _ = pure ()
 
 -- | The top-level event handler while we are running the game itself.
-handleMainEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleMainEvent ev = do
+handleMainEvent :: Bool -> BrickEvent Name AppEvent -> EventM Name AppState ()
+handleMainEvent forceRedraw ev = do
   s <- get
   let keyHandler = s ^. keyEventHandling . keyDispatchers . to mainGameDispatcher
   case ev of
@@ -337,8 +339,8 @@ handleMainEvent ev = do
       -- If the game is paused, don't run any game ticks, but do redraw if needed.
       Frame ->
         if s ^. playState . scenarioState . gameState . temporal . paused
-          then updateAndRedrawUI False -- don't force redraw
-          else runFrameUI False
+          then updateAndRedrawUI forceRedraw
+          else runFrameUI forceRedraw
       Web (RunWebCode e r) -> Brick.zoom (playState . scenarioState) $ runBaseWebCode e r
       -- UpstreamVersion event should already be handled by top-level handler, so
       -- in theory this case cannot happen.
