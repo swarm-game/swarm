@@ -7,7 +7,6 @@ module Swarm.TUI.Model.StateUpdate (
   initAppState,
   initPersistentState,
   constructAppState,
-  initNullChan,
   initAppStateForScenario,
   classicGame0,
   startGame,
@@ -117,11 +116,11 @@ animMgrTickDuration = 33
 initAppState ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   AppOpts ->
-  BChan AppEvent ->
+  Maybe (BChan AppEvent) ->
   m AppState
-initAppState opts chan = do
+initAppState opts mChan = do
   persistentState <- initPersistentState opts
-  constructAppState persistentState opts chan
+  constructAppState persistentState opts mChan
 
 -- | Add some system failures to the list of messages in the
 --   'RuntimeState'.
@@ -203,12 +202,13 @@ constructAppState ::
   ) =>
   PersistentState ->
   AppOpts ->
-  BChan AppEvent ->
+  Maybe (BChan AppEvent) ->
   m AppState
-constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) chan = do
+constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mChan = do
   historyT <- sendIO $ readFileMayT =<< getSwarmHistoryPath False
   let history = maybe [] (map mkREPLSubmission . T.lines) historyT
   startTime <- sendIO $ getTime Monotonic
+  chan <- sendIO $ maybe initNullChan pure mChan
   animMgr <- sendIO $ startAnimationManager animMgrTickDuration chan PopupEvent
 
   let gsc = rs ^. stdGameConfigInputs
@@ -453,14 +453,12 @@ initNullChan = newBChan 0
 --   to update it using 'scenarioToAppState'.
 initAppStateForScenario :: String -> Maybe Seed -> Maybe FilePath -> ExceptT Text IO AppState
 initAppStateForScenario sceneName userSeed toRun =
-  asExceptT . withThrow (prettyText @SystemFailure) . initAppStateNullChan $
+  asExceptT . withThrow (prettyText @SystemFailure) . flip initAppState Nothing $
     defaultAppOpts
       { userScenario = Just sceneName
       , userSeed = userSeed
       , scriptToRun = toRun
       }
- where
-  initAppStateNullChan opts = sendIO initNullChan >>= initAppState opts
 
 -- | For convenience, the 'AppState' corresponding to the classic game
 --   with seed 0.  This is used only for benchmarks and unit tests.

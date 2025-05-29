@@ -65,7 +65,7 @@ app eventHandler =
 appMain :: AppOpts -> IO ()
 appMain opts = do
   chan <- createChannel
-  res <- runM . runThrow $ initAppState opts chan
+  res <- runM . runThrow $ initAppState opts (Just chan)
   case res of
     Left err -> do
       T.hPutStrLn stderr (prettyText @SystemFailure err)
@@ -105,7 +105,7 @@ demoWeb = do
   let demoPort = 8080
   chan <- createChannel
   res <-
-    runM . runThrow $ initAppState (defaultAppOpts {userScenario = demoScenario}) chan
+    runM . runThrow $ initAppState (defaultAppOpts {userScenario = demoScenario}) (Just chan)
   case res of
     Left err -> T.putStrLn (prettyText @SystemFailure err)
     Right s -> do
