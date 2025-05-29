@@ -208,7 +208,7 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mCha
   historyT <- sendIO $ readFileMayT =<< getSwarmHistoryPath False
   let history = maybe [] (map mkREPLSubmission . T.lines) historyT
   startTime <- sendIO $ getTime Monotonic
-  chan <- sendIO $ maybe initNullChan pure mChan
+  chan <- sendIO $ maybe initTestChan pure mChan
   animMgr <- sendIO $ startAnimationManager animMgrTickDuration chan PopupEvent
 
   let gsc = rs ^. stdGameConfigInputs
@@ -440,10 +440,10 @@ scenarioToUIState siPair u = do
           )
           swarmAttrMap
 
--- | Create a BChan that cannot hold any events.
+-- | Create a BChan that holds only one event.
 --   This should only be used in unit tests, integration tests, and benchmarks
-initNullChan :: IO (BChan AppEvent)
-initNullChan = newBChan 0
+initTestChan :: IO (BChan AppEvent)
+initTestChan = newBChan 1
 
 -- | Create an initial app state for a specific scenario.  Note that
 --   this function is used only for unit tests, integration tests, and
