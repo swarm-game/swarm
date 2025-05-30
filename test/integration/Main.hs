@@ -1,6 +1,6 @@
-{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 -- |
@@ -9,108 +9,156 @@
 -- Swarm integration tests
 module Main where
 
-import           Control.Carrier.Lift                       (runM)
-import           Control.Carrier.Throw.Either               (runThrow)
-import           Control.Lens                               (Ixed (ix), at, to,
-                                                             view, (&), (.~),
-                                                             (^.), (^..), (^?!),
-                                                             (^?))
-import           Control.Monad                              (forM_, unless,
-                                                             when)
-import           Control.Monad.State                        (execStateT)
-import           Data.Char                                  (isSpace)
-import           Data.Containers.ListUtils                  (nubOrd)
-import           Data.Foldable                              (Foldable (toList),
-                                                             find)
-import qualified Data.IntSet                                as IS
-import           Data.List                                  (partition)
-import qualified Data.Map                                   as M
-import           Data.Maybe                                 (isJust)
-import qualified Data.Set                                   as S
-import           Data.Text                                  (Text)
-import qualified Data.Text                                  as T
-import qualified Data.Text.IO                               as T
-import           Data.Yaml                                  (ParseException,
-                                                             decodeFileEither,
-                                                             prettyPrintParseException)
-import qualified Swarm.Doc.Keyword                          as Keyword
-import           Swarm.Doc.Keyword                          (EditorType (..))
-import           Swarm.Failure                              (SystemFailure)
-import           Swarm.Game.Achievement.Definitions         (GameplayAchievement (..))
-import           Swarm.Game.CESK                            (initMachine)
-import           Swarm.Game.Entity                          (lookupByName)
-import           Swarm.Game.Robot                           (equippedDevices,
-                                                             robotName,
-                                                             systemRobot)
-import           Swarm.Game.Robot.Activity                  (commandsHistogram,
-                                                             lifetimeStepCount,
-                                                             tangibleCommandCount)
-import           Swarm.Game.Robot.Concrete                  (activityCounts,
-                                                             machine, robotLog,
-                                                             waitingUntil)
-import           Swarm.Game.Scenario                        (Scenario,
-                                                             ScenarioInputs (..),
-                                                             gsiScenarioInputs)
-import           Swarm.Game.Scenario.Scoring.GenericMetrics (Metric (..),
-                                                             Progress (..))
-import           Swarm.Game.ScenarioInfo                    (ScenarioInfo,
-                                                             ScenarioStatus (..),
-                                                             scenarioStatus)
-import           Swarm.Game.State                           (GameState,
-                                                             baseRobot,
-                                                             discovery,
-                                                             messageInfo,
-                                                             pathCaching,
-                                                             robotInfo,
-                                                             temporal,
-                                                             winSolution)
-import           Swarm.Game.State.Robot                     (activeRobots,
-                                                             robotMap,
-                                                             waitingRobots)
-import           Swarm.Game.State.Runtime                   (RuntimeState,
-                                                             eventLog,
-                                                             stdGameConfigInputs)
-import           Swarm.Game.State.Substate                  (gameAchievements,
-                                                             initState,
-                                                             messageQueue,
-                                                             notificationsContent,
-                                                             ticks)
-import           Swarm.Game.Step.Path.Type
-import           Swarm.Game.Step.Validate                   (badErrorsInLogs,
-                                                             playUntilWin)
-import           Swarm.Game.Tick                            (getTickNumber)
-import           Swarm.Language.Pipeline                    (processTerm)
-import           Swarm.Log
-import           Swarm.Pretty                               (prettyString)
-import           Swarm.TUI.Model                            (debugOptions,
-                                                             defaultAppOpts,
-                                                             gameState,
-                                                             playState,
-                                                             runtimeState,
-                                                             scenarioState,
-                                                             userScenario)
-import           Swarm.TUI.Model.DebugOption                (DebugOption (LoadTestingScenarios))
-import           Swarm.TUI.Model.StateUpdate                (PersistentState (..),
-                                                             constructAppState,
-                                                             initPersistentState)
-import           Swarm.Util                                 (applyWhen,
-                                                             findAllWithExt)
-import qualified Swarm.Util.RingBuffer                      as RB
-import           Swarm.Util.Yaml                            (decodeFileEitherE)
-import           System.FilePath                            (splitDirectories)
-import           System.Timeout                             (timeout)
-import           Test.Tasty                                 (TestTree,
-                                                             defaultMain,
-                                                             testGroup)
-import           Test.Tasty.ExpectedFailure                 (expectFailBecause)
-import           Test.Tasty.HUnit                           (Assertion,
-                                                             assertBool,
-                                                             assertEqual,
-                                                             assertFailure,
-                                                             testCase)
-import           TestFormat
-import           TestRecipeCoverage
-import           Witch                                      (into)
+import Control.Carrier.Lift (runM)
+import Control.Carrier.Throw.Either (runThrow)
+import Control.Lens (
+  Ixed (ix),
+  at,
+  to,
+  view,
+  (&),
+  (.~),
+  (^.),
+  (^..),
+  (^?),
+  (^?!),
+ )
+import Control.Monad (
+  forM_,
+  unless,
+  when,
+ )
+import Control.Monad.State (execStateT)
+import Data.Char (isSpace)
+import Data.Containers.ListUtils (nubOrd)
+import Data.Foldable (
+  Foldable (toList),
+  find,
+ )
+import Data.IntSet qualified as IS
+import Data.List (partition)
+import Data.Map qualified as M
+import Data.Maybe (isJust)
+import Data.Set qualified as S
+import Data.Text (Text)
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
+import Data.Yaml (
+  ParseException,
+  decodeFileEither,
+  prettyPrintParseException,
+ )
+import Swarm.Doc.Keyword (EditorType (..))
+import Swarm.Doc.Keyword qualified as Keyword
+import Swarm.Failure (SystemFailure)
+import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
+import Swarm.Game.CESK (initMachine)
+import Swarm.Game.Entity (lookupByName)
+import Swarm.Game.Robot (
+  equippedDevices,
+  robotName,
+  systemRobot,
+ )
+import Swarm.Game.Robot.Activity (
+  commandsHistogram,
+  lifetimeStepCount,
+  tangibleCommandCount,
+ )
+import Swarm.Game.Robot.Concrete (
+  activityCounts,
+  machine,
+  robotLog,
+  waitingUntil,
+ )
+import Swarm.Game.Scenario (
+  Scenario,
+  ScenarioInputs (..),
+  gsiScenarioInputs,
+ )
+import Swarm.Game.Scenario.Scoring.GenericMetrics (
+  Metric (..),
+  Progress (..),
+ )
+import Swarm.Game.ScenarioInfo (
+  ScenarioInfo,
+  ScenarioStatus (..),
+  scenarioStatus,
+ )
+import Swarm.Game.State (
+  GameState,
+  baseRobot,
+  discovery,
+  messageInfo,
+  pathCaching,
+  robotInfo,
+  temporal,
+  winSolution,
+ )
+import Swarm.Game.State.Robot (
+  activeRobots,
+  robotMap,
+  waitingRobots,
+ )
+import Swarm.Game.State.Runtime (
+  RuntimeState,
+  eventLog,
+  stdGameConfigInputs,
+ )
+import Swarm.Game.State.Substate (
+  gameAchievements,
+  initState,
+  messageQueue,
+  notificationsContent,
+  ticks,
+ )
+import Swarm.Game.Step.Path.Type
+import Swarm.Game.Step.Validate (
+  badErrorsInLogs,
+  playUntilWin,
+ )
+import Swarm.Game.Tick (getTickNumber)
+import Swarm.Language.Pipeline (processTerm)
+import Swarm.Log
+import Swarm.Pretty (prettyString)
+import Swarm.TUI.Model (
+  debugOptions,
+  defaultAppOpts,
+  gameState,
+  playState,
+  runtimeState,
+  scenarioState,
+  userScenario,
+ )
+import Swarm.TUI.Model.DebugOption (DebugOption (LoadTestingScenarios))
+import Swarm.TUI.Model.StateUpdate (
+  PersistentState (..),
+  constructAppState,
+  initPersistentState,
+ )
+import Swarm.Util (
+  applyWhen,
+  findAllWithExt,
+ )
+import Swarm.Util.RingBuffer qualified as RB
+import Swarm.Util.Yaml (decodeFileEitherE)
+import System.FilePath (splitDirectories)
+import System.Timeout (timeout)
+import Test.Tasty (
+  TestTree,
+  defaultMain,
+  testGroup,
+ )
+import Test.Tasty.ExpectedFailure (expectFailBecause)
+import Test.Tasty.HUnit (
+  Assertion,
+  assertBool,
+  assertEqual,
+  assertFailure,
+  testCase,
+ )
+import TestFormat
+import TestRecipeCoverage
+import Witch (into)
 
 isUnparseableTest :: FilePath -> Bool
 isUnparseableTest fp = "_Validation" `elem` splitDirectories fp
@@ -575,7 +623,7 @@ testScenarioSolutions ps =
               -- printAllLogs
               when (shouldCheckBadErrors == CheckForBadErrors) $ case noBadErrors g of
                 Left x -> assertFailure $ T.unpack x
-                _      -> return ()
+                _ -> return ()
               verify g
 
   tutorialHasLog :: GameState -> Assertion
