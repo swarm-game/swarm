@@ -7,7 +7,7 @@ objectives:
       - |
         In the previous tutorial challenge, you learned how to use `require`{=snippet}
         to require specific devices to be equipped.
-        Sometimes, instead of requiring equipped devices, you stock supplies in your inventory.
+        Sometimes, instead of requiring entities to be equiped as devices, you need them to be stocked in your inventory.
       - |
         In this case, you can write `stock <int> <name>`{=snippet} to stock a certain number
         of copies of a certain entity to be placed in your inventory. For example:
