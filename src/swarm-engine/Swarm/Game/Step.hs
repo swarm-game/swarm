@@ -25,8 +25,26 @@ import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
-import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (foldM, forM_, unless, when)
+import Control.Lens as Lens hiding (
+  Const,
+  distrib,
+  from,
+  parts,
+  use,
+  uses,
+  view,
+  (%=),
+  (+=),
+  (.=),
+  (<+=),
+  (<>=),
+ )
+import Control.Monad (
+  foldM,
+  forM_,
+  unless,
+  when,
+ )
 import Data.Foldable.Extra (notNull)
 import Data.Functor (void)
 import Data.IntMap qualified as IM
@@ -45,7 +63,12 @@ import Swarm.Effect as Effect (Time, getNow)
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
 import Swarm.Game.Display
-import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
+import Swarm.Game.Entity hiding (
+  empty,
+  lookup,
+  singleton,
+  union,
+ )
 import Swarm.Game.Exception
 import Swarm.Game.Land
 import Swarm.Game.Robot
@@ -69,7 +92,10 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
 import Swarm.Log
-import Swarm.Pretty (BulletList (BulletList, bulletListItems), prettyText)
+import Swarm.Pretty (
+  BulletList (BulletList, bulletListItems),
+  prettyText,
+ )
 import Swarm.Util hiding (both)
 import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec)
@@ -561,9 +587,9 @@ stepCESK cesk = case cesk of
     return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $str:" v)) s k
   In (TAntiInt v) _ s k ->
     return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $int:" v)) s k
-  -- Require and requireDevice just turn into no-ops.
-  In (TRequireDevice {}) e s k -> return $ In (TConst Noop) e s k
+  -- Require and Stock just turn into no-ops.
   In (TRequire {}) e s k -> return $ In (TConst Noop) e s k
+  In (TStock {}) e s k -> return $ In (TConst Noop) e s k
   In (TRequirements x t) e s k -> return $ Out (VRequirements x t e) s k
   -- Type ascriptions are ignored
   In (TAnnotate v _) e s k -> return $ In v e s k

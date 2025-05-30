@@ -57,7 +57,14 @@ import Control.Effect.Reader
 import Control.Effect.Throw
 import Control.Lens (view, (^.))
 import Control.Lens.Indexed (itraverse)
-import Control.Monad (forM, forM_, void, when, (<=<), (>=>))
+import Control.Monad (
+  forM,
+  forM_,
+  void,
+  when,
+  (<=<),
+  (>=>),
+ )
 import Control.Monad.Free qualified as Free
 import Data.Data (Data, gmapM)
 import Data.Foldable (fold, traverse_)
@@ -71,12 +78,19 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Prettyprinter
-import Swarm.Effect.Unify (Unification, UnificationError)
+import Swarm.Effect.Unify (
+  Unification,
+  UnificationError,
+ )
 import Swarm.Effect.Unify qualified as U
 import Swarm.Effect.Unify.Fast qualified as U
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Kindcheck (KindError (..), checkKind, checkPolytypeKind)
+import Swarm.Language.Kindcheck (
+  KindError (..),
+  checkKind,
+  checkPolytypeKind,
+ )
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Requirements.Analysis (requirements)
@@ -864,8 +878,8 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   TAntiText x -> return $ Syntax' l (TAntiText x) cs UTyText
   TBool b -> return $ Syntax' l (TBool b) cs UTyBool
   TRobot r -> return $ Syntax' l (TRobot r) cs UTyActor
-  TRequireDevice d -> return $ Syntax' l (TRequireDevice d) cs (UTyCmd UTyUnit)
-  TRequire n d -> return $ Syntax' l (TRequire n d) cs (UTyCmd UTyUnit)
+  TRequire d -> return $ Syntax' l (TRequire d) cs (UTyCmd UTyUnit)
+  TStock n d -> return $ Syntax' l (TStock n d) cs (UTyCmd UTyUnit)
   SRequirements x t1 -> do
     t1' <- infer t1
     return $ Syntax' l (SRequirements x t1') cs (UTyCmd UTyUnit)
@@ -1402,8 +1416,8 @@ analyzeAtomic locals (Syntax l t) = case t of
   TAntiSyn {} -> return 0
   TBool {} -> return 0
   TRobot {} -> return 0
-  TRequireDevice {} -> return 0
   TRequire {} -> return 0
+  TStock {} -> return 0
   SRequirements {} -> return 0
   STydef {} -> return 0
   TType {} -> return 0

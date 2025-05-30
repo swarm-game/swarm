@@ -25,7 +25,14 @@ module Swarm.Language.Syntax.Util (
   measureAstSize,
 ) where
 
-import Control.Lens (Traversal', para, universe, (%~), (^.), pattern Empty)
+import Control.Lens (
+  Traversal',
+  para,
+  universe,
+  (%~),
+  (^.),
+  pattern Empty,
+ )
 import Control.Monad (void)
 import Data.Data (Data)
 import Data.List.NonEmpty (NonEmpty)
@@ -132,8 +139,8 @@ freeVarsS f = go S.empty
     TBool {} -> pure s
     TRobot {} -> pure s
     TRef {} -> pure s
-    TRequireDevice {} -> pure s
     TRequire {} -> pure s
+    TStock {} -> pure s
     SRequirements x s1 -> rewrap $ SRequirements x <$> go bound s1
     TVar x
       | x `S.member` bound -> pure s

@@ -1,8 +1,8 @@
-{-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE BlockArguments    #-}
+{-# LANGUAGE ConstraintKinds   #-}
+{-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ViewPatterns      #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -11,100 +11,140 @@
 -- Implementation of robot commands
 module Swarm.Game.Step.Const where
 
-import Control.Arrow ((&&&))
-import Control.Carrier.State.Lazy
-import Control.Effect.Error
-import Control.Effect.Lens
-import Control.Effect.Lift
-import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (filterM, forM, forM_, guard, msum, unless, when)
-import Data.Bifunctor (second)
-import Data.Bool (bool)
-import Data.Char (chr, ord)
-import Data.Either (partitionEithers, rights)
-import Data.Foldable (asum, for_, traverse_)
-import Data.Foldable.Extra (findM, firstJustM)
-import Data.Function (on)
-import Data.Functor (void)
-import Data.Int (Int32)
-import Data.IntMap qualified as IM
-import Data.IntSet qualified as IS
-import Data.List (find, sortOn)
-import Data.List qualified as L
-import Data.List.NonEmpty qualified as NE
-import Data.Map qualified as M
-import Data.Map.NonEmpty qualified as NEM
-import Data.Map.Strict qualified as MS
-import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
-import Data.MonoidMap qualified as MM
-import Data.Ord (Down (Down))
-import Data.Sequence qualified as Seq
-import Data.Set (Set)
-import Data.Set qualified as S
-import Data.Text (Text)
-import Data.Text qualified as T
-import Data.Tuple (swap)
-import Linear (V2 (..), perp, zero)
-import Swarm.Effect as Effect (Time, getNow)
-import Swarm.Failure
-import Swarm.Game.Achievement.Definitions
-import Swarm.Game.CESK
-import Swarm.Game.Display
-import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
-import Swarm.Game.Entity qualified as E
-import Swarm.Game.Exception
-import Swarm.Game.Land
-import Swarm.Game.Location
-import Swarm.Game.Recipe
-import Swarm.Game.Robot
-import Swarm.Game.Robot.Activity
-import Swarm.Game.Robot.Concrete
-import Swarm.Game.Robot.Walk (emptyExceptions)
-import Swarm.Game.Scenario (RecognizableStructureContent)
-import Swarm.Game.Scenario.Topography.Area (getNEGridDimensions, rectHeight)
-import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
-import Swarm.Game.Scenario.Topography.Navigation.Util
-import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointName (..))
-import Swarm.Game.Scenario.Topography.Structure.Named (StructureName (..))
-import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Swarm.Game.State
-import Swarm.Game.State.Landscape
-import Swarm.Game.State.Robot
-import Swarm.Game.State.Substate
-import Swarm.Game.Step.Arithmetic
-import Swarm.Game.Step.Combustion qualified as Combustion
-import Swarm.Game.Step.Flood
-import Swarm.Game.Step.Path.Finding
-import Swarm.Game.Step.Path.Type
-import Swarm.Game.Step.Path.Walkability
-import Swarm.Game.Step.RobotStepState
-import Swarm.Game.Step.Util
-import Swarm.Game.Step.Util.Command
-import Swarm.Game.Step.Util.Inspect
-import Swarm.Game.Terrain (TerrainType)
-import Swarm.Game.Tick
-import Swarm.Game.Universe
-import Swarm.Game.Value
-import Swarm.Language.Capability
-import Swarm.Language.Key (parseKeyComboFull)
-import Swarm.Language.Parser.Value (readValue)
-import Swarm.Language.Pipeline
-import Swarm.Language.Requirements qualified as R
-import Swarm.Language.Syntax
-import Swarm.Language.Syntax.Direction
-import Swarm.Language.Text.Markdown qualified as Markdown
-import Swarm.Language.Value
-import Swarm.Log
-import Swarm.Pretty (prettyText)
-import Swarm.ResourceLoading (getDataFileNameSafe)
-import Swarm.Util hiding (both)
-import Swarm.Util.Effect (throwToMaybe)
-import Swarm.Util.Lens (inherit)
-import Text.Megaparsec (runParser)
-import Witch (From (from), into)
-import Prelude hiding (lookup)
+import           Control.Arrow                                                 ((&&&))
+import           Control.Carrier.State.Lazy
+import           Control.Effect.Error
+import           Control.Effect.Lens
+import           Control.Effect.Lift
+import           Control.Lens                                                  as Lens hiding
+                                                                                       (Const,
+                                                                                        distrib,
+                                                                                        from,
+                                                                                        parts,
+                                                                                        use,
+                                                                                        uses,
+                                                                                        view,
+                                                                                        (%=),
+                                                                                        (+=),
+                                                                                        (.=),
+                                                                                        (<+=),
+                                                                                        (<>=))
+import           Control.Monad                                                 (filterM,
+                                                                                forM,
+                                                                                forM_,
+                                                                                guard,
+                                                                                msum,
+                                                                                unless,
+                                                                                when)
+import           Data.Bifunctor                                                (second)
+import           Data.Bool                                                     (bool)
+import           Data.Char                                                     (chr,
+                                                                                ord)
+import           Data.Either                                                   (partitionEithers,
+                                                                                rights)
+import           Data.Foldable                                                 (asum,
+                                                                                for_,
+                                                                                traverse_)
+import           Data.Foldable.Extra                                           (findM,
+                                                                                firstJustM)
+import           Data.Function                                                 (on)
+import           Data.Functor                                                  (void)
+import           Data.Int                                                      (Int32)
+import qualified Data.IntMap                                                   as IM
+import qualified Data.IntSet                                                   as IS
+import           Data.List                                                     (find,
+                                                                                sortOn)
+import qualified Data.List                                                     as L
+import qualified Data.List.NonEmpty                                            as NE
+import qualified Data.Map                                                      as M
+import qualified Data.Map.NonEmpty                                             as NEM
+import qualified Data.Map.Strict                                               as MS
+import           Data.Maybe                                                    (catMaybes,
+                                                                                fromMaybe,
+                                                                                isJust,
+                                                                                isNothing,
+                                                                                listToMaybe,
+                                                                                mapMaybe)
+import qualified Data.MonoidMap                                                as MM
+import           Data.Ord                                                      (Down (Down))
+import qualified Data.Sequence                                                 as Seq
+import           Data.Set                                                      (Set)
+import qualified Data.Set                                                      as S
+import           Data.Text                                                     (Text)
+import qualified Data.Text                                                     as T
+import           Data.Tuple                                                    (swap)
+import           Linear                                                        (V2 (..),
+                                                                                perp,
+                                                                                zero)
+import           Prelude                                                       hiding
+                                                                               (lookup)
+import           Swarm.Effect                                                  as Effect (Time,
+                                                                                          getNow)
+import           Swarm.Failure
+import           Swarm.Game.Achievement.Definitions
+import           Swarm.Game.CESK
+import           Swarm.Game.Display
+import           Swarm.Game.Entity                                             hiding
+                                                                               (empty,
+                                                                                lookup,
+                                                                                singleton,
+                                                                                union)
+import qualified Swarm.Game.Entity                                             as E
+import           Swarm.Game.Exception
+import           Swarm.Game.Land
+import           Swarm.Game.Location
+import           Swarm.Game.Recipe
+import           Swarm.Game.Robot
+import           Swarm.Game.Robot.Activity
+import           Swarm.Game.Robot.Concrete
+import           Swarm.Game.Robot.Walk                                         (emptyExceptions)
+import           Swarm.Game.Scenario                                           (RecognizableStructureContent)
+import           Swarm.Game.Scenario.Topography.Area                           (getNEGridDimensions,
+                                                                                rectHeight)
+import           Swarm.Game.Scenario.Topography.Navigation.Portal              (Navigation (..))
+import           Swarm.Game.Scenario.Topography.Navigation.Util
+import           Swarm.Game.Scenario.Topography.Navigation.Waypoint            (WaypointName (..))
+import           Swarm.Game.Scenario.Topography.Structure.Named                (StructureName (..))
+import           Swarm.Game.Scenario.Topography.Structure.Recognition          (foundStructures)
+import           Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
+import           Swarm.Game.Scenario.Topography.Structure.Recognition.Type
+import           Swarm.Game.State
+import           Swarm.Game.State.Landscape
+import           Swarm.Game.State.Robot
+import           Swarm.Game.State.Substate
+import           Swarm.Game.Step.Arithmetic
+import qualified Swarm.Game.Step.Combustion                                    as Combustion
+import           Swarm.Game.Step.Flood
+import           Swarm.Game.Step.Path.Finding
+import           Swarm.Game.Step.Path.Type
+import           Swarm.Game.Step.Path.Walkability
+import           Swarm.Game.Step.RobotStepState
+import           Swarm.Game.Step.Util
+import           Swarm.Game.Step.Util.Command
+import           Swarm.Game.Step.Util.Inspect
+import           Swarm.Game.Terrain                                            (TerrainType)
+import           Swarm.Game.Tick
+import           Swarm.Game.Universe
+import           Swarm.Game.Value
+import           Swarm.Language.Capability
+import           Swarm.Language.Key                                            (parseKeyComboFull)
+import           Swarm.Language.Parser.Value                                   (readValue)
+import           Swarm.Language.Pipeline
+import qualified Swarm.Language.Requirements                                   as R
+import           Swarm.Language.Syntax
+import           Swarm.Language.Syntax.Direction
+import qualified Swarm.Language.Text.Markdown                                  as Markdown
+import           Swarm.Language.Value
+import           Swarm.Log
+import           Swarm.Pretty                                                  (prettyText)
+import           Swarm.ResourceLoading                                         (getDataFileNameSafe)
+import           Swarm.Util                                                    hiding
+                                                                               (both)
+import           Swarm.Util.Effect                                             (throwToMaybe)
+import           Swarm.Util.Lens                                               (inherit)
+import           Text.Megaparsec                                               (runParser)
+import           Witch                                                         (From (from),
+                                                                                into)
 
 -- | How to handle failure, for example when moving into liquid or
 --   attempting to move to a blocked location
@@ -146,7 +186,7 @@ execConst runChildProg c vs s k = do
     Noop -> return $ mkReturn ()
     Pure -> case vs of
       [v] -> return $ Out v s k
-      _ -> badConst
+      _   -> badConst
     Wait -> case vs of
       [VInt d] -> do
         time <- use $ temporal . ticks
@@ -187,13 +227,13 @@ execConst runChildProg c vs s k = do
           if hasLimit
             then case limitVal of
               VInt d -> return $ Just d
-              _ -> badConst
+              _      -> badConst
             else return Nothing
         goal <-
           if findEntity
             then case goalVal of
               VText eName -> return $ EntityTarget eName
-              _ -> badConst
+              _           -> badConst
             else case goalVal of
               VPair (VInt x) (VInt y) ->
                 return $
@@ -633,7 +673,7 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Density -> case vs of
       [VRect x1 y1 x2 y2] -> doResonate isJust x1 y1 x2 y2
-      _ -> badConst
+      _                   -> badConst
     Sniff -> case vs of
       [VText name] -> do
         firstFound <- findNearest name
@@ -686,7 +726,7 @@ execConst runChildProg c vs s k = do
       return $ Out (VInt $ fromIntegral t) s k
     Drill -> case vs of
       [VDir d] -> doDrill d
-      _ -> badConst
+      _        -> badConst
     Use -> case vs of
       [VText deviceName, VDir d] -> do
         ins <- use equippedDevices
@@ -719,7 +759,7 @@ execConst runChildProg c vs s k = do
         let allKnown = inv `E.union` ins
         let knows = case E.lookupByName name allKnown of
               [] -> False
-              _ -> True
+              _  -> True
         return $ mkReturn knows
       _ -> badConst
     Upload -> case vs of
@@ -800,7 +840,7 @@ execConst runChildProg c vs s k = do
       mq <- use $ messageInfo . messageQueue
       let isClose e = isPrivileged || messageIsFromNearby loc e
           notMine e = case e ^. leSource of
-            SystemLog {} -> False
+            SystemLog {}      -> False
             RobotLog _ lrid _ -> rid /= lrid
           limitLast = \case
             _s Seq.:|> l -> Just $ l ^. leText
@@ -871,7 +911,7 @@ execConst runChildProg c vs s k = do
         -- Possibly set the display attribute
         case (hasAttr, mattr) of
           (True, VText attr) -> robotDisplay . displayAttr .= readAttribute attr
-          _ -> return ()
+          _                  -> return ()
 
         flagRedraw
         return $ mkReturn ()
@@ -962,30 +1002,30 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Force -> case vs of
       [VDelay t e] -> return $ In t e s k
-      _ -> badConst
+      _            -> badConst
     If -> case vs of
       -- Use the boolean to pick the correct branch, and apply @force@ to it.
       [VBool b, thn, els] -> return $ Out (bool els thn b) s (FApp (VCApp Force []) : k)
       _ -> badConst
     Inl -> case vs of
       [v] -> return $ Out (VInj False v) s k
-      _ -> badConst
+      _   -> badConst
     Inr -> case vs of
       [v] -> return $ Out (VInj True v) s k
-      _ -> badConst
+      _   -> badConst
     Case -> case vs of
       [VInj side v, kl, kr] -> return $ Out v s (FApp (bool kl kr side) : k)
-      _ -> badConst
+      _                     -> badConst
     Match -> case vs of
       [VPair v1 v2, kp] -> return $ Out v1 s (FApp kp : FVArg v2 : k)
-      _ -> badConst
+      _                 -> badConst
     Try -> case vs of
       [c1, c2] -> return $ Out c1 s (FApp (VCApp Force []) : FExec : FTry c2 : k)
       _ -> badConst
     Undefined -> return $ Up (User "undefined") s k
     Fail -> case vs of
       [VText msg] -> return $ Up (User msg) s k
-      _ -> badConst
+      _           -> badConst
     Key -> case vs of
       [VText ktxt] -> case runParser parseKeyComboFull "" ktxt of
         Right kc -> return $ Out (VKey kc) s k
@@ -1198,10 +1238,10 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k
-      _ -> badConst
+      _         -> badConst
     Neg -> case vs of
       [VInt n] -> return $ Out (VInt (-n)) s k
-      _ -> badConst
+      _        -> badConst
     Eq -> returnEvalCmp
     Neq -> returnEvalCmp
     Lt -> returnEvalCmp
@@ -1210,10 +1250,10 @@ execConst runChildProg c vs s k = do
     Geq -> returnEvalCmp
     And -> case vs of
       [VBool a, VBool b] -> return $ Out (VBool (a && b)) s k
-      _ -> badConst
+      _                  -> badConst
     Or -> case vs of
       [VBool a, VBool b] -> return $ Out (VBool (a || b)) s k
-      _ -> badConst
+      _                  -> badConst
     Add -> returnEvalArith
     Sub -> returnEvalArith
     Mul -> returnEvalArith
@@ -1221,7 +1261,7 @@ execConst runChildProg c vs s k = do
     Exp -> returnEvalArith
     Format -> case vs of
       [v] -> return $ mkReturn $ prettyValue v
-      _ -> badConst
+      _   -> badConst
     Read -> case vs of
       [VType ty, VText txt] -> case readValue ty txt of
         Nothing -> raise Read ["Could not read", showT txt, "at type", prettyText ty]
@@ -1254,7 +1294,7 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Chars -> case vs of
       [VText t] -> return $ mkReturn $ T.length t
-      _ -> badConst
+      _         -> badConst
     Split -> case vs of
       [VInt i, VText t] ->
         let p = T.splitAt (fromInteger i) t
@@ -1263,7 +1303,7 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Concat -> case vs of
       [VText v1, VText v2] -> return $ mkReturn $ v1 <> v2
-      _ -> badConst
+      _                    -> badConst
     CharAt -> case vs of
       [VInt i, VText t]
         | i < 0 || i >= fromIntegral (T.length t) ->
@@ -1307,7 +1347,7 @@ execConst runChildProg c vs s k = do
       randomEntity <- weightedChoice (const 1) es
       case (randomLoc, randomEntity) of
         (Just loc, Just e) -> updateEntityAt loc (const (Just e))
-        _ -> return ()
+        _                  -> return ()
 
     return $ mkReturn ()
 
@@ -1378,10 +1418,10 @@ execConst runChildProg c vs s k = do
     return (nextLoc, nextE)
    where
     directionText = case d of
-      DRelative DDown -> "under"
+      DRelative DDown              -> "under"
       DRelative (DPlanar DForward) -> "ahead of"
-      DRelative (DPlanar DBack) -> "behind"
-      _ -> directionSyntax d <> " of"
+      DRelative (DPlanar DBack)    -> "behind"
+      _                            -> directionSyntax d <> " of"
 
   goAtomic :: HasRobotStepState sig m => m CESK
   goAtomic = case vs of
@@ -1499,7 +1539,7 @@ execConst runChildProg c vs s k = do
 
     return item
 
-  -- Check the required devices and inventory for running the given
+  -- Check the required devices and stocked inventory for running the given
   -- command on a target robot.  This function is used in common by
   -- both 'Build' and 'Reprogram'.
   --
@@ -1687,12 +1727,12 @@ execConst runChildProg c vs s k = do
       IgnoreFail -> return ()
       Destroy -> destroyIfNotBase $ \b -> case (b, failureMode) of
         (True, PathLiquid _) -> Just RobotIntoWater -- achievement for drowning
-        (False, _) -> Just AttemptSelfDestructBase
-        _ -> Nothing
+        (False, _)           -> Just AttemptSelfDestructBase
+        _                    -> Nothing
       ThrowExn -> throwError . cmdExn c $
         case failureMode of
           PathBlockedBy ent -> case ent of
-            Just e -> ["There is a", e ^. entityName, "in the way!"]
+            Just e  -> ["There is a", e ^. entityName, "in the way!"]
             Nothing -> ["There is nothing to travel on!"]
           PathLiquid e -> ["There is a dangerous liquid", e ^. entityName, "in the way!"]
 
@@ -1730,7 +1770,7 @@ execConst runChildProg c vs s k = do
 
   holdsOrFailWithAchievement :: (Has (Throw Exn) sig m) => Bool -> [Text] -> Maybe GameplayAchievement -> m ()
   holdsOrFailWithAchievement a ts mAch = case mAch of
-    Nothing -> holdsOrFail a ts
+    Nothing  -> holdsOrFail a ts
     Just ach -> a `holdsOr` cmdExnWithAchievement c ts ach
 
   isJustOrFail :: (Has (Throw Exn) sig m) => Maybe a -> [Text] -> m a
@@ -1738,10 +1778,10 @@ execConst runChildProg c vs s k = do
 
   returnEvalCmp = case vs of
     [v1, v2] -> (\b -> Out (VBool b) s k) <$> evalCmp c v1 v2
-    _ -> badConst
+    _        -> badConst
   returnEvalArith = case vs of
     [VInt n1, VInt n2] -> (\r -> Out (VInt r) s k) <$> evalArith c n1 n2
-    _ -> badConst
+    _                  -> badConst
 
   -- Make sure the robot has the thing in its inventory
   hasInInventoryOrFail :: HasRobotStepState sig m => Text -> m Entity

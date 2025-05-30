@@ -39,7 +39,10 @@ import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Prettyprinter (pretty)
 import Swarm.Language.Syntax.CommandMetadata
-import Swarm.Pretty (PrettyPrec (..), pparens)
+import Swarm.Pretty (
+  PrettyPrec (..),
+  pparens,
+ )
 import Swarm.Util (showT)
 
 ------------------------------------------------------------
@@ -630,7 +633,7 @@ constInfo c = case c of
   Use ->
     command 2 long . doc (Set.singleton $ Mutation EntityChange) "Use one entity upon another." $
       [ "Which entities you can `use` with others depends on the available recipes."
-      , "The object being used must be a 'required' entity in a recipe."
+      , "The object being used must be a 'stocked' entity in a recipe."
       ]
   Build ->
     command 1 long . doc (Set.singleton $ Mutation $ RobotChange ExistenceChange) "Construct a new robot." $

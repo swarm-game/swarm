@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE QuasiQuotes       #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -7,26 +7,26 @@
 -- Swarm unit tests
 module TestLanguagePipeline where
 
-import Control.Arrow ((&&&))
-import Control.Lens (toListOf)
-import Control.Lens.Plated (universe)
-import Data.Aeson (eitherDecode, encode)
-import Data.Maybe
-import Data.Text (Text)
-import Data.Text qualified as T
-import Data.Text.Encoding qualified as T
-import Swarm.Language.JSON ()
-import Swarm.Language.Parser (readTerm)
-import Swarm.Language.Parser.QQ (tyQ)
-import Swarm.Language.Pipeline (processTerm)
-import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Syntax
-import Swarm.Language.Typecheck (isSimpleUType)
-import Swarm.Language.Types
-import Swarm.Pretty (prettyText)
-import Test.Tasty
-import Test.Tasty.HUnit
-import Witch (from)
+import           Control.Arrow              ((&&&))
+import           Control.Lens               (toListOf)
+import           Control.Lens.Plated        (universe)
+import           Data.Aeson                 (eitherDecode, encode)
+import           Data.Maybe
+import           Data.Text                  (Text)
+import qualified Data.Text                  as T
+import qualified Data.Text.Encoding         as T
+import           Swarm.Language.JSON        ()
+import           Swarm.Language.Parser      (readTerm)
+import           Swarm.Language.Parser.QQ   (tyQ)
+import           Swarm.Language.Pipeline    (processTerm)
+import           Swarm.Language.Pipeline.QQ (tmQ)
+import           Swarm.Language.Syntax
+import           Swarm.Language.Typecheck   (isSimpleUType)
+import           Swarm.Language.Types
+import           Swarm.Pretty               (prettyText)
+import           Test.Tasty
+import           Test.Tasty.HUnit
+import           Witch                      (from)
 
 testLanguagePipeline :: TestTree
 testLanguagePipeline =
@@ -176,8 +176,8 @@ testLanguagePipeline =
             "require device"
             (valid "require \"boat\"")
         , testCase
-            "require entities"
-            (valid "require 64 \"rock\"")
+            "stock entities"
+            (valid "stock 64 \"rock\"")
         , testCase
             "invalid syntax to require"
             ( process
@@ -193,13 +193,13 @@ testLanguagePipeline =
                 )
             )
         , testCase
-            "invalid syntax to require n"
+            "invalid syntax to stock n"
             ( process
-                "require 2 x"
+                "stock 2 x"
                 ( T.unlines
                     [ "1:11:"
                     , "  |"
-                    , "1 | require 2 x"
+                    , "1 | stock 2 x"
                     , "  |           ^"
                     , "unexpected 'x'"
                     , "expecting entity name in double quotes"
@@ -379,7 +379,7 @@ testLanguagePipeline =
             ( let s = [tmQ| def f : (Int -> Int) -> Int -> Text = \g. \x. format (g x) end |]
 
                   isVar (TVar {}) = True
-                  isVar _ = False
+                  isVar _         = False
                   getVars :: TSyntax -> [(Term' Polytype, Polytype)]
                   getVars = map (_sTerm &&& _sType) . filter (isVar . _sTerm) . universe
                in assertEqual
