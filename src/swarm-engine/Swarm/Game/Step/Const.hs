@@ -89,7 +89,6 @@ import Swarm.Game.Universe
 import Swarm.Game.Value
 import Swarm.Language.Capability
 import Swarm.Language.Key (parseKeyComboFull)
-import Swarm.Language.Parser.Value (readValue)
 import Swarm.Language.Pipeline
 import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
@@ -1221,11 +1220,6 @@ execConst runChildProg c vs s k = do
     Exp -> returnEvalArith
     Format -> case vs of
       [v] -> return $ mkReturn $ prettyValue v
-      _ -> badConst
-    Read -> case vs of
-      [VType ty, VText txt] -> case readValue ty txt of
-        Nothing -> raise Read ["Could not read", showT txt, "at type", prettyText ty]
-        Just v -> return (mkReturn v)
       _ -> badConst
     Print -> case vs of
       [VText printableName, VText txt] -> do

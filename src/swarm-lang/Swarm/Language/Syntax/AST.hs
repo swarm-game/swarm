@@ -90,6 +90,9 @@ data Term' ty
     --   original term may have been elaborated, e.g. `force` may have been added
     --   around some variables, etc.)
     SRequirements Text (Syntax' ty)
+  | -- | Primitive read command.  Needs to be a special syntactic form
+    --   rather than a 'Const' since it requires a type argument.
+    SRead Type (Syntax' ty)
   | -- | A variable.
     TVar Var
   | -- | A pair.

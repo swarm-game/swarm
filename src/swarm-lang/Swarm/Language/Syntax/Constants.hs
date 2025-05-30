@@ -270,8 +270,6 @@ data Const
 
     -- | Turn an arbitrary value into a string
     Format
-  | -- | Try to turn a string into a value
-    Read
   | -- | Print a string onto a printable surface
     Print
   | -- | Erase a printable surface
@@ -809,7 +807,6 @@ constInfo c = case c of
   Leq -> binaryOp "<=" 4 N $ shortDoc Set.empty "Check that the left value is lesser or equal to the right one."
   Geq -> binaryOp ">=" 4 N $ shortDoc Set.empty "Check that the left value is greater or equal to the right one."
   Format -> function 1 $ shortDoc Set.empty "Turn an arbitrary value into a string."
-  Read -> function 2 $ shortDoc Set.empty "Try to read a string into a value of the expected type."
   Print ->
     command 2 short
       . doc

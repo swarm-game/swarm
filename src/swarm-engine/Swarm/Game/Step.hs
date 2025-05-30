@@ -565,6 +565,14 @@ stepCESK cesk = case cesk of
   In (TRequireDevice {}) e s k -> return $ In (TConst Noop) e s k
   In (TRequire {}) e s k -> return $ In (TConst Noop) e s k
   In (TRequirements x t) e s k -> return $ Out (VRequirements x t e) s k
+  -- To execute a primitive read, evaluate the expression to be read,
+  -- then try to read it.
+  In (TRead readTy t) e s k -> return $ In t e s (FRead readTy : k)
+  Out v s (FRead readTy : k) -> case v of
+    VText txt -> case readValue readTy txt of
+      Nothing -> raise Read ["Could not read", showT txt, "at type", prettyText ty]
+      Just v -> pure (mkReturn v)
+    _ -> badConst
   -- Type ascriptions are ignored
   In (TAnnotate v _) e s k -> return $ In v e s k
   -- Normally it's not possible to have a TRobot value in surface

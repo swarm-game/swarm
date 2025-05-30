@@ -165,6 +165,9 @@ data Frame
     FRcd Env [(Var, Value)] Var [(Var, Maybe Term)]
   | -- | We are in the middle of evaluating a record field projection.
     FProj Var
+  | -- | We should execute a primitive read command on the output at
+    --   the given type.
+    FRead Type
   | -- | We should suspend with the given environment once we finish
     --   the current evaluation.
     FSuspend Env
@@ -430,6 +433,7 @@ prettyFrame f (p, inner) = case f of
     pprEq (x, Nothing) = pretty x
     pprEq (x, Just t) = pretty x <+> "=" <+> ppr t
   FProj x -> (11, pparens (p < 11) inner <> "." <> pretty x)
+  FRead readTy -> (10, "read" <+> prettyPrec 10 readTy <+> pparens (p < 11) inner)
   FSuspend _ -> (10, "suspend" <+> pparens (p < 11) inner)
   FRestoreEnv _ -> (10, "restore" <+> pparens (p < 11) inner)
 

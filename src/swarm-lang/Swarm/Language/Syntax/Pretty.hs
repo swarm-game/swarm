@@ -77,6 +77,7 @@ instance PrettyPrec (Term' ty) where
     TRequireDevice d -> pparens (p > 10) $ "require" <+> ppr (TText d)
     TRequire n e -> pparens (p > 10) $ "require" <+> pretty n <+> ppr (TText e)
     SRequirements _ e -> pparens (p > 10) $ "requirements" <+> ppr e
+    SRead ty e -> pparens (p > 10) $ "read" <+> prettyPrec 10 ty <+> prettyPrec 10 e
     TVar s -> pretty s
     SDelay (Syntax' _ (TConst Noop) _ _) -> "{}"
     SDelay t -> group . encloseWithIndent 2 lbrace rbrace $ ppr t

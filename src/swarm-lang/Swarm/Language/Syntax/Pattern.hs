@@ -18,6 +18,7 @@ module Swarm.Language.Syntax.Pattern (
   pattern CSyntax,
   pattern STerm,
   pattern TRequirements,
+  pattern TRead,
   pattern TPair,
   pattern TLam,
   pattern TApp,
@@ -85,6 +86,9 @@ pattern STerm t <-
 
 pattern TRequirements :: Text -> Term -> Term
 pattern TRequirements x t = SRequirements x (STerm t)
+
+pattern TRead :: Type -> Term -> Term
+pattern TRead ty t = SRead ty (STerm t)
 
 -- | Match a TPair without annotations.
 pattern TPair :: Term -> Term -> Term

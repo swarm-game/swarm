@@ -869,6 +869,10 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   SRequirements x t1 -> do
     t1' <- infer t1
     return $ Syntax' l (SRequirements x t1') cs (UTyCmd UTyUnit)
+  SRead readTy t1 -> do
+    adaptToTypeErr l KindErr $ checkKind readTy
+    t1' <- check t1 UTyText
+    return $ Syntax' l (SRead readTy t1') cs (toU readTy)
 
   -- We should never encounter a TRef since they do not show up in
   -- surface syntax, only as values while evaluating (*after*
@@ -1107,7 +1111,6 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Div -> arithBinT
   Exp -> arithBinT
   Format -> [tyQ| a -> Text |]
-  Read -> [tyQ| Text -> a |]
   Print -> [tyQ| Text -> Text -> Cmd Text |]
   Erase -> [tyQ| Text -> Cmd Text |]
   Concat -> [tyQ| Text -> Text -> Text |]
@@ -1430,6 +1433,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- Bind is similarly simple except that we have to keep track of a local variable
   -- bound in the RHS.
   SBind mx _ _ _ s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id (S.insert . lvVar) mx locals) s2
+  SRead _ s -> analyzeAtomic locals s
   SRcd m -> sum <$> mapM analyzeField (M.assocs m)
    where
     analyzeField ::

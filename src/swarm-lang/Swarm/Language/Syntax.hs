@@ -59,6 +59,7 @@ module Swarm.Language.Syntax (
   LetSyntax (..),
   pattern STerm,
   pattern TRequirements,
+  pattern TRead,
   pattern TPair,
   pattern TLam,
   pattern TApp,
