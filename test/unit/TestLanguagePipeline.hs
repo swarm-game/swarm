@@ -197,7 +197,7 @@ testLanguagePipeline =
                 ( process
                     "stock 2 x"
                     ( T.unlines
-                        [ "1:11:"
+                        [ "1:9:"
                         , "  |"
                         , "1 | stock 2 x"
                         , "  |         ^"
