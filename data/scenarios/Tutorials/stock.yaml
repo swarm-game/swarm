@@ -9,8 +9,8 @@ objectives:
         to require specific devices to be equipped.
         Sometimes, instead of requiring entities to be equiped as devices, you need them to be stocked in your inventory.
       - |
-        In this case, you can write `stock <int> <name>`{=snippet} to stock a certain number
-        of copies of a certain entity to be placed in your inventory. For example:
+        In this case, you can write `stock <int> <name>`{=snippet} to ensure that a certain number
+        of copies of a certain entity are placed in your inventory. For example:
         ```
         build {stock 2 "flower"; move; place "flower"; move; place "flower"}
         ```
