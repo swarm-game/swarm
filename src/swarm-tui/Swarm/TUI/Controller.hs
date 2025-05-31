@@ -34,7 +34,7 @@ import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (Editor, applyEdit, editContentsL, handleEditorEvent)
 import Brick.Widgets.List (handleListEvent, listElements)
 import Brick.Widgets.List qualified as BL
-import Brick.Widgets.TabularList.Mixed
+import Brick.Widgets.TabularList.Grid qualified as BG
 import Control.Applicative ((<|>))
 import Control.Category ((>>>))
 import Control.Lens as Lens
@@ -108,7 +108,7 @@ import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Popup (startPopupAnimation)
-import Swarm.TUI.View.Robot (getList)
+import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Robot.Type
 import Swarm.Util hiding (both, (<<.=))
 
@@ -296,8 +296,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
         invalidateCache
         let remaining = getScenariosAfterSelection curMenu pos
         startGame (siPair :| remaining) Nothing
-      SICollection _ c -> do
-        uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList c) scenarioStack)
+      SICollection _ c -> uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList c) scenarioStack)
   CharKey 'o' -> showLaunchDialog
   CharKey 'O' -> showLaunchDialog
   Key V.KEsc -> exitNewGameMenu scenarioStack
@@ -318,7 +317,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
 exitNewGameMenu ::
   NonEmpty (BL.List Name (ScenarioItem ScenarioPath)) ->
   EventM Name AppState ()
-exitNewGameMenu stk = do
+exitNewGameMenu stk =
   uiState
     . uiMenu
     .= case snd (NE.uncons stk) of
@@ -445,7 +444,7 @@ closeModal m = do
   safeAutoUnpause
   uiGameplay . uiDialogs . uiModal .= Nothing
   -- message modal is not autopaused, so update notifications when leaving it
-  when ((m ^. modalType) == MidScenarioModal MessagesModal) $ do
+  when (m ^. modalType == MidScenarioModal MessagesModal) $ do
     t <- use $ gameState . temporal . ticks
     gameState . messageInfo . lastSeenMessageTime .= t
 
@@ -458,11 +457,11 @@ handleModalEvent = \case
       Just (MidScenarioModal RobotsModal) -> do
         robotDialog <- use $ playState . scenarioState . uiGameplay . uiDialogs . uiRobot
         unless (robotDialog ^. isDetailsOpened) $ do
-          let widget = robotDialog ^. robotListContent . robotsListWidget
-          forM_ (BL.listSelectedElement $ getList widget) $ \x -> do
-            Brick.zoom (playState . scenarioState . uiGameplay . uiDialogs . uiRobot) $ do
-              isDetailsOpened .= True
-              updateRobotDetailsPane $ snd x
+          g <- use $ playState . scenarioState . gameState
+          let widget = robotDialog ^. robotsGridList
+          forM_ (getSelectedRobot g widget) $ \rob -> Brick.zoom (playState . scenarioState . uiGameplay . uiDialogs . uiRobot) $ do
+            isDetailsOpened .= True
+            Brick.zoom robotDetailsPaneState $ updateRobotDetailsPane rob
       _ -> do
         menu <- use $ uiState . uiMenu
 
@@ -490,8 +489,7 @@ handleModalEvent = \case
     case modal of
       Just (MidScenarioModal TerrainPaletteModal) ->
         refreshList $ uiGameplay . uiWorldEditor . terrainList
-      Just (MidScenarioModal EntityPaletteModal) -> do
-        refreshList $ uiGameplay . uiWorldEditor . entityPaintList
+      Just (MidScenarioModal EntityPaletteModal) -> refreshList $ uiGameplay . uiWorldEditor . entityPaintList
       Just (MidScenarioModal GoalModal) -> case ev of
         V.EvKey (V.KChar '\t') [] -> uiGameplay . uiDialogs . uiGoal . focus %= focusNext
         _ -> do
@@ -514,19 +512,20 @@ handleModalEvent = \case
                 refreshList $ uiGameplay . uiDialogs . uiStructure . structurePanelListWidget
               StructureSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
             _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
-      Just (MidScenarioModal RobotsModal) -> Brick.zoom (uiGameplay . uiDialogs . uiRobot) $ case ev of
-        V.EvKey (V.KChar '\t') [] -> robotDetailsFocus %= focusNext
-        _ -> do
-          isInDetailsMode <- use isDetailsOpened
-          if isInDetailsMode
-            then Brick.zoom (robotListContent . robotDetailsPaneState . logsList) $ handleListEvent ev
-            else do
-              Brick.zoom (robotListContent . robotsListWidget) $
-                handleMixedListEvent ev
-
-              -- Ensure list widget content is updated immediately
-              widget <- use $ robotListContent . robotsListWidget
-              forM_ (BL.listSelectedElement $ getList widget) $ updateRobotDetailsPane . snd
+      Just (MidScenarioModal RobotsModal) -> do
+        uiGame <- use uiGameplay
+        g <- use gameState
+        Brick.zoom (uiGameplay . uiDialogs . uiRobot) $ case ev of
+          V.EvKey (V.KChar '\t') [] -> robotDetailsPaneState . detailFocus %= focusNext
+          _ -> do
+            isInDetailsMode <- use isDetailsOpened
+            if isInDetailsMode
+              then Brick.zoom (robotDetailsPaneState . logsList) $ handleListEvent ev
+              else do
+                Brick.zoom robotsGridList $ BG.handleGridListEvent (robotGridRenderers uiGame g) ev
+                -- Ensure list widget content is updated immediately
+                mRob <- use $ robotsGridList . to (getSelectedRobot g)
+                forM_ mRob $ Brick.zoom robotDetailsPaneState . updateRobotDetailsPane
       _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
    where
     refreshGoalList lw = nestEventM' lw $ handleListEventWithSeparators ev shouldSkipSelection
@@ -651,7 +650,7 @@ runBaseWebCode uinput ureply = do
   if s ^. gameState . gameControls . replWorking
     then liftIO . ureply $ Rejected AlreadyRunning
     else do
-      gameState . gameControls . replListener .= (ureply . Complete . T.unpack)
+      gameState . gameControls . replListener .= ureply . Complete . T.unpack
       runBaseCode uinput
         >>= liftIO . ureply . \case
           Left err -> Rejected . ParseError $ T.unpack err
@@ -847,9 +846,7 @@ tabComplete CompletionContext {..} names em theRepl = case theRepl ^. replPrompt
     FunctionName -> (possibleWords, isIdentChar)
 
   possibleWords =
-    names <> case ctxCreativeMode of
-      True -> S.toList reservedWords
-      False -> S.toList $ reservedWords `S.difference` creativeWords
+    names <> (if ctxCreativeMode then S.toList reservedWords else S.toList $ reservedWords `S.difference` creativeWords)
 
   entityNames = M.keys $ entitiesByName em
 
@@ -904,7 +901,7 @@ adjReplHistIndex d s =
     newREPL :: REPLState
     newREPL = theRepl & replHistory %~ moveReplHistIndex d oldEntry
 
-    saveLastEntry = replLast .~ (theRepl ^. replPromptText)
+    saveLastEntry = replLast .~ theRepl ^. replPromptText
     showNewEntry = (replPromptEditor .~ newREPLEditor newEntry) . (replPromptType .~ CmdPrompt [])
     -- get REPL data
     getCurrEntry = fromMaybe (theRepl ^. replLast) . getCurrentItemText . view replHistory

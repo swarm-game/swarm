@@ -102,7 +102,6 @@ import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr (getWorldAttrName, swarmAttrMap)
 import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
 import Swarm.TUI.View.Robot
-import Swarm.TUI.View.Robot.Type
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.Util
 import Swarm.Util.Effect (asExceptT, withThrow)
@@ -262,12 +261,7 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mCha
             { _uiModal = Nothing
             , _uiGoal = emptyGoalDisplay
             , _uiStructure = emptyStructureDisplay
-            , _uiRobot =
-                RobotDisplay
-                  { _robotDetailsFocus = focusRing $ map (RobotsListDialog . SingleRobotDetails) enumerate
-                  , _isDetailsOpened = False
-                  , _robotListContent = emptyRobotDisplay debugOptions
-                  }
+            , _uiRobot = emptyRobotDisplay debugOptions
             }
       , _uiIsAutoPlay = False
       , _uiAutoShowObjectives = autoShowObjectives
