@@ -26,6 +26,7 @@ import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirements.Type
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction (isCardinal)
+import Swarm.Language.TDVar (tdVarName)
 import Swarm.Language.Types
 import Swarm.Util (applyWhen)
 
@@ -145,7 +146,7 @@ requirements tdCtx ctx =
       -- symptom of the fact that typechecking, kind checking, and
       -- requirements checking really all need to be done at the same
       -- time during a single traversal of the term (see #231).
-      local @TDCtx (Ctx.addBinding x (TydefInfo ty (Arity . length . ptVars $ ty))) (go t2)
+      local @TDCtx (addBindingTD (tdVarName x) (TydefInfo ty (Arity . length . ptVars $ ty))) (go t2)
     -- We also delete the name in a TBind, if any, while recursing on
     -- the RHS.
     TBind mx _ _ t1 t2 -> do

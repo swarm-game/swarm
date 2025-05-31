@@ -28,6 +28,7 @@ import Swarm.Language.Parser.Util (getLocRange, showErrorPos)
 import Swarm.Language.Pipeline (processParsedTerm')
 import Swarm.Language.Syntax (SrcLoc (..))
 import Swarm.Language.Typecheck (ContextualTypeErr (..))
+import Swarm.Language.Value (emptyEnv)
 import Swarm.Pretty (prettyText)
 import System.IO (stderr)
 import Witch
@@ -89,7 +90,7 @@ validateSwarmCode doc version content = do
           VU.Usage _ problems = VU.getUsage mempty term
           unusedWarnings = mapMaybe (VU.toErrPos content) problems
 
-          parsingErrors = case processParsedTerm' mempty term of
+          parsingErrors = case processParsedTerm' emptyEnv term of
             Right _ -> []
             Left e -> pure $ showTypeErrorPos content e
         Left e -> (pure $ showErrorPos e, [])

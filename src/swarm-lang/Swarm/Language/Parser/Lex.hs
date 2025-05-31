@@ -58,6 +58,7 @@ import Data.Text qualified as T
 import Swarm.Language.Parser.Core
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
+import Swarm.Language.TDVar (TDVar, mkTDVar)
 import Swarm.Language.Types (baseTyName)
 import Swarm.Util (failT, squote)
 import Text.Megaparsec
@@ -232,7 +233,7 @@ locIdentifier idTy =
     | IDTyVar <- idTy
     , isUpper (T.head t) =
         failT ["Type variable names must start with a lowercase letter"]
-    | otherwise = return t
+    | otherwise = pure t
 
 -- | Parse a term variable together with its source location info.
 locTmVar :: Parser LocVar
@@ -240,8 +241,8 @@ locTmVar = locIdentifier IDTmVar
 
 -- | Parse a user-defined type name together with its source location
 --   info.
-locTyName :: Parser LocVar
-locTyName = locIdentifier IDTyName
+locTyName :: Parser (Located TDVar)
+locTyName = (fmap . fmap) mkTDVar (locIdentifier IDTyName)
 
 -- | Parse an identifier, i.e. any non-reserved string containing
 --   alphanumeric characters and underscores, not starting with a
@@ -257,8 +258,14 @@ tyVar = identifier IDTyVar
 
 -- | Parse a (user-defined) type constructor name, which must start
 --   with an uppercase letter.
-tyName :: Parser Var
-tyName = identifier IDTyName
+--
+--   Note that this always produces a variable with version number 0,
+--   via 'mkTDVar'.  We cannot properly version variables at parsing
+--   time since we don't know what else is in scope.  There is a
+--   separate name resolution pass later that assigns correct version
+--   numbers to user type names.
+tyName :: Parser TDVar
+tyName = mkTDVar <$> identifier IDTyName
 
 -- | Parse a term variable, which can start in any case and just
 --   cannot be the same (case-insensitively) as a lowercase reserved

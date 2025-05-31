@@ -16,6 +16,7 @@ import Swarm.Language.Requirements.Analysis (requirements)
 import Swarm.Language.Requirements.Type (ReqCtx, Requirements, capReqs, devReqs)
 import Swarm.Language.Syntax.Constants (Const (Move))
 import Swarm.Language.Syntax.Util (eraseS)
+import Swarm.Language.Types (emptyTDCtx)
 import Test.Tasty
 import Test.Tasty.HUnit
 import TestUtil (check)
@@ -50,7 +51,7 @@ checkReqCtx :: Text -> (ReqCtx -> Bool) -> Assertion
 checkReqCtx code expect = check code (expect . extractReqCtx)
 
 checkRequirements :: Text -> (Requirements -> Bool) -> Assertion
-checkRequirements code expect = check code (expect . requirements mempty mempty . eraseS)
+checkRequirements code expect = check code (expect . requirements emptyTDCtx mempty . eraseS)
 
 requiresCap :: Text -> Capability -> Assertion
 requiresCap code cap = checkRequirements code ((cap `S.member`) . capReqs)

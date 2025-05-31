@@ -10,9 +10,9 @@ module Swarm.Language.Parser.Record (
 
 import Data.Map (Map)
 import Data.Map qualified as M
-import Swarm.Language.Context (Var)
 import Swarm.Language.Parser.Core (Parser)
 import Swarm.Language.Parser.Lex (symbol, tmVar)
+import Swarm.Language.Var (Var)
 import Swarm.Util (failT, findDup, squote)
 import Text.Megaparsec (sepBy)
 

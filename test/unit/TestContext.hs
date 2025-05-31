@@ -13,6 +13,7 @@ import Data.List (nub)
 import Data.Map qualified as M
 import Data.Yaml (decodeEither', encode)
 import Swarm.Language.Context
+import Swarm.Language.Var (Var)
 import Swarm.Util (showT)
 import Test.QuickCheck.Instances.Text ()
 import Test.Tasty (TestTree, testGroup)
@@ -41,11 +42,11 @@ testContext =
         (map (\(name, ctx) -> testCase name $ serializeRoundTrip ctx) testCtxs)
     , testProperty
         "no paired hash collisions"
-        (withMaxSuccess 10000 (hashConsistent @Int))
+        (withMaxSuccess 10000 (hashConsistent @Var @Int))
     , testCase
         "no hash collisions in a large pool"
         $ do
-          ctxs <- generate (replicateM 100000 (arbitrary :: Gen (Ctx Int)))
+          ctxs <- generate (replicateM 100000 (arbitrary :: Gen (Ctx Var Int)))
           let m = M.fromListWith (++) (map (\ctx -> (ctxHash ctx, [unCtx ctx])) ctxs)
           assertBool "foo" $ all ((== 1) . length . nub) m
     ]
@@ -59,13 +60,13 @@ testContext =
 
   testCtxs = [("empty", empty), ("ctx1", ctx1), ("ctx2", ctx2), ("ctx3", ctx3), ("ctx4", ctx4), ("ctx5", ctx5), ("large", bigCtx), ("delete", delete "y" ctx4)]
 
-instance (Hashable a, Arbitrary a) => Arbitrary (Ctx a) where
+instance (Ord v, Hashable v, Arbitrary v, Hashable a, Arbitrary a) => Arbitrary (Ctx v a) where
   arbitrary = fromMap <$> arbitrary
 
-hashConsistent :: Eq a => Ctx a -> Ctx a -> Bool
+hashConsistent :: (Eq v, Eq a) => Ctx v a -> Ctx v a -> Bool
 hashConsistent ctx1 ctx2 = (ctx1 == ctx2) == (ctx1 `ctxStructEqual` ctx2)
 
-ctxsEqual :: Ctx Int -> Ctx Int -> Assertion
+ctxsEqual :: Ctx Var Int -> Ctx Var Int -> Assertion
 ctxsEqual ctx1 ctx2 = do
   -- Contexts are compared by hash for equality
   assertEqual "hash equality" ctx1 ctx2
@@ -73,16 +74,16 @@ ctxsEqual ctx1 ctx2 = do
   -- Make sure they are also structurally equal
   assertBool "structural equality" (ctxStructEqual ctx1 ctx2)
 
-ctxStructEqual :: Eq a => Ctx a -> Ctx a -> Bool
+ctxStructEqual :: (Eq a, Eq v) => Ctx v a -> Ctx v a -> Bool
 ctxStructEqual (Ctx m1 _) (Ctx m2 _) = m1 == m2
 
-hydrationRoundTrip :: Ctx Int -> Assertion
+hydrationRoundTrip :: Ctx Var Int -> Assertion
 hydrationRoundTrip ctx = do
   case getCtx (ctxHash ctx) (rehydrate (dehydrate (toCtxMap ctx))) of
     Nothing -> fail "Failed to reconstitute dehydrated context"
     Just ctx' -> ctxsEqual ctx ctx'
 
-serializeRoundTrip :: Ctx Int -> Assertion
+serializeRoundTrip :: Ctx Var Int -> Assertion
 serializeRoundTrip ctx = do
   case decodeEither' (encode (dehydrate (toCtxMap ctx))) of
     Left e -> fail $ "Failed to decode JSON-encoded context: " ++ show e

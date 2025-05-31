@@ -117,6 +117,12 @@ module Swarm.Language.Types (
   expandTydefs,
   elimTydef,
   TDCtx,
+  emptyTDCtx,
+  lookupTD,
+  lookupTDR,
+  addBindingTD,
+  withBindingTD,
+  resolveUserTy,
 
   -- * WHNF
   whnfType,
@@ -128,7 +134,7 @@ module Swarm.Language.Types (
 import Control.Algebra (Has, run)
 import Control.Carrier.Reader (runReader)
 import Control.Carrier.Throw.Either (runThrow)
-import Control.Effect.Reader (Reader, ask)
+import Control.Effect.Reader (Reader, ask, local)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (Plated (..), makeLenses, rewriteM, view)
 import Control.Monad.Free
@@ -139,14 +145,18 @@ import Data.Eq.Deriving (deriveEq1)
 import Data.Fix
 import Data.Foldable (fold)
 import Data.Functor.Classes (Eq1)
-import Data.Hashable (Hashable)
+import Data.Hashable (Hashable (..))
 import Data.Hashable.Lifted (Hashable1)
 import Data.Kind qualified
 import Data.List.NonEmpty ((<|))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
+import Data.MonoidMap (MonoidMap)
+import Data.MonoidMap qualified as MM
+import Data.MonoidMap.JSON ()
 import Data.Ord.Deriving (deriveOrd1)
+import Data.Semigroup (Sum (..))
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.String (IsString (..))
@@ -154,10 +164,12 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic, Generic1)
 import Prettyprinter (align, braces, brackets, concatWith, flatAlt, hsep, pretty, punctuate, softline, (<+>))
-import Swarm.Language.Context (Ctx, Var)
+import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
+import Swarm.Language.TDVar (TDVar, mkTDVar, mkTDVar', tdVarName)
+import Swarm.Language.Var (Var)
 import Swarm.Pretty (PrettyPrec (..), pparens, pparens', ppr, prettyBinding)
-import Swarm.Util (unsnocNE)
+import Swarm.Util (showT, unsnocNE)
 import Swarm.Util.JSON (optionsMinimize, optionsUnwrapUnary)
 import Text.Show.Deriving (deriveShow1)
 import Witch (into)
@@ -214,7 +226,7 @@ data TyCon
   | -- | Function types.
     TCFun
   | -- | User-defined type constructor.
-    TCUser Var
+    TCUser TDVar
   deriving (Eq, Ord, Show, Data, Generic, Hashable)
 
 instance ToJSON TyCon where
@@ -231,7 +243,7 @@ instance PrettyPrec TyCon where
     TCSum -> "Sum"
     TCProd -> "Prod"
     TCFun -> "Fun"
-    TCUser t -> pretty t
+    TCUser t -> ppr t
 
 -- | The arity of a type, /i.e./ the number of type parameters it
 --   expects.
@@ -315,7 +327,7 @@ newtype IntVar = IntVar Int
   deriving (Show, Data, Eq, Ord, Generic, Hashable)
 
 instance PrettyPrec IntVar where
-  prettyPrec _ = pretty . mkVarName "u"
+  prettyPrec _ = ppr . mkVarName "u"
 
 -- | 'UType's are like 'Type's, but also contain unification
 --   variables.  'UType' is defined via 'Free', which is also a kind
@@ -339,7 +351,7 @@ ucata f g (Free t) = g (fmap (ucata f g) t)
 --   as a unification variable) into a unique variable name, by
 --   appending a number to the given name.
 mkVarName :: Text -> IntVar -> Var
-mkVarName nm (IntVar v) = T.append nm (into @Var (show v))
+mkVarName nm (IntVar v) = T.append nm (showT v)
 
 -- | Get all the free unification variables in a 'UType'.
 fuvs :: UType -> Set IntVar
@@ -363,10 +375,10 @@ isPure _ = False
 
 -- | For convenience, so we can write /e.g./ @"a"@ instead of @TyVar "a"@.
 instance IsString Type where
-  fromString = TyVar . into @Var
+  fromString = TyVar . into @Text
 
 instance IsString UType where
-  fromString = UTyVar . into @Var
+  fromString = UTyVar . into @Text
 
 --------------------------------------------------
 -- Recursive type utilities
@@ -417,7 +429,7 @@ instance UnchainableFun (Free TypeF ty) where
 
 instance (UnchainableFun t, PrettyPrec t, SubstRec t) => PrettyPrec (TypeF t) where
   prettyPrec p = \case
-    TyVarF v _ -> pretty v
+    TyVarF v _ -> ppr v
     TyRcdF m -> brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
     -- Special cases for type constructors with special syntax.
     -- Always use parentheses around sum and product types, see #1625
@@ -437,7 +449,7 @@ instance (UnchainableFun t, PrettyPrec t, SubstRec t) => PrettyPrec (TypeF t) wh
             flatAlt (concatWith multiLine funs) (concatWith inLine funs)
     TyRecF x ty ->
       pparens (p > 0) $
-        "rec" <+> pretty x <> "." <+> prettyPrec 0 (substRec (TyVarF x x) ty NZ)
+        "rec" <+> ppr x <> "." <+> prettyPrec 0 (substRec (TyVarF x x) ty NZ)
     -- This case shouldn't be possible, since TyRecVar should only occur inside a TyRec,
     -- and pretty-printing the TyRec (above) will substitute a variable name for
     -- any bound TyRecVars before recursing.
@@ -570,14 +582,14 @@ type RawPolytype = Poly 'Unquantified Type
 
 instance PrettyPrec (Poly q Type) where
   prettyPrec _ (Forall [] t) = ppr t
-  prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
+  prettyPrec _ (Forall xs t) = hsep ("∀" : map ppr xs) <> "." <+> ppr t
 
 -- | A polytype with unification variables.
 type UPolytype = Poly 'Quantified UType
 
 instance PrettyPrec (Poly q UType) where
   prettyPrec _ (Forall [] t) = ppr t
-  prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
+  prettyPrec _ (Forall xs t) = hsep ("∀" : map ppr xs) <> "." <+> ppr t
 
 ------------------------------------------------------------
 -- WithU
@@ -688,7 +700,7 @@ pattern TyCmd ty = TyConApp TCCmd [ty]
 pattern TyDelay :: Type -> Type
 pattern TyDelay ty = TyConApp TCDelay [ty]
 
-pattern TyUser :: Var -> [Type] -> Type
+pattern TyUser :: TDVar -> [Type] -> Type
 pattern TyUser v tys = TyConApp (TCUser v) tys
 
 pattern TyRec :: Var -> Type -> Type
@@ -753,7 +765,7 @@ pattern UTyCmd ty = UTyConApp TCCmd [ty]
 pattern UTyDelay :: UType -> UType
 pattern UTyDelay ty = UTyConApp TCDelay [ty]
 
-pattern UTyUser :: Var -> [UType] -> UType
+pattern UTyUser :: TDVar -> [UType] -> UType
 pattern UTyUser v tys = UTyConApp (TCUser v) tys
 
 pattern UTyRec :: Var -> UType -> UType
@@ -768,16 +780,16 @@ pattern PolyUnit = Forall [] (TyCmd TyUnit)
 
 -- | A @TCtx@ is a mapping from variables to polytypes.  We generally
 --   get one of these at the end of the type inference process.
-type TCtx = Ctx Polytype
+type TCtx = Ctx Var Polytype
 
 -- | A @UCtx@ is a mapping from variables to polytypes with
 --   unification variables.  We generally have one of these while we
 --   are in the midst of the type inference process.
-type UCtx = Ctx UPolytype
+type UCtx = Ctx Var UPolytype
 
 -- | A @TVCtx@ tracks which type variables are in scope, and what
 --   skolem variables were assigned to them.
-type TVCtx = Ctx UType
+type TVCtx = Ctx Var UType
 
 ------------------------------------------------------------
 -- Implicit quantification of polytypes
@@ -816,10 +828,64 @@ data TydefInfo = TydefInfo
 makeLenses ''TydefInfo
 
 -- | A @TDCtx@ is a mapping from user-defined type constructor names
---   to their definitions and arities/kinds.
-type TDCtx = Ctx TydefInfo
+--   to their definitions and arities/kinds.  It also stores the
+--   latest version of each name (for any names with more than one
+--   version), so we can tell when a type definition has been
+--   shadowed.
+data TDCtx = TDCtx
+  { getTDCtx :: Ctx TDVar TydefInfo
+  , getTDVersions :: MonoidMap Text (Sum Int)
+  }
+  deriving (Eq, Generic, Show, ToJSON)
 
-newtype ExpandTydefErr = UnexpandedUserType {getUnexpanded :: Var}
+-- Need to write manual Hashable instance since MonoidMap
+-- does not have instances of its own.
+
+instance Hashable TDCtx where
+  hashWithSalt s (TDCtx ctx versions) =
+    s
+      `hashWithSalt` ctx
+      `hashWithSalt` (getSum <$> MM.toMap versions)
+
+-- | The empty type definition context.
+emptyTDCtx :: TDCtx
+emptyTDCtx = TDCtx Ctx.empty MM.empty
+
+-- | Look up a variable in the type definition context.
+lookupTD :: TDVar -> TDCtx -> Maybe TydefInfo
+lookupTD x = Ctx.lookup x . getTDCtx
+
+-- | Look up a variable in an ambient type definition context.
+lookupTDR :: Has (Reader TDCtx) sig m => TDVar -> m (Maybe TydefInfo)
+lookupTDR x = lookupTD x <$> ask
+
+-- | Add a binding of a variable name to a type definition, giving it
+--   an appropriate version number if it shadows other variables with
+--   the same name.
+addBindingTD :: Text -> TydefInfo -> TDCtx -> TDCtx
+addBindingTD x info (TDCtx tdCtx tdVersions) =
+  case Ctx.lookup (mkTDVar x) tdCtx of
+    Nothing -> TDCtx (Ctx.addBinding (mkTDVar x) info tdCtx) tdVersions
+    Just _ ->
+      let newVersion = 1 + MM.get x tdVersions
+       in TDCtx (Ctx.addBinding (mkTDVar' (getSum newVersion) x) info tdCtx) (MM.set x newVersion tdVersions)
+
+-- | Locally extend the ambient type definition context with an
+--   additional binding, via 'addBindingTD'.
+withBindingTD :: Has (Reader TDCtx) sig m => Text -> TydefInfo -> m a -> m a
+withBindingTD x info = local (addBindingTD x info)
+
+-- | Given a parsed variable representing a user-defined type, figure
+--   out which version is currently in scope and set the version
+--   number of the variable appropriately.
+resolveUserTy :: Has (Reader TDCtx) sig m => TDVar -> m TDVar
+resolveUserTy v = do
+  tdCtx <- ask
+  let x = tdVarName v
+  let ver = getSum (MM.get x (getTDVersions tdCtx))
+  pure $ mkTDVar' ver x
+
+newtype ExpandTydefErr = UnexpandedUserType {getUnexpanded :: TDVar}
   deriving (Eq, Show)
 
 -- | Expand an application "T ty1 ty2 ... tyn" by looking up the
@@ -836,11 +902,11 @@ expandTydef ::
   , Has (Throw ExpandTydefErr) sig m
   , Typical t
   ) =>
-  Var ->
+  TDVar ->
   [t] ->
   m t
 expandTydef userTyCon tys = do
-  mtydefInfo <- Ctx.lookupR userTyCon
+  mtydefInfo <- lookupTDR userTyCon
   case mtydefInfo of
     Nothing -> throwError (UnexpandedUserType userTyCon)
     Just tydefInfo -> pure $ substTydef tydefInfo tys
@@ -874,7 +940,7 @@ substTydef (TydefInfo (Forall as ty) _) tys = refoldT @t substF (fromType ty)
 --   inside a type.  Typically this is done when reporting the type of
 --   a term containing a local tydef: since the tydef is local we
 --   can't use it in the reported type.
-elimTydef :: forall t. Typical t => Var -> TydefInfo -> t -> t
+elimTydef :: forall t. Typical t => TDVar -> TydefInfo -> t -> t
 elimTydef x tdInfo = refoldT substF
  where
   substF = \case
@@ -898,7 +964,7 @@ tcArity tydefs =
     TCSum -> Just 2
     TCProd -> Just 2
     TCFun -> Just 2
-    TCUser t -> getArity . view tydefArity <$> Ctx.lookup t tydefs
+    TCUser t -> getArity . view tydefArity <$> lookupTD t tydefs
 
 ------------------------------------------------------------
 -- Reducing types to WHNF

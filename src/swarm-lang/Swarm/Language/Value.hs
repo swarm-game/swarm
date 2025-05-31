@@ -45,7 +45,7 @@ import Swarm.Language.Requirements.Type (ReqCtx, Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Typed
-import Swarm.Language.Types (Polytype, TCtx, TDCtx, TydefInfo, Type)
+import Swarm.Language.Types (Polytype, TCtx, TDCtx, TydefInfo, Type, addBindingTD, emptyTDCtx)
 import Swarm.Pretty (prettyText)
 import Prelude hiding (Foldable (..))
 
@@ -131,7 +131,7 @@ data Value where
 
 -- | A value context is a mapping from variable names to their runtime
 --   values.
-type VCtx = Ctx Value
+type VCtx = Ctx Var Value
 
 --------------------------------------------------
 -- Environments
@@ -171,7 +171,7 @@ instance Eq Env where
 makeLenses ''Env
 
 emptyEnv :: Env
-emptyEnv = Env Ctx.empty Ctx.empty Ctx.empty Ctx.empty
+emptyEnv = Env Ctx.empty Ctx.empty Ctx.empty emptyTDCtx
 
 lookupValue :: Var -> Env -> Maybe Value
 lookupValue x e = Ctx.lookup x (e ^. envVals)
@@ -186,18 +186,10 @@ addBinding x v = at x ?~ v
 addValueBinding :: Var -> Value -> Env -> Env
 addValueBinding x v = envVals %~ Ctx.addBinding x v
 
-addTydef :: Var -> TydefInfo -> Env -> Env
-addTydef x pty = envTydefs %~ Ctx.addBinding x pty
+addTydef :: Text -> TydefInfo -> Env -> Env
+addTydef x pty = envTydefs %~ addBindingTD x pty
 
-instance Semigroup Env where
-  Env t1 r1 v1 td1 <> Env t2 r2 v2 td2 = Env (t1 <> t2) (r1 <> r2) (v1 <> v2) (td1 <> td2)
-
-instance Monoid Env where
-  mempty = Env mempty mempty mempty mempty
-
-instance AsEmpty Env
-
-type instance Index Env = Ctx.Var
+type instance Index Env = Var
 type instance IxValue Env = Typed Value
 
 instance Ixed Env
