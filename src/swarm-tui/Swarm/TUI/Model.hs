@@ -60,6 +60,7 @@ module Swarm.TUI.Model (
   playState,
   keyEventHandling,
   runtimeState,
+  animationMgr,
   ScenarioState (ScenarioState),
   gameState,
   uiGameplay,
@@ -70,7 +71,12 @@ module Swarm.TUI.Model (
   scenarios,
   attainedAchievements,
   uiPopups,
+  uiPopupAnimationState,
   scenarioSequence,
+  AnimationState (..),
+  _AnimActive,
+  _AnimScheduled,
+  _AnimInactive,
 
   -- ** Initialization
   AppOpts (..),
@@ -82,9 +88,11 @@ module Swarm.TUI.Model (
   -- ** Utility
   focusedItem,
   focusedEntity,
+  animTraversal,
 ) where
 
 import Brick (EventM, ViewportScroll, viewportScroll)
+import Brick.Animation (Animation, AnimationManager)
 import Brick.Keybindings as BK
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
@@ -133,10 +141,13 @@ import Text.Fuzzy qualified as Fuzzy
 
 -- | 'Swarm.TUI.Model.AppEvent' represents a type for custom event types our app can
 --   receive. The primary custom event 'Frame' is sent by a separate thread as fast as
---   it can, telling the TUI to render a new frame.
+--   it can, telling the TUI to render a new frame. The custom event 'PopupEvent' is sent
+--   by the animation manager and contains an event that starts, stops, or updates a
+--   popup notification.
 data AppEvent
   = Frame
   | Web WebCommand
+  | PopupEvent (EventM Name AppState ())
   | UpstreamVersion (Either (Severity, Text) String)
 
 infoScroll :: ViewportScroll Name
@@ -167,16 +178,14 @@ data ScenarioState = ScenarioState
   , _uiGameplay :: UIGameplay
   }
 
---------------------------------------------------
--- Lenses for ScenarioState
-
-makeLensesNoSigs ''ScenarioState
-
--- | The 'GameState' record.
-gameState :: Lens' ScenarioState GameState
-
--- | UI active during live gameplay
-uiGameplay :: Lens' ScenarioState UIGameplay
+-- | This enapsulates the state of a given animation that changes over time. 'AnimInactive' means that
+--   the application is ready to start a new animation. 'AnimScheduled' means that the application
+--   has told the animation manager to start the animation, but it hasn't started yet. 'AnimActive' means
+--   that the animation is currently in progress.
+data AnimationState
+  = AnimActive (Animation AppState Name)
+  | AnimScheduled
+  | AnimInactive
 
 -- | State that can evolve as the user progresses through scenarios.
 -- This includes achievements and completion records.
@@ -188,22 +197,9 @@ data ProgressionState = ProgressionState
   { _scenarios :: ScenarioCollection ScenarioInfo
   , _attainedAchievements :: Map CategorizedAchievement Attainment
   , _uiPopups :: PopupState
+  , _uiPopupAnimationState :: AnimationState
   , _scenarioSequence :: [ScenarioWith ScenarioPath]
   }
-
-makeLensesNoSigs ''ProgressionState
-
--- | Map of achievements that were attained
-attainedAchievements :: Lens' ProgressionState (Map CategorizedAchievement Attainment)
-
--- | The collection of scenarios that comes with the game.
-scenarios :: Lens' ProgressionState (ScenarioCollection ScenarioInfo)
-
--- | Queue of popups to display
-uiPopups :: Lens' ProgressionState PopupState
-
--- | Remaining scenarios in the current sequence
-scenarioSequence :: Lens' ProgressionState [ScenarioWith ScenarioPath]
 
 -- | This encapsulates both game and UI state for an actively-playing scenario, as well
 -- as state that evolves as a result of playing a scenario.
@@ -211,17 +207,6 @@ data PlayState = PlayState
   { _scenarioState :: ScenarioState
   , _progression :: ProgressionState
   }
-
---------------------------------------------------
--- Lenses for ScenarioState
-
-makeLensesNoSigs ''PlayState
-
--- | The 'ScenarioState' record.
-scenarioState :: Lens' PlayState ScenarioState
-
--- | State that can evolve as the user progresses through scenarios.
-progression :: Lens' PlayState ProgressionState
 
 -- ----------------------------------------------------------------------------
 --                                   APPSTATE                                --
@@ -237,6 +222,7 @@ data AppState = AppState
   , _uiState :: UIState
   , _keyEventHandling :: KeyEventHandlingState
   , _runtimeState :: RuntimeState
+  , _animationMgr :: AnimationManager AppState AppEvent Name
   }
 
 ------------------------------------------------------------
@@ -363,6 +349,47 @@ defaultAppOpts =
     }
 
 --------------------------------------------------
+-- Lenses for ScenarioState
+
+makeLensesNoSigs ''ScenarioState
+
+-- | The 'GameState' record.
+gameState :: Lens' ScenarioState GameState
+
+-- | UI active during live gameplay
+uiGameplay :: Lens' ScenarioState UIGameplay
+
+--------------------------------------------------
+-- Lenses for PlayState
+
+makeLensesNoSigs ''PlayState
+
+-- | The 'ScenarioState' record.
+scenarioState :: Lens' PlayState ScenarioState
+
+-- | State that can evolve as the user progresses through scenarios.
+progression :: Lens' PlayState ProgressionState
+
+--------------------------------------------------
+-- Lenses for Progression State
+makeLensesNoSigs ''ProgressionState
+
+-- | Map of achievements that were attained
+attainedAchievements :: Lens' ProgressionState (Map CategorizedAchievement Attainment)
+
+-- | The collection of scenarios that comes with the game.
+scenarios :: Lens' ProgressionState (ScenarioCollection ScenarioInfo)
+
+-- | Queue of popups to display
+uiPopups :: Lens' ProgressionState PopupState
+
+-- | Popup Animation State
+uiPopupAnimationState :: Lens' ProgressionState AnimationState
+
+-- | Remaining scenarios in the current sequence
+scenarioSequence :: Lens' ProgressionState [ScenarioWith ScenarioPath]
+
+--------------------------------------------------
 -- Lenses for KeyEventHandlingState
 
 makeLensesNoSigs ''KeyEventHandlingState
@@ -390,6 +417,14 @@ keyEventHandling :: Lens' AppState KeyEventHandlingState
 -- | The 'RuntimeState' record
 runtimeState :: Lens' AppState RuntimeState
 
+-- | The 'Brick.Animation.AnimationManager' record
+animationMgr :: Lens' AppState (AnimationManager AppState AppEvent Name)
+
+-------------------------------------------------
+
+-- | Prisms for AnimationState
+makePrisms ''AnimationState
+
 --------------------------------------------------
 -- Utility functions
 
@@ -410,3 +445,21 @@ focusedEntity =
     Separator _ -> Nothing
     InventoryEntry _ e -> Just e
     EquippedEntry e -> Just e
+
+-- | A non-lawful traversal for use in animations that allows
+--   us to manage the state of an animation and update it properly
+--   when we process an event sent by the animation manager.
+--   Exploits some assumptions about Brick's implementation of animations.
+--   It is defined such that when the animation manager starts the animation
+--   by setting the target of the traversal to Just theAnimation, the traversal will actually
+--   set the AnimationState of the popup animation to AnimActive theAnimation.
+--   When the animation manager signals that the animation has stopped by setting the target of
+--   the traversal to Nothing, the traversal will set the AnimationState of the popup to AnimInactive.
+animTraversal :: Traversal' AnimationState (Maybe (Animation AppState Name))
+animTraversal = traversal go
+ where
+  go :: Applicative f => (Maybe (Animation AppState Name) -> f (Maybe (Animation AppState Name))) -> AnimationState -> f AnimationState
+  go focus = \case
+    AnimInactive -> maybe AnimInactive AnimActive <$> focus Nothing
+    AnimScheduled -> maybe AnimInactive AnimActive <$> focus Nothing
+    AnimActive x -> maybe AnimInactive AnimActive <$> focus (Just x)
