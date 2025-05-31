@@ -261,7 +261,7 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mCha
             { _uiModal = Nothing
             , _uiGoal = emptyGoalDisplay
             , _uiStructure = emptyStructureDisplay
-            , _uiRobot = emptyRobotDisplay
+            , _uiRobot = emptyRobotDisplay debugOptions
             }
       , _uiIsAutoPlay = False
       , _uiAutoShowObjectives = autoShowObjectives

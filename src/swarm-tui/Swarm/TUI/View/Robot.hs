@@ -35,6 +35,8 @@ import Data.Maybe (fromMaybe)
 import Data.Map qualified as M
 import Data.Sequence (Seq)
 import Data.Sequence qualified as S
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Numeric (showFFloat)
@@ -60,14 +62,17 @@ import Swarm.Util (applyWhen, maximum0)
 import Swarm.Util.UnitInterval
 import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec (..))
+import Swarm.TUI.Model.DebugOption (DebugOption (..))
+import Linear (distance, V2)
+import Swarm.Game.Location (Point, origin)
+import Data.Maybe (fromMaybe)
 
 {--------------------------------------------------------------------
 NEW GRID LIST
 --------------------------------------------------------------------}
 
 data RobotColumn
-  = ColID
-  | ColName
+  = ColName
   | ColAge
   | ColPos
   | ColItems
@@ -77,6 +82,7 @@ data RobotColumn
   | ColCycles
   | ColActivity
   | ColLog
+  | ColID
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 colName :: RobotColumn -> Text
@@ -85,27 +91,29 @@ colName = T.pack . dropPrefix "Col" . show
 colWidth :: RobotColumn -> Int
 colWidth = textWidth . colName
 
--- | TODO: optionally hide ID based on Debug Options
-colWidths :: Seq ColWidth
-colWidths =
-  S.fromList enumerate
-    <&> ColW . \case
-      ColID -> 5
-      ColName -> 25
-      ColAge -> 7
-      ColPos -> 9
-      ColStatus -> 10
-      c -> 1 + colWidth c
+colWidths :: Set DebugOption -> Seq ColWidth
+colWidths opt = ColW . getWidth <$> S.fromList robotColumns
+ where
+  showIDs = Set.member ListRobotIDs opt
+  robotColumns :: [RobotColumn]
+  robotColumns = (if showIDs then id else filter (/= ColID)) enumerate
+  getWidth = \case
+    ColName -> 26 + (if showIDs then 0 else getWidth ColID)
+    ColAge -> 8
+    ColPos -> 9
+    ColStatus -> 10
+    ColID -> 5
+    c -> 1 + colWidth c
 
 {--------------------------------------------------------------------
 EMPTY
 --------------------------------------------------------------------}
 
-emptyRobotDisplay :: RobotDisplay
-emptyRobotDisplay =
+emptyRobotDisplay :: Set DebugOption -> RobotDisplay
+emptyRobotDisplay opt =
   RobotDisplay
     { _isDetailsOpened = False
-    , _robotsGridList = BL.gridTabularList (RobotsListDialog RobotList) mempty (LstItmH 1) colWidths
+    , _robotsGridList = BL.gridTabularList (RobotsListDialog RobotList) mempty (LstItmH 1) (colWidths opt)
     , _robotDetailsPaneState =
         RobotDetailsPaneState
           { _detailFocus = focusRing $ map (RobotsListDialog . SingleRobotDetails) enumerate
@@ -130,15 +138,27 @@ getSelectedRobot g gl = do
 UPDATE
 --------------------------------------------------------------------}
 
-updateRobotList :: GameState -> BL.GridTabularList Name RID -> BL.GridTabularList Name RID
-updateRobotList g l = l {BL.list = updatedList}
+updateRobotList :: Set DebugOption ->  GameState -> BL.GridTabularList Name RID -> BL.GridTabularList Name RID
+updateRobotList dOpts g l = l {BL.list = updatedList}
  where
   updatedList :: BL.GenericList Name Seq RID
   updatedList = BL.listReplace rids sel l.list
   rids :: Seq RID
-  rids = g ^. robotInfo . robotMap . to IM.keys . to S.fromList
+  rids = S.fromList . fmap (view robotID) $ robots
   sel :: Maybe Int
   sel = flip S.elemIndexL rids =<< getSelectedRID l
+
+  robots :: [Robot]
+  robots = g ^. robotInfo . robotMap . to IM.elems . to filterRobots
+  filterRobots :: [Robot] -> [Robot]
+  filterRobots = if Set.member ListAllRobots dOpts then id else filter (\r -> isRelevant r && isNear r)
+  basePos :: Point V2 Double
+  basePos = realToFrac <$> fromMaybe origin (g ^? baseRobot . robotLocation . planar)
+  -- Keep the base and non system robot (e.g. no seed)
+  isRelevant r = r ^. robotID == 0 || not (r ^. systemRobot)
+  -- Keep the robot that are less than 32 unit away from the base
+  isNear r = creative || distance (realToFrac <$> r ^. robotLocation . planar) basePos < 32
+  creative = g ^. creativeMode
 
 {--------------------------------------------------------------------
 DRAW
@@ -213,7 +233,6 @@ drawRobotGridCell t g _foc (WdthD widthDef) ctx rid =
         ColID -> padRight Max $ showW rid
         _ -> fill '?'
       Just r -> case col of
-        ColID -> padRight Max $ showW rid
         ColName -> padRight Max $ nameWidget r
         ColAge -> hCenter $ ageWidget r
         ColPos -> hCenter $ locWidget r
@@ -224,6 +243,7 @@ drawRobotGridCell t g _foc (WdthD widthDef) ctx rid =
         ColCycles -> padLeft Max . showW $ r ^. activityCounts . lifetimeStepCount
         ColActivity -> padLeft Max $ renderDutyCycle (g ^. temporal) r
         ColLog -> hCenter $ rLog r
+        ColID -> padRight Max $ showW rid
  where
   (BL.GColC (BL.Ix cIx) (BL.Sel cSel)) = ctx.col
   (BL.GRowC (BL.Ix _ix) (BL.Sel rSel)) = ctx.row

@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -192,7 +191,7 @@ updateUI = do
   curModal <- use $ playState . scenarioState . uiGameplay . uiDialogs . uiModal
   when ((view modalType <$> curModal) == Just (MidScenarioModal RobotsModal)) $
     Brick.zoom (playState . scenarioState . uiGameplay . uiDialogs . uiRobot) $
-      doRobotListUpdate g
+      doRobotListUpdate dOps g
 
   let redraw =
         g ^. needsRedraw
@@ -203,10 +202,10 @@ updateUI = do
           || newPopups
   pure redraw
 
---
-doRobotListUpdate :: GameState -> EventM Name RobotDisplay ()
-doRobotListUpdate g = do
-  robotsGridList %= updateRobotList g
+-- |
+doRobotListUpdate :: Set DebugOption -> GameState -> EventM Name RobotDisplay ()
+doRobotListUpdate dOps g = do
+  robotsGridList %= updateRobotList dOps g
   rList <- use robotsGridList
   let mRob = getSelectedRobot g rList
   forM_ mRob $ \r -> do
