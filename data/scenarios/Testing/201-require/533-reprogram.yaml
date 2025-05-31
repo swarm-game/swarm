@@ -26,9 +26,9 @@ objectives:
                );
       } { pure false }
 solution: |
-  fred <- build {require "boat"; require 5 "rock"; setname "fred"};
+  fred <- build {require "boat"; stock 5 "rock"; setname "fred"};
   wait 5;
-  reprogram fred {require "boat"; require "metal drill"; move; require 3 "rock"; move; require 5 "rock"}
+  reprogram fred {require "boat"; require "metal drill"; move; stock 3 "rock"; move; stock 5 "rock"}
 robots:
   - name: base
     loc: [0, 0]

@@ -128,8 +128,8 @@ getUsage bindings (CSyntax _pos t _comments) = case t of
   TBool {} -> mempty
   TRobot {} -> mempty
   TRef {} -> mempty
-  TRequireDevice {} -> mempty
   TRequire {} -> mempty
+  TStock {} -> mempty
   SRequirements {} -> mempty
   STydef {} -> mempty
   TType {} -> mempty

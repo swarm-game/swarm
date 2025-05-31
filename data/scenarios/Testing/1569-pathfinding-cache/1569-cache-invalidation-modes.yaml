@@ -32,7 +32,7 @@ solution: |
 
   def forceBlockageInvalidation =
     build {
-      require 1 "monolith";
+      stock 1 "monolith";
       move;
       place "monolith";
       turn back;
@@ -55,7 +55,7 @@ solution: |
 
   def forceCompetingTargetInvalidation =
     build {
-      require 1 "flower";
+      stock 1 "flower";
       turn right;
       move;
       place "flower";
@@ -106,28 +106,28 @@ solution: |
 entities:
   - name: wayfinder
     display:
-      char: 'w'
+      char: "w"
     description:
       - Enables `path` command
     properties: [known, pickable]
     capabilities: [path]
   - name: monolith
     display:
-      char: '@'
+      char: "@"
       attr: rock
     description:
       - Pushable rock
     properties: [known, unwalkable, pickable]
   - name: lemon
     display:
-      char: 'o'
+      char: "o"
       attr: gold
     description:
       - Sour fruit
     properties: [known, pickable]
   - name: lemonade
     display:
-      char: 'c'
+      char: "c"
       attr: gold
     description:
       - Sweet drink
@@ -166,9 +166,9 @@ robots:
 known: [flower]
 world:
   palette:
-    'B': [grass, erase, base]
-    '.': [grass]
-    'f': [grass, flower]
+    "B": [grass, erase, base]
+    ".": [grass]
+    "f": [grass, flower]
   upperleft: [0, 0]
   map: |
     .....

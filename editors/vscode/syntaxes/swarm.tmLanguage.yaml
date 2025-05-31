@@ -32,6 +32,7 @@ repository:
     patterns:
       - include: '#keyword'
       - include: '#require'
+      - include: '#stock'
       - include: '#operator'
       - include: '#lambda'
       - include: '#chain'
@@ -50,6 +51,9 @@ repository:
       require:
         name: keyword.control.require
         match: \b(require)\b
+      stock:
+        name: keyword.control.stock
+        match: \b(stock)\b
       lambda:
         name: keyword.operator.lambda
         match: \\(\w+)\.

@@ -14,5 +14,5 @@ def DFS =
   tB; move; tB
 end;
 build {
-  require 500 "rock"; DFS
+  stock 500 "rock"; DFS
 }

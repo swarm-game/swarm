@@ -76,13 +76,12 @@ parseTermAtom2 =
         <|> TText <$> textLiteral
         <|> TBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
         <|> reserved "require"
-          *> ( ( TRequireDevice
-                  <$> (textLiteral <?> "device name in double quotes")
-               )
-                <|> ( (TRequire . fromIntegral <$> integer)
-                        <*> (textLiteral <?> "entity name in double quotes")
-                    )
+          *> ( TRequire
+                <$> (textLiteral <?> "device name in double quotes")
              )
+        <|> reserved "stock"
+          *> (TStock . fromIntegral <$> integer)
+          <*> (textLiteral <?> "entity name in double quotes")
         <|> uncurry SRequirements <$> (reserved "requirements" *> match parseTerm)
         <|> SLam
           <$> (symbol "\\" *> locTmVar)

@@ -1499,7 +1499,7 @@ execConst runChildProg c vs s k = do
 
     return item
 
-  -- Check the required devices and inventory for running the given
+  -- Check the required devices and stocked inventory for running the given
   -- command on a target robot.  This function is used in common by
   -- both 'Build' and 'Reprogram'.
   --

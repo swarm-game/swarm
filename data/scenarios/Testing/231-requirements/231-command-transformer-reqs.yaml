@@ -4,7 +4,7 @@ description: |
   A function transforming a command correctly accumulates requirements.
 creative: false
 solution: |
-  def pr = require 1 "rock"; move; place "rock" end
+  def pr = stock 1 "rock"; move; place "rock" end
   def x4 = \c. c;c;c;c end
   build {x4 pr}
 objectives:

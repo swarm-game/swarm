@@ -201,7 +201,7 @@ def createWorkerForStructure = \loc.
     teleport self $ loc;
     let beename = mkBeeName loc in
     build {
-        require 1 "wax gland";
+        stock 1 "wax gland";
         workerProgramInit beename loc;
     };
     pure ();

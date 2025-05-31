@@ -175,11 +175,11 @@
   "Regexp that recognizes builtin for swarm language.")
 
 (defvar swarm-mode-types-regexp
-   "\\b[A-Z][a-zA-Z_]*\\b"
+  "\\b[A-Z][a-zA-Z_]*\\b"
   "Regexp that recognizes types (all uppercase strings are supposed to be types) in swarm language.")
 
 (defvar swarm-mode-keywords-regexp
-  (concat "\\b" (regexp-opt '("def" "tydef" "rec" "end" "let" "in" "require") t) "\\b")
+  (concat "\\b" (regexp-opt '("def" "tydef" "rec" "end" "let" "in" "require" "stock") t) "\\b")
   "Regexp that recognizes keywords in swarm language.")
 
 (defvar swarm-font-lock-keywords
@@ -200,12 +200,12 @@
 
 (with-eval-after-load 'lsp-mode
   (add-to-list 'lsp-language-id-configuration
-    '(swarm-mode . "swarm"))
+               '(swarm-mode . "swarm"))
 
   (lsp-register-client
-    (make-lsp-client :new-connection (lsp-stdio-connection (list "swarm" "lsp"))
-                     :activation-fn (lsp-activate-on "swarm")
-                     :server-id 'swarm-check)))
+   (make-lsp-client :new-connection (lsp-stdio-connection (list "swarm" "lsp"))
+                    :activation-fn (lsp-activate-on "swarm")
+                    :server-id 'swarm-check)))
 
 (provide 'swarm-mode)
 ;;; swarm-mode.el ends here

@@ -132,8 +132,8 @@ freeVarsS f = go S.empty
     TBool {} -> pure s
     TRobot {} -> pure s
     TRef {} -> pure s
-    TRequireDevice {} -> pure s
     TRequire {} -> pure s
+    TStock {} -> pure s
     SRequirements x s1 -> rewrap $ SRequirements x <$> go bound s1
     TVar x
       | x `S.member` bound -> pure s

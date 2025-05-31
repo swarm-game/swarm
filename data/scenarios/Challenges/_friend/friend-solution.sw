@@ -11,7 +11,7 @@ def give_fish = \n.
 end;
 
 build {
-  require 3 "fish";
+  stock 3 "fish";
   m2; turn left; m20;
   give_fish 3;
   turn back; m20; turn right; m2

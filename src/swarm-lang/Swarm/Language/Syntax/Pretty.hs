@@ -74,8 +74,8 @@ instance PrettyPrec (Term' ty) where
     TBool b -> bool "false" "true" b
     TRobot r -> "<a" <> pretty r <> ">"
     TRef r -> "@" <> pretty r
-    TRequireDevice d -> pparens (p > 10) $ "require" <+> ppr (TText d)
-    TRequire n e -> pparens (p > 10) $ "require" <+> pretty n <+> ppr (TText e)
+    TRequire d -> pparens (p > 10) $ "require" <+> ppr (TText d)
+    TStock n e -> pparens (p > 10) $ "stock" <+> pretty n <+> ppr (TText e)
     SRequirements _ e -> pparens (p > 10) $ "requirements" <+> ppr e
     TVar s -> pretty s
     SDelay (Syntax' _ (TConst Noop) _ _) -> "{}"
