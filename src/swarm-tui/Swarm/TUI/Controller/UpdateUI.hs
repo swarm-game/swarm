@@ -202,7 +202,6 @@ updateUI = do
           || newPopups
   pure redraw
 
--- |
 doRobotListUpdate :: Set DebugOption -> GameState -> EventM Name RobotDisplay ()
 doRobotListUpdate dOps g = do
   robotsGridList %= updateRobotList dOps g

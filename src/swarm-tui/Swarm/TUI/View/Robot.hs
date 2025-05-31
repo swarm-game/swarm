@@ -33,15 +33,18 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Map qualified as M
+import Data.Maybe (fromMaybe)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as S
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import Linear (V2, distance)
 import Numeric (showFFloat)
 import Swarm.Game.CESK (CESK (..))
 import Swarm.Game.Entity as E
+import Swarm.Game.Location (Point, origin)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
@@ -51,6 +54,7 @@ import Swarm.Game.State.Substate
 import Swarm.Game.Tick (addTicks)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
+import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr
@@ -62,10 +66,6 @@ import Swarm.Util (applyWhen, maximum0)
 import Swarm.Util.UnitInterval
 import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec (..))
-import Swarm.TUI.Model.DebugOption (DebugOption (..))
-import Linear (distance, V2)
-import Swarm.Game.Location (Point, origin)
-import Data.Maybe (fromMaybe)
 
 {--------------------------------------------------------------------
 NEW GRID LIST
@@ -138,7 +138,7 @@ getSelectedRobot g gl = do
 UPDATE
 --------------------------------------------------------------------}
 
-updateRobotList :: Set DebugOption ->  GameState -> BL.GridTabularList Name RID -> BL.GridTabularList Name RID
+updateRobotList :: Set DebugOption -> GameState -> BL.GridTabularList Name RID -> BL.GridTabularList Name RID
 updateRobotList dOpts g l = l {BL.list = updatedList}
  where
   updatedList :: BL.GenericList Name Seq RID
