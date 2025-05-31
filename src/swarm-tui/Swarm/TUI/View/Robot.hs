@@ -71,6 +71,7 @@ import System.Clock (TimeSpec (..))
 NEW GRID LIST
 --------------------------------------------------------------------}
 
+-- | The columns in the Robot modal grid.
 data RobotColumn
   = ColName
   | ColAge
@@ -82,7 +83,9 @@ data RobotColumn
   | ColCycles
   | ColActivity
   | ColLog
-  | ColID
+  | -- | The ID is the only optional field.
+    --   It is shown last to make indexing code easier.
+    ColID
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 colName :: RobotColumn -> Text
@@ -109,11 +112,13 @@ colWidths opt = ColW . getWidth <$> S.fromList robotColumns
 EMPTY
 --------------------------------------------------------------------}
 
+-- | Initial empty robot modal.
 emptyRobotDisplay :: Set DebugOption -> RobotDisplay
 emptyRobotDisplay opt =
   RobotDisplay
     { _isDetailsOpened = False
-    , _robotsGridList = BL.gridTabularList (RobotsListDialog RobotList) mempty (LstItmH 1) (colWidths opt)
+    , -- we have to select the fixed width columns at start - if they change, the whole list has to be replaced
+      _robotsGridList = BL.gridTabularList (RobotsListDialog RobotList) mempty (LstItmH 1) (colWidths opt)
     , _robotDetailsPaneState =
         RobotDetailsPaneState
           { _detailFocus = focusRing $ map (RobotsListDialog . SingleRobotDetails) enumerate
@@ -129,6 +134,7 @@ GET SELECTED
 getSelectedRID :: BL.GridTabularList Name RID -> Maybe RID
 getSelectedRID gl = snd <$> BL.listSelectedElement gl.list
 
+-- | Get the robot selected in the robot list.
 getSelectedRobot :: GameState -> BL.GridTabularList Name RID -> Maybe Robot
 getSelectedRobot g gl = do
   rid <- getSelectedRID gl
@@ -138,6 +144,9 @@ getSelectedRobot g gl = do
 UPDATE
 --------------------------------------------------------------------}
 
+-- | Update robot modal grid list contents.
+--
+-- To prevent memory leaks, this only stores robot IDs.
 updateRobotList :: Set DebugOption -> GameState -> BL.GridTabularList Name RID -> BL.GridTabularList Name RID
 updateRobotList dOpts g l = l {BL.list = updatedList}
  where
@@ -170,6 +179,9 @@ columnHdrAttr = attrName "columnHeader"
 rowHdrAttr :: AttrName
 rowHdrAttr = attrName "rowHeader"
 
+-- | Draw robot modal.
+--
+-- It either shows a list of robots information or details of selected robot.
 drawRobotsDisplayModal :: UIGameplay -> GameState -> RobotDisplay -> Widget Name
 drawRobotsDisplayModal t g robDisplay =
   if robDisplay ^. isDetailsOpened
@@ -191,6 +203,7 @@ drawRobotsDisplayModal t g robDisplay =
 drawRobotsList :: UIGameplay -> GameState -> BL.GridTabularList Name RID -> Widget Name
 drawRobotsList t g = vLimit 30 . BL.renderGridTabularList (robotGridRenderers t g) (LstFcs True)
 
+-- | Render robot modal grid - column and row headers as well as cells based on robot ID.
 robotGridRenderers :: UIGameplay -> GameState -> BL.GridRenderers Name RID
 robotGridRenderers t g =
   BL.GridRenderers
@@ -200,7 +213,7 @@ robotGridRenderers t g =
     , BL.colHdrRowHdr = Just colRowHdr
     }
 
--- | Enumerates the rows by position (not 'RID').
+-- | Enumerates the rows by position (just row index, not 'RID').
 rowHdr :: RowHdr Name a
 rowHdr =
   RowHdr
