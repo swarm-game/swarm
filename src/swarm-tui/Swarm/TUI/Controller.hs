@@ -111,6 +111,7 @@ import Swarm.TUI.View.Popup (startPopupAnimation)
 import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Robot.Type
 import Swarm.Util hiding (both, (<<.=))
+import Swarm.Game.Robot (robotDisplay)
 
 -- | The top-level event handler for the TUI.
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -516,7 +517,7 @@ handleModalEvent = \case
         uiGame <- use uiGameplay
         g <- use gameState
         Brick.zoom (uiGameplay . uiDialogs . uiRobot) $ case ev of
-          V.EvKey (V.KChar '\t') [] -> robotDetailsFocus %= focusNext
+          V.EvKey (V.KChar '\t') [] -> robotDetailsPaneState . detailFocus %= focusNext
           _ -> do
             isInDetailsMode <- use isDetailsOpened
             if isInDetailsMode
