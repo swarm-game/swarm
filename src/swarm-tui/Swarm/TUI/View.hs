@@ -1544,7 +1544,7 @@ drawREPL ps =
   -- indexing that may be an alternative to this:
   base = gs ^. robotInfo . robotMap . at 0
 
-  fmt (REPLHistItem itemType t) = case itemType of
+  fmt (REPLHistItem itemType _tick t) = case itemType of
     REPLEntry {} -> txt $ "> " <> t
     REPLOutput -> txt t
     REPLError -> txtWrapWith indent2 {preserveIndentation = True} t
