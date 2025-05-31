@@ -28,10 +28,6 @@ import Brick.Widgets.TabularList.Mixed
 import Control.Lens as Lens hiding (Const, from)
 import Data.IntMap qualified as IM
 import Data.List.Extra (dropPrefix, enumerate)
-import Data.List.NonEmpty (NonEmpty ((:|)))
-import Data.List.NonEmpty qualified as NE
-import Data.Map.Strict qualified as M
-import Data.Maybe (fromMaybe)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Sequence (Seq)
