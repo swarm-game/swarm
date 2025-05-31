@@ -25,26 +25,8 @@ import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
-import Control.Lens as Lens hiding (
-  Const,
-  distrib,
-  from,
-  parts,
-  use,
-  uses,
-  view,
-  (%=),
-  (+=),
-  (.=),
-  (<+=),
-  (<>=),
- )
-import Control.Monad (
-  foldM,
-  forM_,
-  unless,
-  when,
- )
+import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
+import Control.Monad (foldM, forM_, unless, when)
 import Data.Foldable.Extra (notNull)
 import Data.Functor (void)
 import Data.IntMap qualified as IM
@@ -63,12 +45,7 @@ import Swarm.Effect as Effect (Time, getNow)
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
 import Swarm.Game.Display
-import Swarm.Game.Entity hiding (
-  empty,
-  lookup,
-  singleton,
-  union,
- )
+import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Exception
 import Swarm.Game.Land
 import Swarm.Game.Robot
@@ -92,10 +69,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
 import Swarm.Log
-import Swarm.Pretty (
-  BulletList (BulletList, bulletListItems),
-  prettyText,
- )
+import Swarm.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Util hiding (both)
 import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec)

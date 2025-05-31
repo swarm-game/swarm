@@ -57,14 +57,7 @@ import Control.Effect.Reader
 import Control.Effect.Throw
 import Control.Lens (view, (^.))
 import Control.Lens.Indexed (itraverse)
-import Control.Monad (
-  forM,
-  forM_,
-  void,
-  when,
-  (<=<),
-  (>=>),
- )
+import Control.Monad (forM, forM_, void, when, (<=<), (>=>))
 import Control.Monad.Free qualified as Free
 import Data.Data (Data, gmapM)
 import Data.Foldable (fold, traverse_)
@@ -78,19 +71,12 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Prettyprinter
-import Swarm.Effect.Unify (
-  Unification,
-  UnificationError,
- )
+import Swarm.Effect.Unify (Unification, UnificationError)
 import Swarm.Effect.Unify qualified as U
 import Swarm.Effect.Unify.Fast qualified as U
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Kindcheck (
-  KindError (..),
-  checkKind,
-  checkPolytypeKind,
- )
+import Swarm.Language.Kindcheck (KindError (..), checkKind, checkPolytypeKind)
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Requirements.Analysis (requirements)

@@ -11,30 +11,12 @@ module Main where
 
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
-import Control.Lens (
-  Ixed (ix),
-  at,
-  to,
-  view,
-  (&),
-  (.~),
-  (^.),
-  (^..),
-  (^?),
-  (^?!),
- )
-import Control.Monad (
-  forM_,
-  unless,
-  when,
- )
+import Control.Lens (Ixed (ix), at, to, view, (&), (.~), (^.), (^..), (^?), (^?!))
+import Control.Monad (forM_, unless, when)
 import Control.Monad.State (execStateT)
 import Data.Char (isSpace)
 import Data.Containers.ListUtils (nubOrd)
-import Data.Foldable (
-  Foldable (toList),
-  find,
- )
+import Data.Foldable (Foldable (toList), find)
 import Data.IntSet qualified as IS
 import Data.List (partition)
 import Data.Map qualified as M
@@ -43,47 +25,19 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
-import Data.Yaml (
-  ParseException,
-  decodeFileEither,
-  prettyPrintParseException,
- )
+import Data.Yaml (ParseException, decodeFileEither, prettyPrintParseException)
 import Swarm.Doc.Keyword (EditorType (..))
 import Swarm.Doc.Keyword qualified as Keyword
 import Swarm.Failure (SystemFailure)
 import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
 import Swarm.Game.CESK (initMachine)
 import Swarm.Game.Entity (lookupByName)
-import Swarm.Game.Robot (
-  equippedDevices,
-  robotName,
-  systemRobot,
- )
-import Swarm.Game.Robot.Activity (
-  commandsHistogram,
-  lifetimeStepCount,
-  tangibleCommandCount,
- )
-import Swarm.Game.Robot.Concrete (
-  activityCounts,
-  machine,
-  robotLog,
-  waitingUntil,
- )
-import Swarm.Game.Scenario (
-  Scenario,
-  ScenarioInputs (..),
-  gsiScenarioInputs,
- )
-import Swarm.Game.Scenario.Scoring.GenericMetrics (
-  Metric (..),
-  Progress (..),
- )
-import Swarm.Game.ScenarioInfo (
-  ScenarioInfo,
-  ScenarioStatus (..),
-  scenarioStatus,
- )
+import Swarm.Game.Robot (equippedDevices, robotName, systemRobot)
+import Swarm.Game.Robot.Activity (commandsHistogram, lifetimeStepCount, tangibleCommandCount)
+import Swarm.Game.Robot.Concrete (activityCounts, machine, robotLog, waitingUntil)
+import Swarm.Game.Scenario (Scenario, ScenarioInputs (..), gsiScenarioInputs)
+import Swarm.Game.Scenario.Scoring.GenericMetrics (Metric (..), Progress (..))
+import Swarm.Game.ScenarioInfo (ScenarioInfo, ScenarioStatus (..), scenarioStatus)
 import Swarm.Game.State (
   GameState,
   baseRobot,
@@ -112,10 +66,7 @@ import Swarm.Game.State.Substate (
   ticks,
  )
 import Swarm.Game.Step.Path.Type
-import Swarm.Game.Step.Validate (
-  badErrorsInLogs,
-  playUntilWin,
- )
+import Swarm.Game.Step.Validate (badErrorsInLogs, playUntilWin)
 import Swarm.Game.Tick (getTickNumber)
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.Log
@@ -130,32 +81,15 @@ import Swarm.TUI.Model (
   userScenario,
  )
 import Swarm.TUI.Model.DebugOption (DebugOption (LoadTestingScenarios))
-import Swarm.TUI.Model.StateUpdate (
-  PersistentState (..),
-  constructAppState,
-  initPersistentState,
- )
-import Swarm.Util (
-  applyWhen,
-  findAllWithExt,
- )
+import Swarm.TUI.Model.StateUpdate (PersistentState (..), constructAppState, initPersistentState)
+import Swarm.Util (applyWhen, findAllWithExt)
 import Swarm.Util.RingBuffer qualified as RB
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.FilePath (splitDirectories)
 import System.Timeout (timeout)
-import Test.Tasty (
-  TestTree,
-  defaultMain,
-  testGroup,
- )
+import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.ExpectedFailure (expectFailBecause)
-import Test.Tasty.HUnit (
-  Assertion,
-  assertBool,
-  assertEqual,
-  assertFailure,
-  testCase,
- )
+import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, testCase)
 import TestFormat
 import TestRecipeCoverage
 import Witch (into)

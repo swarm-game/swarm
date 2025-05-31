@@ -35,13 +35,7 @@ import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern (sComments, pattern STerm)
 import Swarm.Language.Syntax.Util (erase, unTuple)
 import Swarm.Language.Types
-import Swarm.Pretty (
-  PrettyPrec (..),
-  encloseWithIndent,
-  pparens,
-  ppr,
-  prettyEquality,
- )
+import Swarm.Pretty (PrettyPrec (..), encloseWithIndent, pparens, ppr, prettyEquality)
 import Text.Show.Unicode (ushow)
 
 -- | Pretty-print a syntax node with comments.

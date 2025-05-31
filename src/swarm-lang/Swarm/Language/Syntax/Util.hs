@@ -25,14 +25,7 @@ module Swarm.Language.Syntax.Util (
   measureAstSize,
 ) where
 
-import Control.Lens (
-  Traversal',
-  para,
-  universe,
-  (%~),
-  (^.),
-  pattern Empty,
- )
+import Control.Lens (Traversal', para, universe, (%~), (^.), pattern Empty)
 import Control.Monad (void)
 import Data.Data (Data)
 import Data.List.NonEmpty (NonEmpty)

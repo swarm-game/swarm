@@ -16,70 +16,26 @@ import Control.Carrier.State.Lazy
 import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
-import Control.Lens as Lens hiding (
-  Const,
-  distrib,
-  from,
-  parts,
-  use,
-  uses,
-  view,
-  (%=),
-  (+=),
-  (.=),
-  (<+=),
-  (<>=),
- )
-import Control.Monad (
-  filterM,
-  forM,
-  forM_,
-  guard,
-  msum,
-  unless,
-  when,
- )
+import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
+import Control.Monad (filterM, forM, forM_, guard, msum, unless, when)
 import Data.Bifunctor (second)
 import Data.Bool (bool)
-import Data.Char (
-  chr,
-  ord,
- )
-import Data.Either (
-  partitionEithers,
-  rights,
- )
-import Data.Foldable (
-  asum,
-  for_,
-  traverse_,
- )
-import Data.Foldable.Extra (
-  findM,
-  firstJustM,
- )
+import Data.Char (chr, ord)
+import Data.Either (partitionEithers, rights)
+import Data.Foldable (asum, for_, traverse_)
+import Data.Foldable.Extra (findM, firstJustM)
 import Data.Function (on)
 import Data.Functor (void)
 import Data.Int (Int32)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
-import Data.List (
-  find,
-  sortOn,
- )
+import Data.List (find, sortOn)
 import Data.List qualified as L
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Map.NonEmpty qualified as NEM
 import Data.Map.Strict qualified as MS
-import Data.Maybe (
-  catMaybes,
-  fromMaybe,
-  isJust,
-  isNothing,
-  listToMaybe,
-  mapMaybe,
- )
+import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
 import Data.MonoidMap qualified as MM
 import Data.Ord (Down (Down))
 import Data.Sequence qualified as Seq
@@ -88,25 +44,13 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Tuple (swap)
-import Linear (
-  V2 (..),
-  perp,
-  zero,
- )
-import Swarm.Effect as Effect (
-  Time,
-  getNow,
- )
+import Linear (V2 (..), perp, zero)
+import Swarm.Effect as Effect (Time, getNow)
 import Swarm.Failure
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
 import Swarm.Game.Display
-import Swarm.Game.Entity hiding (
-  empty,
-  lookup,
-  singleton,
-  union,
- )
+import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Land
@@ -117,10 +61,7 @@ import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Scenario (RecognizableStructureContent)
-import Swarm.Game.Scenario.Topography.Area (
-  getNEGridDimensions,
-  rectHeight,
- )
+import Swarm.Game.Scenario.Topography.Area (getNEGridDimensions, rectHeight)
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.Navigation.Util
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointName (..))
@@ -158,19 +99,12 @@ import Swarm.Language.Value
 import Swarm.Log
 import Swarm.Pretty (prettyText)
 import Swarm.ResourceLoading (getDataFileNameSafe)
-import Swarm.Util hiding (
-  both,
- )
+import Swarm.Util hiding (both)
 import Swarm.Util.Effect (throwToMaybe)
 import Swarm.Util.Lens (inherit)
 import Text.Megaparsec (runParser)
-import Witch (
-  From (from),
-  into,
- )
-import Prelude hiding (
-  lookup,
- )
+import Witch (From (from), into)
+import Prelude hiding (lookup)
 
 -- | How to handle failure, for example when moving into liquid or
 --   attempting to move to a blocked location

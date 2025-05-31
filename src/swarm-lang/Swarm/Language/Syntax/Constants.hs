@@ -39,10 +39,7 @@ import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Prettyprinter (pretty)
 import Swarm.Language.Syntax.CommandMetadata
-import Swarm.Pretty (
-  PrettyPrec (..),
-  pparens,
- )
+import Swarm.Pretty (PrettyPrec (..), pparens)
 import Swarm.Util (showT)
 
 ------------------------------------------------------------
