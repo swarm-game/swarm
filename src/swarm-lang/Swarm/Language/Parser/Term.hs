@@ -77,7 +77,7 @@ parseTermAtom2 =
         <|> TBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
         <|> reserved "require"
           *> ( TRequire
-                <$> (textLiteral <?> "device name in double quotes")
+                 <$> (textLiteral <?> "device name in double quotes")
              )
         <|> reserved "stock"
           *> (TStock . fromIntegral <$> integer)

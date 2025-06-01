@@ -109,68 +109,52 @@ testPrettyConst =
         "types"
         [ testCase
             "Void type"
-            ( equalPrettyLine "Void" TyVoid
-            )
+            (equalPrettyLine "Void" TyVoid)
         , testCase
             "Unit type"
-            ( equalPrettyLine "Unit" TyUnit
-            )
+            (equalPrettyLine "Unit" TyUnit)
         , testCase
             "Function type"
-            ( equalPrettyLine "Int -> Cmd Unit" $ TyInt :->: TyCmd TyUnit
-            )
+            (equalPrettyLine "Int -> Cmd Unit" $ TyInt :->: TyCmd TyUnit)
         , testCase
             "Cmd type"
-            ( equalPrettyLine "Cmd (Int -> Int)" $ TyCmd (TyInt :->: TyInt)
-            )
+            (equalPrettyLine "Cmd (Int -> Int)" $ TyCmd (TyInt :->: TyInt))
         , testCase
             "Product type"
-            ( equalPrettyLine "Int * Int" $ TyInt :*: TyInt
-            )
+            (equalPrettyLine "Int * Int" $ TyInt :*: TyInt)
         , testCase
             "Sum type"
-            ( equalPrettyLine "Int + Int" $ TyInt :+: TyInt
-            )
+            (equalPrettyLine "Int + Int" $ TyInt :+: TyInt)
         , testCase
             "Sum of sum right"
-            ( equalPrettyLine "Int + (Unit + Bool)" $ TyInt :+: (TyUnit :+: TyBool)
-            )
+            (equalPrettyLine "Int + (Unit + Bool)" $ TyInt :+: (TyUnit :+: TyBool))
         , testCase
             "Sum of sum left"
-            ( equalPrettyLine "(Int + Unit) + Bool" $ (TyInt :+: TyUnit) :+: TyBool
-            )
+            (equalPrettyLine "(Int + Unit) + Bool" $ (TyInt :+: TyUnit) :+: TyBool)
         , testCase
             "Product of product right"
-            ( equalPrettyLine "Int * (Unit * Bool)" $ TyInt :*: (TyUnit :*: TyBool)
-            )
+            (equalPrettyLine "Int * (Unit * Bool)" $ TyInt :*: (TyUnit :*: TyBool))
         , testCase
             "Product of product left"
-            ( equalPrettyLine "(Int * Unit) * Bool" $ (TyInt :*: TyUnit) :*: TyBool
-            )
+            (equalPrettyLine "(Int * Unit) * Bool" $ (TyInt :*: TyUnit) :*: TyBool)
         , testCase
             "Product of sum"
-            ( equalPrettyLine "Int * (Unit + Bool)" $ TyInt :*: (TyUnit :+: TyBool)
-            )
+            (equalPrettyLine "Int * (Unit + Bool)" $ TyInt :*: (TyUnit :+: TyBool))
         , testCase
             "Sum of product"
-            ( equalPrettyLine "Int + (Unit * Bool)" $ TyInt :+: (TyUnit :*: TyBool)
-            )
+            (equalPrettyLine "Int + (Unit * Bool)" $ TyInt :+: (TyUnit :*: TyBool))
         , testCase
             "Product of function"
-            ( equalPrettyLine "Int * (Unit -> Bool)" $ TyInt :*: (TyUnit :->: TyBool)
-            )
+            (equalPrettyLine "Int * (Unit -> Bool)" $ TyInt :*: (TyUnit :->: TyBool))
         , testCase
             "Function of product"
-            ( equalPrettyLine "Int -> (Unit * Bool)" $ TyInt :->: (TyUnit :*: TyBool)
-            )
+            (equalPrettyLine "Int -> (Unit * Bool)" $ TyInt :->: (TyUnit :*: TyBool))
         , testCase
             "Function of function right"
-            ( equalPrettyLine "Int -> Unit -> Bool" $ TyInt :->: (TyUnit :->: TyBool)
-            )
+            (equalPrettyLine "Int -> Unit -> Bool" $ TyInt :->: (TyUnit :->: TyBool))
         , testCase
             "Function of function left"
-            ( equalPrettyLine "(Int -> Unit) -> Bool" $ (TyInt :->: TyUnit) :->: TyBool
-            )
+            (equalPrettyLine "(Int -> Unit) -> Bool" $ (TyInt :->: TyUnit) :->: TyBool)
         , testCase
             "density (two nested products)"
             ( equalPrettyLine "((Int * Int) * (Int * Int)) -> Cmd Int" $
@@ -181,28 +165,22 @@ testPrettyConst =
         "types but with limited width for pretty printing"
         [ testCase
             "Void type"
-            ( equalPrettyWidth 10 "Void" TyVoid
-            )
+            (equalPrettyWidth 10 "Void" TyVoid)
         , testCase
             "Function type"
-            ( equalPrettyWidth 20 "Int -> Cmd Unit" $ TyInt :->: TyCmd TyUnit
-            )
+            (equalPrettyWidth 20 "Int -> Cmd Unit" $ TyInt :->: TyCmd TyUnit)
         , testCase
             "Cmd type"
-            ( equalPrettyWidth 20 "Cmd (Int -> Int)" $ TyCmd (TyInt :->: TyInt)
-            )
+            (equalPrettyWidth 20 "Cmd (Int -> Int)" $ TyCmd (TyInt :->: TyInt))
         , testCase
             "Product type"
-            ( equalPrettyWidth 20 "Int * Int" $ TyInt :*: TyInt
-            )
+            (equalPrettyWidth 20 "Int * Int" $ TyInt :*: TyInt)
         , testCase
             "Function of function right"
-            ( equalPrettyWidth 10 "Int ->\nUnit ->\nBool" $ TyInt :->: (TyUnit :->: TyBool)
-            )
+            (equalPrettyWidth 10 "Int ->\nUnit ->\nBool" $ TyInt :->: (TyUnit :->: TyBool))
         , testCase
             "Function of function left"
-            ( equalPrettyWidth 20 "(Int -> Unit) ->\nBool" $ (TyInt :->: TyUnit) :->: TyBool
-            )
+            (equalPrettyWidth 20 "(Int -> Unit) ->\nBool" $ (TyInt :->: TyUnit) :->: TyBool)
         , testCase
             "density (two nested products) with  nested indentation"
             ( equalPrettyWidth 20 "(\n  (Int * Int) * (\n    Int * Int\n  )\n) -> Cmd Int" $

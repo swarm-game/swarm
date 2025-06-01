@@ -211,7 +211,7 @@ them!
 
 #### Formatting style
 
-We use [`fourmolu-0.13.0.0`](https://hackage.haskell.org/package/fourmolu)
+We use [`fourmolu-0.18.0.0`](https://hackage.haskell.org/package/fourmolu)
 with a [custom
 configuration](https://github.com/swarm-game/swarm/blob/main/fourmolu.yaml)
 for formatting Haskell code.
@@ -219,18 +219,18 @@ for formatting Haskell code.
 To install the formatter, run:
 
 ```bash
-cabal install fourmolu-0.13.0.0
+cabal install fourmolu-0.18.0.0
 ```
 
 If this installation does not work, you may have to set your GHC to a version supported by `fourmolu`:
 
 ```bash
-ghcup install ghc 9.8.2
+ghcup install ghc 9.8.4
 ```
 and/or:
 
 ```bash
-ghcup set ghc 9.8.2
+ghcup set ghc 9.8.4
 ```
 
 You can run the formatter from the shell:
