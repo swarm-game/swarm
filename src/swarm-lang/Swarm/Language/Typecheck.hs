@@ -864,8 +864,8 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   TAntiText x -> return $ Syntax' l (TAntiText x) cs UTyText
   TBool b -> return $ Syntax' l (TBool b) cs UTyBool
   TRobot r -> return $ Syntax' l (TRobot r) cs UTyActor
-  TRequireDevice d -> return $ Syntax' l (TRequireDevice d) cs (UTyCmd UTyUnit)
-  TRequire n d -> return $ Syntax' l (TRequire n d) cs (UTyCmd UTyUnit)
+  TRequire d -> return $ Syntax' l (TRequire d) cs (UTyCmd UTyUnit)
+  TStock n d -> return $ Syntax' l (TStock n d) cs (UTyCmd UTyUnit)
   SRequirements x t1 -> do
     t1' <- infer t1
     return $ Syntax' l (SRequirements x t1') cs (UTyCmd UTyUnit)
@@ -1402,8 +1402,8 @@ analyzeAtomic locals (Syntax l t) = case t of
   TAntiSyn {} -> return 0
   TBool {} -> return 0
   TRobot {} -> return 0
-  TRequireDevice {} -> return 0
   TRequire {} -> return 0
+  TStock {} -> return 0
   SRequirements {} -> return 0
   STydef {} -> return 0
   TType {} -> return 0

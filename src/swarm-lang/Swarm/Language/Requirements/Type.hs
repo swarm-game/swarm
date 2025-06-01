@@ -36,7 +36,7 @@ import Swarm.Language.Context (Ctx)
 --   - A robot can require a certain 'Capability', which should be fulfilled
 --     by equipping an appropriate device.
 --   - A robot can require a specific /device/, which should be equipped.
---   - A robot can require some number of a specific entity in its inventory.
+--   - A robot can stock some number of a specific entity in its inventory.
 data Requirement
   = -- | Require a specific capability.  This must be fulfilled by
     --   equipping an appropriate device.  Requiring the same
@@ -53,7 +53,7 @@ data Requirement
     --   Requiring the same device multiple times is the same as
     --   requiring it once.
     ReqDev Text
-  | -- | Require a certain number of a specific entity to be available
+  | -- | Stock a certain number of a specific entity to be available
     --   in the inventory.  The same comments apply re: resolving the
     --   entity name to an actual 'Swarm.Game.Entity.Entity'.
     --

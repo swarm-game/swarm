@@ -81,9 +81,9 @@ data Term' ty
     --   but are here to facilitate pretty-printing.
     TRef Int
   | -- | Require a specific device to be installed.
-    TRequireDevice Text
+    TRequire Text
   | -- | Require a certain number of an entity.
-    TRequire Int Text
+    TStock Int Text
   | -- | Primitive command to log requirements of a term.  The Text
     --   field is to store the unaltered original text of the term, for use
     --   in displaying the log message (since once we get to execution time the

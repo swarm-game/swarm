@@ -66,8 +66,8 @@ elaborate = transform rewrite
 insertSuspend :: Term -> Term
 insertSuspend t = case t of
   -- Primitive things which have type Cmd Unit: p => (p ; suspend ())
-  TRequireDevice {} -> thenSuspend
   TRequire {} -> thenSuspend
+  TStock {} -> thenSuspend
   TRequirements {} -> thenSuspend
   -- Recurse through def, tydef, bind, and annotate.
   TLet ls r x mty mpty mreq t1 t2 -> TLet ls r x mty mpty mreq t1 (insertSuspend t2)
