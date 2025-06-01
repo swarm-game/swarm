@@ -73,8 +73,8 @@ requirements tdCtx ctx =
     -- constants using 'constCaps'.
     TConst c -> forM_ (constCaps c) (add . singletonCap)
     -- Simply record device or inventory requirements.
-    TRequireDevice d -> add (singletonDev d)
-    TRequire n e -> add (singletonInv n e)
+    TRequire d -> add (singletonDev d)
+    TStock n e -> add (singletonInv n e)
     -- Note that a variable might not show up in the context, and
     -- that's OK; if not, it just means using the variable requires
     -- no special capabilities.

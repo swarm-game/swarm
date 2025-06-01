@@ -129,8 +129,8 @@ narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
   TText {} -> Nothing
   TBool {} -> Nothing
   TVar {} -> Nothing
+  TStock {} -> Nothing
   TRequire {} -> Nothing
-  TRequireDevice {} -> Nothing
   TType {} -> Nothing
   -- these should not show up in surface language
   TRef {} -> Nothing
@@ -215,8 +215,8 @@ explain trm = case trm ^. sTerm of
       [explain lhs]
   -- special forms (function application will show for `$`, but really should be rare)
   SApp {} -> explainFunction trm
-  TRequireDevice {} -> pure "Require a specific device to be equipped."
-  TRequire {} -> pure "Require a certain number of an entity."
+  TRequire {} -> pure "Require a specific device to be equipped."
+  TStock {} -> pure "Stock a certain number of an entity."
   SRequirements {} -> pure "Query the requirements of a term."
   -- definition or bindings
   SLet ls isRecursive var mTypeAnn _ _ rhs _b -> pure $ explainDefinition ls isRecursive var (rhs ^. sType) mTypeAnn

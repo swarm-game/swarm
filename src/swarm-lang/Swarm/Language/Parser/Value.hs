@@ -68,8 +68,8 @@ toValue = \case
   TConst {} -> Nothing
   TAntiInt {} -> Nothing
   TAntiText {} -> Nothing
-  TRequireDevice {} -> Nothing
   TRequire {} -> Nothing
+  TStock {} -> Nothing
   TRequirements {} -> Nothing
   TVar {} -> Nothing
   TLam {} -> Nothing

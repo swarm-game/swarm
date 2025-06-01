@@ -176,8 +176,8 @@ testLanguagePipeline =
             "require device"
             (valid "require \"boat\"")
         , testCase
-            "require entities"
-            (valid "require 64 \"rock\"")
+            "stock entities"
+            (valid "stock 64 \"rock\"")
         , testCase
             "invalid syntax to require"
             ( process
@@ -188,19 +188,19 @@ testLanguagePipeline =
                     , "1 | require x"
                     , "  |         ^"
                     , "unexpected 'x'"
-                    , "expecting device name in double quotes or integer literal"
+                    , "expecting device name in double quotes"
                     ]
                 )
             )
         , testCase
-            "invalid syntax to require n"
+            "invalid syntax to stock n"
             ( process
-                "require 2 x"
+                "stock 2 x"
                 ( T.unlines
-                    [ "1:11:"
+                    [ "1:9:"
                     , "  |"
-                    , "1 | require 2 x"
-                    , "  |           ^"
+                    , "1 | stock 2 x"
+                    , "  |         ^"
                     , "unexpected 'x'"
                     , "expecting entity name in double quotes"
                     ]
@@ -744,7 +744,7 @@ testLanguagePipeline =
             "missing end"
             ( process
                 "def x = 3;\n def y = 3 end;\n def z = 3 end"
-                "3:15:\n  |\n3 |  def z = 3 end\n  |               ^\nunexpected end of input\nexpecting \"!=\", \"&&\", \"()\", \"++\", \"<=\", \"==\", \">=\", \"def\", \"false\", \"let\", \"require\", \"requirements\", \"true\", \"tydef\", \"||\", '\"', '$', '(', '*', '+', '-', '.', '/', ':', ';', '<', '>', '[', '\\', '^', 'end' keyword for definition of 'x', '{', built-in user function, direction constant, integer literal, or variable name\n"
+                "3:15:\n  |\n3 |  def z = 3 end\n  |               ^\nunexpected end of input\nexpecting \"!=\", \"&&\", \"()\", \"++\", \"<=\", \"==\", \">=\", \"def\", \"false\", \"let\", \"require\", \"requirements\", \"stock\", \"true\", \"tydef\", \"||\", '\"', '$', '(', '*', '+', '-', '.', '/', ':', ';', '<', '>', '[', '\\', '^', 'end' keyword for definition of 'x', '{', built-in user function, direction constant, integer literal, or variable name\n"
             )
         ]
     ]

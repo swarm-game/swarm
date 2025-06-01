@@ -1,18 +1,20 @@
 version: 1
-name: Require entities
+name: Stock entities with definition
 description: |
-  Require some entities using the 'require' command.
+  Stock some entities using the 'stock' command, and a definition.
   https://github.com/swarm-game/swarm/issues/201
 objectives:
   - condition: |
       try {
         r <- robotNumbered 1;
+        p <- as r {whereami};
         r1 <- as r {count "rock"};
         r0 <- as base {count "rock"};
-        pure (r0 == 5 && r1 == 3);
+        pure (p == (4,0) && r0 == 5 && r1 == 1);
       } { pure false }
 solution: |
-  build { require 5 "rock"; move; place "rock"; move; place "rock" }
+  def mp = move; place "rock" end;
+  build { log "hi"; stock 5 "rock"; mp; mp; mp; mp }
 robots:
   - name: base
     loc: [0, 0]
@@ -33,6 +35,6 @@ world:
     '+': [stone, wall]
   upperleft: [-1, 1]
   map: |
-    +++++
-    +...+
-    +++++
+    +++++++
+    +.....+
+    +++++++
