@@ -131,8 +131,7 @@ newtype UnificationC m a = UnificationC
             (Subst IntVar UType)
             ( StateC
                 FreshVarCounter
-                ( ThrowC UnificationError m
-                )
+                (ThrowC UnificationError m)
             )
         )
         a
