@@ -94,11 +94,5 @@ testRepl =
 mkREPLSubmission :: Text -> REPLHistItem
 mkREPLSubmission = REPLHistItem (REPLEntry Submitted) (TickNumber 0)
 
-mkREPLSaved :: Text -> REPLHistItem
-mkREPLSaved = REPLHistItem (REPLEntry Stashed) (TickNumber 0)
-
 mkREPLOutput :: Text -> REPLHistItem
 mkREPLOutput = REPLHistItem REPLOutput (TickNumber 0)
-
-mkREPLError :: Text -> REPLHistItem
-mkREPLError = REPLHistItem REPLError (TickNumber 0)
