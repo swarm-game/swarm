@@ -60,7 +60,7 @@ import Control.Lens.Indexed (itraverse)
 import Control.Monad (forM, forM_, void, when, (<=<), (>=>))
 import Control.Monad.Free qualified as Free
 import Data.Data (Data, gmapM)
-import Data.Foldable (fold, traverse_)
+import Data.Foldable (fold)
 import Data.Functor.Identity
 import Data.Generics (mkM)
 import Data.Map (Map, (!))
@@ -76,12 +76,13 @@ import Swarm.Effect.Unify qualified as U
 import Swarm.Effect.Unify.Fast qualified as U
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Kindcheck (KindError (..), checkKind, checkPolytypeKind)
+import Swarm.Language.Kindcheck (KindError (..), processPolytype, processType)
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Requirements.Analysis (requirements)
 import Swarm.Language.Requirements.Type (ReqCtx)
 import Swarm.Language.Syntax
+import Swarm.Language.TDVar (TDVar, tdVarName)
 import Swarm.Language.Types
 import Swarm.Pretty
 import Prelude hiding (lookup)
@@ -104,7 +105,7 @@ data TCFrame where
 
 instance PrettyPrec TCFrame where
   prettyPrec _ = \case
-    TCLet x -> "While checking the definition of" <+> pretty x
+    TCLet x -> "While checking the definition of" <+> ppr x
     TCAppL s -> "While checking a function applied to an argument: _" <+> prettyPrec 11 s
     TCAppR s -> "While checking the argument to a function:" <+> prettyPrec 10 s <+> "_"
 
@@ -400,7 +401,7 @@ instantiate (unPoly -> (xs, uty)) = do
 --
 --   Returns a context mapping from instantiated type variables to generated
 --   Skolem variables, along with the substituted type.
-skolemize :: (Has Unification sig m, Has (Reader TVCtx) sig m) => UPolytype -> m (Ctx UType, UType)
+skolemize :: (Has Unification sig m, Has (Reader TVCtx) sig m) => UPolytype -> m (Ctx Var UType, UType)
 skolemize (unPoly -> (xs, uty)) = do
   skolemNames <- forM xs $ \x -> do
     s <- mkVarName "s" <$> U.freshIntVar
@@ -449,7 +450,7 @@ data TypeErr
   = -- | An undefined variable was encountered.
     UnboundVar Var
   | -- | An undefined type was encountered.
-    UnboundType Var
+    UnboundType TDVar
   | -- | A kind error was encountered.
     KindErr KindError
   | -- | A Skolem variable escaped its local context.
@@ -511,11 +512,11 @@ instance PrettyPrec TypeErr where
     FieldsMismatch (getJoin -> (expFs, actFs)) ->
       fieldMismatchMsg expFs actFs
     EscapedSkolem x ->
-      "Skolem variable" <+> pretty x <+> "would escape its scope"
+      "Skolem variable" <+> ppr x <+> "would escape its scope"
     UnboundVar x ->
-      "Unbound variable" <+> pretty x
+      "Unbound variable" <+> ppr x
     UnboundType x ->
-      "Undefined type" <+> pretty x
+      "Undefined type" <+> ppr x
     DefNotTopLevel t ->
       "Definitions may only be at the top level:" <+> pprCode t
     CantInfer t ->
@@ -526,7 +527,7 @@ instance PrettyPrec TypeErr where
     CantInferProj t ->
       "In the record projection" <+> pprCode t <> ", can't infer whether the LHS has a record type.  Try adding a type annotation."
     UnknownProj x t ->
-      "Record does not have a field with name" <+> pretty x <> ":" <+> pprCode t
+      "Record does not have a field with name" <+> ppr x <> ":" <+> pprCode t
     InvalidAtomic reason t ->
       "Invalid atomic block:" <+> ppr reason <> ":" <+> pprCode t
     Impredicative ->
@@ -564,7 +565,7 @@ tyConNounPhrase = \case
   TCSum -> "a sum"
   TCProd -> "a pair"
   TCFun -> "a function"
-  TCUser t -> pretty t
+  TCUser t -> ppr t
 
 -- | Return an English noun phrase describing things with the given
 --   base type.
@@ -591,7 +592,7 @@ fieldMismatchMsg expFs actFs =
  where
   extraFs = actFs `S.difference` expFs
   missingFs = expFs `S.difference` actFs
-  prettyFieldSet = hsep . punctuate "," . map (bquote . pretty) . S.toList
+  prettyFieldSet = hsep . punctuate "," . map (bquote . ppr) . S.toList
 
 --------------------------------------------------
 -- Errors for 'atomic'
@@ -838,7 +839,7 @@ checkTop ctx reqCtx tdCtx t ty = runTC ctx reqCtx tdCtx Ctx.empty $ check t (toU
 --   downside is that we have to be really careful not to miss any types
 --   along the way; there is no difference, at the Haskell type level,
 --   between ill- and well-kinded Swarm types, so we just have to make
---   sure that we call checkKind on every type embedded in the term
+--   sure that we call processType on every type embedded in the term
 --   being checked.
 infer ::
   ( Has (Reader UCtx) sig m
@@ -882,10 +883,10 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- under an extended context and return the appropriate function
   -- type.
   SLam x (Just argTy) body -> do
-    adaptToTypeErr l KindErr $ checkKind argTy
-    let uargTy = toU argTy
-    body' <- withBinding @UPolytype (lvVar x) (mkTrivPoly uargTy) $ infer body
-    return $ Syntax' l (SLam x (Just argTy) body') cs (UTyFun uargTy (body' ^. sType))
+    argTy' <- adaptToTypeErr l KindErr $ processType argTy
+    let uargTy = toU argTy'
+    body' <- withBinding @Var @UPolytype (lvVar x) (mkTrivPoly uargTy) $ infer body
+    return $ Syntax' l (SLam x (Just argTy') body') cs (UTyFun uargTy (body' ^. sType))
 
   -- Need special case here for applying 'atomic' or 'instant' so we
   -- don't handle it with the case for generic type application.
@@ -991,8 +992,8 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- type annotations.
   SAnnotate c pty -> do
     qpty <- quantify pty
-    _ <- adaptToTypeErr l KindErr $ checkPolytypeKind qpty
-    let upty = toU qpty
+    TydefInfo qpty' _ <- adaptToTypeErr l KindErr $ processPolytype qpty
+    let upty = toU qpty'
     -- Typecheck against skolemized polytype.
     (skolemSubst, uty) <- skolemize upty
     _ <- check c uty
@@ -1004,7 +1005,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     -- following typechecking steps.
     iuty <- instantiate upty
     c' <- check c iuty
-    return $ Syntax' l (SAnnotate c' (forgetQ qpty)) cs iuty
+    return $ Syntax' l (SAnnotate c' (forgetQ qpty')) cs iuty
 
   -- Fallback: to infer the type of anything else, make up a fresh unification
   -- variable for its type and check against it.
@@ -1169,8 +1170,8 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   -- To check a lambda, make sure the expected type is a function type.
   SLam x mxTy body -> do
     (argTy, resTy) <- decomposeFunTy s (Expected, expected)
-    traverse_ (adaptToTypeErr l KindErr . checkKind) mxTy
-    forM_ (toU mxTy) $ \xTy -> do
+    mxTy' <- traverse (adaptToTypeErr l KindErr . processType) mxTy
+    forM_ (toU mxTy') $ \xTy -> do
       res <- argTy U.=:= xTy
       case res of
         -- Generate a special error when the explicit type annotation
@@ -1180,8 +1181,8 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         Left _ -> throwTypeErr l $ LambdaArgMismatch (joined argTy xTy)
         Right _ -> return ()
 
-    body' <- withBinding @UPolytype (lvVar x) (mkTrivPoly argTy) $ check body resTy
-    return $ Syntax' l (SLam x mxTy body') cs (UTyFun argTy resTy)
+    body' <- withBinding @Var @UPolytype (lvVar x) (mkTrivPoly argTy) $ check body resTy
+    return $ Syntax' l (SLam x mxTy' body') cs (UTyFun argTy resTy)
 
   -- Special case for checking the argument to 'atomic' (or
   -- 'instant').  'atomic t' has the same type as 't', which must have
@@ -1213,7 +1214,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         -- unification variable for the type of x and infer the type
         -- of t1 with x in the context.
         xTy <- fresh
-        t1' <- withBinding @UPolytype (lvVar x) (mkTrivPoly xTy) $ infer t1
+        t1' <- withBinding @Var @UPolytype (lvVar x) (mkTrivPoly xTy) $ infer t1
         let uty = t1' ^. sType
         uty' <- unify (Just t1) (joined xTy uty)
         upty <- generalize uty'
@@ -1222,8 +1223,8 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
       -- implicit quantification, kind checking, and skolemization,
       -- then check definition and body under an extended context.
       Just pty -> do
-        _ <- adaptToTypeErr l KindErr . checkPolytypeKind $ pty
-        let upty = toU pty
+        TydefInfo pty' _ <- adaptToTypeErr l KindErr . processPolytype $ pty
+        let upty = toU pty'
         (ss, uty) <- skolemize upty
         t1' <- withBinding (lvVar x) upty . withBindings ss $ check t1 uty
         return (Ctx.vars ss, upty, t1')
@@ -1284,12 +1285,12 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   -- Kind-check a type definition and then check the body under an
   -- extended context.
   STydef x pty _ t1 -> do
-    tydef <- adaptToTypeErr l KindErr $ checkPolytypeKind pty
-    t1' <- withBinding (lvVar x) tydef (check t1 expected)
+    tydef@(TydefInfo pty' _) <- adaptToTypeErr l KindErr $ processPolytype pty
+    t1' <- withBindingTD (tdVarName (lvVar x)) tydef (check t1 expected)
     -- Eliminate the type alias in the reported type, since it is not
     -- in scope in the ambient context to which we report back the type.
     expected' <- elimTydef (lvVar x) tydef <$> applyBindings expected
-    return $ Syntax' l (STydef x pty (Just tydef) t1') cs expected'
+    return $ Syntax' l (STydef x pty' (Just tydef) t1') cs expected'
 
   -- To check a record, ensure the expected type is a record type,
   -- ensure all the right fields are present, and push the expected

@@ -44,6 +44,7 @@ import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Loc
+import Swarm.Language.TDVar
 import Swarm.Language.Types
 
 -- | Syntax without type annotations.
@@ -113,7 +114,7 @@ pattern TLet ls r v mty mpty mreq t1 t2 <- SLet ls r (lvVar -> v) mty mpty mreq 
     TLet ls r v mty mpty mreq t1 t2 = SLet ls r (LV NoLoc v) mty mpty mreq (STerm t1) (STerm t2)
 
 -- | Match a STydef without annotations.
-pattern TTydef :: Var -> Polytype -> Maybe TydefInfo -> Term -> Term
+pattern TTydef :: TDVar -> Polytype -> Maybe TydefInfo -> Term -> Term
 pattern TTydef v ty mtd t1 <- STydef (lvVar -> v) ty mtd (STerm t1)
   where
     TTydef v ty mtd t1 = STydef (LV NoLoc v) ty mtd (STerm t1)

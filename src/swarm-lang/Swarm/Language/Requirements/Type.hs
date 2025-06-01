@@ -30,6 +30,7 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 import Swarm.Language.Capability (Capability (..))
 import Swarm.Language.Context (Ctx)
+import Swarm.Language.Var
 
 -- | A /requirement/ is something a robot must have when it is
 --   built. There are three types:
@@ -110,4 +111,4 @@ insert = (<>) . singleton
 
 -- | A requirement context records the requirements for the
 --   definitions bound to variables.
-type ReqCtx = Ctx Requirements
+type ReqCtx = Ctx Var Requirements

@@ -25,6 +25,7 @@ import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Syntax.Loc
+import Swarm.Language.TDVar (TDVar)
 import Swarm.Language.Types
 
 ------------------------------------------------------------
@@ -111,7 +112,7 @@ data Term' ty
   | -- | A type synonym definition.  Note that this acts like a @let@
     --   (just like @def@), /i.e./ the @Syntax' ty@ field is the local
     --   context over which the type definition is in scope.
-    STydef LocVar Polytype (Maybe TydefInfo) (Syntax' ty)
+    STydef (Located TDVar) Polytype (Maybe TydefInfo) (Syntax' ty)
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
     --
     --   The @Maybe ty@ field is a place to stash the inferred type of

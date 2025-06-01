@@ -66,6 +66,7 @@ import Swarm.Game.Tick
 import Swarm.Language.Capability
 import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
+import Swarm.Language.TDVar (tdVarName)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
 import Swarm.Log
@@ -685,7 +686,7 @@ stepCESK cesk = case cesk of
     return $ In t2 e' s k
   -- To evaluate a tydef, insert it into the context and proceed to
   -- evaluate the body.
-  In (TTydef x _ tdInfo t1) e s k -> return $ In t1 (maybe id (addTydef x) tdInfo e) s k
+  In (TTydef x _ tdInfo t1) e s k -> return $ In t1 (maybe id (addTydef (tdVarName x)) tdInfo e) s k
   -- Bind expressions don't evaluate: just package it up as a value
   -- until such time as it is to be executed.
   In (TBind mx mty mreq t1 t2) e s k -> return $ Out (VBind mx mty mreq t1 t2 e) s k

@@ -21,7 +21,7 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (toList)
 import Data.List.Extra (enumerate)
 import Data.Map.Strict qualified as M
-import Data.Maybe (isNothing)
+import Data.Maybe (fromMaybe, isNothing)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.String (fromString)
@@ -37,7 +37,7 @@ import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
-import Swarm.Language.Value (Value (VExc, VUnit), envTydefs, prettyValue)
+import Swarm.Language.Value (Value (VExc, VUnit), emptyEnv, envTydefs, prettyValue)
 import Swarm.Pretty
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnFinishNocheat)
 import Swarm.TUI.Controller.Util
@@ -107,7 +107,7 @@ checkReplUpdated g = case g ^. gameControls . replStatus of
     -- type, and reset the replStatus.
     | otherwise -> do
         itIx <- use (gameState . gameControls . replNextValueIndex)
-        env <- use (gameState . baseEnv)
+        env <- fromMaybe emptyEnv <$> preuse (gameState . baseEnv)
         let finalType = stripCmd (env ^. envTydefs) pty
             itName = fromString $ "it" ++ show itIx
             out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]

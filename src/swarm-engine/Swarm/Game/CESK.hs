@@ -92,7 +92,6 @@ import Swarm.Game.Exception
 import Swarm.Game.Ingredients (Count)
 import Swarm.Game.Tick
 import Swarm.Game.World (WorldUpdate (..))
-import Swarm.Language.Context
 import Swarm.Language.Elaborate (insertSuspend)
 import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax
@@ -329,7 +328,7 @@ cont = lens get set
 --   machine with a single FExec frame as the continuation; if the
 --   given term does not have a command type, we wrap it in @pure@.
 initMachine :: TSyntax -> CESK
-initMachine t = In (prepareTerm mempty t) mempty emptyStore [FExec]
+initMachine t = In (prepareTerm V.emptyEnv t) V.emptyEnv emptyStore [FExec]
 
 -- | Load a program into an existing robot CESK machine: either
 --   continue from a suspended state, or, as a fallback, start from
@@ -356,7 +355,7 @@ continue t = \case
   -- In any other state, just start with an empty environment.  This
   -- happens e.g. when running a program on the base robot for the
   -- very first time.
-  cesk -> In (insertSuspend $ prepareTerm mempty t) mempty (cesk ^. store) (FExec : (cesk ^. cont))
+  cesk -> In (insertSuspend $ prepareTerm V.emptyEnv t) V.emptyEnv (cesk ^. store) (FExec : (cesk ^. cont))
 
 -- | Prepare a term for evaluation by a CESK machine in the given
 --   environment: erase all type annotations, and optionally wrap it
@@ -414,22 +413,22 @@ prettyFrame f (p, inner) = case f of
   FArg t _ -> (10, pparens (p < 10) inner <+> prettyPrec 11 t)
   FVArg v -> (10, pparens (p < 10) inner <+> prettyPrec 11 (valueToTerm v))
   FApp v -> (10, prettyPrec 10 (valueToTerm v) <+> pparens (p < 11) inner)
-  FLet x _ t _ -> (11, hsep ["let", pretty x, "=", inner, "in", ppr t])
+  FLet x _ t _ -> (11, hsep ["let", ppr x, "=", inner, "in", ppr t])
   FTry v -> (10, "try" <+> pparens (p < 11) inner <+> prettyPrec 11 (valueToTerm v))
   FExec -> prettyPrefix "E·" (p, inner)
   FBind Nothing _ t _ -> (0, pparens (p < 1) inner <+> ";" <+> ppr t)
-  FBind (Just x) _ t _ -> (0, hsep [pretty x, "<-", pparens (p < 1) inner, ";", ppr t])
+  FBind (Just x) _ t _ -> (0, hsep [ppr x, "<-", pparens (p < 1) inner, ";", ppr t])
   FImmediate c _worldUpds _robotUpds -> prettyPrefix ("I[" <> ppr c <> "]·") (p, inner)
   FUpdate {} -> (p, inner)
   FFinishAtomic -> prettyPrefix "A·" (p, inner)
   FRcd _ done foc rest -> (11, encloseSep "[" "]" ", " (pDone ++ [pFoc] ++ pRest))
    where
-    pDone = map (\(x, v) -> pretty x <+> "=" <+> ppr (valueToTerm v)) (reverse done)
-    pFoc = pretty foc <+> "=" <+> inner
+    pDone = map (\(x, v) -> ppr x <+> "=" <+> ppr (valueToTerm v)) (reverse done)
+    pFoc = ppr foc <+> "=" <+> inner
     pRest = map pprEq rest
-    pprEq (x, Nothing) = pretty x
-    pprEq (x, Just t) = pretty x <+> "=" <+> ppr t
-  FProj x -> (11, pparens (p < 11) inner <> "." <> pretty x)
+    pprEq (x, Nothing) = ppr x
+    pprEq (x, Just t) = ppr x <+> "=" <+> ppr t
+  FProj x -> (11, pparens (p < 11) inner <> "." <> ppr x)
   FSuspend _ -> (10, "suspend" <+> pparens (p < 11) inner)
   FRestoreEnv _ -> (10, "restore" <+> pparens (p < 11) inner)
 

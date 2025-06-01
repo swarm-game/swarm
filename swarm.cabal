@@ -426,6 +426,8 @@ library swarm-lang
     lens,
     lsp,
     megaparsec,
+    monoidmap,
+    monoidmap-aeson,
     mtl,
     parser-combinators,
     prettyprinter,
@@ -482,11 +484,13 @@ library swarm-lang
     Swarm.Language.Syntax.Pattern
     Swarm.Language.Syntax.Pretty
     Swarm.Language.Syntax.Util
+    Swarm.Language.TDVar
     Swarm.Language.Text.Markdown
     Swarm.Language.Typecheck
     Swarm.Language.Typed
     Swarm.Language.Types
     Swarm.Language.Value
+    Swarm.Language.Var
 
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm

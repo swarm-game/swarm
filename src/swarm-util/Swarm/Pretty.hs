@@ -142,12 +142,12 @@ instance (PrettyPrec i) => PrettyPrec (BulletList i) where
 -- Term- and type-printing utilities: bindings, equalities, wildcards,
 -- etc.
 
-prettyBinding :: (Pretty a, PrettyPrec b) => (a, b) -> Doc ann
-prettyBinding (x, ty) = pretty x <> ":" <+> ppr ty
+prettyBinding :: (PrettyPrec a, PrettyPrec b) => (a, b) -> Doc ann
+prettyBinding (x, ty) = ppr x <> ":" <+> ppr ty
 
-prettyEquality :: (Pretty a, PrettyPrec b) => (a, Maybe b) -> Doc ann
-prettyEquality (x, Nothing) = pretty x
-prettyEquality (x, Just t) = pretty x <+> "=" <+> ppr t
+prettyEquality :: (PrettyPrec a, PrettyPrec b) => (a, Maybe b) -> Doc ann
+prettyEquality (x, Nothing) = ppr x
+prettyEquality (x, Just t) = ppr x <+> "=" <+> ppr t
 
 -- | We can use the 'Wildcard' value to replace unification variables
 --   when we don't care about them, e.g. to print out the shape of a

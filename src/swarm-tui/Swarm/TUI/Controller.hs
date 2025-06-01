@@ -86,7 +86,7 @@ import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Typecheck (
   ContextualTypeErr (..),
  )
-import Swarm.Language.Value (Value (VKey), envTypes)
+import Swarm.Language.Value (Value (VKey), emptyEnv, envTypes)
 import Swarm.Log
 import Swarm.ResourceLoading (getSwarmHistoryPath)
 import Swarm.TUI.Controller.EventHandlers
@@ -604,7 +604,7 @@ runInputHandler kc = do
     working <- use $ gameState . gameControls . replWorking
     unless working $ do
       s <- get
-      let env = s ^. gameState . baseEnv
+      let env = fromMaybe emptyEnv $ s ^? gameState . baseEnv
           store = s ^. gameState . baseStore
           handlerCESK = Out (VKey kc) store [FApp handler, FExec, FSuspend env]
       gameState . baseRobot . machine .= handlerCESK
@@ -660,7 +660,7 @@ runBaseCode :: (MonadState ScenarioState m) => T.Text -> m (Either Text ())
 runBaseCode uinput = do
   addREPLHistItem (mkREPLSubmission uinput)
   resetREPL "" (CmdPrompt [])
-  env <- use $ gameState . baseEnv
+  env <- fromMaybe emptyEnv <$> preuse (gameState . baseEnv)
   case processTerm' env uinput of
     Right mt -> do
       uiGameplay . uiREPL . replHistory . replHasExecutedManualInput .= True
@@ -799,7 +799,7 @@ creativeWords =
 -- | Try to complete the last word in a partially-entered REPL prompt using
 --   reserved words and names in scope (in the case of function names) or
 --   entity names (in the case of string literals).
-tabComplete :: CompletionContext -> [Var] -> EntityMap -> REPLState -> REPLState
+tabComplete :: CompletionContext -> [Text] -> EntityMap -> REPLState -> REPLState
 tabComplete CompletionContext {..} names em theRepl = case theRepl ^. replPromptType of
   SearchPrompt _ -> theRepl
   CmdPrompt mms
@@ -867,7 +867,7 @@ validateREPLForm s =
            in s & uiGameplay . uiREPL . replType .~ theType
     CmdPrompt _
       | otherwise ->
-          let env = s ^. gameState . baseEnv
+          let env = fromMaybe emptyEnv $ s ^? gameState . baseEnv
               (theType, errSrcLoc) = case readTerm' defaultParserConfig uinput of
                 Left err ->
                   let ((_y1, x1), (_y2, x2), _msg) = showErrorPos err
