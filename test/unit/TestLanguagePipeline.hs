@@ -747,6 +747,15 @@ testLanguagePipeline =
                 "3:15:\n  |\n3 |  def z = 3 end\n  |               ^\nunexpected end of input\nexpecting \"!=\", \"&&\", \"()\", \"++\", \"<=\", \"==\", \">=\", \"def\", \"false\", \"let\", \"require\", \"requirements\", \"stock\", \"true\", \"tydef\", \"||\", '\"', '$', '(', '*', '+', '-', '.', '/', ':', ';', '<', '>', '@', '[', '\\', '^', 'end' keyword for definition of 'x', '{', built-in user function, direction constant, integer literal, or variable name\n"
             )
         ]
+    , testGroup
+        "Typechecking for read #2461"
+        [ testCase
+            "read type argument propagates"
+            ( process
+                "(read @Int \"3\") 4"
+                "1:1: Type mismatch:\n  From context, expected `(read @Int \"3\")` to be a function,\n  but it actually has type `Int`"
+            )
+        ]
     ]
  where
   valid = flip process ""
