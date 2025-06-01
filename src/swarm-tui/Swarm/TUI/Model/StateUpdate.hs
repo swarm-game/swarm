@@ -16,10 +16,13 @@ module Swarm.TUI.Model.StateUpdate (
   attainAchievement',
   getScenarioInfoFromPath,
   scenarioToAppState,
+  animMgrTickDuration,
   PersistentState (..),
 ) where
 
+import Brick.Animation (startAnimationManager)
 import Brick.AttrMap (applyAttrMappings)
+import Brick.BChan (BChan, newBChan)
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Applicative ((<|>))
@@ -99,20 +102,24 @@ import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr (getWorldAttrName, swarmAttrMap)
 import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
 import Swarm.TUI.View.Robot
-import Swarm.TUI.View.Robot.Type
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.Util
 import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
 
+-- | The resolution at which the animation manager checks animations for updates, in miliseconds
+animMgrTickDuration :: Int
+animMgrTickDuration = 33
+
 -- | Initialize the 'AppState' from scratch.
 initAppState ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   AppOpts ->
+  Maybe (BChan AppEvent) ->
   m AppState
-initAppState opts = do
+initAppState opts mChan = do
   persistentState <- initPersistentState opts
-  constructAppState persistentState opts
+  constructAppState persistentState opts mChan
 
 -- | Add some system failures to the list of messages in the
 --   'RuntimeState'.
@@ -164,12 +171,14 @@ initPersistentState opts@(AppOpts {..}) = do
         (loadTestScenarios $ mkRuntimeOptions opts)
     achievements <- loadAchievementsInfo
 
+    let animState = AnimInactive
     let progState =
           ProgressionState
             { _scenarios = s
             , _attainedAchievements = M.fromList $ map (view achievement &&& id) achievements
             , _uiPopups = initPopupState
             , _scenarioSequence = mempty
+            , _uiPopupAnimationState = animState
             }
     return $ PersistentState rs ui ks progState
   let initRS' = addWarnings initRS (F.toList warnings)
@@ -192,11 +201,14 @@ constructAppState ::
   ) =>
   PersistentState ->
   AppOpts ->
+  Maybe (BChan AppEvent) ->
   m AppState
-constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) = do
+constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mChan = do
   historyT <- sendIO $ readFileMayT =<< getSwarmHistoryPath False
   let history = maybe [] (map mkREPLSubmission . T.lines) historyT
   startTime <- sendIO $ getTime Monotonic
+  chan <- sendIO $ maybe initTestChan pure mChan
+  animMgr <- sendIO $ startAnimationManager animMgrTickDuration chan PopupEvent
 
   let gsc = rs ^. stdGameConfigInputs
       gs = initGameState gsc
@@ -207,7 +219,7 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) = do
           }
 
   case skipMenu opts of
-    False -> return $ AppState (ps & scenarioState . uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) ui key rs
+    False -> return $ AppState (ps & scenarioState . uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) ui key rs animMgr
     True -> do
       let tem = gs ^. landscape . terrainAndEntities
       (scenario, path) <-
@@ -227,7 +239,7 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) = do
       sendIO $
         execStateT
           (startGameWithSeed (ScenarioWith scenario si) $ LaunchParams (pure userSeed) (pure codeToRun))
-          (AppState ps ui key rs)
+          (AppState ps ui key rs animMgr)
  where
   initialUiGameplay startTime history =
     UIGameplay
@@ -249,12 +261,7 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) = do
             { _uiModal = Nothing
             , _uiGoal = emptyGoalDisplay
             , _uiStructure = emptyStructureDisplay
-            , _uiRobot =
-                RobotDisplay
-                  { _robotDetailsFocus = focusRing $ map (RobotsListDialog . SingleRobotDetails) enumerate
-                  , _isDetailsOpened = False
-                  , _robotListContent = emptyRobotDisplay debugOptions
-                  }
+            , _uiRobot = emptyRobotDisplay debugOptions
             }
       , _uiIsAutoPlay = False
       , _uiAutoShowObjectives = autoShowObjectives
@@ -427,6 +434,11 @@ scenarioToUIState siPair u = do
           )
           swarmAttrMap
 
+-- | Create a BChan that holds only one event.
+--   This should only be used in unit tests, integration tests, and benchmarks
+initTestChan :: IO (BChan AppEvent)
+initTestChan = newBChan 1
+
 -- | Create an initial app state for a specific scenario.  Note that
 --   this function is used only for unit tests, integration tests, and
 --   benchmarks.
@@ -435,7 +447,7 @@ scenarioToUIState siPair u = do
 --   to update it using 'scenarioToAppState'.
 initAppStateForScenario :: String -> Maybe Seed -> Maybe FilePath -> ExceptT Text IO AppState
 initAppStateForScenario sceneName userSeed toRun =
-  asExceptT . withThrow (prettyText @SystemFailure) . initAppState $
+  asExceptT . withThrow (prettyText @SystemFailure) . flip initAppState Nothing $
     defaultAppOpts
       { userScenario = Just sceneName
       , userSeed = userSeed

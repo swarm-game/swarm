@@ -539,7 +539,7 @@ testScenarioSolutions ps =
     (GameState -> Assertion) ->
     TestTree
   testSolution' s p shouldCheckBadErrors verify = testCase p $ do
-    out <- runM . runThrow @SystemFailure $ constructAppState ps $ defaultAppOpts {userScenario = Just p}
+    out <- runM . runThrow @SystemFailure $ constructAppState ps (defaultAppOpts {userScenario = Just p}) Nothing
     case out of
       Left err -> assertFailure $ prettyString err
       Right appState -> case appState ^. playState . scenarioState . gameState . winSolution of
