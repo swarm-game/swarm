@@ -44,6 +44,7 @@ module Swarm.Language.Types (
   pattern TyBool,
   pattern TyActor,
   pattern TyKey,
+  pattern TyType,
   pattern (:+:),
   pattern (:*:),
   pattern (:->:),
@@ -68,6 +69,7 @@ module Swarm.Language.Types (
   pattern UTyBool,
   pattern UTyActor,
   pattern UTyKey,
+  pattern UTyType,
   pattern UTySum,
   pattern UTyProd,
   pattern UTyFun,
@@ -199,6 +201,8 @@ data BaseTy
     BActor
   | -- | Keys, i.e. things that can be pressed on the keyboard
     BKey
+  | -- | The type of types
+    BType
   deriving (Eq, Ord, Show, Bounded, Enum, Data, Generic, Hashable, FromJSON, ToJSON)
 
 baseTyName :: BaseTy -> Text
@@ -676,6 +680,9 @@ pattern TyActor = TyBase BActor
 pattern TyKey :: Type
 pattern TyKey = TyBase BKey
 
+pattern TyType :: Type
+pattern TyType = TyBase BType
+
 infixr 5 :+:
 
 pattern (:+:) :: Type -> Type -> Type
@@ -746,6 +753,9 @@ pattern UTyActor = UTyBase BActor
 
 pattern UTyKey :: UType
 pattern UTyKey = UTyBase BKey
+
+pattern UTyType :: UType
+pattern UTyType = UTyBase BType
 
 pattern UTySum :: UType -> UType -> UType
 pattern UTySum ty1 ty2 = UTyConApp TCSum [ty1, ty2]

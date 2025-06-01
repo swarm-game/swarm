@@ -579,6 +579,7 @@ baseTyNounPhrase = \case
   BBool -> "a boolean"
   BActor -> "an actor"
   BKey -> "a key"
+  BType -> "a type"
 
 -- | Generate an appropriate message when the sets of fields in two
 --   record types do not match, explaining which fields are extra and
@@ -1007,6 +1008,8 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     c' <- check c iuty
     return $ Syntax' l (SAnnotate c' (forgetQ qpty')) cs iuty
 
+  TType ty -> pure $ Syntax' l (TType ty) cs UTyType
+
   -- Fallback: to infer the type of anything else, make up a fresh unification
   -- variable for its type and check against it.
   _ -> do
@@ -1108,7 +1111,7 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Div -> arithBinT
   Exp -> arithBinT
   Format -> [tyQ| a -> Text |]
-  Read -> [tyQ| Text -> a |]
+  Read -> [tyQ| Type -> Text -> a |]
   Print -> [tyQ| Text -> Text -> Cmd Text |]
   Erase -> [tyQ| Text -> Cmd Text |]
   Concat -> [tyQ| Text -> Text -> Text |]

@@ -276,129 +276,129 @@ testEval g =
         "read"
         [ testCase
             "read Unit"
-            ("read \"()\" : Unit" `evaluatesToV` ())
+            ("read @Unit \"()\"" `evaluatesToV` ())
         , testCase
             "read Unit with spaces"
-            ("read \"   ()    \" : Unit" `evaluatesToV` ())
+            ("read @Unit \"   ()    \"" `evaluatesToV` ())
         , testCase
             "no read Unit"
-            ("read \"xyz\" : Unit" `throwsError` ("Could not read" `T.isInfixOf`))
+            ("read @Unit \"xyz\"" `throwsError` ("Could not read" `T.isInfixOf`))
         , testCase
             "read Int"
-            ("read \"32\" : Int" `evaluatesToV` (32 :: Integer))
+            ("read @Int \"32\"" `evaluatesToV` (32 :: Integer))
         , testCase
             "read negative Int"
-            ("read \"-32\" : Int" `evaluatesToV` (-32 :: Integer))
+            ("read @Int \"-32\"" `evaluatesToV` (-32 :: Integer))
         , testCase
             "read Int with spaces"
-            ("read \"   -  32   \" : Int" `evaluatesToV` (-32 :: Integer))
+            ("read @Int \"   -  32   \"" `evaluatesToV` (-32 :: Integer))
         , testCase
             "no read Int"
-            ("read \"32.0\" : Int" `throwsError` ("Could not read" `T.isInfixOf`))
+            ("read @Int \"32.0\"" `throwsError` ("Could not read" `T.isInfixOf`))
         , testCase
             "read false"
-            ("read \"false\" : Bool" `evaluatesToV` False)
+            ("read @Bool \"false\"" `evaluatesToV` False)
         , testCase
             "read true"
-            ("read \"true\" : Bool" `evaluatesToV` True)
+            ("read @Bool \"true\"" `evaluatesToV` True)
         , testCase
             "read forward"
-            ( "read \"forward\" : Dir"
+            ( "read @Dir \"forward\""
                 `evaluatesTo` VDir (DRelative (DPlanar DForward))
             )
         , testCase
             "read east"
-            ("read \"east\" : Dir" `evaluatesTo` VDir (DAbsolute DEast))
+            ("read @Dir \"east\"" `evaluatesTo` VDir (DAbsolute DEast))
         , testCase
             "read down"
-            ("read \"down\" : Dir" `evaluatesTo` VDir (DRelative DDown))
+            ("read @Dir \"down\"" `evaluatesTo` VDir (DRelative DDown))
         , testCase
             "read text"
-            ("read \"\\\"hi\\\"\" : Text" `evaluatesToV` ("hi" :: Text))
+            ("read @Text \"\\\"hi\\\"\"" `evaluatesToV` ("hi" :: Text))
         , testCase
             "read sum inl"
-            ( "read \"inl 3\" : (Int + Bool)"
+            ( "read @(Int + Bool) \"inl 3\""
                 `evaluatesToV` Left @Integer @Bool 3
             )
         , testCase
             "read sum inr"
-            ( "read \"inr true\" : (Int + Bool)"
+            ( "read @(Int + Bool) \"inr true\""
                 `evaluatesToV` Right @Integer True
             )
         , testCase
             "read nested sum"
-            ( "read \"inl (inr true)\" : ((Int + Bool) + Unit)"
+            ( "read @((Int + Bool) + Unit) \"inl (inr true)\""
                 `evaluatesToV` Left @_ @() (Right @Integer True)
             )
         , testCase
             "read pair"
-            ( "read \"(3, true)\" : Int * Bool"
+            ( "read @(Int * Bool) \"(3, true)\""
                 `evaluatesToV` (3 :: Integer, True)
             )
         , testCase
             "read pair with non-atomic value"
-            ( "read \"(3, inr true)\" : Int * (Unit + Bool)"
+            ( "read @(Int * (Unit + Bool)) \"(3, inr true)\""
                 `evaluatesToV` (3 :: Integer, Right @() True)
             )
         , testCase
             "read nested pair"
-            ( "read \"(3, true, ())\" : Int * Bool * Unit"
+            ( "read @(Int * Bool * Unit) \"(3, true, ())\""
                 `evaluatesToV` (3 :: Integer, (True, ()))
             )
         , testCase
             "read left-nested pair"
-            ( "read \"((3, true), ())\" : ((Int * Bool) * Unit)"
+            ( "read @((Int * Bool) * Unit) \"((3, true), ())\""
                 `evaluatesToV` ((3 :: Integer, True), ())
             )
         , testCase
             "read empty record"
-            ("read \"[]\" : []" `evaluatesTo` VRcd M.empty)
+            ("read @[] \"[]\"" `evaluatesTo` VRcd M.empty)
         , testCase
             "read singleton record"
-            ( "read \"[x = 2]\" : [x : Int]"
+            ( "read @[x : Int] \"[x = 2]\""
                 `evaluatesTo` VRcd (M.singleton "x" (VInt 2))
             )
         , testCase
             "read doubleton record"
-            ( "read \"[x = 2, y = inr ()]\" : [x : Int, y : Bool + Unit]"
+            ( "read @[x : Int, y : Bool + Unit] \"[x = 2, y = inr ()]\""
                 `evaluatesTo` (VRcd . M.fromList $ [("x", VInt 2), ("y", VInj True VUnit)])
             )
         , testCase
             "read permuted doubleton record"
-            ( "read \"[y = inr (), x = 2]\" : [x : Int, y : Bool + Unit]"
+            ( "read @[x : Int, y : Bool + Unit] \"[y = inr (), x = 2]\""
                 `evaluatesTo` (VRcd . M.fromList $ [("x", VInt 2), ("y", VInj True VUnit)])
             )
         , testCase
             "no read record with repeated fields"
-            ( "read \"[x = 2, x = 3]\" : [x : Int]"
+            ( "read @[x : Int] \"[x = 2, x = 3]\""
                 `throwsError` ("Could not read" `T.isInfixOf`)
             )
         , testCase
             "read key"
-            ( "read \"key \\\"M-C-F5\\\"\" : Key"
+            ( "read @Key \"key \\\"M-C-F5\\\"\""
                 `evaluatesTo` VKey (mkKeyCombo [V.MCtrl, V.MMeta] (V.KFun 5))
             )
         , testCase
             "read recursive list"
-            ( "read \"inr (3, inr (5, inl ()))\" : rec l. Unit + (Int * l)"
+            ( "read @(rec l. Unit + (Int * l)) \"inr (3, inr (5, inl ()))\""
                 `evaluatesToV` [3 :: Integer, 5]
             )
         , testCase
             "read paper with int"
-            ("read \"paper: 52\" : Int" `evaluatesToV` (52 :: Integer))
+            ("read @Int \"paper: 52\"" `evaluatesToV` (52 :: Integer))
         , testCase
             "read paper with tuple"
-            ( "read \"paper: (3, false, ())\" : Int * Bool * Unit"
+            ( "read @(Int * Bool * Unit) \"paper: (3, false, ())\""
                 `evaluatesToV` (3 :: Integer, (False, ()))
             )
         , testCase
             "read random entity with tuple"
-            ( "read \"foo: (3, false, ())\" : Int * Bool * Unit"
+            ( "read @(Int * Bool * Unit) \"foo: (3, false, ())\""
                 `evaluatesToV` (3 :: Integer, (False, ()))
             )
         , testCase
             "read Text value containing colon"
-            ( "read \"\\\"hi: there\\\"\" : Text"
+            ( "read @Text \"\\\"hi: there\\\"\""
                 `evaluatesToV` ("hi: there" :: Text)
             )
         ]
