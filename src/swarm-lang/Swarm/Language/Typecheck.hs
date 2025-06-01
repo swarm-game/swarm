@@ -1007,9 +1007,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     iuty <- instantiate upty
     c' <- check c iuty
     return $ Syntax' l (SAnnotate c' (forgetQ qpty')) cs iuty
-
   TType ty -> pure $ Syntax' l (TType ty) cs UTyType
-
   -- Fallback: to infer the type of anything else, make up a fresh unification
   -- variable for its type and check against it.
   _ -> do
