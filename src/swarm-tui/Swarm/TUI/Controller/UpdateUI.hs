@@ -111,7 +111,7 @@ checkReplUpdated g = case g ^. gameControls . replStatus of
         let finalType = stripCmd (env ^. envTydefs) pty
             itName = fromString $ "it" ++ show itIx
             out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]
-        addREPLHistItem (mkREPLOutput out)
+        addREPLHistItem REPLOutput out
         listener <- use $ gameState . gameControls . replListener
         liftIO $ listener out
         invalidateCacheEntry REPLHistoryCache

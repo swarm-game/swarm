@@ -57,7 +57,7 @@ togglePilotingMode = do
       if T.null uinput
         then uiGameplay . uiREPL . replControlMode .= Piloting
         else do
-          addREPLHistItem $ mkREPLError "Please clear the REPL before engaging pilot mode."
+          addREPLHistItem REPLError "Please clear the REPL before engaging pilot mode."
           invalidateCacheEntry REPLHistoryCache
 
 toggleCustomKeyHandling :: EventM Name ScenarioState ()

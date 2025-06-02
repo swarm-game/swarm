@@ -81,6 +81,7 @@ import Swarm.Game.State.Initialize
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
+import Swarm.Game.Tick (TickNumber (TickNumber))
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
 import Swarm.Pretty (prettyText)
@@ -205,6 +206,7 @@ constructAppState ::
   m AppState
 constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mChan = do
   historyT <- sendIO $ readFileMayT =<< getSwarmHistoryPath False
+  let mkREPLSubmission = REPLHistItem (REPLEntry Submitted) (TickNumber $ -1)
   let history = maybe [] (map mkREPLSubmission . T.lines) historyT
   startTime <- sendIO $ getTime Monotonic
   chan <- sendIO $ maybe initTestChan pure mChan
