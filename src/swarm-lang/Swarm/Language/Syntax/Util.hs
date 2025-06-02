@@ -32,11 +32,11 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set qualified as S
 import Data.Tree
-import Swarm.Language.Context (Var)
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern
+import Swarm.Language.Var (Var)
 
 -- Setup for doctests
 
@@ -132,8 +132,8 @@ freeVarsS f = go S.empty
     TBool {} -> pure s
     TRobot {} -> pure s
     TRef {} -> pure s
-    TRequireDevice {} -> pure s
     TRequire {} -> pure s
+    TStock {} -> pure s
     SRequirements x s1 -> rewrap $ SRequirements x <$> go bound s1
     TVar x
       | x `S.member` bound -> pure s

@@ -176,8 +176,8 @@ testLanguagePipeline =
             "require device"
             (valid "require \"boat\"")
         , testCase
-            "require entities"
-            (valid "require 64 \"rock\"")
+            "stock entities"
+            (valid "stock 64 \"rock\"")
         , testCase
             "invalid syntax to require"
             ( process
@@ -188,19 +188,19 @@ testLanguagePipeline =
                     , "1 | require x"
                     , "  |         ^"
                     , "unexpected 'x'"
-                    , "expecting device name in double quotes or integer literal"
+                    , "expecting device name in double quotes"
                     ]
                 )
             )
         , testCase
-            "invalid syntax to require n"
+            "invalid syntax to stock n"
             ( process
-                "require 2 x"
+                "stock 2 x"
                 ( T.unlines
-                    [ "1:11:"
+                    [ "1:9:"
                     , "  |"
-                    , "1 | require 2 x"
-                    , "  |           ^"
+                    , "1 | stock 2 x"
+                    , "  |         ^"
                     , "unexpected 'x'"
                     , "expecting entity name in double quotes"
                     ]
@@ -216,8 +216,7 @@ testLanguagePipeline =
         "atomic - #479"
         [ testCase
             "atomic move"
-            ( valid "atomic move"
-            )
+            (valid "atomic move")
         , testCase
             "grabif"
             (valid "def grabif : Text -> Cmd Unit = \\x. atomic (b <- ishere x; if b {grab; pure ()} {}) end")
@@ -274,8 +273,7 @@ testLanguagePipeline =
             )
         , testCase
             "atomic with comment #2412"
-            ( valid "atomic (if true {c <- scan down; /* COMMENT */ noop } {})"
-            )
+            (valid "atomic (if true {c <- scan down; /* COMMENT */ noop } {})")
         ]
     , testGroup
         "integer literals"
@@ -302,8 +300,7 @@ testLanguagePipeline =
         "Void type"
         [ testCase
             "isSimpleUType"
-            ( assertBool "" $ isSimpleUType UTyVoid
-            )
+            (assertBool "" $ isSimpleUType UTyVoid)
         , testCase
             "valid type signature"
             (valid "def f : Void -> a = \\x. undefined end")
@@ -629,6 +626,17 @@ testLanguagePipeline =
                 "tydef Unbound a b = a + b + c end"
                 "1:34:\n  |\n1 | tydef Unbound a b = a + b + c end\n  |                                  ^\nUndefined type variable(s) on right-hand side of tydef: c\n"
             )
+        , testCase
+            "tydef shadowing #2437"
+            ( process
+                "tydef Foo = Int end; def f : Int -> Foo = \\x. x + 1 end; tydef Foo = Bool end; if (f 3) {} {}"
+                "1:84: Type mismatch:\n  From context, expected `f 3` to have type `Bool`,\n  but it actually has type `Foo`"
+            )
+        , testCase
+            "tydef shadowing #2437"
+            ( valid
+                "tydef Foo = Int end; def f : Int -> Foo = \\x. x + 1 end; tydef Foo = Bool end; def g : Int -> Foo = \\x. x > 5 end; if (g (f 3)) {} {}"
+            )
         ]
     , testGroup
         "recursive types"
@@ -726,6 +734,15 @@ testLanguagePipeline =
         , testCase
             "nested polymorphic def/annot"
             (valid "def id : a -> a * Int = \\y. (y, 3 : Int) end")
+        ]
+    , testGroup
+        "Custom error message for missing end #1141"
+        [ testCase
+            "missing end"
+            ( process
+                "def x = 3;\n def y = 3 end;\n def z = 3 end"
+                "3:15:\n  |\n3 |  def z = 3 end\n  |               ^\nunexpected end of input\nexpecting \"!=\", \"&&\", \"()\", \"++\", \"<=\", \"==\", \">=\", \"def\", \"false\", \"let\", \"require\", \"requirements\", \"stock\", \"true\", \"tydef\", \"||\", '\"', '$', '(', '*', '+', '-', '.', '/', ':', ';', '<', '>', '[', '\\', '^', 'end' keyword for definition of 'x', '{', built-in user function, direction constant, integer literal, or variable name\n"
+            )
         ]
     ]
  where

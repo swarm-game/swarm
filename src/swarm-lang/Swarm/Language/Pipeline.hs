@@ -32,7 +32,7 @@ import Swarm.Language.Requirements.Type (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types (TCtx)
-import Swarm.Language.Value (Env, envReqs, envTydefs, envTypes)
+import Swarm.Language.Value (Env, emptyEnv, envReqs, envTydefs, envTypes)
 
 processTermEither :: Text -> Either Text TSyntax
 processTermEither t = case processTerm t of
@@ -49,11 +49,11 @@ processTermEither t = case processTerm t of
 --   Return either the end result (or @Nothing@ if the input was only
 --   whitespace) or a pretty-printed error message.
 processTerm :: Text -> Either Text (Maybe TSyntax)
-processTerm = processTerm' mempty
+processTerm = processTerm' emptyEnv
 
 -- | Like 'processTerm', but use a term that has already been parsed.
 processParsedTerm :: Syntax -> Either ContextualTypeErr TSyntax
-processParsedTerm = processParsedTerm' mempty
+processParsedTerm = processParsedTerm' emptyEnv
 
 -- | Like 'processTerm', but use explicit starting contexts.
 processTerm' :: Env -> Text -> Either Text (Maybe TSyntax)

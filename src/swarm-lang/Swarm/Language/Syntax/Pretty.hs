@@ -34,6 +34,7 @@ import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern (sComments, pattern STerm)
 import Swarm.Language.Syntax.Util (erase, unTuple)
+import Swarm.Language.TDVar (TDVar)
 import Swarm.Language.Types
 import Swarm.Pretty (PrettyPrec (..), encloseWithIndent, pparens, ppr, prettyEquality)
 import Text.Show.Unicode (ushow)
@@ -74,10 +75,10 @@ instance PrettyPrec (Term' ty) where
     TBool b -> bool "false" "true" b
     TRobot r -> "<a" <> pretty r <> ">"
     TRef r -> "@" <> pretty r
-    TRequireDevice d -> pparens (p > 10) $ "require" <+> ppr (TText d)
-    TRequire n e -> pparens (p > 10) $ "require" <+> pretty n <+> ppr (TText e)
+    TRequire d -> pparens (p > 10) $ "require" <+> ppr (TText d)
+    TStock n e -> pparens (p > 10) $ "stock" <+> pretty n <+> ppr (TText e)
     SRequirements _ e -> pparens (p > 10) $ "requirements" <+> ppr e
-    TVar s -> pretty s
+    TVar s -> ppr s
     SDelay (Syntax' _ (TConst Noop) _ _) -> "{}"
     SDelay t -> group . encloseWithIndent 2 lbrace rbrace $ ppr t
     t@SPair {} -> prettyTuple t
@@ -131,9 +132,9 @@ instance PrettyPrec (Term' ty) where
         prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
     SBind (Just (LV _ x)) _ _ _ t1 t2 ->
       pparens (p > 0) $
-        pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
+        ppr x <+> "<-" <+> prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
     SRcd m -> brackets $ hsep (punctuate "," (map prettyEquality (M.assocs m)))
-    SProj t x -> prettyPrec 11 t <> "." <> pretty x
+    SProj t x -> prettyPrec 11 t <> "." <> ppr x
     SAnnotate t pt ->
       pparens (p > 0) $
         prettyPrec 1 t <+> ":" <+> ppr pt
@@ -153,15 +154,15 @@ prettyDefinition defName x mty t1 =
     ]
  where
   (defBody, defLambdaList) = unchainLambdas t1
-  defHead = defName <+> pretty x
+  defHead = defName <+> ppr x
   defType = maybe "" (\ty -> ":" <+> flatAlt (line <> indent 2 (ppr ty)) (ppr ty)) mty
   defType' = maybe "" (\ty -> ":" <+> ppr ty) mty
   defEqLambdas = hsep ("=" : map prettyLambda defLambdaList)
   eqAndLambdaLine = if null defLambdaList then "=" else line <> defEqLambdas
 
-prettyTydef :: Var -> Polytype -> Doc ann
-prettyTydef x (unPoly -> ([], ty)) = "tydef" <+> pretty x <+> "=" <+> ppr ty <+> "end"
-prettyTydef x (unPoly -> (xs, ty)) = "tydef" <+> pretty x <+> hsep (map pretty xs) <+> "=" <+> ppr ty <+> "end"
+prettyTydef :: TDVar -> Polytype -> Doc ann
+prettyTydef x (unPoly -> ([], ty)) = "tydef" <+> ppr x <+> "=" <+> ppr ty <+> "end"
+prettyTydef x (unPoly -> (xs, ty)) = "tydef" <+> ppr x <+> hsep (map ppr xs) <+> "=" <+> ppr ty <+> "end"
 
 prettyPrecApp :: Int -> Syntax' ty -> Syntax' ty -> Doc a
 prettyPrecApp p t1 t2 =
@@ -183,5 +184,5 @@ unchainLambdas = \case
   Syntax' _ (SLam (LV _ x) mty body) coms _ -> ((x, mty) :) <$> unchainLambdas (body & sComments <>~ coms)
   body -> (body, [])
 
-prettyLambda :: (Pretty a1, PrettyPrec a2) => (a1, Maybe a2) -> Doc ann
-prettyLambda (x, mty) = "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "."
+prettyLambda :: (PrettyPrec a1, PrettyPrec a2) => (a1, Maybe a2) -> Doc ann
+prettyLambda (x, mty) = "\\" <> ppr x <> maybe "" ((":" <>) . ppr) mty <> "."

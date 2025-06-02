@@ -16,7 +16,7 @@ module Swarm.Game.Robot.Activity (
 
 import Control.Lens hiding (Const, contains)
 import Data.Aeson qualified as Ae (FromJSON (..), ToJSON (..))
-import Data.Map (Map)
+import Data.Map.Strict (Map)
 import GHC.Generics (Generic)
 import Swarm.Game.Tick
 import Swarm.Language.Syntax (Const)

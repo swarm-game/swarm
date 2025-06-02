@@ -34,6 +34,7 @@ import Data.List qualified as L
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Map.NonEmpty qualified as NEM
+import Data.Map.Strict qualified as MS
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
 import Data.MonoidMap qualified as MM
 import Data.Ord (Down (Down))
@@ -138,7 +139,7 @@ execConst runChildProg c vs s k = do
   when (isTangible c) $
     activityCounts . tangibleCommandCount += 1
 
-  activityCounts . commandsHistogram %= M.insertWith (+) c 1
+  activityCounts . commandsHistogram %= MS.insertWith (+) c 1
 
   -- Now proceed to actually carry out the operation.
   case c of
@@ -807,7 +808,7 @@ execConst runChildProg c vs s k = do
           mm = limitLast . Seq.filter (liftA2 (&&) notMine isClose) $ Seq.takeWhileR (messageIsRecent gs) mq
       return $
         maybe
-          (In (TConst Listen) mempty s (FExec : k)) -- continue listening
+          (In (TConst Listen) emptyEnv s (FExec : k)) -- continue listening
           (\m -> Out (VText m) s k) -- return found message
           mm
     Log -> case vs of
@@ -1164,7 +1165,7 @@ execConst runChildProg c vs s k = do
                 . at (target ^. robotID)
                 . traverse
                 . machine
-                .= In giveInventory mempty emptyStore [FExec]
+                .= In giveInventory emptyEnv emptyStore [FExec]
 
               activateRobot $ target ^. robotID
 
@@ -1498,7 +1499,7 @@ execConst runChildProg c vs s k = do
 
     return item
 
-  -- Check the required devices and inventory for running the given
+  -- Check the required devices and stocked inventory for running the given
   -- command on a target robot.  This function is used in common by
   -- both 'Build' and 'Reprogram'.
   --

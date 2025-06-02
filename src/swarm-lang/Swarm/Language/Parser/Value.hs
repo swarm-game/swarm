@@ -17,7 +17,7 @@ import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Parser (readNonemptyTerm)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (checkTop)
-import Swarm.Language.Types (Type)
+import Swarm.Language.Types (Type, emptyTDCtx)
 import Swarm.Language.Value
 import Text.Megaparsec qualified as MP
 
@@ -41,7 +41,7 @@ readValue ty txt = do
         Just (':', t) -> t
         _ -> txt
   s <- eitherToMaybe $ readNonemptyTerm txt'
-  _ <- eitherToMaybe $ checkTop Ctx.empty Ctx.empty Ctx.empty s ty
+  _ <- eitherToMaybe $ checkTop Ctx.empty Ctx.empty emptyTDCtx s ty
   toValue $ s ^. sTerm
 
 toValue :: Term -> Maybe Value
@@ -68,8 +68,8 @@ toValue = \case
   TConst {} -> Nothing
   TAntiInt {} -> Nothing
   TAntiText {} -> Nothing
-  TRequireDevice {} -> Nothing
   TRequire {} -> Nothing
+  TStock {} -> Nothing
   TRequirements {} -> Nothing
   TVar {} -> Nothing
   TLam {} -> Nothing

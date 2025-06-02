@@ -30,11 +30,11 @@ import Data.Text.Lines qualified as R
 import Data.Text.Utf16.Rope.Mixed qualified as R
 import Language.LSP.Protocol.Types qualified as J
 import Language.LSP.VFS
-import Swarm.Language.Context as Ctx
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Pipeline (processParsedTerm)
 import Swarm.Language.Syntax
+import Swarm.Language.TDVar (tdVarName)
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types
 import Swarm.Pretty (prettyText, prettyTextLine)
@@ -113,7 +113,7 @@ narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
   SApp s1 s2 -> d s1 <|> d s2
   SLet _ _ lv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
   SBind mlv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
-  STydef typ typBody _ti s1 -> d s1 <|> Just (locVarToSyntax' typ $ fromPoly typBody)
+  STydef typ typBody _ti s1 -> d s1 <|> Just (locVarToSyntax' (tdVarName <$> typ) $ fromPoly typBody)
   SPair s1 s2 -> d s1 <|> d s2
   SDelay s -> d s
   SRcd m -> asum . map d . catMaybes . M.elems $ m
@@ -129,8 +129,8 @@ narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
   TText {} -> Nothing
   TBool {} -> Nothing
   TVar {} -> Nothing
+  TStock {} -> Nothing
   TRequire {} -> Nothing
-  TRequireDevice {} -> Nothing
   TType {} -> Nothing
   -- these should not show up in surface language
   TRef {} -> Nothing
@@ -215,8 +215,8 @@ explain trm = case trm ^. sTerm of
       [explain lhs]
   -- special forms (function application will show for `$`, but really should be rare)
   SApp {} -> explainFunction trm
-  TRequireDevice {} -> pure "Require a specific device to be equipped."
-  TRequire {} -> pure "Require a certain number of an entity."
+  TRequire {} -> pure "Require a specific device to be equipped."
+  TStock {} -> pure "Stock a certain number of an entity."
   SRequirements {} -> pure "Query the requirements of a term."
   -- definition or bindings
   SLet ls isRecursive var mTypeAnn _ _ rhs _b -> pure $ explainDefinition ls isRecursive var (rhs ^. sType) mTypeAnn

@@ -11,7 +11,7 @@ import Brick.Widgets.Table qualified as BT
 
 import Brick.Focus
 import Control.Lens hiding (from, (<.>))
-import Data.Map qualified as M
+import Data.Map.Strict qualified as M
 import Prettyprinter (pretty)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity (commandsHistogram)
@@ -23,8 +23,8 @@ import Swarm.TUI.View.Attribute.Attr (boldAttr, cyanAttr)
 import Swarm.TUI.View.Robot.Type
 import Swarm.Util (applyWhen)
 
-renderRobotDetails :: FocusRing Name -> Robot -> RobotDetailsPaneState -> Widget Name
-renderRobotDetails ring r paneState =
+renderRobotDetails :: Robot -> RobotDetailsPaneState -> Widget Name
+renderRobotDetails r paneState =
   vBox
     [ str $
         unwords
@@ -38,6 +38,7 @@ renderRobotDetails ring r paneState =
         ]
     ]
  where
+  ring = paneState ^. detailFocus
   highlightBorderFor n =
     applyWhen isFocused $ overrideAttr borderAttr cyanAttr
    where

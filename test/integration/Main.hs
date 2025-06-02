@@ -224,7 +224,7 @@ testScenarioSolutions ps =
         , testTutorialSolution Default "Tutorials/def"
         , testTutorialSolution Default "Tutorials/lambda"
         , testTutorialSolution Default "Tutorials/require"
-        , testTutorialSolution (Sec 3) "Tutorials/requireinv"
+        , testTutorialSolution (Sec 3) "Tutorials/stock"
         , testTutorialSolution Default "Tutorials/conditionals"
         , testTutorialSolution Default "Tutorials/world101"
         , testTutorialSolution (Sec 5) "Tutorials/farming"
@@ -321,8 +321,8 @@ testScenarioSolutions ps =
             [ testSolution Default "Testing/201-require/201-require-device"
             , testSolution Default "Testing/201-require/201-require-device-creative"
             , testSolution Default "Testing/201-require/201-require-device-creative1"
-            , testSolution Default "Testing/201-require/201-require-entities"
-            , testSolution Default "Testing/201-require/201-require-entities-def"
+            , testSolution Default "Testing/201-require/201-stock-entities"
+            , testSolution Default "Testing/201-require/201-stock-entities-def"
             , testSolution Default "Testing/201-require/533-reprogram-simple"
             , testSolution Default "Testing/201-require/533-reprogram"
             , testSolution Default "Testing/201-require/1664-require-system-robot-children"
@@ -539,7 +539,7 @@ testScenarioSolutions ps =
     (GameState -> Assertion) ->
     TestTree
   testSolution' s p shouldCheckBadErrors verify = testCase p $ do
-    out <- runM . runThrow @SystemFailure $ constructAppState ps $ defaultAppOpts {userScenario = Just p}
+    out <- runM . runThrow @SystemFailure $ constructAppState ps (defaultAppOpts {userScenario = Just p}) Nothing
     case out of
       Left err -> assertFailure $ prettyString err
       Right appState -> case appState ^. playState . scenarioState . gameState . winSolution of

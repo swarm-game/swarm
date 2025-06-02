@@ -16,6 +16,7 @@ import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
+import Data.Text qualified as T
 import Swarm.Language.Parser.Core
 import Swarm.Language.Parser.Lex
 import Swarm.Language.Parser.Record (parseRecord)
@@ -75,13 +76,12 @@ parseTermAtom2 =
         <|> TText <$> textLiteral
         <|> TBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
         <|> reserved "require"
-          *> ( ( TRequireDevice
-                  <$> (textLiteral <?> "device name in double quotes")
-               )
-                <|> ( (TRequire . fromIntegral <$> integer)
-                        <*> (textLiteral <?> "entity name in double quotes")
-                    )
+          *> ( TRequire
+                 <$> (textLiteral <?> "device name in double quotes")
              )
+        <|> reserved "stock"
+          *> (TStock . fromIntegral <$> integer)
+          <*> (textLiteral <?> "entity name in double quotes")
         <|> uncurry SRequirements <$> (reserved "requirements" *> match parseTerm)
         <|> SLam
           <$> (symbol "\\" *> locTmVar)
@@ -92,11 +92,15 @@ parseTermAtom2 =
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm)
           <*> (reserved "in" *> parseTerm)
-        <|> sLet LSDef
-          <$> (reserved "def" *> locTmVar)
-          <*> optional (symbol ":" *> parsePolytype)
-          <*> (symbol "=" *> parseTerm <* reserved "end")
-          <*> (optional (symbol ";") *> (parseTerm <|> (eof $> sNoop)))
+        <|> do
+          reserved "def"
+          locVar@(LV _srcLoc nameText) <- locTmVar
+          mTy <- optional (symbol ":" *> parsePolytype)
+          _ <- symbol "="
+          body <- parseTerm
+          reserved "end" <?> ("'end' keyword for definition of '" <> T.unpack nameText <> "'")
+          rest <- optional (symbol ";") *> (parseTerm <|> (eof $> sNoop))
+          return $ sLet LSDef locVar mTy body rest
         <|> STydef
           <$> (reserved "tydef" *> locTyName)
           <*> join (bindTydef <$> many tyVar <*> (symbol "=" *> parseType <* reserved "end"))

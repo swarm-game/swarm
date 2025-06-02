@@ -157,7 +157,7 @@ insert ::
 insert x (WindowedCounter s lastLargest nominalSpan) =
   discardGarbage x $ WindowedCounter (Set.insert x s) newLargest nominalSpan
  where
-  newLargest = Just $ maybe x (max x) lastLargest
+  newLargest = Just $! maybe x (max x) lastLargest
 
 -- | Drop the leading elements that are not larger than the cutoff.
 --

@@ -38,7 +38,7 @@ def harvest_lambdas =
   )
 end;
 build {
-  require 1 "lambda";
+  stock 1 "lambda";
   tB; move; tR; plant_field "lambda";
 };
 build {

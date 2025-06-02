@@ -273,7 +273,7 @@ def buildRobot = \targetCount. \meetingLoc.
     make "solar panel";
 
     build {
-        require 8 "tree";
+        stock 8 "tree";
         buildHive;
 
         // Move to northwest corner
