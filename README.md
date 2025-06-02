@@ -74,6 +74,9 @@ ways you can contribute to Swarm development!
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/DanRyba253"><img src="https://avatars.githubusercontent.com/u/71811716?v=4?s=100" width="100px;" alt="Dani Rybe"/><br /><sub><b>Dani Rybe</b></sub></a><br /><a href="https://github.com/swarm-game/swarm/commits?author=DanRyba253" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="http://jonathanknowles.net/"><img src="https://avatars.githubusercontent.com/u/206319?v=4?s=100" width="100px;" alt="Jonathan Knowles"/><br /><sub><b>Jonathan Knowles</b></sub></a><br /><a href="https://github.com/swarm-game/swarm/commits?author=jonathanknowles" title="Code">💻</a></td>
     </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/patrickestrada"><img src="https://avatars.githubusercontent.com/u/212604433?v=4?s=100" width="100px;" alt="Patrick Estrada"/><br /><sub><b>Patrick Estrada</b></sub></a><br /><a href="https://github.com/swarm-game/swarm/commits?author=patrickestrada" title="Code">💻</a></td>
+    </tr>
   </tbody>
 </table>
 
