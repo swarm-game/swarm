@@ -9,6 +9,7 @@ module TestEval where
 
 import Control.Lens ((^.), _3)
 import Data.Char (ord)
+import Data.Fix
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -17,6 +18,7 @@ import Swarm.Game.State
 import Swarm.Game.Value (Valuable (..))
 import Swarm.Language.Key
 import Swarm.Language.Syntax.Direction
+import Swarm.Language.Types
 import Swarm.Language.Value
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -416,6 +418,11 @@ testEval g =
             ( "tydef Foo = Int end; read @(Bool * Foo) \"(True, 3)\""
                 `evaluatesToV` (True, 3 :: Integer)
             )
+        , testCase
+            "read at nested user-defined type"
+            ( "tydef A = Int end; tydef B = Bool end; tydef C = B * A end; read @C \"(True, 3)\""
+                `evaluatesToV` (True, 3 :: Integer)
+            )
         ]
     , testGroup
         "records - #1093"
@@ -494,6 +501,21 @@ testEval g =
     , testCase
         "tydef does not prevent forcing of recursive variables"
         ("def forever = \\c. c; forever c end; tydef X = Int end; def go = forever move end" `evaluatesTo` VUnit)
+    , testGroup
+        "term-level types"
+        [ testCase
+            "Int"
+            ("@Int" `evaluatesTo` VType TyInt)
+        , testCase
+            "Int * Bool"
+            ("@(Int * Bool)" `evaluatesTo` VType (TyInt :*: TyBool))
+        , testCase
+            "foo"
+            ("@(rec a. a)" `evaluatesTo` VType (TyRec "a" (Fix (TyRecVarF NZ))))
+        , testCase
+            "list"
+            ("@(rec l. Unit + Int * l)" `evaluatesTo` VType (TyRec "l" (TyUnit :+: (TyInt :*: Fix (TyRecVarF NZ)))))
+        ]
     ]
  where
   tquote :: String -> Text
