@@ -1,0 +1,114 @@
+2455,Add stock command
+2444,Update debug scenario and robot detail modal
+2407,Replace `fst` and `snd` with pair eliminator `match`
+2285,Rename `return` to `pure`
+2249,Counting flowers
+2248,Add combustion delay parameter
+2245,Add `print` + `erase` commands
+2233,Update to allow GHC 9.10 and drop GHC 9.2
+2224,New `read` command to act as partial inverse to `format`
+2215,Don't insert extra close bracket when the cursor is already on top of one
+2212,ensure no overlaps in initial placement of recognized structures
+2211,Do requirements analysis for literal text argument to `use`
+2201,shape recognition with piecewise rows
+2195,subworld-aware teleportation and location query commands
+2191,Benchmark Dictionary implementation in Swarm
+2190,Add a progress bar vignette
+2187,Fix type inference for recursive let bindings
+2184,render map preview as dynamic PNG
+2178,Scoped type variables
+2175,Legend for colorization in F1 dialog
+2172,Improve type inference for record projection
+2170,Fix TyDef narrowToPosition
+2161,Dictionary example
+2129,Avoid loading testing scenarios
+2094,Split debug options
+2450,Add version numbers to variables
+2448,Fix two space leaks
+2446,Add Replay game script
+2444,Update debug scenario and robot detail modal
+2443,Make robot grid simpler
+2436,Add some optional goals to the classic scenario
+2424,Add Swiss Army Robot achievement for equipping all craftable devices in classic game
+2421,Tutorial tweaks
+2409,Show the pattern in lambda tutorial
+2407,Replace `fst` and `snd` with pair eliminator `match`
+2406,Tweak require tutorials
+2405,Tweak scan tutorial description
+2404,Improve Give tutorial
+2391,Recipes for binoculars
+2379,Fix robot modal memory leak by only rendering modal when it is displayed
+2375,Use off-the-shelf ordered map
+2373,Custom error message for missing `end` (#1141)
+2365,Don't re-validate REPL input when moving the cursor left or right
+2361,Make bind tutorial easier to understand
+2359,Make base visible in backstory
+2358,Water disappears when placed
+2356,Grant `AttemptSelfDestructBase` achievement for movement as well as `selfdestruct`
+2354,Grant achievement for completing all tutorials
+2349,Check movement when unequipping
+2344,Get rid of "world offset" + add burned patch around base
+2340,Use original variable names in error messages about Skolem variables
+2339,Use `MonoidMap` for `waitingRobots`.
+2337,Use `MonoidMap` for `robotsWatching`.
+2336,Use `MonoidMap` for `robotsByLocation`.
+2332,Use `MonoidMap` to simplify `Inventory` functions.
+2329,Improvements to comment preservation in `swarm format`
+2328,Remove old individual wall entities
+2324,Clickable shortcuts in TUI
+2321,Do not warn about hidden directories
+2316,Remove say command one message limit
+2314,Make `Tutorial` menu choice auto-start first *unsolved* tutorial scenario
+2312,Fix completed scenario to show green status
+2306,Throw an error if any world description fails to parse or typecheck
+2305,refactor + comment `World Examples/clearing` to make it easier to understand
+2299,Minimize list of required device sets in error message
+2295,Disallow `IntMap.!`
+2293,Make FPS toggle and "recenter view" into global events
+2285,Rename `return` to `pure`
+2280,Preserve `NoMenu` on scenario quit
+2278,Warn the user when debugging options are on
+2275,spiders demo
+2271,Evaluate argument to `instant`/`atomic` atomically
+2262,only meet interactive robots
+2257,atlas entity
+2256,Don't update scenario completion stats after scenario completion
+2254,Make `halt`ed robots immediately wake up
+2251,Add missing cases to var usage analysis
+2249,Counting flowers
+2248,Add combustion delay parameter
+2245,Add `print` + `erase` commands
+2242,Fix Semigroup EntityMap instance to update Capabilities map properly when there are overridden devices
+2241,Make custom entities override built-in entities
+2237,Validate hex colors in `FromJSON` instance
+2229,Fix shape recognition orientation edge case
+2224,New `read` command to act as partial inverse to `format`
+2220,Add `TCAppL` and `TCAppR` typechecking stack frames
+2215,Don't insert extra close bracket when the cursor is already on top of one
+2212,ensure no overlaps in initial placement of recognized structures
+2211,Do requirements analysis for literal text argument to `use`
+2207,update schema docs
+2202,Contexts that can be serialized + deserialized while retaining and explicitly representing sharing
+2201,shape recognition with piecewise rows
+2199,Correct cycle finding for graphs
+2195,subworld-aware teleportation and location query commands
+2191,Benchmark Dictionary implementation in Swarm
+2185,expose waypoint and portal info to web API
+2181,Fix autopause on complete game
+2147,Make Rolex show time
+2146,Watch for lodestone
+2140,navigable robots table
+2129,Avoid loading testing scenarios
+2126,exterminator scenario
+2119,Do not show goal when ScenarioEnd is shown
+2104,Only check for escaped skolem variables among those just generated
+2100,Put end on separate line when pretty printing definitions
+2099,Demo standalone colored structures
+2096,Pause on objective completion
+2095,Update the UI on game start
+2094,Split debug options
+2080,Add CLI option to start the game paused
+2077,Use and enforce Char as palette keys
+2049,Make logging intangible
+1285,Render contiguous boundaries
+1031,DNA copying challenge
