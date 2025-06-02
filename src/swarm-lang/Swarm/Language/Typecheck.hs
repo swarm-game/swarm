@@ -894,12 +894,13 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- This must come BEFORE the SApp case.
   TConst c :$: _
     | c `elem` [Atomic, Instant] -> fresh >>= check s
-
-  TConst Read :$: arg@(STerm (TType argTy))  -> do
+  -- Special case for applying 'read' to a type argument, since we need to make
+  -- sure the type propagates to the inferred output type of 'read'.
+  TConst Read :$: (STerm (TType argTy))  -> do
     r' <- infer $ Syntax l (TConst Read)
-    arg' <- check arg UTyType
-    -- XXX expand type
-    pure $ Syntax' l (SApp r' arg') cs (UTyFun UTyText (toU argTy))
+    argTy' <- adaptToTypeErr l (UnboundType . getUnexpanded) $ expandTydefs argTy
+    arg' <- check (STerm (TType argTy')) UTyType
+    pure $ Syntax' l (SApp r' arg') cs (UTyFun UTyText (toU argTy'))
 
   -- It works better to handle applications in *inference* mode.
   -- Knowing the expected result type of an application does not

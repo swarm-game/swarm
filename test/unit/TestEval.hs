@@ -401,6 +401,21 @@ testEval g =
             ( "read @Text \"\\\"hi: there\\\"\""
                 `evaluatesToV` ("hi: there" :: Text)
             )
+        , testCase
+            "read at user-defined type Foo = Int"
+            ( "tydef Foo = Int end; read @Foo \"3\""
+                `evaluatesToV` (3 :: Integer)
+            )
+        , testCase
+            "read at user-defined recursive type"
+            ( "tydef List a = rec l. Unit + a * l end; read @(List(Int)) \"inr (1, inl ())\""
+                `evaluatesToV` [1 :: Integer]
+            )
+        , testCase
+            "read at complex type with user-defined types"
+            ( "tydef Foo = Int end; read @(Bool * Foo) \"(True, 3)\""
+                `evaluatesToV` (True, 3 :: Integer)
+            )
         ]
     , testGroup
         "records - #1093"
