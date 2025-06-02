@@ -1,5 +1,35 @@
 # Revision history for swarm
 
+## **0.7.0.0** - 2025-06-XX
+
+Some of the highlights of this release include XXX.
+
+### Community
+
+### Breaking changes
+
+* XXX `pure` vs `return`
+* XXX `fst`/`snd` vs `match`
+* Use `swarm format --v0.6` to convert old code.
+
+### Bugfixes
+
+### New Features
+
+#### Language
+
+#### Entities + recipes
+
+#### New scenarios
+
+#### Scenario mechanics and authoring improvements
+
+#### UI enhancements
+
+#### Command line options
+
+### Building/packaging
+
 ## **0.6.0.0** - 2024-07-15
 
 Some of the highlights of this release include native Windows support,
