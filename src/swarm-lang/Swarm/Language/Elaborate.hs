@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
