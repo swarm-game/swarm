@@ -294,6 +294,20 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "oliverpauffley",
+      "name": "Oliver Pauffley",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17577623?v=4",
+      "profile": "https://github.com/oliverpauffley",
+      "contributions": [
+        "code"
+      ]
     }
-  ]
+  ],
+  "files": [
+    "README.md"
+  ],
+  "commitType": "docs",
+  "contributorsPerLine": 7
 }
