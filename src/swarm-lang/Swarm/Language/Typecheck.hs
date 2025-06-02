@@ -896,7 +896,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     | c `elem` [Atomic, Instant] -> fresh >>= check s
   -- Special case for applying 'read' to a type argument, since we need to make
   -- sure the type propagates to the inferred output type of 'read'.
-  TConst Read :$: (STerm (TType argTy))  -> do
+  TConst Read :$: (STerm (TType argTy)) -> do
     r' <- infer $ Syntax l (TConst Read)
     argTy' <- adaptToTypeErr l (UnboundType . getUnexpanded) $ expandTydefs argTy
     arg' <- check (STerm (TType argTy')) UTyType
