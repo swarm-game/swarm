@@ -849,7 +849,7 @@ constInfo c = case c of
   AppF ->
     binaryOp "$" 0 R . doc Set.empty "Apply the function on the left to the value on the right." $
       [ "This operator is useful to avoid nesting parentheses."
-      , "For exaple:"
+      , "For example:"
       , "`f $ g $ h x = f (g (h x))`"
       ]
   Swap ->
