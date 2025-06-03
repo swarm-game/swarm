@@ -1,6 +1,5 @@
 restylers_version: stable
 restylers:
   - fourmolu:
-      image: 'restyled/restyler-fourmolu:v0.13.0.0'
-      arguments:
-        []
+      image:
+        tag: v0.18.0.0

@@ -11,10 +11,6 @@ module Swarm.TUI.Model.Repl (
   REPLEntryType (..),
   REPLHistItemType (..),
   REPLHistItem (..),
-  mkREPLSubmission,
-  mkREPLSaved,
-  mkREPLOutput,
-  mkREPLError,
   isREPLEntry,
   getREPLSubmitted,
   isREPLSaved,
@@ -69,6 +65,7 @@ import Data.Text qualified as T
 import Data.Text.Zipper qualified as TZ
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
+import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Language.Syntax (SrcLoc (..))
 import Swarm.Language.Types
 import Swarm.TUI.Model.Name
@@ -83,11 +80,11 @@ import Swarm.Util.Lens (makeLensesNoSigs)
 data REPLEntryType
   = -- | The entry was submitted (with Enter) and should thus be shown
     --   in the REPL scrollback.
-    REPLEntrySubmitted
+    Submitted
   | -- | The entry was merely saved (e.g. by hitting down
     --   arrow) and should thus be available in the history but not
     --   shown in the scrollback.
-    REPLEntrySaved
+    Stashed
   deriving (Eq, Ord, Show, Read)
 
 -- | Various types of REPL history items (user input, output, error).
@@ -101,37 +98,44 @@ data REPLHistItemType
   deriving (Eq, Ord, Show, Read)
 
 -- | An item in the REPL history.
-data REPLHistItem = REPLHistItem {replItemType :: REPLHistItemType, replItemText :: Text}
+data REPLHistItem = REPLHistItem
+  { replItemType :: REPLHistItemType
+  , replItemTick :: TickNumber
+  , replItemText :: Text
+  }
   deriving (Eq, Ord, Show, Read)
-
-mkREPLSubmission :: Text -> REPLHistItem
-mkREPLSubmission = REPLHistItem (REPLEntry REPLEntrySubmitted)
-
-mkREPLSaved :: Text -> REPLHistItem
-mkREPLSaved = REPLHistItem (REPLEntry REPLEntrySaved)
-
-mkREPLOutput :: Text -> REPLHistItem
-mkREPLOutput = REPLHistItem REPLOutput
-
-mkREPLError :: Text -> REPLHistItem
-mkREPLError = REPLHistItem REPLError
 
 instance ToSample REPLHistItem where
   toSamples _ =
     SD.samples
-      [ REPLHistItem (REPLEntry REPLEntrySubmitted) "grab"
-      , REPLHistItem REPLOutput "it0 : text = \"tree\""
-      , REPLHistItem (REPLEntry REPLEntrySaved) "place"
-      , REPLHistItem (REPLEntry REPLEntrySubmitted) "place tree"
-      , REPLHistItem REPLError "1:7: Unbound variable tree"
+      [ REPLHistItem
+          (REPLEntry Submitted)
+          (TickNumber 0)
+          "grab"
+      , REPLHistItem
+          REPLOutput
+          (TickNumber 0)
+          "it0 : text = \"tree\""
+      , REPLHistItem
+          (REPLEntry Stashed)
+          (TickNumber 1)
+          "place"
+      , REPLHistItem
+          (REPLEntry Submitted)
+          (TickNumber 2)
+          "place tree"
+      , REPLHistItem
+          REPLError
+          (TickNumber 2)
+          "1:7: Unbound variable tree"
       ]
 
 instance ToJSON REPLHistItem where
-  toJSON (REPLHistItem itemType x) = object [label .= x]
+  toJSON (REPLHistItem itemType tick x) = object ["tick" .= tick, label .= x]
    where
     label = case itemType of
-      REPLEntry REPLEntrySubmitted -> "in"
-      REPLEntry REPLEntrySaved -> "save"
+      REPLEntry Submitted -> "in"
+      REPLEntry Stashed -> "save"
       REPLOutput -> "out"
       REPLError -> "err"
 
@@ -139,7 +143,7 @@ instance ToJSON REPLHistItem where
 --   user input, including both submitted and saved history items.
 getREPLEntry :: REPLHistItem -> Maybe Text
 getREPLEntry = \case
-  REPLHistItem (REPLEntry {}) t -> Just t
+  REPLHistItem (REPLEntry {}) _ t -> Just t
   _ -> Nothing
 
 -- | Useful helper function to filter out REPL output.  Returns True
@@ -151,13 +155,13 @@ isREPLEntry = isJust . getREPLEntry
 -- | Helper function to get only submitted user input text.
 getREPLSubmitted :: REPLHistItem -> Maybe Text
 getREPLSubmitted = \case
-  REPLHistItem (REPLEntry REPLEntrySubmitted) t -> Just t
+  REPLHistItem (REPLEntry Submitted) _ t -> Just t
   _ -> Nothing
 
 -- | Useful helper function to filter out saved REPL entries (which
 --   should not be shown in the scrollback).
 isREPLSaved :: REPLHistItem -> Bool
-isREPLSaved (REPLHistItem (REPLEntry REPLEntrySaved) _) = True
+isREPLSaved (REPLHistItem (REPLEntry Stashed) _ _) = True
 isREPLSaved _ = False
 
 -- | History of the REPL with indices (0 is first entry) to the current
@@ -261,7 +265,7 @@ moveReplHistIndex d lastEntered history = history & replIndex .~ newIndex
   (olderP, newer) = Seq.splitAt curIndex entries
   -- find first different entry in direction
   notSameEntry = \case
-    REPLHistItem (REPLEntry {}) t -> t /= curText
+    REPLHistItem (REPLEntry {}) _tick t -> t /= curText
     _ -> False
   newIndex = case d of
     Newer -> maybe historyLen (curIndex +) $ Seq.findIndexL notSameEntry newer

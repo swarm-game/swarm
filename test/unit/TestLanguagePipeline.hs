@@ -216,8 +216,7 @@ testLanguagePipeline =
         "atomic - #479"
         [ testCase
             "atomic move"
-            ( valid "atomic move"
-            )
+            (valid "atomic move")
         , testCase
             "grabif"
             (valid "def grabif : Text -> Cmd Unit = \\x. atomic (b <- ishere x; if b {grab; pure ()} {}) end")
@@ -274,8 +273,7 @@ testLanguagePipeline =
             )
         , testCase
             "atomic with comment #2412"
-            ( valid "atomic (if true {c <- scan down; /* COMMENT */ noop } {})"
-            )
+            (valid "atomic (if true {c <- scan down; /* COMMENT */ noop } {})")
         ]
     , testGroup
         "integer literals"
@@ -302,8 +300,7 @@ testLanguagePipeline =
         "Void type"
         [ testCase
             "isSimpleUType"
-            ( assertBool "" $ isSimpleUType UTyVoid
-            )
+            (assertBool "" $ isSimpleUType UTyVoid)
         , testCase
             "valid type signature"
             (valid "def f : Void -> a = \\x. undefined end")

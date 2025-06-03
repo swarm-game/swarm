@@ -49,7 +49,7 @@ import Swarm.TUI.Model (
  )
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
-import Swarm.TUI.Model.Repl (REPLHistItem, REPLPrompt, REPLState, addREPLItem, replHistory, replPromptText, replPromptType)
+import Swarm.TUI.Model.Repl (REPLHistItem (..), REPLHistItemType, REPLPrompt, REPLState, addREPLItem, replHistory, replPromptText, replPromptType)
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Util (ScenarioSeriesContext (..), curMenuName, generateModal, generateScenarioEndModal)
 import System.Clock (Clock (..), getTime)
@@ -286,5 +286,8 @@ resetREPL :: MonadState ScenarioState m => Text -> REPLPrompt -> m ()
 resetREPL t p = uiGameplay . uiREPL %= modifyResetREPL t p
 
 -- | Add an item to the REPL history.
-addREPLHistItem :: MonadState ScenarioState m => REPLHistItem -> m ()
-addREPLHistItem item = uiGameplay . uiREPL . replHistory %= addREPLItem item
+addREPLHistItem :: MonadState ScenarioState m => REPLHistItemType -> Text -> m ()
+addREPLHistItem itemType msg = do
+  t <- use $ gameState . temporal . ticks
+  let item = REPLHistItem itemType t msg
+  uiGameplay . uiREPL . replHistory %= addREPLItem item
