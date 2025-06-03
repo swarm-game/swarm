@@ -741,7 +741,22 @@ testLanguagePipeline =
             "missing end"
             ( process
                 "def x = 3;\n def y = 3 end;\n def z = 3 end"
-                "3:15:\n  |\n3 |  def z = 3 end\n  |               ^\nunexpected end of input\nexpecting \"!=\", \"&&\", \"()\", \"++\", \"<=\", \"==\", \">=\", \"def\", \"false\", \"let\", \"require\", \"requirements\", \"stock\", \"true\", \"tydef\", \"||\", '\"', '$', '(', '*', '+', '-', '.', '/', ':', ';', '<', '>', '[', '\\', '^', 'end' keyword for definition of 'x', '{', built-in user function, direction constant, integer literal, or variable name\n"
+                "3:15:\n  |\n3 |  def z = 3 end\n  |               ^\nunexpected end of input\nexpecting \"!=\", \"&&\", \"()\", \"++\", \"<=\", \"==\", \">=\", \"def\", \"false\", \"let\", \"require\", \"requirements\", \"stock\", \"true\", \"tydef\", \"||\", '\"', '$', '(', '*', '+', '-', '.', '/', ':', ';', '<', '>', '@', '[', '\\', '^', 'end' keyword for definition of 'x', '{', built-in user function, direction constant, integer literal, or variable name\n"
+            )
+        ]
+    , testGroup
+        "Typechecking for read #2461"
+        [ testCase
+            "read type argument propagates"
+            ( process
+                "(read @Int \"3\") 4"
+                "1:1: Type mismatch:\n  From context, expected `(read @Int \"3\")` to be a function,\n  but it actually has type `Int`"
+            )
+        , testCase
+            "read at type stored in a variable"
+            ( process
+                "def T : Type = @(Bool * Int) end; read T \"(True, 3)\""
+                "1:35: The `read` command must be given a literal type as its first argument (Swarm does not have dependent types); found `T` instead."
             )
         ]
     ]

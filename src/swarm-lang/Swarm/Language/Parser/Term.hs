@@ -107,6 +107,7 @@ parseTermAtom2 =
           <*> pure Nothing
           <*> (optional (symbol ";") *> (parseTerm <|> (eof $> sNoop)))
         <|> SRcd <$> brackets (parseRecord (optional (symbol "=" *> parseTerm)))
+        <|> TType <$> (symbol "@" *> parseTypeAtom)
     )
     <|> parseLoc (mkTuple <$> parens (parseTerm `sepBy` symbol ","))
     <|> parseLoc (TDelay (TConst Noop) <$ try (symbol "{" *> symbol "}"))

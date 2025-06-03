@@ -257,4 +257,4 @@ valueToTerm = \case
   VSuspend t _ -> TSuspend t
   VExc -> TConst Undefined
   VBlackhole -> TConst Undefined
-  VType _ -> TConst Undefined
+  VType ty -> TType ty

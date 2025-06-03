@@ -16,7 +16,7 @@ end
 
 def followInstructions : Text -> Cmd Unit = \paper.
   try {
-    let res = (read paper : ((Int * Int) * Text))
+    let res = read @((Int * Int) * Text) paper
     in  pixel res
   } {}
 end

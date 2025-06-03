@@ -66,6 +66,7 @@ requirements tdCtx ctx =
     TAntiText _ -> pure ()
     TBool _ -> pure ()
     TSuspend {} -> pure ()
+    TType {} -> pure ()
     -- It doesn't require any special capability to *inquire* about
     -- the requirements of a term.
     TRequirements _ _ -> pure ()
