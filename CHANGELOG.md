@@ -8,27 +8,67 @@ Some of the highlights of this release include XXX.
 
 ### Breaking changes
 
-* XXX `pure` vs `return`
-* XXX `fst`/`snd` vs `match`
-* Use `swarm format --v0.6` to convert old code.
+* `return` has been renamed to `pure` ([#2285](https://github.com/swarm-game/swarm/pull/2285))
+* `fst`/`snd` have been removed in favor of a pair eliminator called `match` ([#2407](https://github.com/swarm-game/swarm/pull/2407))
+
+You can use `swarm format --v0.6` to automatically convert old code.
 
 ### Bugfixes
 
+* Fix type inference for recursive let bindings ([#2187](https://github.com/swarm-game/swarm/pull/2187))
+* Fix two space leaks ([#2448](https://github.com/swarm-game/swarm/pull/2448))
+* Fix robot modal memory leak by only rendering modal when it is displayed ([#2379](https://github.com/swarm-game/swarm/pull/2379))
+* Fix completed scenarios so they always show green status ([#2312](https://github.com/swarm-game/swarm/pull/2312))
+
 ### New Features
+
+#### New commands
+
+* `print` + `erase` commands for printing on paper ([#2245](https://github.com/swarm-game/swarm/pull/2245))
+* New `read` command to act as partial inverse to `format` ([#2224](https://github.com/swarm-game/swarm/pull/2224), [#2461](https://github.com/swarm-game/swarm/pull/2461))
+* New subworld-aware teleportation and location query commands, `warp` and `locateme` ([#2195](https://github.com/swarm-game/swarm/pull/2195))
 
 #### Language
 
+* Scoped type variables ([#2178](https://github.com/swarm-game/swarm/pull/2178))
+* Do requirements analysis for literal text argument to `use` ([#2211](https://github.com/swarm-game/swarm/pull/2211))
+* Rename `return` to `pure` ([#2285](https://github.com/swarm-game/swarm/pull/2285))
+* Replace `fst` and `snd` with pair eliminator `match` ([#2407](https://github.com/swarm-game/swarm/pull/2407))
+* Rename `require n` to `stock` ([#2455](https://github.com/swarm-game/swarm/pull/2455))
+
 #### Entities + recipes
+
+#### Tutorial improvements
 
 #### New scenarios
 
+* Progress bar vignette ([#2190](https://github.com/swarm-game/swarm/pull/2190))
+* Counting flowers ([#2249](https://github.com/swarm-game/swarm/pull/2249))
+* Spiders demo ([#2275](https://github.com/swarm-game/swarm/pull/2275))
+
+#### Achievements
+
+* Achievement for completing all tutorials ([#2354](https://github.com/swarm-game/swarm/pull/2354))
+* Grant `AttemptSelfDestructBase` achievement for movement as well as `selfdestruct` ([#2356](https://github.com/swarm-game/swarm/pull/2356))
+* Swiss Army Robot achievement for equipping all craftable devices in classic game ([#2424](https://github.com/swarm-game/swarm/pull/2424))
+
 #### Scenario mechanics and authoring improvements
 
+* New combustion delay parameter ([#2248](https://github.com/swarm-game/swarm/pull/2248))
+* Structure enhancements
+    * ensure no overlaps in initial placement of recognized structures ([#2212](https://github.com/swarm-game/swarm/pull/2212))
+    * shape recognition with piecewise rows ([#2201](https://github.com/swarm-game/swarm/pull/2201))
+    * Fix shape recognition orientation edge case ([#2229](https://github.com/swarm-game/swarm/pull/2229))
+
 #### UI enhancements
+
+* Don't insert extra close bracket when the cursor is already on top of one ([#2215](https://github.com/swarm-game/swarm/pull/2215))
 
 #### Command line options
 
 ### Building/packaging
+
+* Add support for GHC 9.10 and 9.12, and drop 9.2 and 9.4
 
 ## **0.6.0.0** - 2024-07-15
 
