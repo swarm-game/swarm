@@ -755,6 +755,12 @@ testLanguagePipeline =
                 "(read @Int \"3\") 4"
                 "1:1: Type mismatch:\n  From context, expected `(read @Int \"3\")` to be a function,\n  but it actually has type `Int`"
             )
+        , testCase
+            "read at type stored in a variable"
+            ( process
+                "def T : Type = @(Bool * Int) end; read T \"(True, 3)\""
+                "1:35: The `read` command must be given a literal type as its first argument (Swarm does not have dependent types); found `T` instead."
+            )
         ]
     ]
  where

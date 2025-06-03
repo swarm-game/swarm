@@ -485,6 +485,9 @@ data TypeErr
   | -- | Some unification variables ended up in a type, probably due to
     --   impredicativity.  See https://github.com/swarm-game/swarm/issues/351 .
     Impredicative
+  | -- | Read must be given a literal type as an argument.  See
+    --   https://github.com/swarm-game/swarm/pull/2461#discussion_r2124125021
+    ReadNonLiteralTypeArg Term
   deriving (Show)
 
 instance PrettyPrec TypeErr where
@@ -532,6 +535,8 @@ instance PrettyPrec TypeErr where
       "Invalid atomic block:" <+> ppr reason <> ":" <+> pprCode t
     Impredicative ->
       "Unconstrained unification type variables encountered, likely due to an impredicative type. This is a known bug; for more information see https://github.com/swarm-game/swarm/issues/351 ."
+    ReadNonLiteralTypeArg t ->
+      "The `read` command must be given a literal type as its first argument (Swarm does not have dependent types); found" <+> pprCode t <+> "instead."
    where
     pprCode :: PrettyPrec a => a -> Doc ann
     pprCode = bquote . ppr
@@ -896,7 +901,10 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     | c `elem` [Atomic, Instant] -> fresh >>= check s
   -- Special case for applying 'read' to a type argument, since we need to make
   -- sure the type propagates to the inferred output type of 'read'.
-  TConst Read :$: (STerm (TType argTy)) -> do
+  TConst Read :$: STerm arg -> do
+    argTy <- case arg of
+      TType ty -> pure ty
+      _ -> throwTypeErr l $ ReadNonLiteralTypeArg arg
     r' <- infer $ Syntax l (TConst Read)
     argTy' <- adaptToTypeErr l (UnboundType . getUnexpanded) $ expandTydefs argTy
     arg' <- check (STerm (TType argTy')) UTyType
