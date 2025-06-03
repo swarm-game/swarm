@@ -1,10 +1,6 @@
 # Revision history for swarm
 
-## **0.7.0.0** - 2025-06-XX
-
-Some of the highlights of this release include XXX.
-
-### Community
+## **0.7.0.0** - 2025-06-03
 
 ### Breaking changes
 
@@ -46,10 +42,10 @@ You can use `swarm format --v0.6` to automatically convert old code.
 * Rename `require n` to `stock` ([#2455](https://github.com/swarm-game/swarm/pull/2455))
 * Custom error message for missing `end` (#1141) ([#2373](https://github.com/swarm-game/swarm/pull/2373))
 * Use original variable names in error messages about Skolem variables ([#2340](https://github.com/swarm-game/swarm/pull/2340))
-* * Improvements to comment preservation in `swarm format` ([#2329](https://github.com/swarm-game/swarm/pull/2329))
 
 #### Entities + recipes
 
+* Make `rolex` show time ([#2147](https://github.com/swarm-game/swarm/pull/2147))
 * `atlas` entity ([#2257](https://github.com/swarm-game/swarm/pull/2257))
 * Recipes for `binoculars` ([#2391](https://github.com/swarm-game/swarm/pull/2391))
 * `water` disappears when placed ([#2358](https://github.com/swarm-game/swarm/pull/2358))
@@ -89,6 +85,7 @@ You can use `swarm format --v0.6` to automatically convert old code.
 * Refactor + comment `World Examples/clearing` to make it easier to understand ([#2305](https://github.com/swarm-game/swarm/pull/2305))
 * New combustion delay parameter ([#2248](https://github.com/swarm-game/swarm/pull/2248))
 * Structure enhancements
+    * Demo standalone colored structures ([#2099](https://github.com/swarm-game/swarm/pull/2099))
     * ensure no overlaps in initial placement of recognized structures ([#2212](https://github.com/swarm-game/swarm/pull/2212))
     * shape recognition with piecewise rows ([#2201](https://github.com/swarm-game/swarm/pull/2201))
     * Fix shape recognition orientation edge case ([#2229](https://github.com/swarm-game/swarm/pull/2229))
@@ -96,6 +93,9 @@ You can use `swarm format --v0.6` to automatically convert old code.
 
 #### UI enhancements
 
+* Pause on objective completion ([#2096](https://github.com/swarm-game/swarm/pull/2096))
+* Navigable robots table ([#2140](https://github.com/swarm-game/swarm/pull/2140))
+* Expose waypoint and portal info to web API ([#2185](https://github.com/swarm-game/swarm/pull/2185))
 * Warn the user when debugging options are on ([#2278](https://github.com/swarm-game/swarm/pull/2278))
 * Scenarios started from command line now quit directly back to command line ([#2280](https://github.com/swarm-game/swarm/pull/2280))
 * Make FPS toggle and "recenter view" into global events ([#2293](https://github.com/swarm-game/swarm/pull/2293))
@@ -107,8 +107,14 @@ You can use `swarm format --v0.6` to automatically convert old code.
 * Don't insert extra close bracket when the cursor is already on top of one ([#2215](https://github.com/swarm-game/swarm/pull/2215))
 * Add Replay game script ([#2446](https://github.com/swarm-game/swarm/pull/2446))
 
+#### Pretty printing + formatting
+
+* Put end on separate line when pretty printing definitions ([#2100](https://github.com/swarm-game/swarm/pull/2100))
+* Improvements to comment preservation in `swarm format` ([#2329](https://github.com/swarm-game/swarm/pull/2329))
+
 #### Command line options
 
+* Add CLI option to start the game paused ([#2080](https://github.com/swarm-game/swarm/pull/2080))
 * Split out debug options ([#2094](https://github.com/swarm-game/swarm/pull/2094))
 
 ### Building/packaging
