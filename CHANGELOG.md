@@ -43,14 +43,14 @@ You can use `swarm format --v0.6` to automatically convert old code.
 * Custom error message for missing `end` (#1141) ([#2373](https://github.com/swarm-game/swarm/pull/2373))
 * Use original variable names in error messages about Skolem variables ([#2340](https://github.com/swarm-game/swarm/pull/2340))
 
-#### Entities + recipes
+#### Entities + Recipes
 
 * Make `rolex` show time ([#2147](https://github.com/swarm-game/swarm/pull/2147))
 * `atlas` entity ([#2257](https://github.com/swarm-game/swarm/pull/2257))
 * Recipes for `binoculars` ([#2391](https://github.com/swarm-game/swarm/pull/2391))
 * `water` disappears when placed ([#2358](https://github.com/swarm-game/swarm/pull/2358))
 
-#### Tutorials
+#### Tutorials + Scenarios
 
 * Make `Tutorial` menu choice auto-start first *unsolved* tutorial scenario ([#2314](https://github.com/swarm-game/swarm/pull/2314))
 * Add some optional goals to the classic scenario ([#2436](https://github.com/swarm-game/swarm/pull/2436))
@@ -63,9 +63,6 @@ You can use `swarm format --v0.6` to automatically convert old code.
   [#2361](https://github.com/swarm-game/swarm/pull/2361),
   [#2359](https://github.com/swarm-game/swarm/pull/2359),
   [#2444](https://github.com/swarm-game/swarm/pull/2444))
-
-#### Scenarios
-
 * Progress bar vignette ([#2190](https://github.com/swarm-game/swarm/pull/2190))
 * Counting flowers ([#2249](https://github.com/swarm-game/swarm/pull/2249))
 * Spiders demo ([#2275](https://github.com/swarm-game/swarm/pull/2275))
@@ -107,7 +104,7 @@ You can use `swarm format --v0.6` to automatically convert old code.
 * Don't insert extra close bracket when the cursor is already on top of one ([#2215](https://github.com/swarm-game/swarm/pull/2215))
 * Add Replay game script ([#2446](https://github.com/swarm-game/swarm/pull/2446))
 
-#### Pretty printing + formatting
+#### Pretty printing + Formatting
 
 * Put end on separate line when pretty printing definitions ([#2100](https://github.com/swarm-game/swarm/pull/2100))
 * Improvements to comment preservation in `swarm format` ([#2329](https://github.com/swarm-game/swarm/pull/2329))
