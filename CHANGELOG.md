@@ -6,6 +6,7 @@
 
 * `return` has been renamed to `pure` ([#2285](https://github.com/swarm-game/swarm/pull/2285))
 * `fst`/`snd` have been removed in favor of a pair eliminator called `match` ([#2407](https://github.com/swarm-game/swarm/pull/2407))
+* `require <n> <item>` has been renamed to `stock <n> <item>` to reduce ambiguity with `require <device>` ([#2455](https://github.com/swarm-game/swarm/pull/2455)).
 
 You can use `swarm format --v0.6` to automatically convert old code.
 
