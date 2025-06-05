@@ -81,7 +81,7 @@ def countAndReport : Int * Int -> Int * Int -> Cmd Unit = \size. \ll.
   cnt <- countFlowers size ll;
   goto (0,0);
   paper <- acquire;
-  let soFar = (read paper : Int) in
+  let soFar = read @Int paper in
   erase paper;
   newPaper <- print "paper" (format (soFar + cnt));
   place newPaper;

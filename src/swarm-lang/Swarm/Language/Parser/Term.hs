@@ -75,13 +75,8 @@ parseTermAtom2 =
         <|> TInt <$> integer
         <|> TText <$> textLiteral
         <|> TBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
-        <|> reserved "require"
-          *> ( TRequire
-                 <$> (textLiteral <?> "device name in double quotes")
-             )
-        <|> reserved "stock"
-          *> (TStock . fromIntegral <$> integer)
-          <*> (textLiteral <?> "entity name in double quotes")
+        <|> reserved "require" *> parseRequire
+        <|> reserved "stock" *> parseStock
         <|> uncurry SRequirements <$> (reserved "requirements" *> match parseTerm)
         <|> SLam
           <$> (symbol "\\" *> locTmVar)
@@ -107,11 +102,27 @@ parseTermAtom2 =
           <*> pure Nothing
           <*> (optional (symbol ";") *> (parseTerm <|> (eof $> sNoop)))
         <|> SRcd <$> brackets (parseRecord (optional (symbol "=" *> parseTerm)))
+        <|> TType <$> (symbol "@" *> parseTypeAtom)
     )
     <|> parseLoc (mkTuple <$> parens (parseTerm `sepBy` symbol ","))
     <|> parseLoc (TDelay (TConst Noop) <$ try (symbol "{" *> symbol "}"))
     <|> parseLoc (SDelay <$> braces parseTerm)
     <|> parseLoc (view antiquoting >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
+
+-- | Parse the contents of a @require@ statement: either requiring a device, or
+--   (if parsing v0.6) requiring inventory stock.
+parseRequire :: Parser Term
+parseRequire = do
+  ver <- view languageVersion
+  asum
+    [ TRequire <$> (textLiteral <?> "device name in double quotes")
+    , guard (ver == SwarmLang0_6) *> parseStock
+    ]
+
+parseStock :: Parser Term
+parseStock =
+  (TStock . fromIntegral <$> integer)
+    <*> (textLiteral <?> "entity name in double quotes")
 
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.

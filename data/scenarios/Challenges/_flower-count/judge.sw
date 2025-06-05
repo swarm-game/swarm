@@ -19,7 +19,7 @@ def judgeCount : Int -> Cmd Unit = \actual.
     (\_. pure ())
     (\p.
       try {
-        let c = (read p : Int) in
+        let c = read @Int p in
         if (c == actual) { win } {}
       } {}
     )

@@ -485,6 +485,9 @@ data TypeErr
   | -- | Some unification variables ended up in a type, probably due to
     --   impredicativity.  See https://github.com/swarm-game/swarm/issues/351 .
     Impredicative
+  | -- | Read must be given a literal type as an argument.  See
+    --   https://github.com/swarm-game/swarm/pull/2461#discussion_r2124125021
+    ReadNonLiteralTypeArg Term
   deriving (Show)
 
 instance PrettyPrec TypeErr where
@@ -532,6 +535,8 @@ instance PrettyPrec TypeErr where
       "Invalid atomic block:" <+> ppr reason <> ":" <+> pprCode t
     Impredicative ->
       "Unconstrained unification type variables encountered, likely due to an impredicative type. This is a known bug; for more information see https://github.com/swarm-game/swarm/issues/351 ."
+    ReadNonLiteralTypeArg t ->
+      "The `read` command must be given a literal type as its first argument (Swarm does not have dependent types); found" <+> pprCode t <+> "instead."
    where
     pprCode :: PrettyPrec a => a -> Doc ann
     pprCode = bquote . ppr
@@ -579,6 +584,7 @@ baseTyNounPhrase = \case
   BBool -> "a boolean"
   BActor -> "an actor"
   BKey -> "a key"
+  BType -> "a type"
 
 -- | Generate an appropriate message when the sets of fields in two
 --   record types do not match, explaining which fields are extra and
@@ -893,6 +899,17 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- This must come BEFORE the SApp case.
   TConst c :$: _
     | c `elem` [Atomic, Instant] -> fresh >>= check s
+  -- Special case for applying 'read' to a type argument, since we need to make
+  -- sure the type propagates to the inferred output type of 'read'.
+  TConst Read :$: STerm arg -> do
+    argTy <- case arg of
+      TType ty -> pure ty
+      _ -> throwTypeErr l $ ReadNonLiteralTypeArg arg
+    r' <- infer $ Syntax l (TConst Read)
+    argTy' <- adaptToTypeErr l (UnboundType . getUnexpanded) $ expandTydefs argTy
+    arg' <- check (STerm (TType argTy')) UTyType
+    pure $ Syntax' l (SApp r' arg') cs (UTyFun UTyText (toU argTy'))
+
   -- It works better to handle applications in *inference* mode.
   -- Knowing the expected result type of an application does not
   -- really help much.  In the typical case, the function being
@@ -1006,7 +1023,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     iuty <- instantiate upty
     c' <- check c iuty
     return $ Syntax' l (SAnnotate c' (forgetQ qpty')) cs iuty
-
+  TType ty -> pure $ Syntax' l (TType ty) cs UTyType
   -- Fallback: to infer the type of anything else, make up a fresh unification
   -- variable for its type and check against it.
   _ -> do
@@ -1108,7 +1125,7 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Div -> arithBinT
   Exp -> arithBinT
   Format -> [tyQ| a -> Text |]
-  Read -> [tyQ| Text -> a |]
+  Read -> [tyQ| Type -> Text -> a |]
   Print -> [tyQ| Text -> Text -> Cmd Text |]
   Erase -> [tyQ| Text -> Cmd Text |]
   Concat -> [tyQ| Text -> Text -> Text |]
