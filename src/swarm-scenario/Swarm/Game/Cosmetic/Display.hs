@@ -10,7 +10,7 @@
 -- Description: TUI rendering of entities
 --
 -- Utilities for describing how to display in-game entities in the TUI.
-module Swarm.Game.Display (
+module Swarm.Game.Cosmetic.Display (
   -- * The display record
   Priority,
   Attribute (..),
@@ -48,7 +48,7 @@ import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Graphics.Text.Width
-import Swarm.Game.Texel
+import Swarm.Game.Cosmetic.Texel
 import Swarm.Language.Syntax.Direction (AbsoluteDir (..), Direction (..))
 import Swarm.Util (applyWhen, quote)
 import Swarm.Util.Lens (makeLensesNoSigs)

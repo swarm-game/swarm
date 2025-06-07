@@ -36,9 +36,9 @@ import Data.Tuple (swap)
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Failure
-import Swarm.Game.Display
-import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
-import Swarm.Game.Texel (Texel, mkTexel)
+import Swarm.Game.Cosmetic.Display
+import Swarm.Game.Cosmetic.Color (WorldAttr (..))
+import Swarm.Game.Cosmetic.Texel (Texel, mkTexel)
 import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util (enumeratedMap, quote)
 import Swarm.Util.Effect (withThrow)

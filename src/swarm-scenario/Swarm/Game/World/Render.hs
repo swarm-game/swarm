@@ -31,7 +31,8 @@ import Data.Tuple.Extra (both)
 import GHC.Generics (Generic)
 import Linear (V2 (..))
 import Swarm.Failure (SystemFailure, simpleErrorHandle)
-import Swarm.Game.Entity.Cosmetic
+import Swarm.Game.Cosmetic.Color (WorldAttr, PreservableColor)
+import Swarm.Game.Cosmetic.Texel (getTexelChar)
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Scenario
@@ -45,7 +46,6 @@ import Swarm.Game.Scenario.Topography.Rasterize
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.State.Landscape
-import Swarm.Game.Texel (getTexelChar)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Gen (Seed)

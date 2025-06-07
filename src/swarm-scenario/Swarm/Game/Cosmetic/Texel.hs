@@ -2,8 +2,11 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 -- Description: TUI rendering of entities
 --
--- Utilities for describing how to display in-game entities in the TUI.
-module Swarm.Game.Texel (
+-- A "texel" ("textual element") represent concrete information about
+-- how to draw the foreground and/or background of one textual cell,
+-- together with priority values.  Texels for multiple things in the
+-- same cell can be combined to appropriately compute what to draw.
+module Swarm.Game.Cosmetic.Texel (
   Priority,
   Texel(..),
   mkTexel,
@@ -41,9 +44,10 @@ getTexelData (Texel fg bg) = (getArg . getMax <$> fg, getArg . getMax <$> bg)
 getTexelChar :: Texel a -> Maybe Char
 getTexelChar = fmap fst . fst . getTexelData
 
--- | XXX Get FG if it exists, else BG
-getTexelAttr :: Texel a -> Maybe a
-getTexelAttr t = case getTexelData t of
+-- | Get the texel foreground color if it exists; otherwise fall back
+--   to the background.
+getTexelColor :: Texel a -> Maybe a
+getTexelColor t = case getTexelData t of
   (fg, bg) -> (snd <$> fg) <|> bg
 
 texelIsEmpty :: Texel a -> Bool

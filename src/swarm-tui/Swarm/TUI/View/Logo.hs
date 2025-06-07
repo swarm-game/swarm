@@ -10,7 +10,7 @@ import Brick
 import Brick.Widgets.Center (centerLayer)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Swarm.Game.Entity.Cosmetic.Assignment
+import Swarm.Game.Cosmetic.Assignment
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Attribute.Attr
 

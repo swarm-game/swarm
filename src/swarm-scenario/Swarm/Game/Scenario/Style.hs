@@ -14,7 +14,7 @@ import Data.Colour.SRGB.Linear (toRGB)
 import Data.Set (Set)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
-import Swarm.Game.Entity.Cosmetic
+import Swarm.Game.Cosmetic.Color
 import Swarm.Game.Scenario.Topography.Rasterize
 
 data StyleFlag

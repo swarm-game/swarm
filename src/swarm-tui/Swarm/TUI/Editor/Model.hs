@@ -11,12 +11,12 @@ import Control.Lens hiding (from, (.=), (<.>))
 import Data.List.Extra (enumerate)
 import Data.Map qualified as M
 import Data.Vector qualified as V
-import Swarm.Game.Display (Attribute)
+import Swarm.Game.Cosmetic.Display (Attribute)
+import Swarm.Game.Cosmetic.Texel (Texel)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainType)
-import Swarm.Game.Texel (Texel)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.TUI.Model.Name

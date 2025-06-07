@@ -8,13 +8,13 @@ module Swarm.Util.Content where
 import Control.Applicative ((<|>))
 import Data.Map qualified as M
 import Data.Text qualified as T
-import Swarm.Game.Display
-import Swarm.Game.Entity.Cosmetic
+import Swarm.Game.Cosmetic.Color (WorldAttr (..), PreservableColor)
+import Swarm.Game.Cosmetic.Display
+import Swarm.Game.Cosmetic.Texel (getTexelColor)
 import Swarm.Game.Scenario.Topography.Cell (PCell (..))
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Terrain (TerrainMap, TerrainType, getTerrainWord)
-import Swarm.Game.Texel (getTexelAttr)
 import Swarm.Game.Universe
 import Swarm.Game.World
 import Swarm.Game.World.Coords
@@ -64,6 +64,6 @@ getTerrainEntityColor aMap (Cell terr cellEnt _) =
   (entityColor =<< erasableToMaybe cellEnt) <|> terrainFallback
  where
   terrainFallback = M.lookup (WorldAttr $ T.unpack $ getTerrainWord terr) aMap
-  entityColor (EntityFacade _ d) = case getTexelAttr d of
+  entityColor (EntityFacade _ d) = case getTexelColor d of
     Just (AWorld n) -> M.lookup (WorldAttr $ T.unpack n) aMap
     _ -> Nothing

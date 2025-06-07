@@ -127,14 +127,14 @@ import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Failure
+import Swarm.Game.Cosmetic.Assignment (worldAttributes)
+import Swarm.Game.Cosmetic.Color (WorldAttr (..))
+import Swarm.Game.Cosmetic.Display
+import Swarm.Game.Cosmetic.Texel (Texel)
 import Swarm.Game.Device
-import Swarm.Game.Display
-import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
-import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
 import Swarm.Game.Ingredients
 import Swarm.Game.Location
 import Swarm.Game.Terrain (TerrainType)
-import Swarm.Game.Texel (Texel)
 import Swarm.Language.Capability
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)

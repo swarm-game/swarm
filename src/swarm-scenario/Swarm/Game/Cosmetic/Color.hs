@@ -1,8 +1,8 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Preserve color fidelity for non-TUI rendering
-module Swarm.Game.Entity.Cosmetic where
+-- Preserve color fidelity for non-TUI rendering.
+module Swarm.Game.Cosmetic.Color where
 
 import Codec.Picture (PixelRGBA8 (..))
 import Data.Colour.SRGB (RGB (..))

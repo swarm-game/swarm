@@ -13,8 +13,8 @@ module Swarm.Game.Scenario.Topography.EntityFacade where
 
 import Control.Lens ((^.))
 import Data.Yaml as Y (ToJSON (toJSON))
-import Swarm.Game.Display (Attribute)
-import Swarm.Game.Texel (Texel)
+import Swarm.Game.Cosmetic.Display (Attribute)
+import Swarm.Game.Cosmetic.Texel (Texel)
 import Swarm.Game.Entity qualified as E
 
 -- | This datatype is a lightweight stand-in for the

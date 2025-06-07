@@ -66,8 +66,9 @@ import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Constant
+import Swarm.Game.Cosmetic.Display (defaultEntityDisplay)
+import Swarm.Game.Cosmetic.Texel (texelIsEmpty)
 import Swarm.Game.Device (commandCost, commandsForDeviceCaps, enabledCommands, getCapabilitySet, getMap, ingredients)
-import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Ingredients
 import Swarm.Game.Land
@@ -107,7 +108,6 @@ import Swarm.Game.State.Robot
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Tick (TickNumber (..), formatTicks)
-import Swarm.Game.Texel (texelIsEmpty)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Gen (Seed)

@@ -20,7 +20,7 @@ import Data.Tagged (unTagged)
 import Data.Word (Word32)
 import Graphics.Vty qualified as V
 import Linear.Affine ((.-.))
-import Swarm.Game.Display (
+import Swarm.Game.Cosmetic.Display (
   Attribute (AEntity),
   Display,
   defaultEntityDisplay,
@@ -28,6 +28,7 @@ import Swarm.Game.Display (
   displayPriority,
   renderDisplay,
  )
+import Swarm.Game.Cosmetic.Texel (Texel, getTexelData, mkTexel)
 import Swarm.Game.Entity
 import Swarm.Game.Land
 import Swarm.Game.Location (Point (..), toHeading)
@@ -40,7 +41,6 @@ import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Terrain
-import Swarm.Game.Texel (Texel, getTexelData, mkTexel)
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W

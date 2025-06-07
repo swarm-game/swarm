@@ -16,7 +16,8 @@ import Data.Ord (Down (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Tuple (swap)
-import Swarm.Game.Display (Attribute)
+import Swarm.Game.Cosmetic.Display (Attribute)
+import Swarm.Game.Cosmetic.Texel (Texel, getTexelChar)
 import Swarm.Game.Entity (Entity, EntityName, entitiesByName)
 import Swarm.Game.Land
 import Swarm.Game.Location
@@ -31,7 +32,6 @@ import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainMap, TerrainType, getTerrainDefaultPaletteChar, terrainByName)
-import Swarm.Game.Texel (Texel, getTexelChar)
 import Swarm.Game.Universe
 import Swarm.Language.Text.Markdown (fromText)
 import Swarm.TUI.Editor.Json (SkeletonScenario (SkeletonScenario))

@@ -7,13 +7,13 @@
 -- assignment of entities and terrain.
 -- More specifically, it sets colors for "attributes",
 -- and the attributes are referenced by entities\/terrain.
-module Swarm.Game.Entity.Cosmetic.Assignment where
+module Swarm.Game.Cosmetic.Assignment where
 
 import Data.Bifunctor (bimap)
 import Data.Colour.SRGB (RGB (..))
 import Data.Map (Map)
 import Data.Map qualified as M
-import Swarm.Game.Entity.Cosmetic
+import Swarm.Game.Cosmetic.Color
 
 -- * Entities and Terrain
 

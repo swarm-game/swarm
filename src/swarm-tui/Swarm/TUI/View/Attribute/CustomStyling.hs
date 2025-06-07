@@ -4,7 +4,7 @@ module Swarm.TUI.View.Attribute.CustomStyling where
 
 import Data.Set (toList)
 import Graphics.Vty.Attributes
-import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
+import Swarm.Game.Cosmetic.Color (WorldAttr (..))
 import Swarm.Game.Scenario.Style
 import Swarm.TUI.View.Attribute.Util
 

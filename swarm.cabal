@@ -616,11 +616,12 @@ library swarm-scenario
   exposed-modules:
     Swarm.Constant
     Swarm.Game.Achievement.Definitions
+    Swarm.Game.Cosmetic.Assignment
+    Swarm.Game.Cosmetic.Color
+    Swarm.Game.Cosmetic.Display
+    Swarm.Game.Cosmetic.Texel
     Swarm.Game.Device
-    Swarm.Game.Display
     Swarm.Game.Entity
-    Swarm.Game.Entity.Cosmetic
-    Swarm.Game.Entity.Cosmetic.Assignment
     Swarm.Game.Ingredients
     Swarm.Game.Land
     Swarm.Game.Recipe
@@ -643,7 +644,6 @@ library swarm-scenario
     Swarm.Game.State.Config
     Swarm.Game.State.Landscape
     Swarm.Game.Terrain
-    Swarm.Game.Texel
     Swarm.Game.World
     Swarm.Game.World.Abstract
     Swarm.Game.World.Compile

@@ -77,14 +77,14 @@ import Data.Text (Text)
 import Data.Yaml (FromJSON (parseJSON), (.!=), (.:), (.:?))
 import GHC.Generics (Generic)
 import Linear
+import Swarm.Game.Cosmetic.Display (Attribute, Display, defaultRobotDisplay, invisible)
+import Swarm.Game.Cosmetic.Texel (Texel)
 import Swarm.Game.Device
-import Swarm.Game.Display (Attribute, Display, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Ingredients
 import Swarm.Game.Land
 import Swarm.Game.Location (Heading, Location, toHeading)
 import Swarm.Game.Robot.Walk
-import Swarm.Game.Texel (Texel)
 import Swarm.Game.Universe
 import Swarm.Language.JSON ()
 import Swarm.Language.Syntax (Syntax, TSyntax)
