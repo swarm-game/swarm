@@ -63,7 +63,8 @@ renderTexel t =
   let (mfg, mbg) = getTexelData t
       displayChar = maybe ' ' fst mfg
       setFG = maybe id (withAttr . toAttrName . snd) mfg
-      setBG = undefined  -- XXX
+      setBG = id
+        -- undefined  -- XXX
         -- maybe id (\c -> modifyDefAttr (`V.withBackColor` c)) mbg
   in setBG . setFG $ str [displayChar]
 
@@ -166,10 +167,6 @@ renderEntityCell worldEditor ri coords =
   --    where
   --     offsettedCoord = (`addTuple` xy) <$> coords
   --     Coords xy = locToCoords $ P $ toHeading d
-
-  displayForEntity :: EntityPaint -> Display
-  displayForEntity = undefined
-  -- displayForEntity e = applyWhen (not $ isKnownFunc ri e) hidden $ getDisplay e
 
 -- | Render a specific location, by combining the
 --   texels for the terrain, entity, and robots at the location, and

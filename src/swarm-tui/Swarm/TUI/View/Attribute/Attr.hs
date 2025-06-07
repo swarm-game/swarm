@@ -69,7 +69,6 @@ toAttrName = \case
   ARobot -> robotAttr
   AEntity -> entityAttr
   AWorld n -> worldPrefix <> attrName (unpack n)
-  ADefault -> defAttr
 
 toVtyAttr :: PreservableColor -> V.Attr
 toVtyAttr hifi = case fmap mkBrickColor hifi of

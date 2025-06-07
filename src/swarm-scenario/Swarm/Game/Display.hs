@@ -56,14 +56,13 @@ import Swarm.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE)
 
 -- XXX move this to another module??
 -- | An internal attribute name.
-data Attribute = ADefault | ARobot | AEntity | AWorld Text
+data Attribute = ARobot | AEntity | AWorld Text
   deriving (Eq, Ord, Show, Generic, Hashable)
 
 readAttribute :: Text -> Attribute
 readAttribute = \case
   "robot" -> ARobot
   "entity" -> AEntity
-  "default" -> ADefault
   w -> AWorld w
 
 instance FromJSON Attribute where
@@ -71,7 +70,6 @@ instance FromJSON Attribute where
 
 instance ToJSON Attribute where
   toJSON = \case
-    ADefault -> String "default"
     ARobot -> String "robot"
     AEntity -> String "entity"
     AWorld w -> String w

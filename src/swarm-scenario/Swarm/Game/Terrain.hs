@@ -168,4 +168,4 @@ loadTerrain = do
   terrainFile = "terrains.yaml"
   terrainFailure = AssetNotLoaded (Data Terrain) terrainFile
 
-  blankTerrainObj = TerrainObj BlankT "Blank terrain" $ defaultTerrainTexel ADefault
+  blankTerrainObj = TerrainObj BlankT "Blank terrain" mempty
