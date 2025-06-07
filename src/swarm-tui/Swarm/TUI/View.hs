@@ -107,6 +107,7 @@ import Swarm.Game.State.Robot
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Tick (TickNumber (..), formatTicks)
+import Swarm.Game.Texel (texelIsEmpty)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Gen (Seed)
@@ -533,7 +534,8 @@ drawGameUI s =
           )
     ]
 
--- XXX what is this doing? Seems to duplicate some code from CellDisplay.
+-- | When the player clicks on a cell in the world panel, draw an
+--   indicator below it explaining the contents of the cell.
 drawWorldCursorInfo :: WorldOverdraw -> GameState -> Cosmic Coords -> Widget Name
 drawWorldCursorInfo worldEditor g cCoords =
   case getStatic g coords of
@@ -543,15 +545,12 @@ drawWorldCursorInfo worldEditor g cCoords =
   Cosmic _ coords = cCoords
   coordsWidget = str $ renderCoordsString $ fmap coordsToLoc cCoords
 
-  tileMembers = [terrain, entity, r]  -- XXX filter out empty ones?
   tileMemberWidgets =
-    map (padRight $ Pad 1)
-      . concat
-      . reverse
-      . zipWith f tileMembers
-      $ ["at", "on", "with"]
-   where
-    f cell preposition = [renderTexel cell, txt preposition]
+    map (padRight $ Pad 1) $
+      renderTexel robot : ("with" `pp` entity) ++ ("on" `pp` terrain) ++ [txt "at"]
+  pp prep t
+    | texelIsEmpty t = []
+    | otherwise = [txt prep, renderTexel t]
 
   ri =
     RenderingInput
@@ -561,10 +560,7 @@ drawWorldCursorInfo worldEditor g cCoords =
 
   terrain = renderTerrainCell worldEditor ri cCoords
   entity = renderEntityCell worldEditor ri cCoords
-  r = renderRobotCell g cCoords
-
-  -- XXX do we need this??
-  -- merge = fmap sconcat . NE.nonEmpty . filter (not . (^. invisible))
+  robot = renderRobotCell g cCoords
 
 -- | Format the clock display to be shown in the upper right of the
 --   world panel.

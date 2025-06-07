@@ -92,6 +92,7 @@ data RenderingInput = RenderingInput
   , terrMap :: TerrainMap
   }
 
+-- | XXX draw terrain
 renderTerrainCell ::
   WorldOverdraw ->
   RenderingInput ->
@@ -103,6 +104,7 @@ renderTerrainCell worldEditor ri coords =
   tm = terrainByName $ terrMap ri
   t = EU.getEditorTerrainAt (terrMap ri) worldEditor (multiworldInfo ri) coords
 
+-- | XXX draw all the robots
 renderRobotCell ::
   GameState ->
   Cosmic Coords ->

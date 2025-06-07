@@ -10,9 +10,11 @@ module Swarm.Game.Texel (
   getTexelChar,
   getTexelData,
   getTexelAttr,
+  texelIsEmpty,
 ) where
 
 import Control.Applicative ((<|>))
+import Data.Maybe (isNothing)
 import Data.Semigroup (Arg(..), ArgMax, Max(..))
 
 -- | Display priority.  Entities with higher priority will be drawn on
@@ -43,6 +45,9 @@ getTexelChar = fmap fst . fst . getTexelData
 getTexelAttr :: Texel a -> Maybe a
 getTexelAttr t = case getTexelData t of
   (fg, bg) -> (snd <$> fg) <|> bg
+
+texelIsEmpty :: Texel a -> Bool
+texelIsEmpty (Texel fg bg) = isNothing fg && isNothing bg
 
 instance Semigroup (Texel a) where
   Texel f1 b1 <> Texel f2 b2 = Texel (f1 <> f2) (b1 <> b2)
