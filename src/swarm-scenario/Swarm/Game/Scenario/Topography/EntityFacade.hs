@@ -22,7 +22,7 @@ import Swarm.Game.Entity qualified as E
 -- of its other fields.
 -- It contains the bare minimum display information
 -- for rendering.
-data EntityFacade = EntityFacade E.EntityName (Texel Attribute)
+data EntityFacade = EntityFacade E.EntityName (Texel TrueColor)
   deriving (Eq)
 
 -- Note: This instance is used only for the purpose of WorldPalette

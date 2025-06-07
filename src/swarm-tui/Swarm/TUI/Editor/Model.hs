@@ -33,7 +33,7 @@ data EntityPaint
   | Ref E.Entity
   deriving (Eq)
 
-renderEntityPaint :: EntityPaint -> Texel Attribute
+renderEntityPaint :: EntityPaint -> Texel TrueColor
 renderEntityPaint (Facade (EntityFacade _ d)) = d
 renderEntityPaint (Ref e) = E.renderEntity (const False) e
 

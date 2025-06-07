@@ -393,5 +393,5 @@ hearingDistance :: (Num i) => i
 hearingDistance = 32
 
 -- | XXX
-renderRobot :: Robot -> Texel Attribute
+renderRobot :: Robot -> Texel TrueColor
 renderRobot r = renderEntity (const False) (r ^. robotEntity)

@@ -52,11 +52,11 @@ import Witch (from)
 import Witch.Encoding qualified as Encoding
 
 -- | Render a texel as a UI widget.
-renderTexel :: Texel Attribute -> Widget n
+renderTexel :: Texel TrueColor -> Widget n
 renderTexel t =
   let (mfg, mbg) = getTexelData t
       displayChar = maybe ' ' fst mfg
-      setFG = maybe id (withAttr . toAttrName . snd) mfg
+       setFG = maybe id (withAttr . toAttrName . snd) mfg
       setBG = id
         -- undefined  -- XXX
         -- maybe id (\c -> modifyDefAttr (`V.withBackColor` c)) mbg
@@ -92,7 +92,7 @@ renderTerrainCell ::
   WorldOverdraw ->
   RenderingInput ->
   Cosmic Coords ->
-  Texel Attribute
+  Texel TrueColor
 renderTerrainCell worldEditor ri coords =
   maybe mempty terrainTexel $ M.lookup t tm
  where
@@ -103,7 +103,7 @@ renderTerrainCell worldEditor ri coords =
 renderRobotCell ::
   GameState ->
   Cosmic Coords ->
-  Texel Attribute
+  Texel TrueColor
 renderRobotCell g coords =
   foldMap renderRobot $
     robotsAtLocation (fmap coordsToLoc coords) g
@@ -147,7 +147,7 @@ renderEntityCell ::
   WorldOverdraw ->
   RenderingInput ->
   Cosmic Coords ->
-  Texel Attribute
+  Texel TrueColor
 renderEntityCell worldEditor ri coords =
   maybe mempty renderEntityPaint (getEntityPaintAtCoord coords)
  where
@@ -166,7 +166,7 @@ renderEntityCell worldEditor ri coords =
 --   texels for the terrain, entity, and robots at the location, and
 --   taking into account "static" based on the distance to the robot
 --   being @view@ed.
-renderLoc :: Bool -> WorldOverdraw -> GameState -> Cosmic Coords -> Texel Attribute
+renderLoc :: Bool -> WorldOverdraw -> GameState -> Cosmic Coords -> Texel TrueColor
 renderLoc showRobots we g cCoords@(Cosmic _ coords) =
   renderStaticAt g coords <> robots <> renderBaseLoc we ri cCoords
  where
@@ -187,7 +187,7 @@ renderBaseLoc ::
   WorldOverdraw ->
   RenderingInput ->
   Cosmic Coords ->
-  Texel Attribute
+  Texel TrueColor
 renderBaseLoc worldEditor ri coords =
   renderTerrainCell worldEditor ri coords <> renderEntityCell worldEditor ri coords
 
@@ -199,13 +199,13 @@ renderBaseLoc worldEditor ri coords =
 
 -- | Random "static" based on the distance to the robot being
 --   @view@ed.
-renderStaticAt :: GameState -> Coords -> Texel Attribute
+renderStaticAt :: GameState -> Coords -> Texel TrueColor
 renderStaticAt g coords = maybe mempty renderStatic (getStatic g coords)
 
 -- | Draw static given a number from 0-15 representing the state of
 --   the four quarter-pixels in a cell
-renderStatic :: Word32 -> Texel Attribute
-renderStatic s = mkTexel (Just (maxBound, (staticChar s, AEntity))) Nothing
+renderStatic :: Word32 -> Texel TrueColor
+renderStatic s = mkTexel (Just (maxBound, (staticChar s, _))) Nothing
 
 -- | Given a value from 0--15, considered as 4 bits, pick the
 --   character with the corresponding quarter pixels turned on.

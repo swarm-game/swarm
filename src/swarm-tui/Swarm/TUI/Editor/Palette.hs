@@ -52,7 +52,7 @@ makeSuggestedPalette tm originalScenarioPalette cellGrid =
  where
   cellList = catMaybes $ allMembers cellGrid
 
-  getMaybeEntityTexel :: PCell EntityFacade -> Maybe (EntityName, Texel Attribute)
+  getMaybeEntityTexel :: PCell EntityFacade -> Maybe (EntityName, Texel TrueColor)
   getMaybeEntityTexel (Cell _terrain (erasableToMaybe -> maybeEntity) _) = do
     EntityFacade eName d <- maybeEntity
     return (eName, d)
@@ -66,7 +66,7 @@ makeSuggestedPalette tm originalScenarioPalette cellGrid =
   getEntityTerrainMultiplicity =
     M.map histogram $ binTuples $ mapMaybe getMaybeEntityNameTerrainPair cellList
 
-  usedEntityTexels :: Map EntityName (Texel Attribute)
+  usedEntityTexels :: Map EntityName (Texel TrueColor)
   usedEntityTexels =
     M.fromList $ mapMaybe getMaybeEntityTexel cellList
 

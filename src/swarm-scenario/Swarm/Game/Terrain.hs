@@ -37,6 +37,7 @@ import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Failure
 import Swarm.Game.Cosmetic.Attribute
+import Swarm.Game.Cosmetic.Color (TrueColor)
 import Swarm.Game.Cosmetic.Texel (Texel, mkTexel)
 import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util (enumeratedMap, quote)
@@ -72,8 +73,9 @@ getTerrainDefaultPaletteChar :: TerrainType -> Char
 getTerrainDefaultPaletteChar = toUpper . T.head . getTerrainWord
 
 -- | The default way to display some terrain with a given attribute.
-defaultTerrainTexel :: Attribute -> Texel Attribute
-defaultTerrainTexel a = mkTexel Nothing (Just (0, a))
+defaultTerrainTexel :: Attribute -> Texel TrueColor
+defaultTerrainTexel a = undefined
+  -- mkTexel Nothing (Just (0, a))  -- XXX
 
 -- | Representation for parsing only. Not exported.
 data TerrainItem = TerrainItem
@@ -86,7 +88,7 @@ data TerrainItem = TerrainItem
 data TerrainObj = TerrainObj
   { terrainName :: TerrainType
   , terrainDesc :: Text
-  , terrainTexel :: Texel Attribute
+  , terrainTexel :: Texel TrueColor
   }
   deriving (Show)
 

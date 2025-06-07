@@ -717,7 +717,7 @@ entityInventory :: Lens' Entity Inventory
 entityInventory = hashedLens _entityInventory (\e x -> e {_entityInventory = x})
 
 -- | XXX
-renderEntity :: (AbsoluteDir -> Bool) -> Entity -> Texel Attribute
+renderEntity :: (AbsoluteDir -> Bool) -> Entity -> Texel TrueColor
 renderEntity boundaryCheck e = renderDisplay ((e ^. entityOrientation) >>= toDirection) boundaryCheck . view entityDisplay $ e
 
 ------------------------------------------------------------

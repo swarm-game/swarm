@@ -547,6 +547,7 @@ drawWorldCursorInfo worldEditor g cCoords =
 
   tileMemberWidgets =
     map (padRight $ Pad 1) $
+      -- XXX have to include rendered robot texel conditionally based on whether it is empty
       renderTexel robot : ("with" `pp` entity) ++ ("on" `pp` terrain) ++ [txt "at"]
   pp prep t
     | texelIsEmpty t = []
