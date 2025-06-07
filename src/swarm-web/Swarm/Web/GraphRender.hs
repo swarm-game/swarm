@@ -23,5 +23,5 @@ renderGoalsGraph oc =
       (\k -> maybe mempty (\(_, _, c) -> c) $ M.lookup k edgeLookup)
       ([(a, a) | (_, a, _) <- edges])
 
-  edges = makeGraphEdges objs
+  edges = makeObjectiveGraphEdges objs
   objs = oc ^.. allObjectives

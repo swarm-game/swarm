@@ -4,20 +4,14 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Lib (compareToReferenceImage) where
 
-import Codec.Picture
 import Control.Arrow (left)
 import Data.ByteString.Lazy qualified as LBS
 import Data.Either.Utils (forceEither)
 import Data.Yaml (prettyPrintParseException)
 import Paths_swarm (getDataDir)
-import Swarm.Game.Scenario.Topography.Navigation.Waypoint (
-  Parentage (Root),
- )
-import Swarm.Game.Scenario.Topography.Rasterize
 import Swarm.Game.Scenario.Topography.Structure
-import Swarm.Game.Scenario.Topography.Structure.Assembly
-import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.World.Render
+import Swarm.Render.Image
 import Swarm.Util.Yaml
 import System.FilePath
 import Test.Tasty.HUnit (Assertion, assertEqual)
@@ -40,8 +34,7 @@ compareToReferenceImage ::
 compareToReferenceImage refreshReferenceImage fileStem = do
   dataDir <- getDataDir
   parentStruct <- parseStructures dataDir $ fileStem <.> "yaml"
-  let MergedStructure overlayArea _ _ = forceEither $ mergeStructures mempty Root parentStruct
-      encodedImgBytestring = encodePng $ makeImage $ gridContent overlayArea
+  let encodedImgBytestring = mkStructurePng defaultImageRendering mempty parentStruct
       referenceFilepath = dataDir </> "test/standalone-topography" </> fileStem <.> "png"
   if refreshReferenceImage
     then LBS.writeFile referenceFilepath encodedImgBytestring
