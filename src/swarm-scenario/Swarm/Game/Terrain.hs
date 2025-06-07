@@ -36,7 +36,7 @@ import Data.Tuple (swap)
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Failure
-import Swarm.Game.Cosmetic.Display
+import Swarm.Game.Cosmetic.Attribute
 import Swarm.Game.Cosmetic.Color (WorldAttr (..))
 import Swarm.Game.Cosmetic.Texel (Texel, mkTexel)
 import Swarm.ResourceLoading (getDataFileNameSafe)

@@ -617,6 +617,7 @@ library swarm-scenario
     Swarm.Constant
     Swarm.Game.Achievement.Definitions
     Swarm.Game.Cosmetic.Assignment
+    Swarm.Game.Cosmetic.Attribute
     Swarm.Game.Cosmetic.Color
     Swarm.Game.Cosmetic.Display
     Swarm.Game.Cosmetic.Texel

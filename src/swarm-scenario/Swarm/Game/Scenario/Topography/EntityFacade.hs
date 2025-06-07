@@ -13,7 +13,7 @@ module Swarm.Game.Scenario.Topography.EntityFacade where
 
 import Control.Lens ((^.))
 import Data.Yaml as Y (ToJSON (toJSON))
-import Swarm.Game.Cosmetic.Display (Attribute)
+import Swarm.Game.Cosmetic.Attribute (Attribute)
 import Swarm.Game.Cosmetic.Texel (Texel)
 import Swarm.Game.Entity qualified as E
 

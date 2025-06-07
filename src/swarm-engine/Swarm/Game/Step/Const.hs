@@ -49,6 +49,7 @@ import Swarm.Effect as Effect (Time, getNow)
 import Swarm.Failure
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
+import Swarm.Game.Cosmetic.Attribute (readAttribute)
 import Swarm.Game.Cosmetic.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E

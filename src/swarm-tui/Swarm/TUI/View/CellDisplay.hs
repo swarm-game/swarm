@@ -20,14 +20,8 @@ import Data.Tagged (unTagged)
 import Data.Word (Word32)
 import Graphics.Vty qualified as V
 import Linear.Affine ((.-.))
-import Swarm.Game.Cosmetic.Display (
-  Attribute (AEntity),
-  Display,
-  defaultEntityDisplay,
-  displayAttr,
-  displayPriority,
-  renderDisplay,
- )
+import Swarm.Game.Cosmetic.Attribute (Attribute (AEntity))
+import Swarm.Game.Cosmetic.Display
 import Swarm.Game.Cosmetic.Texel (Texel, getTexelData, mkTexel)
 import Swarm.Game.Entity
 import Swarm.Game.Land

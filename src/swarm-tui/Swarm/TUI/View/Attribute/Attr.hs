@@ -60,8 +60,8 @@ import Data.Maybe (fromMaybe)
 import Data.Text (unpack)
 import Graphics.Vty qualified as V
 import Swarm.Game.Cosmetic.Assignment
+import Swarm.Game.Cosmetic.Attribute
 import Swarm.Game.Cosmetic.Color
-import Swarm.Game.Cosmetic.Display (Attribute (..))
 import Swarm.TUI.View.Attribute.Util
 
 toAttrName :: Attribute -> AttrName

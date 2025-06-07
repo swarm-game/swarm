@@ -12,7 +12,7 @@ module Swarm.Game.Cosmetic.Texel (
   mkTexel,
   getTexelChar,
   getTexelData,
-  getTexelAttr,
+  getTexelColor,
   texelIsEmpty,
 ) where
 

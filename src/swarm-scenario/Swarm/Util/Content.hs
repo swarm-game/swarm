@@ -8,8 +8,8 @@ module Swarm.Util.Content where
 import Control.Applicative ((<|>))
 import Data.Map qualified as M
 import Data.Text qualified as T
+import Swarm.Game.Cosmetic.Attribute
 import Swarm.Game.Cosmetic.Color (WorldAttr (..), PreservableColor)
-import Swarm.Game.Cosmetic.Display
 import Swarm.Game.Cosmetic.Texel (getTexelColor)
 import Swarm.Game.Scenario.Topography.Cell (PCell (..))
 import Swarm.Game.Scenario.Topography.EntityFacade

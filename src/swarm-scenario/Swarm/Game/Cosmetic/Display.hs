@@ -13,9 +13,8 @@
 module Swarm.Game.Cosmetic.Display (
   -- * The display record
   Priority,
-  Attribute (..),
-  readAttribute,
   Display,
+  Attribute,
   ChildInheritance (..),
 
   -- ** Fields
@@ -43,36 +42,16 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Semigroup (Arg (..), Max (..))
-import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Graphics.Text.Width
+import Swarm.Game.Cosmetic.Attribute
 import Swarm.Game.Cosmetic.Texel
 import Swarm.Language.Syntax.Direction (AbsoluteDir (..), Direction (..))
 import Swarm.Util (applyWhen, quote)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE)
-
--- XXX move this to another module??
--- | An internal attribute name.
-data Attribute = ARobot | AEntity | AWorld Text
-  deriving (Eq, Ord, Show, Generic, Hashable)
-
-readAttribute :: Text -> Attribute
-readAttribute = \case
-  "robot" -> ARobot
-  "entity" -> AEntity
-  w -> AWorld w
-
-instance FromJSON Attribute where
-  parseJSON = withText "attribute" $ pure . readAttribute
-
-instance ToJSON Attribute where
-  toJSON = \case
-    ARobot -> String "robot"
-    AEntity -> String "entity"
-    AWorld w -> String w
 
 data ChildInheritance
   = Invisible
