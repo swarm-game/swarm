@@ -12,8 +12,10 @@ import Data.Colour.Palette.Types (Kolor)
 import Data.Colour.SRGB (RGB (..), sRGB24reads, sRGB24show, toSRGB24)
 import Data.Colour.SRGB.Linear (toRGB)
 import Data.Set (Set)
+import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
+import Swarm.Game.Cosmetic.Attribute
 import Swarm.Game.Cosmetic.Color
 import Swarm.Game.Scenario.Topography.Rasterize
 
@@ -72,7 +74,7 @@ instance ToPixel HexColor where
     RGB r g b = toSRGB24 kolor
 
 data CustomAttr = CustomAttr
-  { name :: String
+  { name :: Text
   , fg :: Maybe HexColor
   , bg :: Maybe HexColor
   , style :: Maybe (Set StyleFlag)
@@ -88,9 +90,9 @@ instance ToJSON CustomAttr where
 
 -- | Must specify either a foreground or background color;
 -- just a style is not sufficient.
-toHifiPair :: CustomAttr -> Maybe (WorldAttr, PreservableColor)
+toHifiPair :: CustomAttr -> Maybe (Attribute, PreservableColor)
 toHifiPair (CustomAttr n maybeFg maybeBg _) =
-  sequenceA (WorldAttr n, fmap conv <$> c)
+  sequenceA (AWorld n, fmap conv <$> c)
  where
   c = case (maybeFg, maybeBg) of
     (Just f, Just b) -> Just $ FgAndBg f b

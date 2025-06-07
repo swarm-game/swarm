@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -13,39 +15,40 @@ import Data.Bifunctor (bimap)
 import Data.Colour.SRGB (RGB (..))
 import Data.Map (Map)
 import Data.Map qualified as M
+import Swarm.Game.Cosmetic.Attribute
 import Swarm.Game.Cosmetic.Color
 
 -- * Entities and Terrain
 
-entity :: (WorldAttr, PreservableColor)
-entity = (WorldAttr "entity", FgOnly $ AnsiColor White)
+entity :: (Attribute, PreservableColor)
+entity = (AEntity, FgOnly $ AnsiColor White)
 
-water :: (WorldAttr, PreservableColor)
-water = (WorldAttr "water", FgAndBg (AnsiColor White) (AnsiColor Blue))
+water :: (Attribute, PreservableColor)
+water = (AWorld "water", FgAndBg (AnsiColor White) (AnsiColor Blue))
 
-rock :: (WorldAttr, PreservableColor)
-rock = (WorldAttr "rock", FgOnly $ Triple $ RGB 80 80 80)
+rock :: (Attribute, PreservableColor)
+rock = (AWorld "rock", FgOnly $ Triple $ RGB 80 80 80)
 
-plant :: (WorldAttr, PreservableColor)
-plant = (WorldAttr "plant", FgOnly $ AnsiColor Green)
+plant :: (Attribute, PreservableColor)
+plant = (AWorld "plant", FgOnly $ AnsiColor Green)
 
-dirt :: (WorldAttr, PreservableColor)
-dirt = (WorldAttr "dirt", BgOnly $ Triple $ RGB 87 47 47)
+dirt :: (Attribute, PreservableColor)
+dirt = (AWorld "dirt", BgOnly $ Triple $ RGB 87 47 47)
 
-grass :: (WorldAttr, PreservableColor)
-grass = (WorldAttr "grass", BgOnly $ Triple $ RGB 0 47 0) -- dark green
+grass :: (Attribute, PreservableColor)
+grass = (AWorld "grass", BgOnly $ Triple $ RGB 0 47 0) -- dark green
 
-stone :: (WorldAttr, PreservableColor)
-stone = (WorldAttr "stone", BgOnly $ Triple $ RGB 47 47 47)
+stone :: (Attribute, PreservableColor)
+stone = (AWorld "stone", BgOnly $ Triple $ RGB 47 47 47)
 
-ice :: (WorldAttr, PreservableColor)
-ice = (WorldAttr "ice", BgOnly $ AnsiColor White)
+ice :: (Attribute, PreservableColor)
+ice = (AWorld "ice", BgOnly $ AnsiColor White)
 
-burnt :: (WorldAttr, PreservableColor)
-burnt = (WorldAttr "burnt", BgOnly $ Triple $ RGB 40 24 0) -- dark brown
+burnt :: (Attribute, PreservableColor)
+burnt = (AWorld "burnt", BgOnly $ Triple $ RGB 40 24 0) -- dark brown
 
 -- | Colors of entities in the world.
-worldAttributes :: Map WorldAttr PreservableColor
+worldAttributes :: Map Attribute PreservableColor
 worldAttributes =
   M.fromList $
     -- these few are referenced elsewhere,
@@ -61,7 +64,7 @@ worldAttributes =
     , burnt
     ]
       <> map
-        (bimap WorldAttr FgOnly)
+        (bimap AWorld FgOnly)
         [ ("device", AnsiColor BrightYellow)
         , ("wood", Triple $ RGB 139 69 19)
         , ("flower", Triple $ RGB 200 0 200)

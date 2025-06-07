@@ -4,7 +4,7 @@ module Swarm.TUI.View.Attribute.CustomStyling where
 
 import Data.Set (toList)
 import Graphics.Vty.Attributes
-import Swarm.Game.Cosmetic.Color (WorldAttr (..))
+import Swarm.Game.Cosmetic.Attribute (Attribute (..))
 import Swarm.Game.Scenario.Style
 import Swarm.TUI.View.Attribute.Util
 
@@ -22,9 +22,9 @@ toStyle = \case
 hexToAttrColor :: HexColor -> Color
 hexToAttrColor (HexColor kolor) = kolorToAttrColor kolor
 
-toAttrPair :: CustomAttr -> (WorldAttr, Attr)
+toAttrPair :: CustomAttr -> (Attribute, Attr)
 toAttrPair ca =
-  (WorldAttr (name ca), addStyle $ addFg $ addBg defAttr)
+  (AWorld (name ca), addStyle $ addFg $ addBg defAttr)
  where
   addFg = maybe id (flip withForeColor . hexToAttrColor) $ fg ca
   addBg = maybe id (flip withBackColor . hexToAttrColor) $ bg ca

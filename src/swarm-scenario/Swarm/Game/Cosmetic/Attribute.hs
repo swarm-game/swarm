@@ -31,4 +31,3 @@ instance ToJSON Attribute where
     ARobot -> String "robot"
     AEntity -> String "entity"
     AWorld w -> String w
-

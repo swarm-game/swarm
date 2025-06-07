@@ -94,6 +94,3 @@ flattenBg = \case
   FgOnly x -> x
   BgOnly x -> x
   FgAndBg _ x -> x
-
-newtype WorldAttr = WorldAttr String
-  deriving (Eq, Ord, Show)

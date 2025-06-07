@@ -129,7 +129,6 @@ import GHC.Generics (Generic)
 import Swarm.Failure
 import Swarm.Game.Cosmetic.Attribute
 import Swarm.Game.Cosmetic.Assignment (worldAttributes)
-import Swarm.Game.Cosmetic.Color (WorldAttr (..))
 import Swarm.Game.Cosmetic.Display
 import Swarm.Game.Cosmetic.Texel (Texel)
 import Swarm.Game.Device
@@ -496,12 +495,12 @@ devicesForCap :: Capability -> EntityMap -> [Entity]
 devicesForCap cap = maybe [] (NE.toList . NE.map device) . M.lookup cap . getMap . entitiesByCap
 
 -- | Validates references to 'Display' attributes
-validateEntityAttrRefs :: Has (Throw LoadingFailure) sig m => Set WorldAttr -> [Entity] -> m ()
+validateEntityAttrRefs :: Has (Throw LoadingFailure) sig m => Set Attribute -> [Entity] -> m ()
 validateEntityAttrRefs validAttrs es =
   forM_ namedEntities $ \(eName, ent) ->
     case ent ^. entityDisplay . displayAttr of
       AWorld n ->
-        unless (Set.member (WorldAttr $ T.unpack n) validAttrs)
+        unless (Set.member (AWorld n) validAttrs)
           . throwError
           . SystemFailure
           . CustomFailure

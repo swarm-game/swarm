@@ -37,7 +37,6 @@ import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Failure
 import Swarm.Game.Cosmetic.Attribute
-import Swarm.Game.Cosmetic.Color (WorldAttr (..))
 import Swarm.Game.Cosmetic.Texel (Texel, mkTexel)
 import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util (enumeratedMap, quote)
@@ -134,10 +133,10 @@ mkTerrainMap items =
   byIndex = enumeratedMap blankTerrainIndex items
 
 -- | Validates references to 'Display' attributes
-validateTerrainAttrRefs :: Has (Throw LoadingFailure) sig m => Set WorldAttr -> [TerrainItem] -> m [TerrainObj]
+validateTerrainAttrRefs :: Has (Throw LoadingFailure) sig m => Set Attribute -> [TerrainItem] -> m [TerrainObj]
 validateTerrainAttrRefs validAttrs rawTerrains =
   forM rawTerrains $ \(TerrainItem n a d) -> do
-    unless (Set.member (WorldAttr $ T.unpack a) validAttrs)
+    unless (Set.member (AWorld a) validAttrs)
       . throwError
       . SystemFailure
       . CustomFailure

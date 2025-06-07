@@ -18,7 +18,6 @@ module Swarm.TUI.View.Attribute.Attr (
   meterAttributeNames,
   messageAttributeNames,
   toAttrName,
-  getWorldAttrName,
   mkBrickColor,
 
   -- ** Common attributes
@@ -95,7 +94,7 @@ swarmAttrMap =
     V.defAttr
     $ NE.toList activityMeterAttributes
       <> NE.toList robotMessageAttributes
-      <> map (getWorldAttrName *** toVtyAttr) (M.toList worldAttributes)
+      <> map (toAttrName *** toVtyAttr) (M.toList worldAttributes)
       <> [ -- Robot attribute
            (robotAttr, fg V.white `V.withStyle` V.bold)
          , -- UI rendering attributes
@@ -127,11 +126,8 @@ swarmAttrMap =
 worldPrefix :: AttrName
 worldPrefix = attrName "world"
 
-getWorldAttrName :: WorldAttr -> AttrName
-getWorldAttrName (WorldAttr n) = worldPrefix <> attrName n
-
 entityAttr :: AttrName
-entityAttr = getWorldAttrName $ fst entity
+entityAttr = toAttrName $ fst entity
 
 robotMessagePrefix :: AttrName
 robotMessagePrefix = attrName "robotMessage"

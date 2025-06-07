@@ -31,7 +31,8 @@ import Data.Tuple.Extra (both)
 import GHC.Generics (Generic)
 import Linear (V2 (..))
 import Swarm.Failure (SystemFailure, simpleErrorHandle)
-import Swarm.Game.Cosmetic.Color (WorldAttr, PreservableColor)
+import Swarm.Game.Cosmetic.Attribute (Attribute)
+import Swarm.Game.Cosmetic.Color (PreservableColor)
 import Swarm.Game.Cosmetic.Texel (getTexelChar)
 import Swarm.Game.Land
 import Swarm.Game.Location
@@ -195,7 +196,7 @@ renderScenarioMap opts fp = simpleErrorHandle $ do
 data ThumbnailRenderContext
   = ThumbnailRenderContext
       (Grid (PCell EntityFacade))
-      (M.Map WorldAttr PreservableColor)
+      (M.Map Attribute PreservableColor)
 
 renderImage ::
   ThumbnailRenderContext ->

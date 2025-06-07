@@ -74,6 +74,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Swarm.Game.Cosmetic.Assignment (worldAttributes)
+import Swarm.Game.Cosmetic.Attribute
 import Swarm.Game.Cosmetic.Color
 import Swarm.Failure
 import Swarm.Game.Entity
@@ -190,7 +191,7 @@ data ScenarioLandscape = ScenarioLandscape
   { _scenarioSeed :: Maybe Int
   , _scenarioAttrs :: [CustomAttr]
   , _scenarioTerrainAndEntities :: TerrainEntityMaps
-  , _scenarioCosmetics :: M.Map WorldAttr PreservableColor
+  , _scenarioCosmetics :: M.Map Attribute PreservableColor
   , _scenarioKnown :: Set EntityName
   , _scenarioWorlds :: NonEmpty WorldDescription
   , _scenarioNavigation :: Navigation (M.Map SubworldName) Location
@@ -212,7 +213,7 @@ scenarioAttrs :: Lens' ScenarioLandscape [CustomAttr]
 scenarioTerrainAndEntities :: Lens' ScenarioLandscape TerrainEntityMaps
 
 -- | High-fidelity color map for entities
-scenarioCosmetics :: Lens' ScenarioLandscape (M.Map WorldAttr PreservableColor)
+scenarioCosmetics :: Lens' ScenarioLandscape (M.Map Attribute PreservableColor)
 
 -- | List of entities that should be considered "known", so robots do
 --   not have to scan them.
