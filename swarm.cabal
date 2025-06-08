@@ -1095,6 +1095,7 @@ library swarm-tui
     Swarm.TUI.View.Robot.Details
     Swarm.TUI.View.Robot.Type
     Swarm.TUI.View.Shared
+    Swarm.TUI.View.Static
     Swarm.TUI.View.Structure
     Swarm.TUI.View.Util
 

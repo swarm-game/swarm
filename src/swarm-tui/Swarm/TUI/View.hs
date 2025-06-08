@@ -144,6 +144,7 @@ import Swarm.TUI.View.Logo
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Popup
 import Swarm.TUI.View.Robot
+import Swarm.TUI.View.Static
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.TUI.View.Util as VU
 import Swarm.Util

@@ -8,22 +8,16 @@ module Swarm.TUI.View.CellDisplay where
 
 import Brick
 import Control.Lens ((^.))
-import Data.ByteString (ByteString)
-import Data.Colour.SRGB (RGB (..))
-import Data.Hash.Murmur
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as S
-import Data.Tagged (unTagged)
-import Data.Word (Word32)
 import Graphics.Vty qualified as V
 import Linear (zero)
-import Linear.Affine ((.-.))
-import Swarm.Game.Cosmetic.Color (AttributeMap, TrueColor (..), NamedColor (..), PreservableColor)
+import Swarm.Game.Cosmetic.Color (AttributeMap, TrueColor (..), PreservableColor)
 import Swarm.Game.Cosmetic.Display
-import Swarm.Game.Cosmetic.Texel (Texel, getTexelData, mkTexel, texelFromColor)
+import Swarm.Game.Cosmetic.Texel (Texel, getTexelData, texelFromColor)
 import Swarm.Game.Entity
 import Swarm.Game.Land
 import Swarm.Game.Location (Point (..), toHeading)
@@ -33,10 +27,8 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByLocation)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
-import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Terrain
-import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
@@ -47,10 +39,9 @@ import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr
+import Swarm.TUI.View.Static
 import Swarm.Util (applyWhen)
 import Swarm.Util.Content (getContentAt)
-import Witch (from)
-import Witch.Encoding qualified as Encoding
 
 -- | Render a texel as a UI widget.
 renderTexel :: Texel TrueColor -> Widget n
@@ -200,82 +191,3 @@ renderBaseLoc ::
 renderBaseLoc worldEditor ri coords =
   renderTerrainCell worldEditor ri coords <> renderEntityCell worldEditor ri coords
 
-------------------------------------------------------------
--- Static
-------------------------------------------------------------
-
--- XXX move static to another module?
-
--- | Random "static" based on the distance to the robot being
---   @view@ed.
-renderStaticAt :: GameState -> Coords -> Texel TrueColor
-renderStaticAt g coords = maybe mempty renderStatic (getStatic g coords)
-
--- | Draw static given a number from 0-15 representing the state of
---   the four quarter-pixels in a cell
-renderStatic :: Word32 -> Texel TrueColor
-renderStatic s =
-  mkTexel
-    (Just (maxBound, (staticChar s, AnsiColor White)))
-    (Just (maxBound, Triple $ RGB 0 0 0))
-
--- | Given a value from 0--15, considered as 4 bits, pick the
---   character with the corresponding quarter pixels turned on.
-staticChar :: Word32 -> Char
-staticChar = \case
-  0 -> ' '
-  1 -> '▖'
-  2 -> '▗'
-  3 -> '▄'
-  4 -> '▘'
-  5 -> '▌'
-  6 -> '▚'
-  7 -> '▙'
-  8 -> '▝'
-  9 -> '▞'
-  10 -> '▐'
-  11 -> '▟'
-  12 -> '▀'
-  13 -> '▛'
-  14 -> '▜'
-  15 -> '█'
-  _ -> ' '
-
--- | Random "static" based on the distance to the robot being
---   @view@ed.  A cell can either be static-free (represented by
---   @Nothing@) or can have one of sixteen values (representing the
---   state of the four quarter-pixels in one cell).
-getStatic :: GameState -> Coords -> Maybe Word32
-getStatic g coords
-  | isStatic = Just (h `mod` 16)
-  | otherwise = Nothing
- where
-  -- Offset from the location of the view center to the location under
-  -- consideration for display.
-  offset = coordsToLoc coords .-. (g ^. robotInfo . viewCenter . planar)
-
-  -- Hash.
-  h =
-    murmur3 1 . unTagged . from @String @(Encoding.UTF_8 ByteString) . show $
-      -- include the current tick count / 16 in the hash, so the pattern of static
-      -- changes once every 16 ticks
-      (offset, getTickNumber (g ^. temporal . ticks) `div` 16)
-
-  -- Hashed probability, i.e. convert the hash into a floating-point number between 0 and 1
-  hp :: Double
-  hp = fromIntegral h / fromIntegral (maxBound :: Word32)
-
-  isStatic = case focusedRange g of
-    -- If we're not viewing a robot, display static.  This
-    -- can happen if e.g. the robot we were viewing drowned.
-    -- This is overridden by creative mode, e.g. when no robots
-    -- have been defined for the scenario.
-    Nothing -> not $ g ^. creativeMode
-    -- Don't display static if the robot is close, or when we're in
-    -- creative mode or the player is allowed to scroll the world.
-    Just Close -> False
-    -- At medium distances, replace cell with static with a
-    -- probability that increases with distance.
-    Just (MidRange s) -> hp < 1 - cos (s * (pi / 2))
-    -- Far away, everything is static.
-    Just Far -> True
