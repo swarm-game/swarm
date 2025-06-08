@@ -90,7 +90,7 @@ renderTerrainCell worldEditor ri coords =
   t = EU.getEditorTerrainAt (terrMap ri) worldEditor (multiworldInfo ri) coords
 
 terrainTexel :: Map Attribute PreservableColor -> TerrainObj -> Texel TrueColor
-terrainTexel aMap = maybe mempty (texelFromColor 0 ' ') . (aMap M.?!) . terrainAttr
+terrainTexel aMap = maybe mempty (texelFromColor 0 ' ') . (aMap M.!?) . terrainAttr
 
 -- | Render all the robots on a given cell as a combined texel.
 renderRobotCell ::
