@@ -9,6 +9,7 @@ module Swarm.TUI.View.CellDisplay where
 import Brick
 import Control.Lens ((^.))
 import Data.ByteString (ByteString)
+import Data.Colour.SRGB (RGB (..))
 import Data.Hash.Murmur
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -213,7 +214,10 @@ renderStaticAt g coords = maybe mempty renderStatic (getStatic g coords)
 -- | Draw static given a number from 0-15 representing the state of
 --   the four quarter-pixels in a cell
 renderStatic :: Word32 -> Texel TrueColor
-renderStatic s = mkTexel (Just (maxBound, (staticChar s, AnsiColor White))) Nothing
+renderStatic s =
+  mkTexel
+    (Just (maxBound, (staticChar s, AnsiColor White)))
+    (Just (maxBound, Triple $ RGB 0 0 0))
 
 -- | Given a value from 0--15, considered as 4 bits, pick the
 --   character with the corresponding quarter pixels turned on.
