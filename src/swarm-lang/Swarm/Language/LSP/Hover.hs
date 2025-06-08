@@ -111,15 +111,18 @@ pathToPosition ::
   -- | absolute offset within the file
   Int ->
   NonEmpty (Syntax' ty)
-pathToPosition s0 pos = s0 :| innerPath s0
+pathToPosition s0 pos =
+  case innerPath s0 of
+    Nothing -> s0 :| []
+    Just ss -> s0 :| ss
  where
-  innerPath :: Syntax' ty -> [Syntax' ty]
+  innerPath :: Syntax' ty -> Maybe [Syntax' ty]
   innerPath (Syntax' _ t _ ty) = case t of
     SLam lv _ s -> d (locVarToSyntax' lv $ getInnerType ty) <|> d s
     SApp s1 s2 -> d s1 <|> d s2
     SLet _ _ lv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
-    SBind mlv _ _ _ s1 s2 -> bindPath mlv s1 s2
-    STydef typ typBody _ti s1 -> d s1 <|> [locVarToSyntax' (tdVarName <$> typ) $ fromPoly typBody]
+    SBind mlv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
+    STydef typ typBody _ti s1 -> d s1 <|> Just [locVarToSyntax' (tdVarName <$> typ) $ fromPoly typBody]
     SPair s1 s2 -> d s1 <|> d s2
     SDelay s -> d s
     SRcd m -> asum . map d . catMaybes . M.elems $ m
@@ -146,16 +149,7 @@ pathToPosition s0 pos = s0 :| innerPath s0
     TAntiSyn {} -> mempty
     SSuspend {} -> mempty
 
-  bindPath :: Maybe LocVar -> Syntax' ty -> Syntax' ty -> [Syntax' ty]
-  bindPath mlv s1@(Syntax' _ _ _ lty) s2 = mlvToSyntax mlv <|> d s1 <|> d s2
-   where
-    mlvToSyntax :: Maybe LocVar -> [Syntax' ty]
-    mlvToSyntax = \case
-      Just lv -> d $ locVarToSyntax' lv (getInnerType lty)
-      Nothing -> []
-
   d = descend pos
-
   -- try and decend into the syntax element if it is contained with position
   descend ::
     ExplainableType ty =>
@@ -163,10 +157,10 @@ pathToPosition s0 pos = s0 :| innerPath s0
     Int ->
     -- \| next element to inspect
     Syntax' ty ->
-    [Syntax' ty]
+    Maybe [Syntax' ty]
   descend p s1@(Syntax' l1 _ _ _) = do
     guard $ withinBound p l1
-    return $ narrowToPosition s1 p
+    liftA2 (:) (Just s1) (innerPath s1)
 
 renderDoc :: Int -> Text -> Text
 renderDoc d t
