@@ -13,7 +13,6 @@ module Swarm.Game.Cosmetic.Assignment where
 
 import Data.Bifunctor (bimap)
 import Data.Colour.SRGB (RGB (..))
-import Data.Map (Map)
 import Data.Map qualified as M
 import Swarm.Game.Cosmetic.Attribute
 import Swarm.Game.Cosmetic.Color
@@ -48,7 +47,7 @@ burnt :: (Attribute, PreservableColor)
 burnt = (AWorld "burnt", BgOnly $ Triple $ RGB 40 24 0) -- dark brown
 
 -- | Colors of entities in the world.
-worldAttributes :: Map Attribute PreservableColor
+worldAttributes :: AttributeMap
 worldAttributes =
   M.fromList $
     -- these few are referenced elsewhere,

@@ -41,7 +41,6 @@ import Data.List.Extra (enumerate)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
-import Data.Semigroup (Arg (..), Max (..))
 import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
@@ -240,7 +239,8 @@ getBoundaryDisplay = glyphForNeighbors . computeNeighborPresence
 -- | XXX Turn a Display into a concrete 'Texel', taking into account
 --   orientation, boundaries, etc.
 renderDisplay :: Maybe Direction -> (AbsoluteDir -> Bool) -> Display -> Texel TrueColor
-renderDisplay mdir boundaryCheck disp = Texel (Just (Max (Arg (disp ^. displayPriority) (c, disp ^. displayAttr)))) Nothing  -- XXX
+renderDisplay mdir boundaryCheck disp = undefined
+  -- Texel (Just (Max (Arg (disp ^. displayPriority) (c, disp ^. displayAttr)))) Nothing  -- XXX
   where
     c = fromMaybe (disp ^. defaultChar) $
         getBoundaryDisplay boundaryCheck <|> do

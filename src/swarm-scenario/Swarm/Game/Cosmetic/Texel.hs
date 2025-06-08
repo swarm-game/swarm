@@ -13,12 +13,13 @@ module Swarm.Game.Cosmetic.Texel (
   getTexelChar,
   getTexelData,
   getTexelColor,
+  texelFromColor,
   texelIsEmpty,
 ) where
 
-import Control.Applicative ((<|>))
 import Data.Maybe (isNothing)
 import Data.Semigroup (Arg(..), ArgMax, Max(..))
+import Swarm.Game.Cosmetic.Color
 
 -- | Display priority.  Entities with higher priority will be drawn on
 --   top of entities with lower priority.
@@ -44,11 +45,16 @@ getTexelData (Texel fg bg) = (getArg . getMax <$> fg, getArg . getMax <$> bg)
 getTexelChar :: Texel a -> Maybe Char
 getTexelChar = fmap fst . fst . getTexelData
 
--- | Get the texel foreground color if it exists; otherwise fall back
---   to the background.
-getTexelColor :: Texel a -> Maybe a
+-- | Extract the color (foreground + background) of a texel.
+getTexelColor :: Texel a -> Maybe (ColorLayers a)
 getTexelColor t = case getTexelData t of
-  (fg, bg) -> (snd <$> fg) <|> bg
+  (fg, bg) -> mkColorLayers (snd <$> fg) bg
+
+texelFromColor :: Priority -> Char -> ColorLayers a -> Texel a
+texelFromColor prio c cl = case cl of
+  FgOnly fg -> mkTexel (Just (prio, (c, fg))) Nothing
+  BgOnly bg -> mkTexel Nothing (Just (prio, bg))
+  FgAndBg fg bg -> mkTexel (Just (prio, (c, fg))) (Just (prio, bg))
 
 texelIsEmpty :: Texel a -> Bool
 texelIsEmpty (Texel fg bg) = isNothing fg && isNothing bg

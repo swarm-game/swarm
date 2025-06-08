@@ -16,7 +16,7 @@ import Data.Ord (Down (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Tuple (swap)
-import Swarm.Game.Cosmetic.Attribute (Attribute)
+import Swarm.Game.Cosmetic.Color (TrueColor)
 import Swarm.Game.Cosmetic.Texel (Texel, getTexelChar)
 import Swarm.Game.Entity (Entity, EntityName, entitiesByName)
 import Swarm.Game.Land

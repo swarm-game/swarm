@@ -77,7 +77,8 @@ import Data.Text (Text)
 import Data.Yaml (FromJSON (parseJSON), (.!=), (.:), (.:?))
 import GHC.Generics (Generic)
 import Linear
-import Swarm.Game.Cosmetic.Display (Attribute, Display, defaultRobotDisplay, invisible)
+import Swarm.Game.Cosmetic.Color (TrueColor)
+import Swarm.Game.Cosmetic.Display (Display, defaultRobotDisplay, invisible)
 import Swarm.Game.Cosmetic.Texel (Texel)
 import Swarm.Game.Device
 import Swarm.Game.Entity hiding (empty)

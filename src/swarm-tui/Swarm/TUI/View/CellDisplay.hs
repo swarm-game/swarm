@@ -7,10 +7,11 @@
 module Swarm.TUI.View.CellDisplay where
 
 import Brick
-import Control.Lens (to, view, (&), (.~), (^.))
+import Control.Lens (to, view, (&), (.~), (^.), _Just)
 import Data.ByteString (ByteString)
 import Data.Hash.Murmur
 import Data.List.NonEmpty qualified as NE
+import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (maybeToList)
 import Data.Semigroup (sconcat)
@@ -20,13 +21,15 @@ import Data.Tagged (unTagged)
 import Data.Word (Word32)
 import Graphics.Vty qualified as V
 import Linear.Affine ((.-.))
-import Swarm.Game.Cosmetic.Attribute (Attribute (AEntity))
+import Swarm.Game.Cosmetic.Color (TrueColor (..), NamedColor (..), PreservableColor)
 import Swarm.Game.Cosmetic.Display
-import Swarm.Game.Cosmetic.Texel (Texel, getTexelData, mkTexel)
+import Swarm.Game.Cosmetic.Texel (Texel, getTexelData, mkTexel, texelFromColor)
 import Swarm.Game.Entity
 import Swarm.Game.Land
 import Swarm.Game.Location (Point (..), toHeading)
 import Swarm.Game.Robot
+import Swarm.Game.Scenario (scenarioCosmetics, scenarioLandscape)
+import Swarm.Game.Scenario.Status (getScenario)
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByLocation)
@@ -56,13 +59,9 @@ renderTexel :: Texel TrueColor -> Widget n
 renderTexel t =
   let (mfg, mbg) = getTexelData t
       displayChar = maybe ' ' fst mfg
-       setFG = maybe id (withAttr . toAttrName . snd) mfg
-      setBG = id
-        -- undefined  -- XXX
-        -- maybe id (\c -> modifyDefAttr (`V.withBackColor` c)) mbg
+      setFG = maybe id (\(_, c) -> modifyDefAttr (`V.withForeColor` (mkBrickColor c))) mfg
+      setBG = maybe id (\c -> modifyDefAttr (`V.withBackColor` (mkBrickColor c))) mbg
   in setBG . setFG $ str [displayChar]
-
--- https://hackage.haskell.org/package/vty-6.4/docs/Graphics-Vty-Attributes.html#t:Attr
 
 -- | Render the 'Display' for a specific location.
 drawLoc :: UIGameplay -> GameState -> Cosmic Coords -> Widget Name
@@ -73,7 +72,8 @@ drawLoc ui g cCoords@(Cosmic _ coords) =
  where
   showRobots = ui ^. uiShowRobots
   we = ui ^. uiWorldEditor . worldOverdraw
-  drawCell = renderTexel $ renderLoc showRobots we g cCoords
+  aMap = ui ^. scenarioRef . _Just . getScenario . scenarioLandscape . scenarioCosmetics
+  drawCell = renderTexel $ renderLoc showRobots we g aMap cCoords
 
   boldStructure = applyWhen isStructure $ modifyDefAttr (`V.withStyle` V.bold)
    where
@@ -85,6 +85,7 @@ data RenderingInput = RenderingInput
   { multiworldInfo :: W.MultiWorld Int Entity
   , isKnownFunc :: EntityPaint -> Bool
   , terrMap :: TerrainMap
+  , attributeMap :: Map Attribute PreservableColor
   }
 
 -- | XXX draw terrain
@@ -94,10 +95,15 @@ renderTerrainCell ::
   Cosmic Coords ->
   Texel TrueColor
 renderTerrainCell worldEditor ri coords =
-  maybe mempty terrainTexel $ M.lookup t tm
+  maybe mempty (terrainTexel (attributeMap ri)) $ M.lookup t tm
  where
   tm = terrainByName $ terrMap ri
   t = EU.getEditorTerrainAt (terrMap ri) worldEditor (multiworldInfo ri) coords
+
+terrainTexel :: Map Attribute PreservableColor -> TerrainObj -> Texel TrueColor
+terrainTexel aMap terrain =
+  let mcolor = M.lookup (terrainAttr terrain) aMap
+  in  maybe mempty (texelFromColor 0 ' ') mcolor
 
 -- | XXX draw all the robots
 renderRobotCell ::
@@ -166,8 +172,8 @@ renderEntityCell worldEditor ri coords =
 --   texels for the terrain, entity, and robots at the location, and
 --   taking into account "static" based on the distance to the robot
 --   being @view@ed.
-renderLoc :: Bool -> WorldOverdraw -> GameState -> Cosmic Coords -> Texel TrueColor
-renderLoc showRobots we g cCoords@(Cosmic _ coords) =
+renderLoc :: Bool -> WorldOverdraw -> GameState -> Map Attribute PreservableColor -> Cosmic Coords -> Texel TrueColor
+renderLoc showRobots we g aMap cCoords@(Cosmic _ coords) =
   renderStaticAt g coords <> robots <> renderBaseLoc we ri cCoords
  where
   ri =
@@ -175,6 +181,7 @@ renderLoc showRobots we g cCoords@(Cosmic _ coords) =
       (g ^. landscape . multiWorld)
       (getEntityIsKnown $ mkEntityKnowledge g)
       (g ^. landscape . terrainAndEntities . terrainMap)
+      aMap
 
   robots =
     if showRobots
@@ -205,7 +212,7 @@ renderStaticAt g coords = maybe mempty renderStatic (getStatic g coords)
 -- | Draw static given a number from 0-15 representing the state of
 --   the four quarter-pixels in a cell
 renderStatic :: Word32 -> Texel TrueColor
-renderStatic s = mkTexel (Just (maxBound, (staticChar s, _))) Nothing
+renderStatic s = mkTexel (Just (maxBound, (staticChar s, AnsiColor White))) Nothing
 
 -- | Given a value from 0--15, considered as 4 bits, pick the
 --   character with the corresponding quarter pixels turned on.

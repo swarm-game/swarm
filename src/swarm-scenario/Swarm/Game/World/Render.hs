@@ -25,14 +25,12 @@ import Control.Monad.Logger
 import Control.Monad.Trans (MonadIO)
 import Data.Aeson
 import Data.List.NonEmpty qualified as NE
-import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Tuple.Extra (both)
 import GHC.Generics (Generic)
 import Linear (V2 (..))
 import Swarm.Failure (SystemFailure, simpleErrorHandle)
-import Swarm.Game.Cosmetic.Attribute (Attribute)
-import Swarm.Game.Cosmetic.Color (PreservableColor)
+import Swarm.Game.Cosmetic.Color (AttributeMap)
 import Swarm.Game.Cosmetic.Texel (getTexelChar)
 import Swarm.Game.Land
 import Swarm.Game.Location
@@ -196,7 +194,7 @@ renderScenarioMap opts fp = simpleErrorHandle $ do
 data ThumbnailRenderContext
   = ThumbnailRenderContext
       (Grid (PCell EntityFacade))
-      (M.Map Attribute PreservableColor)
+      AttributeMap
 
 renderImage ::
   ThumbnailRenderContext ->

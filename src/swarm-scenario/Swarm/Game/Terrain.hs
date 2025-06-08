@@ -37,8 +37,6 @@ import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Failure
 import Swarm.Game.Cosmetic.Attribute
-import Swarm.Game.Cosmetic.Color (TrueColor)
-import Swarm.Game.Cosmetic.Texel (Texel, mkTexel)
 import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util (enumeratedMap, quote)
 import Swarm.Util.Effect (withThrow)
@@ -72,11 +70,6 @@ instance Monoid TerrainType where
 getTerrainDefaultPaletteChar :: TerrainType -> Char
 getTerrainDefaultPaletteChar = toUpper . T.head . getTerrainWord
 
--- | The default way to display some terrain with a given attribute.
-defaultTerrainTexel :: Attribute -> Texel TrueColor
-defaultTerrainTexel a = undefined
-  -- mkTexel Nothing (Just (0, a))  -- XXX
-
 -- | Representation for parsing only. Not exported.
 data TerrainItem = TerrainItem
   { name :: TerrainType
@@ -88,13 +81,13 @@ data TerrainItem = TerrainItem
 data TerrainObj = TerrainObj
   { terrainName :: TerrainType
   , terrainDesc :: Text
-  , terrainTexel :: Texel TrueColor
+  , terrainAttr :: Attribute
   }
   deriving (Show)
 
 promoteTerrainObjects :: [TerrainItem] -> [TerrainObj]
 promoteTerrainObjects =
-  map (\(TerrainItem n a d) -> TerrainObj n d $ defaultTerrainTexel (AWorld a))
+  map (\(TerrainItem n a d) -> TerrainObj n d (AWorld a))
 
 invertedIndexMap :: IntMap TerrainObj -> Map TerrainType Int
 invertedIndexMap = M.fromList . map (first terrainName . swap) . IM.toList
@@ -149,7 +142,7 @@ validateTerrainAttrRefs validAttrs rawTerrains =
         , quote $ getTerrainWord n
         ]
 
-    return $ TerrainObj n d $ defaultTerrainTexel (AWorld a)
+    return $ TerrainObj n d (AWorld a)
 
 -- | Load terrain from a data file called @terrains.yaml@, producing
 --   either an 'TerrainMap' or a parse error.
@@ -169,4 +162,4 @@ loadTerrain = do
   terrainFile = "terrains.yaml"
   terrainFailure = AssetNotLoaded (Data Terrain) terrainFile
 
-  blankTerrainObj = TerrainObj BlankT "Blank terrain" mempty
+  blankTerrainObj = TerrainObj BlankT "Blank terrain" ABlank

@@ -11,7 +11,7 @@ import Control.Lens hiding (from, (.=), (<.>))
 import Data.List.Extra (enumerate)
 import Data.Map qualified as M
 import Data.Vector qualified as V
-import Swarm.Game.Cosmetic.Attribute (Attribute)
+import Swarm.Game.Cosmetic.Color (TrueColor)
 import Swarm.Game.Cosmetic.Texel (Texel)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Scenario.Topography.EntityFacade

@@ -56,6 +56,7 @@ import Data.List.Extra (enumerate)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.List.Split (chunksOf)
+import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
 import Data.Sequence qualified as Seq
@@ -66,6 +67,7 @@ import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Constant
+import Swarm.Game.Cosmetic.Color (AttributeMap)
 import Swarm.Game.Cosmetic.Display (defaultEntityDisplay)
 import Swarm.Game.Cosmetic.Texel (texelIsEmpty)
 import Swarm.Game.Device (commandCost, commandsForDeviceCaps, enabledCommands, getCapabilitySet, getMap, ingredients)
@@ -78,6 +80,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Scenario (
   scenarioAuthor,
+  scenarioCosmetics,
   scenarioCreative,
   scenarioDescription,
   scenarioKnown,
@@ -293,7 +296,8 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
           }
 
     tm = s ^. scenarioLandscape . scenarioTerrainAndEntities . terrainMap
-    ri = RenderingInput theWorlds entIsKnown tm
+    aMap = s ^. scenarioLandscape . scenarioCosmetics
+    ri = RenderingInput theWorlds entIsKnown tm aMap
 
     renderCoord = renderTexel . renderBaseLoc (WorldOverdraw False mempty) ri
     worldPeek = worldWidget renderCoord vc
@@ -489,11 +493,13 @@ drawGameUI s =
     NoMenu -> True
     _ -> False
 
+  aMap = uig ^. scenarioRef . _Just . getScenario . scenarioLandscape . scenarioCosmetics
+
   addCursorPos = bottomLabels . leftLabel ?~ padLeftRight 1 widg
    where
     widg = case uig ^. uiWorldCursor of
       Nothing -> str $ renderCoordsString $ gs ^. robotInfo . viewCenter
-      Just coord -> clickable WorldPositionIndicator $ drawWorldCursorInfo (uig ^. uiWorldEditor . worldOverdraw) gs coord
+      Just coord -> clickable WorldPositionIndicator $ drawWorldCursorInfo (uig ^. uiWorldEditor . worldOverdraw) gs aMap coord
   -- Add clock display in top right of the world view if focused robot
   -- has a clock equipped
   addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay (uig ^. uiTiming . lgTicksPerSecond) gs)
@@ -536,8 +542,8 @@ drawGameUI s =
 
 -- | When the player clicks on a cell in the world panel, draw an
 --   indicator below it explaining the contents of the cell.
-drawWorldCursorInfo :: WorldOverdraw -> GameState -> Cosmic Coords -> Widget Name
-drawWorldCursorInfo worldEditor g cCoords =
+drawWorldCursorInfo :: WorldOverdraw -> GameState -> AttributeMap -> Cosmic Coords -> Widget Name
+drawWorldCursorInfo worldEditor g aMap cCoords =
   case getStatic g coords of
     Just s -> renderTexel $ renderStatic s
     Nothing -> hBox $ tileMemberWidgets ++ [coordsWidget]
@@ -558,6 +564,7 @@ drawWorldCursorInfo worldEditor g cCoords =
       (g ^. landscape . multiWorld)
       (getEntityIsKnown $ mkEntityKnowledge g)
       (g ^. landscape . terrainAndEntities . terrainMap)
+      aMap
 
   terrain = renderTerrainCell worldEditor ri cCoords
   entity = renderEntityCell worldEditor ri cCoords

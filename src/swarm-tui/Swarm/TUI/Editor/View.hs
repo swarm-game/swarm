@@ -8,6 +8,9 @@ import Brick.Widgets.Center (hCenter)
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
 import Data.List qualified as L
+import Data.Map (Map)
+import Swarm.Game.Cosmetic.Attribute (Attribute)
+import Swarm.Game.Cosmetic.Color (PreservableColor)
 import Swarm.Game.Land
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Status
@@ -82,10 +85,12 @@ drawWorldEditor toplevelFocusRing uig =
 
   tm = extractTerrainMap uig
 
+  aMap = uig ^. scenarioRef . _Just . getScenario . scenarioLandscape . scenarioCosmetics
+
   brushWidget =
     mkFormControl (WorldEditorPanelControl BrushSelector) $
       padRight (Pad 1) (str "Brush:")
-        <+> swatchContent (worldEditor ^. terrainList) (VU.drawLabeledTerrainSwatch tm)
+        <+> swatchContent (worldEditor ^. terrainList) (VU.drawLabeledTerrainSwatch aMap tm)
 
   entityWidget =
     mkFormControl (WorldEditorPanelControl EntitySelector) $
@@ -151,12 +156,14 @@ drawTerrainSelector uig =
   padAll 1
     . hCenter
     . vLimit 8
-    . BL.renderListWithIndex (listDrawTerrainElement $ extractTerrainMap uig) True
+    . BL.renderListWithIndex (listDrawTerrainElement aMap $ extractTerrainMap uig) True
     $ uig ^. uiWorldEditor . terrainList
+ where
+  aMap = uig ^. scenarioRef . _Just . getScenario . scenarioLandscape . scenarioCosmetics
 
-listDrawTerrainElement :: TerrainMap -> Int -> Bool -> TerrainType -> Widget Name
-listDrawTerrainElement tm pos _isSelected a =
-  clickable (TerrainListItem pos) $ VU.drawLabeledTerrainSwatch tm a
+listDrawTerrainElement :: Map Attribute PreservableColor -> TerrainMap -> Int -> Bool -> TerrainType -> Widget Name
+listDrawTerrainElement aMap tm pos _isSelected a =
+  clickable (TerrainListItem pos) $ VU.drawLabeledTerrainSwatch aMap tm a
 
 drawEntityPaintSelector :: UIGameplay -> Widget Name
 drawEntityPaintSelector uig =

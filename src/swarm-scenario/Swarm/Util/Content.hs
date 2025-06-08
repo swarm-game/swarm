@@ -63,4 +63,4 @@ getTerrainEntityColor aMap (Cell terr cellEnt _) =
   (entityColor =<< erasableToMaybe cellEnt) <|> terrainFallback
  where
   terrainFallback = M.lookup (AWorld $ getTerrainWord terr) aMap
-  entityColor (EntityFacade _ d) = getTexelColor d >>= flip M.lookup aMap
+  entityColor (EntityFacade _ d) = getTexelColor d

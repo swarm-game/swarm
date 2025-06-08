@@ -129,6 +129,7 @@ import GHC.Generics (Generic)
 import Swarm.Failure
 import Swarm.Game.Cosmetic.Attribute
 import Swarm.Game.Cosmetic.Assignment (worldAttributes)
+import Swarm.Game.Cosmetic.Color (TrueColor)
 import Swarm.Game.Cosmetic.Display
 import Swarm.Game.Cosmetic.Texel (Texel)
 import Swarm.Game.Device

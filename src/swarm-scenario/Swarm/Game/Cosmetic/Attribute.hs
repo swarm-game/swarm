@@ -14,11 +14,12 @@ import Data.Text (Text)
 import Data.Yaml
 
 -- | An internal attribute name.
-data Attribute = ARobot | AEntity | AWorld Text
+data Attribute = ABlank | ARobot | AEntity | AWorld Text
   deriving (Eq, Ord, Show, Generic, Hashable)
 
 readAttribute :: Text -> Attribute
 readAttribute = \case
+  "blank" -> ABlank
   "robot" -> ARobot
   "entity" -> AEntity
   w -> AWorld w
@@ -28,6 +29,7 @@ instance FromJSON Attribute where
 
 instance ToJSON Attribute where
   toJSON = \case
+    ABlank -> String "blank"
     ARobot -> String "robot"
     AEntity -> String "entity"
     AWorld w -> String w

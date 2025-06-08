@@ -12,11 +12,14 @@ import Control.Lens hiding (Const, from)
 import Control.Monad.Reader (withReaderT)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
+import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Graphics.Vty qualified as V
+import Swarm.Game.Cosmetic.Attribute (Attribute)
+import Swarm.Game.Cosmetic.Color (PreservableColor)
 import Swarm.Game.Entity as E
 import Swarm.Game.Land
 import Swarm.Game.Scenario (scenarioMetadata, scenarioName)
@@ -184,14 +187,14 @@ drawMarkdown d = do
     "type" -> magentaAttr
     _snippet -> highlightAttr -- same as plain code
 
-drawLabeledTerrainSwatch :: TerrainMap -> TerrainType -> Widget Name
-drawLabeledTerrainSwatch tm a =
+drawLabeledTerrainSwatch :: Map Attribute PreservableColor -> TerrainMap -> TerrainType -> Widget Name
+drawLabeledTerrainSwatch aMap tm a =
   tile <+> str materialName
  where
   tile =
     padRight (Pad 1)
       . renderTexel
-      . maybe mempty terrainTexel
+      . maybe mempty (terrainTexel aMap)
       $ M.lookup a (terrainByName tm)
 
   materialName = init $ show a

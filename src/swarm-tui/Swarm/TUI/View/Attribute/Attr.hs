@@ -21,6 +21,7 @@ module Swarm.TUI.View.Attribute.Attr (
   mkBrickColor,
 
   -- ** Common attributes
+  blankAttr,
   entityAttr,
   robotAttr,
 
@@ -65,6 +66,7 @@ import Swarm.TUI.View.Attribute.Util
 
 toAttrName :: Attribute -> AttrName
 toAttrName = \case
+  ABlank -> blankAttr
   ARobot -> robotAttr
   AEntity -> entityAttr
   AWorld n -> worldPrefix <> attrName (unpack n)
@@ -154,6 +156,9 @@ activityMeterAttributes =
 
 meterAttributeNames :: NonEmpty AttrName
 meterAttributeNames = NE.map fst activityMeterAttributes
+
+blankAttr :: AttrName
+blankAttr = attrName "blank"
 
 -- | The default robot attribute.
 robotAttr :: AttrName

@@ -191,7 +191,7 @@ data ScenarioLandscape = ScenarioLandscape
   { _scenarioSeed :: Maybe Int
   , _scenarioAttrs :: [CustomAttr]
   , _scenarioTerrainAndEntities :: TerrainEntityMaps
-  , _scenarioCosmetics :: M.Map Attribute PreservableColor
+  , _scenarioCosmetics :: AttributeMap
   , _scenarioKnown :: Set EntityName
   , _scenarioWorlds :: NonEmpty WorldDescription
   , _scenarioNavigation :: Navigation (M.Map SubworldName) Location
