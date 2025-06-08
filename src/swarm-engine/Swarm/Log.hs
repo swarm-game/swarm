@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -22,13 +23,15 @@ module Swarm.Log (
   logToText,
 ) where
 
-import Control.Lens (makeLenses, view)
-import Data.Aeson (FromJSON, ToJSON)
+import Control.Lens (makeLenses, over, view, _head)
+import Data.Aeson
+import Data.Char (toLower)
 import Data.Foldable (toList)
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Servant.Docs qualified as SD
 import Swarm.Game.Location (Location)
-import Swarm.Game.Tick (TickNumber)
+import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.Universe (Cosmic)
 
 -- | Severity of the error - critical errors are bugs
@@ -72,9 +75,32 @@ data LogEntry = LogEntry
   , _leText :: Text
   -- ^ The text of the log entry.
   }
-  deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
+  deriving (Show, Eq, Ord, Generic)
 
 makeLenses ''LogEntry
+
+instance FromJSON LogEntry where
+  parseJSON = genericParseJSON jsonOptions
+
+instance ToJSON LogEntry where
+  toJSON = genericToJSON jsonOptions
+
+jsonOptions :: Options
+jsonOptions =
+  defaultOptions
+    { fieldLabelModifier = over _head toLower . drop 3 -- drops prefix
+    }
+
+instance SD.ToSample LogEntry where
+  toSamples _ =
+    SD.singleSample $
+      LogEntry
+        { _leTime = TickNumber 0
+        , _leSource = SystemLog
+        , _leSeverity = Warning
+        , _leName = "Loading game"
+        , _leText = "Can not open file XYZ!"
+        }
 
 -- | Extract the text from a container of log entries.
 logToText :: Foldable t => t LogEntry -> [Text]
