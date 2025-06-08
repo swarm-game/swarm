@@ -22,6 +22,9 @@ import Swarm.Game.Cosmetic.Color
 entity :: (Attribute, PreservableColor)
 entity = (AEntity, FgOnly $ AnsiColor White)
 
+robot :: (Attribute, PreservableColor)
+robot = (ARobot, FgOnly $ AnsiColor White)
+
 water :: (Attribute, PreservableColor)
 water = (AWorld "water", FgAndBg (AnsiColor White) (AnsiColor Blue))
 
@@ -32,19 +35,19 @@ plant :: (Attribute, PreservableColor)
 plant = (AWorld "plant", FgOnly $ AnsiColor Green)
 
 dirt :: (Attribute, PreservableColor)
-dirt = (AWorld "dirt", BgOnly $ Triple $ RGB 87 47 47)
+dirt = (AWorld "dirt", BgOnly $ Triple $ RGB 47 27 27)
 
 grass :: (Attribute, PreservableColor)
-grass = (AWorld "grass", BgOnly $ Triple $ RGB 0 47 0) -- dark green
+grass = (AWorld "grass", BgOnly $ Triple $ RGB 0 30 0) -- dark green
 
 stone :: (Attribute, PreservableColor)
-stone = (AWorld "stone", BgOnly $ Triple $ RGB 47 47 47)
+stone = (AWorld "stone", BgOnly $ Triple $ RGB 30 30 30)
 
 ice :: (Attribute, PreservableColor)
 ice = (AWorld "ice", BgOnly $ AnsiColor White)
 
 burnt :: (Attribute, PreservableColor)
-burnt = (AWorld "burnt", BgOnly $ Triple $ RGB 40 24 0) -- dark brown
+burnt = (AWorld "burnt", BgOnly $ Triple $ RGB 30 18 0) -- dark brown
 
 -- | Colors of entities in the world.
 worldAttributes :: AttributeMap
@@ -53,6 +56,7 @@ worldAttributes =
     -- these few are referenced elsewhere,
     -- so they have their own toplevel definition
     [ entity
+    , robot
     , water
     , rock
     , plant

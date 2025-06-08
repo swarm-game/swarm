@@ -52,7 +52,7 @@ renderTexel t =
       setBG = maybe id (\c -> modifyDefAttr (`V.withBackColor` (mkBrickColor c))) mbg
   in setBG . setFG $ str [displayChar]
 
--- | Render the 'Display' for a specific location.
+-- | Render a specific location.
 drawLoc :: UIGameplay -> GameState -> Cosmic Coords -> Widget Name
 drawLoc ui g cCoords@(Cosmic _ coords) =
   if shouldHideWorldCell ui coords
@@ -102,7 +102,7 @@ renderRobotCell ::
   Texel TrueColor
 renderRobotCell aMap g coords =
   foldMap (renderRobot aMap) $
-    robotsAtLocation (fmap coordsToLoc coords) g
+     robotsAtLocation (fmap coordsToLoc coords) g
 
 -- | Extract the relevant subset of information from the 'GameState' to be able
 -- to compute whether an entity is "known".
