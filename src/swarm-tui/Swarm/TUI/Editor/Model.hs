@@ -35,7 +35,7 @@ data EntityPaint
   | Ref E.Entity
   deriving (Eq)
 
-renderEntityPaint :: AttributeMap -> (AbsoluteDir -> Bool) -> EntityPaint -> Texel TrueColor
+renderEntityPaint :: AttributeMap -> (Maybe AbsoluteDir -> Bool) -> EntityPaint -> Texel TrueColor
 renderEntityPaint aMap checkBoundary (Facade (EntityFacade _ d hdg)) = renderDisplay aMap hdg checkBoundary d
 renderEntityPaint aMap checkBoundary (Ref e) = E.renderEntity aMap checkBoundary e
 

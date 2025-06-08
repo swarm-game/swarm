@@ -12,11 +12,13 @@ import Data.ByteString (ByteString)
 import Data.Hash.Murmur
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Tagged (unTagged)
 import Data.Word (Word32)
 import Graphics.Vty qualified as V
+import Linear (zero)
 import Linear.Affine ((.-.))
 import Swarm.Game.Cosmetic.Color (AttributeMap, TrueColor (..), NamedColor (..), PreservableColor)
 import Swarm.Game.Cosmetic.Display
@@ -156,11 +158,11 @@ renderEntityCell worldEditor ri coords =
   getEntityPaintAtCoord = snd . EU.getEditorContentAt (terrMap ri) worldEditor (multiworldInfo ri)
   coordHasBoundary = maybe False (`hasProperty` Boundary) . snd . getContentAt (terrMap ri) (multiworldInfo ri)
 
-  checkPresence :: AbsoluteDir -> Bool
+  checkPresence :: Maybe AbsoluteDir -> Bool
   checkPresence d = coordHasBoundary offsetCoord
    where
     offsetCoord = (`addTuple` xy) <$> coords
-    Coords xy = locToCoords $ P $ toHeading d
+    Coords xy = locToCoords . P . fromMaybe zero $ toHeading <$> d
 
 -- | Render a specific location, by combining the
 --   texels for the terrain, entity, and robots at the location, and

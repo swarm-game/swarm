@@ -35,7 +35,7 @@ module Swarm.Game.Cosmetic.Display (
 
 import Control.Applicative ((<|>))
 import Control.Lens hiding (Const, from, (.=))
-import Control.Monad (when)
+import Control.Monad (guard, when)
 import Data.Hashable (Hashable)
 import Data.List.Extra (enumerate)
 import Data.Map (Map)
@@ -238,13 +238,15 @@ getBoundaryDisplay = glyphForNeighbors . computeNeighborPresence
 
 -- | Turn a Display into a concrete 'Texel', taking into account
 --   orientation, boundaries, etc.
-renderDisplay :: AttributeMap -> Maybe Direction -> (AbsoluteDir -> Bool) -> Display -> Texel TrueColor
+renderDisplay :: AttributeMap -> Maybe Direction -> (Maybe AbsoluteDir -> Bool) -> Display -> Texel TrueColor
 renderDisplay aMap mdir boundaryCheck disp =
   maybe mempty (texelFromColor (disp ^. displayPriority) c) mcolor
   where
-    c = fromMaybe (disp ^. defaultChar) $
-        getBoundaryDisplay boundaryCheck <|> do
-          DAbsolute d <- mdir
-          M.lookup d (disp ^. orientationMap)
+    mbound = guard (boundaryCheck Nothing) *> getBoundaryDisplay (boundaryCheck . Just)
+    morient = do
+      DAbsolute d <- mdir
+      M.lookup d (disp ^. orientationMap)
+
+    c = fromMaybe (disp ^. defaultChar) $ mbound <|> morient
 
     mcolor = M.lookup (disp ^. displayAttr) aMap
