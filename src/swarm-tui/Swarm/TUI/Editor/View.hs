@@ -161,7 +161,7 @@ drawTerrainSelector uig =
  where
   aMap = uig ^. scenarioRef . _Just . getScenario . scenarioLandscape . scenarioCosmetics
 
-listDrawTerrainElement :: Map Attribute PreservableColor -> TerrainMap -> Int -> Bool -> TerrainType -> Widget Name
+listDrawTerrainElement :: AttributeMap -> TerrainMap -> Int -> Bool -> TerrainType -> Widget Name
 listDrawTerrainElement aMap tm pos _isSelected a =
   clickable (TerrainListItem pos) $ VU.drawLabeledTerrainSwatch aMap tm a
 
