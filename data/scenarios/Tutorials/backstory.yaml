@@ -73,7 +73,7 @@ robots:
       forever {
         try {
           m <- listen;
-          if (m == "Ready!" || m == "ready!" || m == "ready") {
+          if (m == "Ready!" || m == "Ready" || m == "ready!" || m == "ready") {
             create "TIPS";
             log "The player is ready!"
           } {
