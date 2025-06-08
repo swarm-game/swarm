@@ -56,7 +56,6 @@ import Data.List.Extra (enumerate)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.List.Split (chunksOf)
-import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
 import Data.Sequence qualified as Seq

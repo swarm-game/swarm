@@ -8,9 +8,7 @@ import Brick.Widgets.Center (hCenter)
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
 import Data.List qualified as L
-import Data.Map (Map)
-import Swarm.Game.Cosmetic.Attribute (Attribute)
-import Swarm.Game.Cosmetic.Color (PreservableColor)
+import Swarm.Game.Cosmetic.Color (AttributeMap)
 import Swarm.Game.Land
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Status

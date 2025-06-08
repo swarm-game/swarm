@@ -18,6 +18,7 @@ module Swarm.TUI.View.Attribute.Attr (
   meterAttributeNames,
   messageAttributeNames,
   toAttrName,
+  toVtyAttr,
   mkBrickColor,
 
   -- ** Common attributes
@@ -128,9 +129,6 @@ swarmAttrMap =
 worldPrefix :: AttrName
 worldPrefix = attrName "world"
 
-entityAttr :: AttrName
-entityAttr = toAttrName $ fst entity
-
 robotMessagePrefix :: AttrName
 robotMessagePrefix = attrName "robotMessage"
 
@@ -163,6 +161,10 @@ blankAttr = attrName "blank"
 -- | The default robot attribute.
 robotAttr :: AttrName
 robotAttr = attrName "robot"
+
+-- | The default entity attribute.
+entityAttr :: AttrName
+entityAttr = attrName "entity"
 
 -- | Some defined attribute names used in the Swarm TUI.
 highlightAttr
