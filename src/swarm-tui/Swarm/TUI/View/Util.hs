@@ -19,7 +19,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Graphics.Vty qualified as V
 import Swarm.Game.Cosmetic.Attribute (Attribute)
-import Swarm.Game.Cosmetic.Color (PreservableColor)
+import Swarm.Game.Cosmetic.Color (AttributeMap, PreservableColor)
 import Swarm.Game.Entity as E
 import Swarm.Game.Land
 import Swarm.Game.Scenario (scenarioMetadata, scenarioName)
@@ -272,10 +272,10 @@ maybeScroll vpName contents =
 
 -- | Draw the name of an entity, labelled with its visual
 --   representation as a cell in the world.
-drawLabelledEntityName :: Entity -> Widget n
-drawLabelledEntityName e =
+drawLabelledEntityName :: AttributeMap -> Entity -> Widget n
+drawLabelledEntityName aMap e =
   hBox
-    [ padRight (Pad 2) (renderTexel (E.renderEntity (const False) e))
+    [ padRight (Pad 2) (renderTexel (E.renderEntity aMap (const False) e))
     , txt (e ^. entityName)
     ]
 

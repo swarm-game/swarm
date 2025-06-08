@@ -31,7 +31,7 @@ import GHC.Generics (Generic)
 import Linear (V2 (..))
 import Swarm.Failure (SystemFailure, simpleErrorHandle)
 import Swarm.Game.Cosmetic.Color (AttributeMap)
-import Swarm.Game.Cosmetic.Texel (getTexelChar)
+import Swarm.Game.Cosmetic.Display (defaultChar)
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Scenario
@@ -102,9 +102,9 @@ data RenderOpts = RenderOpts
   }
 
 getCellChar :: PCell EntityFacade -> Char
-getCellChar = fromMaybe ' ' . (>>= facadeChar) . erasableToMaybe . cellEntity
+getCellChar = fromMaybe ' ' . fmap facadeChar . erasableToMaybe . cellEntity
  where
-  facadeChar (EntityFacade _ d) = getTexelChar d
+  facadeChar (EntityFacade _ d _) = d ^. defaultChar
 
 -- | When output size is not explicitly provided,
 -- uses natural map bounds (if a map exists).

@@ -77,7 +77,7 @@ import Data.Text (Text)
 import Data.Yaml (FromJSON (parseJSON), (.!=), (.:), (.:?))
 import GHC.Generics (Generic)
 import Linear
-import Swarm.Game.Cosmetic.Color (TrueColor)
+import Swarm.Game.Cosmetic.Color (AttributeMap, TrueColor)
 import Swarm.Game.Cosmetic.Display (Display, defaultRobotDisplay, invisible)
 import Swarm.Game.Cosmetic.Texel (Texel)
 import Swarm.Game.Device
@@ -393,6 +393,6 @@ instance FromJSONE TerrainEntityMaps TRobot where
 hearingDistance :: (Num i) => i
 hearingDistance = 32
 
--- | XXX
-renderRobot :: Robot -> Texel TrueColor
-renderRobot r = renderEntity (const False) (r ^. robotEntity)
+-- | Render a robot to a texel.
+renderRobot :: AttributeMap -> Robot -> Texel TrueColor
+renderRobot aMap r = renderEntity aMap (const False) (r ^. robotEntity)

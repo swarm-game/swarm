@@ -13,24 +13,24 @@ module Swarm.Game.Scenario.Topography.EntityFacade where
 
 import Control.Lens ((^.))
 import Data.Yaml as Y (ToJSON (toJSON))
-import Swarm.Game.Cosmetic.Color (TrueColor)
-import Swarm.Game.Cosmetic.Texel (Texel)
+import Swarm.Game.Cosmetic.Display
 import Swarm.Game.Entity qualified as E
+import Swarm.Game.Location (toDirection)
+import Swarm.Language.Syntax.Direction (Direction)
 
--- | This datatype is a lightweight stand-in for the
--- full-fledged "Entity" type without the baggage of all
--- of its other fields.
--- It contains the bare minimum display information
--- for rendering.
-data EntityFacade = EntityFacade E.EntityName (Texel TrueColor)
+-- | This datatype is a lightweight stand-in for the full-fledged
+--   "Entity" type without the baggage of all of its other fields.  It
+--   contains the bare minimum display information for rendering.
+data EntityFacade = EntityFacade E.EntityName Display (Maybe Direction)
   deriving (Eq)
 
 -- Note: This instance is used only for the purpose of WorldPalette
 instance ToJSON EntityFacade where
-  toJSON (EntityFacade eName _texel) = toJSON eName
+  toJSON (EntityFacade eName _disp _hdg) = toJSON eName
 
 mkFacade :: E.Entity -> EntityFacade
 mkFacade e =
   EntityFacade
     (e ^. E.entityName)
-    (E.renderEntity (const False) e)
+    (e ^. E.entityDisplay)
+    ((e ^. E.entityOrientation) >>= toDirection)

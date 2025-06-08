@@ -11,13 +11,11 @@ import Data.List (sortOn)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (catMaybes, fromMaybe, mapMaybe)
+import Data.Maybe (catMaybes, mapMaybe)
 import Data.Ord (Down (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Tuple (swap)
-import Swarm.Game.Cosmetic.Color (TrueColor)
-import Swarm.Game.Cosmetic.Texel (Texel, getTexelChar)
 import Swarm.Game.Entity (Entity, EntityName, entitiesByName)
 import Swarm.Game.Land
 import Swarm.Game.Location
@@ -52,23 +50,23 @@ makeSuggestedPalette tm originalScenarioPalette cellGrid =
  where
   cellList = catMaybes $ allMembers cellGrid
 
-  getMaybeEntityTexel :: PCell EntityFacade -> Maybe (EntityName, Texel TrueColor)
-  getMaybeEntityTexel (Cell _terrain (erasableToMaybe -> maybeEntity) _) = do
-    EntityFacade eName d <- maybeEntity
-    return (eName, d)
+  getMaybeEntityFacade :: PCell EntityFacade -> Maybe (EntityName, EntityFacade)
+  getMaybeEntityFacade (Cell _terrain (erasableToMaybe -> maybeEntity) _) = do
+    f@(EntityFacade eName _ _) <- maybeEntity
+    return (eName, f)
 
   getMaybeEntityNameTerrainPair :: PCell EntityFacade -> Maybe (EntityName, TerrainType)
   getMaybeEntityNameTerrainPair (Cell terrain (erasableToMaybe -> maybeEntity) _) = do
-    EntityFacade eName _ <- maybeEntity
+    EntityFacade eName _ _ <- maybeEntity
     return (eName, terrain)
 
   getEntityTerrainMultiplicity :: Map EntityName (Map TerrainType Int)
   getEntityTerrainMultiplicity =
     M.map histogram $ binTuples $ mapMaybe getMaybeEntityNameTerrainPair cellList
 
-  usedEntityTexels :: Map EntityName (Texel TrueColor)
-  usedEntityTexels =
-    M.fromList $ mapMaybe getMaybeEntityTexel cellList
+  usedEntityFacades :: Map EntityName EntityFacade
+  usedEntityFacades =
+    M.fromList $ mapMaybe getMaybeEntityFacade cellList
 
   -- Finds the most-used terrain type (the "mode" in the statistical sense)
   -- paired with each entity
@@ -105,10 +103,10 @@ makeSuggestedPalette tm originalScenarioPalette cellGrid =
   pairsWithDisplays = M.fromList $ mapMaybe g entitiesWithModalTerrain
    where
     g (terrain, eName) = do
-      eTexel <- M.lookup eName usedEntityTexels
-      let displayChar = fromMaybe ' ' $ getTexelChar eTexel
+      efacade <- M.lookup eName usedEntityFacades
+      let displayChar = undefined -- fromMaybe ' ' $ getTexelChar eTexel
       guard $ Set.notMember displayChar excludedPaletteChars
-      let cell = Cell terrain (EJust $ EntityFacade eName eTexel) []
+      let cell = Cell terrain (EJust efacade) []
       return ((terrain, EJust eName), (displayChar, cell))
 
   -- TODO (#1153): Filter out terrain-only palette entries that aren't actually

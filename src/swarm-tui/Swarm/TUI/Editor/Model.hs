@@ -11,7 +11,8 @@ import Control.Lens hiding (from, (.=), (<.>))
 import Data.List.Extra (enumerate)
 import Data.Map qualified as M
 import Data.Vector qualified as V
-import Swarm.Game.Cosmetic.Color (TrueColor)
+import Swarm.Game.Cosmetic.Color (AttributeMap, TrueColor)
+import Swarm.Game.Cosmetic.Display (renderDisplay)
 import Swarm.Game.Cosmetic.Texel (Texel)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Scenario.Topography.EntityFacade
@@ -33,9 +34,9 @@ data EntityPaint
   | Ref E.Entity
   deriving (Eq)
 
-renderEntityPaint :: EntityPaint -> Texel TrueColor
-renderEntityPaint (Facade (EntityFacade _ d)) = d
-renderEntityPaint (Ref e) = E.renderEntity (const False) e
+renderEntityPaint :: AttributeMap -> EntityPaint -> Texel TrueColor
+renderEntityPaint aMap (Facade (EntityFacade _ d hdg)) = renderDisplay aMap hdg (const False) d
+renderEntityPaint aMap (Ref e) = E.renderEntity aMap (const False) e
 
 toFacade :: EntityPaint -> EntityFacade
 toFacade = \case

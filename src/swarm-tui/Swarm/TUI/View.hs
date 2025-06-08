@@ -552,8 +552,8 @@ drawWorldCursorInfo worldEditor g aMap cCoords =
 
   tileMemberWidgets =
     map (padRight $ Pad 1) $
-      -- XXX have to include rendered robot texel conditionally based on whether it is empty
-      renderTexel robot : ("with" `pp` entity) ++ ("on" `pp` terrain) ++ [txt "at"]
+      (if (texelIsEmpty robot) then id else (renderTexel robot :)) $
+        ("with" `pp` entity) ++ ("on" `pp` terrain) ++ [txt "at"]
   pp prep t
     | texelIsEmpty t = []
     | otherwise = [txt prep, renderTexel t]
@@ -567,7 +567,7 @@ drawWorldCursorInfo worldEditor g aMap cCoords =
 
   terrain = renderTerrainCell worldEditor ri cCoords
   entity = renderEntityCell worldEditor ri cCoords
-  robot = renderRobotCell g cCoords
+  robot = renderRobotCell aMap g cCoords
 
 -- | Format the clock display to be shown in the upper right of the
 --   world panel.
@@ -657,9 +657,9 @@ drawModal h ps isNoMenu = \case
     HelpModal -> helpWidget h $ gs ^. randomness . seed
     RobotsModal -> drawRobotsDisplayModal uig gs $ uig ^. uiDialogs . uiRobot
     RecipesModal -> availableListWidget gs RecipeList
-    CommandsModal -> commandsListWidget gs
+    CommandsModal -> commandsListWidget aMap gs
     MessagesModal -> availableListWidget gs MessageList
-    StructuresModal -> SR.renderStructuresDisplay gs $ uig ^. uiDialogs . uiStructure
+    StructuresModal -> SR.renderStructuresDisplay aMap gs $ uig ^. uiDialogs . uiStructure
     DescriptionModal e -> descriptionWidget ps e
     GoalModal ->
       GR.renderGoalsDisplay (uig ^. uiDialogs . uiGoal) $
@@ -689,6 +689,7 @@ drawModal h ps isNoMenu = \case
  where
   gs = ps ^. gameState
   uig = ps ^. uiGameplay
+  aMap = uig ^. uiAttributeMap
 
 data ToplevelConfigurationHelp = ToplevelConfigurationHelp
   { _helpPort :: Maybe Port
@@ -778,8 +779,8 @@ mkAvailableList gs notifLens notifRender = map padRender news <> notifSep <> map
         ]
     | otherwise = []
 
-commandsListWidget :: GameState -> Widget Name
-commandsListWidget gs =
+commandsListWidget :: AttributeMap -> GameState -> Widget Name
+commandsListWidget aMap gs =
   hCenter $
     vBox
       [ table
@@ -821,7 +822,7 @@ commandsListWidget gs =
           (r ^. equippedDevices) `union` (r ^. robotInventory)
     Nothing -> mempty
 
-  listDevices cmd = vBox $ map drawLabelledEntityName providerDevices
+  listDevices cmd = vBox $ map (drawLabelledEntityName aMap) providerDevices
    where
     providerDevices =
       concatMap (flip (M.findWithDefault []) entsByCap) $
@@ -1100,11 +1101,12 @@ drawRobotPanel s
   -- away and a robot that does not exist.
   | Just r <- s ^. gameState . to focusedRobot
   , Just (_, lst) <- s ^. uiGameplay . uiInventory . uiInventoryList =
-      let drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
+      let aMap = s ^. uiGameplay . uiAttributeMap
+          drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem aMap (lst ^. BL.listSelectedL) pos selb
           details =
             [ txt (r ^. robotName)
             , padLeft (Pad 2) . str . renderCoordsString $ r ^. robotLocation
-            , padLeft (Pad 2) $ renderTexel (renderRobot r)
+            , padLeft (Pad 2) $ renderTexel (renderRobot aMap r)
             ]
        in padBottom Max $
             vBox
@@ -1119,6 +1121,7 @@ blank = padRight Max . padBottom Max $ str " "
 
 -- | Draw an inventory entry.
 drawItem ::
+  AttributeMap ->
   -- | The index of the currently selected inventory entry
   Maybe Int ->
   -- | The index of the entry we are drawing
@@ -1130,17 +1133,17 @@ drawItem ::
   -- | The entry to draw.
   InventoryListEntry ->
   Widget Name
-drawItem sel i _ (Separator l) =
+drawItem _ sel i _ (Separator l) =
   -- Make sure a separator right before the focused element is
   -- visible. Otherwise, when a separator occurs as the very first
   -- element of the list, once it scrolls off the top of the viewport
   -- it will never become visible again.
   -- See https://github.com/jtdaugherty/brick/issues/336#issuecomment-921220025
   applyWhen (sel == Just (i + 1)) visible $ hBorderWithLabel (txt l)
-drawItem _ _ _ (InventoryEntry n e) = drawLabelledEntityName e <+> showCount n
+drawItem aMap _ _ _ (InventoryEntry n e) = drawLabelledEntityName aMap e <+> showCount n
  where
   showCount = padLeft Max . str . show
-drawItem _ _ _ (EquippedEntry e) = drawLabelledEntityName e <+> padLeft Max (str " ")
+drawItem aMap _ _ _ (EquippedEntry e) = drawLabelledEntityName aMap e <+> padLeft Max (str " ")
 
 ------------------------------------------------------------
 -- Info panel

@@ -129,7 +129,7 @@ import GHC.Generics (Generic)
 import Swarm.Failure
 import Swarm.Game.Cosmetic.Attribute
 import Swarm.Game.Cosmetic.Assignment (worldAttributes)
-import Swarm.Game.Cosmetic.Color (TrueColor)
+import Swarm.Game.Cosmetic.Color (AttributeMap, TrueColor)
 import Swarm.Game.Cosmetic.Display
 import Swarm.Game.Cosmetic.Texel (Texel)
 import Swarm.Game.Device
@@ -717,9 +717,11 @@ entityBiomes = hashedLens _entityBiomes (\e x -> e {_entityBiomes = x})
 entityInventory :: Lens' Entity Inventory
 entityInventory = hashedLens _entityInventory (\e x -> e {_entityInventory = x})
 
--- | XXX
-renderEntity :: (AbsoluteDir -> Bool) -> Entity -> Texel TrueColor
-renderEntity boundaryCheck e = renderDisplay ((e ^. entityOrientation) >>= toDirection) boundaryCheck . view entityDisplay $ e
+-- | Render an entity to a texel, given a mapping from attributes to
+--   colors, and a function to look up whether its neighbors have the
+--   boundary property.
+renderEntity :: AttributeMap -> (AbsoluteDir -> Bool) -> Entity -> Texel TrueColor
+renderEntity aMap boundaryCheck e = renderDisplay aMap ((e ^. entityOrientation) >>= toDirection) boundaryCheck . view entityDisplay $ e
 
 ------------------------------------------------------------
 -- Inventory

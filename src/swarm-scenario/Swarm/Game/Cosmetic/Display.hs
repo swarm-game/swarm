@@ -46,7 +46,7 @@ import Data.Yaml
 import GHC.Generics (Generic)
 import Graphics.Text.Width
 import Swarm.Game.Cosmetic.Attribute
-import Swarm.Game.Cosmetic.Color (TrueColor)
+import Swarm.Game.Cosmetic.Color (AttributeMap, TrueColor)
 import Swarm.Game.Cosmetic.Texel
 import Swarm.Language.Syntax.Direction (AbsoluteDir (..), Direction (..))
 import Swarm.Util (applyWhen, quote)
@@ -236,13 +236,15 @@ getBoundaryDisplay = glyphForNeighbors . computeNeighborPresence
 
 -- * Rendering
 
--- | XXX Turn a Display into a concrete 'Texel', taking into account
+-- | Turn a Display into a concrete 'Texel', taking into account
 --   orientation, boundaries, etc.
-renderDisplay :: Maybe Direction -> (AbsoluteDir -> Bool) -> Display -> Texel TrueColor
-renderDisplay mdir boundaryCheck disp = undefined
-  -- Texel (Just (Max (Arg (disp ^. displayPriority) (c, disp ^. displayAttr)))) Nothing  -- XXX
+renderDisplay :: AttributeMap -> Maybe Direction -> (AbsoluteDir -> Bool) -> Display -> Texel TrueColor
+renderDisplay aMap mdir boundaryCheck disp =
+  maybe mempty (texelFromColor (disp ^. displayPriority) c) mcolor
   where
     c = fromMaybe (disp ^. defaultChar) $
         getBoundaryDisplay boundaryCheck <|> do
           DAbsolute d <- mdir
           M.lookup d (disp ^. orientationMap)
+
+    mcolor = M.lookup (disp ^. displayAttr) aMap

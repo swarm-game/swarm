@@ -19,6 +19,7 @@ import Data.Map.Strict qualified as M
 import Data.Set qualified as Set
 import Data.Text qualified as T
 import Data.Vector qualified as V
+import Swarm.Game.Cosmetic.Color (AttributeMap)
 import Swarm.Game.Entity (Entity, renderEntity)
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Grid
@@ -40,8 +41,8 @@ import Swarm.Util (commaList)
 
 -- | Render a two-pane widget with structure selection on the left
 -- and single-structure details on the right.
-structureWidget :: GameState -> StructureInfo b Entity -> Widget n
-structureWidget gs s =
+structureWidget :: AttributeMap -> GameState -> StructureInfo b Entity -> Widget n
+structureWidget aMap gs s =
   vBox
     [ hBox
         [ headerItem "Name" $ Structure.getStructureName theName
@@ -107,7 +108,7 @@ structureWidget gs s =
 
   showCount (e, c) =
     hBox
-      [ drawLabelledEntityName e
+      [ drawLabelledEntityName aMap e
       , txt $
           T.unwords
             [ ":"
@@ -118,17 +119,18 @@ structureWidget gs s =
   theName = Structure.name theNamedGrid
   cells = getRows $ Grid $ entityProcessedGrid s
 
-  renderOneCell = maybe (txt " ") (renderTexel . renderEntity (const False))
+  renderOneCell = maybe (txt " ") (renderTexel . renderEntity aMap (const False))
 
 makeListWidget :: [StructureInfo b a] -> BL.List Name (StructureInfo b a)
 makeListWidget structureDefinitions =
   BL.listMoveTo 0 $ BL.list (StructureWidgets StructuresList) (V.fromList structureDefinitions) 1
 
 renderStructuresDisplay ::
+  AttributeMap ->
   GameState ->
   StructureDisplay ->
   Widget Name
-renderStructuresDisplay gs structureDisplay =
+renderStructuresDisplay aMap gs structureDisplay =
   vBox
     [ hBox
         [ leftSide
@@ -159,7 +161,7 @@ renderStructuresDisplay gs structureDisplay =
   structureElaboration =
     clickable (StructureWidgets StructureSummary)
       . maybeScroll ModalViewport
-      . maybe emptyWidget (padAll 1 . padRight (Pad 1) . highlightIfFocused . structureWidget gs . snd)
+      . maybe emptyWidget (padAll 1 . padRight (Pad 1) . highlightIfFocused . structureWidget aMap gs . snd)
       $ BL.listSelectedElement lw
 
 drawSidebarListItem ::

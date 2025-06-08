@@ -21,7 +21,7 @@ import Data.Tagged (unTagged)
 import Data.Word (Word32)
 import Graphics.Vty qualified as V
 import Linear.Affine ((.-.))
-import Swarm.Game.Cosmetic.Color (TrueColor (..), NamedColor (..), PreservableColor)
+import Swarm.Game.Cosmetic.Color (AttributeMap, TrueColor (..), NamedColor (..), PreservableColor)
 import Swarm.Game.Cosmetic.Display
 import Swarm.Game.Cosmetic.Texel (Texel, getTexelData, mkTexel, texelFromColor)
 import Swarm.Game.Entity
@@ -72,7 +72,7 @@ drawLoc ui g cCoords@(Cosmic _ coords) =
  where
   showRobots = ui ^. uiShowRobots
   we = ui ^. uiWorldEditor . worldOverdraw
-  aMap = ui ^. scenarioRef . _Just . getScenario . scenarioLandscape . scenarioCosmetics
+  aMap = ui ^. uiAttributeMap
   drawCell = renderTexel $ renderLoc showRobots we g aMap cCoords
 
   boldStructure = applyWhen isStructure $ modifyDefAttr (`V.withStyle` V.bold)
@@ -107,11 +107,12 @@ terrainTexel aMap terrain =
 
 -- | XXX draw all the robots
 renderRobotCell ::
+  AttributeMap ->
   GameState ->
   Cosmic Coords ->
   Texel TrueColor
-renderRobotCell g coords =
-  foldMap renderRobot $
+renderRobotCell aMap g coords =
+  foldMap (renderRobot aMap) $
     robotsAtLocation (fmap coordsToLoc coords) g
 
 -- | Extract the relevant subset of information from the 'GameState' to be able
@@ -137,7 +138,7 @@ data EntityKnowledgeDependencies = EntityKnowledgeDependencies
 -- normally vs as a question mark.
 getEntityIsKnown :: EntityKnowledgeDependencies -> EntityPaint -> Bool
 getEntityIsKnown knowledge ep = case ep of
-  Facade (EntityFacade _ _) -> True
+  Facade (EntityFacade {}) -> True
   Ref e -> or reasonsToShow
    where
     reasonsToShow =
@@ -155,7 +156,7 @@ renderEntityCell ::
   Cosmic Coords ->
   Texel TrueColor
 renderEntityCell worldEditor ri coords =
-  maybe mempty renderEntityPaint (getEntityPaintAtCoord coords)
+  maybe mempty (renderEntityPaint (attributeMap ri)) (getEntityPaintAtCoord coords)
  where
   getEntityPaintAtCoord = snd . EU.getEditorContentAt (terrMap ri) worldEditor (multiworldInfo ri)
   coordHasBoundary = maybe False (`hasProperty` Boundary) . snd . getContentAt (terrMap ri) (multiworldInfo ri)
@@ -185,7 +186,7 @@ renderLoc showRobots we g aMap cCoords@(Cosmic _ coords) =
 
   robots =
     if showRobots
-      then renderRobotCell g cCoords
+      then renderRobotCell aMap g cCoords
       else mempty
 
 -- | Render a base location without robots, /i.e./ just the terrain and

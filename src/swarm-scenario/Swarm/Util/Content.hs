@@ -8,7 +8,8 @@ module Swarm.Util.Content where
 import Control.Applicative ((<|>))
 import Data.Map qualified as M
 import Swarm.Game.Cosmetic.Attribute
-import Swarm.Game.Cosmetic.Color (PreservableColor)
+import Swarm.Game.Cosmetic.Color (AttributeMap, PreservableColor)
+import Swarm.Game.Cosmetic.Display (renderDisplay)
 import Swarm.Game.Cosmetic.Texel (getTexelColor)
 import Swarm.Game.Scenario.Topography.Cell (PCell (..))
 import Swarm.Game.Scenario.Topography.EntityFacade
@@ -56,11 +57,11 @@ getMapRectangle paintTransform contentFunc coords =
 --  about entities vs terrain etc.
 -- | Get the color used to render a single cell
 getTerrainEntityColor ::
-  M.Map Attribute PreservableColor ->
+  AttributeMap ->
   PCell EntityFacade ->
   Maybe PreservableColor
 getTerrainEntityColor aMap (Cell terr cellEnt _) =
   (entityColor =<< erasableToMaybe cellEnt) <|> terrainFallback
  where
   terrainFallback = M.lookup (AWorld $ getTerrainWord terr) aMap
-  entityColor (EntityFacade _ d) = getTexelColor d
+  entityColor (EntityFacade _ disp hdg) = getTexelColor (renderDisplay aMap hdg (const False) disp)

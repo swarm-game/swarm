@@ -30,7 +30,7 @@ toCellPaintDisplay (Cell terrain maybeEntity r) =
   Cell terrain (mkFacade <$> maybeEntity) r
 
 toKey :: TerrainWith EntityFacade -> TerrainWith EntityName
-toKey = fmap $ fmap (\(EntityFacade eName _display) -> eName)
+toKey = fmap $ fmap (\(EntityFacade eName _display _hdg) -> eName)
 
 -- | We want to identify all of the unique (terrain, entity facade) pairs.
 -- However, "EntityFacade" includes a "Display" record, which contains more
