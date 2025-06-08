@@ -24,7 +24,7 @@ import Data.Graph
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (catMaybes, isNothing)
+import Data.Maybe (catMaybes, fromMaybe, isNothing)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lines qualified as R
@@ -112,10 +112,7 @@ pathToPosition ::
   -- | absolute offset within the file
   Int ->
   NonEmpty (Syntax' ty)
-pathToPosition s0 pos =
-  case innerPath s0 of
-    Nothing -> s0 :| []
-    Just ss -> s0 :| ss
+pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
  where
   innerPath :: Syntax' ty -> Maybe [Syntax' ty]
   innerPath (Syntax' _ t _ ty) = case t of
@@ -154,14 +151,12 @@ pathToPosition s0 pos =
   -- try and decend into the syntax element if it is contained with position
   descend ::
     ExplainableType ty =>
-    -- \| position
     Int ->
-    -- \| next element to inspect
     Syntax' ty ->
     Maybe [Syntax' ty]
   descend p s1@(Syntax' l1 _ _ _) = do
     guard $ withinBound p l1
-    liftA2 (:) (Just s1) (innerPath s1)
+    (s1 :) <$> innerPath s1
 
 renderDoc :: Int -> Text -> Text
 renderDoc d t
