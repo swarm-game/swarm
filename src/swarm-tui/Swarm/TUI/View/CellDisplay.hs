@@ -52,17 +52,17 @@ renderTexel t =
       setBG = maybe id (\c -> modifyDefAttr (`V.withBackColor` (mkBrickColor c))) mbg
   in setBG . setFG $ str [displayChar]
 
--- | Render a specific location.
+-- | Render a single cell in the world.
 drawLoc :: UIGameplay -> GameState -> Cosmic Coords -> Widget Name
 drawLoc ui g cCoords@(Cosmic _ coords) =
   if shouldHideWorldCell ui coords
     then str " "
-    else boldStructure drawCell
+    else boldStructure drawnCell
  where
   showRobots = ui ^. uiShowRobots
   we = ui ^. uiWorldEditor . worldOverdraw
   aMap = ui ^. uiAttributeMap
-  drawCell = renderTexel $ renderLoc showRobots we g aMap cCoords
+  drawnCell = renderTexel $ renderLoc showRobots we g aMap cCoords
 
   boldStructure = applyWhen isStructure $ modifyDefAttr (`V.withStyle` V.bold)
    where
@@ -90,9 +90,7 @@ renderTerrainCell worldEditor ri coords =
   t = EU.getEditorTerrainAt (terrMap ri) worldEditor (multiworldInfo ri) coords
 
 terrainTexel :: Map Attribute PreservableColor -> TerrainObj -> Texel TrueColor
-terrainTexel aMap terrain =
-  let mcolor = M.lookup (terrainAttr terrain) aMap
-  in  maybe mempty (texelFromColor 0 ' ') mcolor
+terrainTexel aMap = maybe mempty (texelFromColor 0 ' ') . (aMap M.?!) . terrainAttr
 
 -- | Render all the robots on a given cell as a combined texel.
 renderRobotCell ::
