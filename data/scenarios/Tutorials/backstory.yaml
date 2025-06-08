@@ -22,7 +22,7 @@ objectives:
 solution: |
   say "Ready!"
 entities:
-  - name: READY
+  - name: TIPS
     display:
       attr: device
       char: 'R'
@@ -36,6 +36,17 @@ entities:
       - |
         To open the full goal text again, you can hit **Ctrl+G**.
     properties: [known, pickable]
+  - name: logger
+    display:
+      attr: device
+      char: 'l'
+    description:
+      - |
+        Allows a robot to generate and store messages for later viewing.
+      - |
+        For this scenario it shows errors and tips.
+    properties: [pickable]
+    capabilities: [log, listen]
 robots:
   - name: base
     display:
@@ -54,7 +65,7 @@ robots:
     loc: [0, 0]
     dir: [0, 0]
     inventory:
-      - [0, READY]
+      - [0, TIPS]
     devices:
       - logger
     program: |
@@ -66,12 +77,11 @@ robots:
             create "READY";
             log "The player is ready!"
           } {
-            say $ "Wrong message: " ++ format m
+            say $ "Wrong message: " ++ format m ++ " you should say \"Ready!\""
           }
         } {log "Something bad happened!"}
       }
 seed: 0
-creative: true
 world:
   scrollable: false
   dsl: |
