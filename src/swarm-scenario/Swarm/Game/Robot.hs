@@ -395,4 +395,4 @@ hearingDistance = 32
 
 -- | Render a robot to a texel.
 renderRobot :: AttributeMap -> Robot -> Texel TrueColor
-renderRobot aMap r = renderEntity aMap (const False) (r ^. robotEntity)
+renderRobot aMap r = renderEntity aMap (const False) True (r ^. robotEntity)

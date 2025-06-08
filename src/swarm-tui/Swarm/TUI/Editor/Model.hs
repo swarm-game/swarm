@@ -35,9 +35,9 @@ data EntityPaint
   | Ref E.Entity
   deriving (Eq)
 
-renderEntityPaint :: AttributeMap -> (Maybe AbsoluteDir -> Bool) -> EntityPaint -> Texel TrueColor
-renderEntityPaint aMap checkBoundary (Facade (EntityFacade _ d hdg)) = renderDisplay aMap hdg checkBoundary d
-renderEntityPaint aMap checkBoundary (Ref e) = E.renderEntity aMap checkBoundary e
+renderEntityPaint :: AttributeMap -> (Maybe AbsoluteDir -> Bool) -> Bool -> EntityPaint -> Texel TrueColor
+renderEntityPaint aMap checkBoundary known (Facade (EntityFacade _ d hdg)) = renderDisplay aMap hdg checkBoundary known d
+renderEntityPaint aMap checkBoundary known (Ref e) = E.renderEntity aMap checkBoundary known e
 
 toFacade :: EntityPaint -> EntityFacade
 toFacade = \case

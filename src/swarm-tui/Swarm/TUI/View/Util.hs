@@ -275,7 +275,7 @@ maybeScroll vpName contents =
 drawLabelledEntityName :: AttributeMap -> Entity -> Widget n
 drawLabelledEntityName aMap e =
   hBox
-    [ padRight (Pad 2) (renderTexel (E.renderEntity aMap (const False) e))
+    [ padRight (Pad 2) (renderTexel (E.renderEntity aMap (const False) True e))
     , txt (e ^. entityName)
     ]
 

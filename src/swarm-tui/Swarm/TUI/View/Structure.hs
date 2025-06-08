@@ -119,7 +119,7 @@ structureWidget aMap gs s =
   theName = Structure.name theNamedGrid
   cells = getRows $ Grid $ entityProcessedGrid s
 
-  renderOneCell = maybe (txt " ") (renderTexel . renderEntity aMap (const False))
+  renderOneCell = maybe (txt " ") (renderTexel . renderEntity aMap (const False) True)
 
 makeListWidget :: [StructureInfo b a] -> BL.List Name (StructureInfo b a)
 makeListWidget structureDefinitions =

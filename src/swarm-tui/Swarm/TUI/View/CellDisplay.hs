@@ -146,15 +146,20 @@ getEntityIsKnown knowledge ep = case ep of
       ]
     showBasedOnRobotKnowledge = maybe False (`robotKnows` e) $ theFocusedRobot knowledge
 
--- XXX this should DEFINITELY be simplified!  What is it doing?
+-- | Render the entity at the given coordinates (if any) to a texel,
+--   taking into account things such as neighboring entities with the
+--   boundary property, and whether the entity should have its
+--   identity hidden.
 renderEntityCell ::
   WorldOverdraw ->
   RenderingInput ->
   Cosmic Coords ->
   Texel TrueColor
 renderEntityCell worldEditor ri coords =
-  maybe mempty (renderEntityPaint (attributeMap ri) checkPresence) (getEntityPaintAtCoord coords)
+  maybe mempty (renderEntityPaint (attributeMap ri) checkPresence known) mEntPaint
  where
+  mEntPaint = getEntityPaintAtCoord coords
+  known = fromMaybe False . fmap (isKnownFunc ri) $ mEntPaint
   getEntityPaintAtCoord = snd . EU.getEditorContentAt (terrMap ri) worldEditor (multiworldInfo ri)
   coordHasBoundary = maybe False (`hasProperty` Boundary) . snd . getContentAt (terrMap ri) (multiworldInfo ri)
 

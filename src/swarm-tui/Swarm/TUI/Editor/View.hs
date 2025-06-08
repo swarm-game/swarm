@@ -148,7 +148,7 @@ drawLabeledEntitySwatch :: AttributeMap -> EntityFacade -> Widget Name
 drawLabeledEntitySwatch aMap (EntityFacade eName eDisp eHdg) =
   tile <+> txt eName
  where
-  tile = padRight (Pad 1) $ renderTexel (renderDisplay aMap eHdg (const False) eDisp)
+  tile = padRight (Pad 1) $ renderTexel (renderDisplay aMap eHdg (const False) True eDisp)
 
 drawTerrainSelector :: UIGameplay -> Widget Name
 drawTerrainSelector uig =

@@ -237,16 +237,17 @@ getBoundaryDisplay = glyphForNeighbors . computeNeighborPresence
 -- * Rendering
 
 -- | Turn a Display into a concrete 'Texel', taking into account
---   orientation, boundaries, etc.
-renderDisplay :: AttributeMap -> Maybe Direction -> (Maybe AbsoluteDir -> Bool) -> Display -> Texel TrueColor
-renderDisplay aMap mdir boundaryCheck disp =
+--   orientation, boundaries, whether the entity is known, etc.
+renderDisplay :: AttributeMap -> Maybe Direction -> (Maybe AbsoluteDir -> Bool) -> Bool -> Display -> Texel TrueColor
+renderDisplay aMap mdir boundaryCheck known disp =
   maybe mempty (texelFromColor (disp ^. displayPriority) c) mcolor
   where
+    mhidden = guard (not known) *> pure '?'
     mbound = guard (boundaryCheck Nothing) *> getBoundaryDisplay (boundaryCheck . Just)
     morient = do
       DAbsolute d <- mdir
       M.lookup d (disp ^. orientationMap)
 
-    c = fromMaybe (disp ^. defaultChar) $ mbound <|> morient
+    c = fromMaybe (disp ^. defaultChar) $ mhidden <|> mbound <|> morient
 
     mcolor = M.lookup (disp ^. displayAttr) aMap

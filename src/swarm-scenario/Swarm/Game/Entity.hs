@@ -720,8 +720,8 @@ entityInventory = hashedLens _entityInventory (\e x -> e {_entityInventory = x})
 -- | Render an entity to a texel, given a mapping from attributes to
 --   colors, and a function to look up whether its neighbors have the
 --   boundary property.
-renderEntity :: AttributeMap -> (Maybe AbsoluteDir -> Bool) -> Entity -> Texel TrueColor
-renderEntity aMap boundaryCheck e = renderDisplay aMap ((e ^. entityOrientation) >>= toDirection) boundaryCheck . view entityDisplay $ e
+renderEntity :: AttributeMap -> (Maybe AbsoluteDir -> Bool) -> Bool -> Entity -> Texel TrueColor
+renderEntity aMap boundaryCheck known e = renderDisplay aMap ((e ^. entityOrientation) >>= toDirection) boundaryCheck known . view entityDisplay $ e
 
 ------------------------------------------------------------
 -- Inventory
