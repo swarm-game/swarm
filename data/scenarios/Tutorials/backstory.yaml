@@ -17,7 +17,7 @@ objectives:
     condition: |
       try {
         l <- robotNamed "listener";
-        as l {has "READY"}
+        as l {has "TIPS"}
       } { pure false }
 solution: |
   say "Ready!"
@@ -55,7 +55,7 @@ robots:
     dir: east
     loc: [0, 0]
     inventory:
-      - [1, READY]
+      - [1, TIPS]
     devices:
       - logger
   - name: listener
@@ -74,10 +74,10 @@ robots:
         try {
           m <- listen;
           if (m == "Ready!" || m == "ready!" || m == "ready") {
-            create "READY";
+            create "TIPS";
             log "The player is ready!"
           } {
-            say $ "Wrong message: " ++ format m ++ " you should say \"Ready!\""
+            say $ "Wrong message " ++ format m ++ ", you should say \"Ready!\""
           }
         } {log "Something bad happened!"}
       }
