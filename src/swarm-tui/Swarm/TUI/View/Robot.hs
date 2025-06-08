@@ -44,8 +44,6 @@ import Swarm.Game.Location (Point, origin)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
-import Swarm.Game.Scenario (scenarioLandscape, scenarioCosmetics)
-import Swarm.Game.Scenario.Status (getScenario)
 import Swarm.Game.State
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate

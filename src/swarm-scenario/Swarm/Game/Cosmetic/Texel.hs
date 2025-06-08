@@ -10,7 +10,6 @@ module Swarm.Game.Cosmetic.Texel (
   Priority,
   Texel(..),
   mkTexel,
-  getTexelChar,
   getTexelData,
   getTexelColor,
   texelFromColor,
@@ -40,10 +39,6 @@ getTexelData :: Texel a -> (Maybe (Char, a), Maybe a)
 getTexelData (Texel fg bg) = (getArg . getMax <$> fg, getArg . getMax <$> bg)
   where
     getArg (Arg _ a) = a
-
--- | XXX get FG char if exists
-getTexelChar :: Texel a -> Maybe Char
-getTexelChar = fmap fst . fst . getTexelData
 
 -- | Extract the color (foreground + background) of a texel.
 getTexelColor :: Texel a -> Maybe (ColorLayers a)

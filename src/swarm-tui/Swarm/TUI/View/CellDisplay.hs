@@ -7,14 +7,11 @@
 module Swarm.TUI.View.CellDisplay where
 
 import Brick
-import Control.Lens (to, view, (&), (.~), (^.), _Just)
+import Control.Lens ((^.))
 import Data.ByteString (ByteString)
 import Data.Hash.Murmur
-import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (maybeToList)
-import Data.Semigroup (sconcat)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Tagged (unTagged)
@@ -28,8 +25,6 @@ import Swarm.Game.Entity
 import Swarm.Game.Land
 import Swarm.Game.Location (Point (..), toHeading)
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (scenarioCosmetics, scenarioLandscape)
-import Swarm.Game.Scenario.Status (getScenario)
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByLocation)
@@ -88,7 +83,7 @@ data RenderingInput = RenderingInput
   , attributeMap :: Map Attribute PreservableColor
   }
 
--- | XXX draw terrain
+-- | Render a single terrain cell as a texel.
 renderTerrainCell ::
   WorldOverdraw ->
   RenderingInput ->
@@ -105,7 +100,7 @@ terrainTexel aMap terrain =
   let mcolor = M.lookup (terrainAttr terrain) aMap
   in  maybe mempty (texelFromColor 0 ' ') mcolor
 
--- | XXX draw all the robots
+-- | Render all the robots on a given cell as a combined texel.
 renderRobotCell ::
   AttributeMap ->
   GameState ->
@@ -156,18 +151,16 @@ renderEntityCell ::
   Cosmic Coords ->
   Texel TrueColor
 renderEntityCell worldEditor ri coords =
-  maybe mempty (renderEntityPaint (attributeMap ri)) (getEntityPaintAtCoord coords)
+  maybe mempty (renderEntityPaint (attributeMap ri) checkPresence) (getEntityPaintAtCoord coords)
  where
   getEntityPaintAtCoord = snd . EU.getEditorContentAt (terrMap ri) worldEditor (multiworldInfo ri)
   coordHasBoundary = maybe False (`hasProperty` Boundary) . snd . getContentAt (terrMap ri) (multiworldInfo ri)
 
-  -- assignBoundaryOverride = applyWhen (coordHasBoundary coords) (boundaryOverride .~ getBoundaryDisplay checkPresence)
-  --  where
-  --   checkPresence :: AbsoluteDir -> Bool
-  --   checkPresence d = coordHasBoundary offsettedCoord
-  --    where
-  --     offsettedCoord = (`addTuple` xy) <$> coords
-  --     Coords xy = locToCoords $ P $ toHeading d
+  checkPresence :: AbsoluteDir -> Bool
+  checkPresence d = coordHasBoundary offsetCoord
+   where
+    offsetCoord = (`addTuple` xy) <$> coords
+    Coords xy = locToCoords $ P $ toHeading d
 
 -- | Render a specific location, by combining the
 --   texels for the terrain, entity, and robots at the location, and

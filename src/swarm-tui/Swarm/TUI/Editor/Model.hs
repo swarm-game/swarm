@@ -20,6 +20,7 @@ import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainType)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
+import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.TUI.Model.Name
 import System.Clock
 
@@ -34,9 +35,9 @@ data EntityPaint
   | Ref E.Entity
   deriving (Eq)
 
-renderEntityPaint :: AttributeMap -> EntityPaint -> Texel TrueColor
-renderEntityPaint aMap (Facade (EntityFacade _ d hdg)) = renderDisplay aMap hdg (const False) d
-renderEntityPaint aMap (Ref e) = E.renderEntity aMap (const False) e
+renderEntityPaint :: AttributeMap -> (AbsoluteDir -> Bool) -> EntityPaint -> Texel TrueColor
+renderEntityPaint aMap checkBoundary (Facade (EntityFacade _ d hdg)) = renderDisplay aMap hdg checkBoundary d
+renderEntityPaint aMap checkBoundary (Ref e) = E.renderEntity aMap checkBoundary e
 
 toFacade :: EntityPaint -> EntityFacade
 toFacade = \case

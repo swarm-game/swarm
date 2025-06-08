@@ -5,12 +5,11 @@
 -- by single cells or in bulk for rendering.
 module Swarm.Util.Content where
 
-import Control.Applicative ((<|>))
 import Data.Map qualified as M
 import Swarm.Game.Cosmetic.Attribute
 import Swarm.Game.Cosmetic.Color (AttributeMap, PreservableColor)
 import Swarm.Game.Cosmetic.Display (renderDisplay)
-import Swarm.Game.Cosmetic.Texel (getTexelColor)
+import Swarm.Game.Cosmetic.Texel (getTexelColor, texelFromColor)
 import Swarm.Game.Scenario.Topography.Cell (PCell (..))
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Grid
@@ -52,16 +51,16 @@ getMapRectangle paintTransform contentFunc coords =
 
   renderRow rowIndex = map (drawCell paintTransform rowIndex) [xLeft .. xRight]
 
--- XXX Better to just turn a cell into a `Texel` and then turn a
---  `Texel` into a single color, which will automatically handle stuff
---  about entities vs terrain etc.
--- | Get the color used to render a single cell
+-- | Get the color used to render a single cell, by combining the texels for the
+--   entity and terrain, and extracting its color.
 getTerrainEntityColor ::
   AttributeMap ->
   PCell EntityFacade ->
   Maybe PreservableColor
 getTerrainEntityColor aMap (Cell terr cellEnt _) =
-  (entityColor =<< erasableToMaybe cellEnt) <|> terrainFallback
+  getTexelColor $ entityTexel <> terrainTexel
  where
-  terrainFallback = M.lookup (AWorld $ getTerrainWord terr) aMap
-  entityColor (EntityFacade _ disp hdg) = getTexelColor (renderDisplay aMap hdg (const False) disp)
+  entityTexel = maybe mempty renderEntityTexel (erasableToMaybe cellEnt)
+  terrainTexel = maybe mempty (texelFromColor 0 ' ') $
+    M.lookup (AWorld $ getTerrainWord terr) aMap
+  renderEntityTexel (EntityFacade _ disp hdg) = renderDisplay aMap hdg (const False) disp

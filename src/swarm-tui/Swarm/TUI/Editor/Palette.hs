@@ -16,6 +16,7 @@ import Data.Ord (Down (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Tuple (swap)
+import Swarm.Game.Cosmetic.Display (defaultChar)
 import Swarm.Game.Entity (Entity, EntityName, entitiesByName)
 import Swarm.Game.Land
 import Swarm.Game.Location
@@ -103,8 +104,8 @@ makeSuggestedPalette tm originalScenarioPalette cellGrid =
   pairsWithDisplays = M.fromList $ mapMaybe g entitiesWithModalTerrain
    where
     g (terrain, eName) = do
-      efacade <- M.lookup eName usedEntityFacades
-      let displayChar = undefined -- fromMaybe ' ' $ getTexelChar eTexel
+      efacade@(EntityFacade _ d _) <- M.lookup eName usedEntityFacades
+      let displayChar = d ^. defaultChar
       guard $ Set.notMember displayChar excludedPaletteChars
       let cell = Cell terrain (EJust efacade) []
       return ((terrain, EJust eName), (displayChar, cell))
