@@ -25,7 +25,7 @@ entities:
   - name: TIPS
     display:
       attr: device
-      char: 'R'
+      char: '?'
     description:
       - |
         When you're ready for your first tutorial challenge, type at the prompt:
