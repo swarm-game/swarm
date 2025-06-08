@@ -24,7 +24,7 @@ import Data.Graph
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (catMaybes, fromMaybe, isNothing)
+import Data.Maybe (catMaybes, isNothing)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lines qualified as R
