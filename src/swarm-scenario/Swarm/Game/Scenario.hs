@@ -73,10 +73,10 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
+import Swarm.Failure
 import Swarm.Game.Cosmetic.Assignment (worldAttributes)
 import Swarm.Game.Cosmetic.Attribute
 import Swarm.Game.Cosmetic.Color
-import Swarm.Failure
 import Swarm.Game.Entity
 import Swarm.Game.Land
 import Swarm.Game.Location (Location)

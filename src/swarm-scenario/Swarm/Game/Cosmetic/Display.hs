@@ -243,13 +243,13 @@ renderDisplay :: AttributeMap -> Maybe Direction -> (Maybe AbsoluteDir -> Bool) 
 renderDisplay aMap mdir boundaryCheck known disp
   | disp ^. invisible = mempty
   | otherwise = maybe mempty (texelFromColor (disp ^. displayPriority) c) mcolor
-  where
-    mhidden = guard (not known) *> pure '?'
-    mbound = guard (boundaryCheck Nothing) *> getBoundaryDisplay (boundaryCheck . Just)
-    morient = do
-      DAbsolute d <- mdir
-      M.lookup d (disp ^. orientationMap)
+ where
+  mhidden = guard (not known) *> pure '?'
+  mbound = guard (boundaryCheck Nothing) *> getBoundaryDisplay (boundaryCheck . Just)
+  morient = do
+    DAbsolute d <- mdir
+    M.lookup d (disp ^. orientationMap)
 
-    c = fromMaybe (disp ^. defaultChar) $ mhidden <|> mbound <|> morient
+  c = fromMaybe (disp ^. defaultChar) $ mhidden <|> mbound <|> morient
 
-    mcolor = M.lookup (disp ^. displayAttr) aMap
+  mcolor = M.lookup (disp ^. displayAttr) aMap

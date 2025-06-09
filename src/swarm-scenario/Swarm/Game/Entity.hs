@@ -127,8 +127,8 @@ import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Failure
-import Swarm.Game.Cosmetic.Attribute
 import Swarm.Game.Cosmetic.Assignment (worldAttributes)
+import Swarm.Game.Cosmetic.Attribute
 import Swarm.Game.Cosmetic.Color (AttributeMap, TrueColor)
 import Swarm.Game.Cosmetic.Display
 import Swarm.Game.Cosmetic.Texel (Texel)

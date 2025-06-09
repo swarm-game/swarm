@@ -8,7 +8,7 @@
 -- same cell can be combined to appropriately compute what to draw.
 module Swarm.Game.Cosmetic.Texel (
   Priority,
-  Texel(..),
+  Texel (..),
   mkTexel,
   getTexelData,
   getTexelColor,
@@ -17,7 +17,7 @@ module Swarm.Game.Cosmetic.Texel (
 ) where
 
 import Data.Maybe (isNothing)
-import Data.Semigroup (Arg(..), ArgMax, Max(..))
+import Data.Semigroup (Arg (..), ArgMax, Max (..))
 import Swarm.Game.Cosmetic.Color
 
 -- | Display priority.  Entities with higher priority will be drawn on
@@ -37,8 +37,8 @@ mkTexel fg bg = Texel (Max . uncurry Arg <$> fg) (Max . uncurry Arg <$> bg)
 
 getTexelData :: Texel a -> (Maybe (Char, a), Maybe a)
 getTexelData (Texel fg bg) = (getArg . getMax <$> fg, getArg . getMax <$> bg)
-  where
-    getArg (Arg _ a) = a
+ where
+  getArg (Arg _ a) = a
 
 -- | Extract the color (foreground + background) of a texel.
 getTexelColor :: Texel a -> Maybe (ColorLayers a)

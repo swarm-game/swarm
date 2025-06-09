@@ -8,10 +8,10 @@
 -- 'Swarm.TUI.View.Attribute.Attr'.)
 module Swarm.Game.Cosmetic.Attribute where
 
-import GHC.Generics (Generic)
 import Data.Hashable (Hashable)
 import Data.Text (Text)
 import Data.Yaml
+import GHC.Generics (Generic)
 
 -- | An internal attribute name.
 data Attribute = ABlank | ARobot | AEntity | AWorld Text

@@ -61,6 +61,7 @@ getTerrainEntityColor aMap (Cell terr cellEnt _) =
   getTexelColor $ entityTexel <> terrainTexel
  where
   entityTexel = maybe mempty renderEntityTexel (erasableToMaybe cellEnt)
-  terrainTexel = maybe mempty (texelFromColor 0 ' ') $
-    M.lookup (AWorld $ getTerrainWord terr) aMap
+  terrainTexel =
+    maybe mempty (texelFromColor 0 ' ') $
+      M.lookup (AWorld $ getTerrainWord terr) aMap
   renderEntityTexel (EntityFacade _ disp hdg) = renderDisplay aMap hdg (const False) True disp
