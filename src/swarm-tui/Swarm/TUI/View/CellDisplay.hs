@@ -10,7 +10,6 @@ import Brick
 import Control.Lens ((^.))
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Graphics.Vty qualified as V
