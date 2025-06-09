@@ -403,7 +403,9 @@ handleMainEvent forceRedraw ev = do
     MouseUp n _ _mouseLoc ->
       Brick.zoom (playState . scenarioState) $ do
         case n of
-          InventoryListItem pos -> uiGameplay . uiInventory . uiInventoryList . traverse . _2 %= BL.listMoveTo pos
+          InventoryListItem pos -> do
+            uiGameplay . uiInventory . uiInventoryList . traverse . _2 %= BL.listMoveTo pos
+            vScrollToBeginning infoScroll
           x@(WorldEditorPanelControl y) -> do
             uiGameplay . uiWorldEditor . editorFocusRing %= focusSetCurrent x
             EC.activateWorldEditorFunction y
