@@ -36,6 +36,7 @@ module Swarm.Game.Cosmetic.Display (
 import Control.Applicative ((<|>))
 import Control.Lens hiding (Const, from, (.=))
 import Control.Monad (guard, when)
+import Data.Functor (($>))
 import Data.Hashable (Hashable)
 import Data.List.Extra (enumerate)
 import Data.Map (Map)
@@ -244,7 +245,7 @@ renderDisplay aMap mdir boundaryCheck known disp
   | disp ^. invisible = mempty
   | otherwise = maybe mempty (texelFromColor (disp ^. displayPriority) c) mcolor
  where
-  mhidden = guard (not known) *> pure '?'
+  mhidden = guard (not known) $> '?'
   mbound = guard (boundaryCheck Nothing) *> getBoundaryDisplay (boundaryCheck . Just)
   morient = do
     DAbsolute d <- mdir

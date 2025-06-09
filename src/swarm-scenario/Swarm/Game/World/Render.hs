@@ -102,7 +102,7 @@ data RenderOpts = RenderOpts
   }
 
 getCellChar :: PCell EntityFacade -> Char
-getCellChar = fromMaybe ' ' . fmap facadeChar . erasableToMaybe . cellEntity
+getCellChar = maybe ' ' facadeChar . erasableToMaybe . cellEntity
  where
   facadeChar (EntityFacade _ d _) = d ^. defaultChar
 

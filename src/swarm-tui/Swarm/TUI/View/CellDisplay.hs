@@ -48,8 +48,8 @@ renderTexel :: Texel TrueColor -> Widget n
 renderTexel t =
   let (mfg, mbg) = getTexelData t
       displayChar = maybe ' ' fst mfg
-      setFG = maybe id (\(_, c) -> modifyDefAttr (`V.withForeColor` (mkBrickColor c))) mfg
-      setBG = maybe id (\c -> modifyDefAttr (`V.withBackColor` (mkBrickColor c))) mbg
+      setFG = maybe id (\(_, c) -> modifyDefAttr (`V.withForeColor` mkBrickColor c)) mfg
+      setBG = maybe id (\c -> modifyDefAttr (`V.withBackColor` mkBrickColor c)) mbg
    in setBG . setFG $ str [displayChar]
 
 -- | Render a single cell in the world.
@@ -149,7 +149,7 @@ renderEntityCell worldEditor ri coords =
   maybe mempty (renderEntityPaint (attributeMap ri) checkPresence known) mEntPaint
  where
   mEntPaint = getEntityPaintAtCoord coords
-  known = fromMaybe False . fmap (isKnownFunc ri) $ mEntPaint
+  known = maybe False (isKnownFunc ri) mEntPaint
   getEntityPaintAtCoord = snd . EU.getEditorContentAt (terrMap ri) worldEditor (multiworldInfo ri)
   coordHasBoundary = maybe False (`hasProperty` Boundary) . snd . getContentAt (terrMap ri) (multiworldInfo ri)
 
@@ -157,7 +157,7 @@ renderEntityCell worldEditor ri coords =
   checkPresence d = coordHasBoundary offsetCoord
    where
     offsetCoord = (`addTuple` xy) <$> coords
-    Coords xy = locToCoords . P . fromMaybe zero $ toHeading <$> d
+    Coords xy = locToCoords . P $ maybe zero toHeading d
 
 -- | Render a specific location, by combining the
 --   texels for the terrain, entity, and robots at the location, and
