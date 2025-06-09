@@ -79,10 +79,12 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
+import Swarm.Game.State.Runtime (eventLog)
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Universe (SubworldName)
 import Swarm.Language.Pipeline (processTermEither)
+import Swarm.Log (LogEntry)
 import Swarm.Pretty (prettyTextLine)
 import Swarm.TUI.Model hiding (SwarmKeyDispatchers (..))
 import Swarm.TUI.Model.Dialog.Goal
@@ -121,6 +123,7 @@ type SwarmAPI =
     :<|> "repl" :> "history" :> "current" :> Get '[JSON] [REPLHistItem]
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [REPLHistItem]
     :<|> "map" :> Capture "size" AreaDimensions :> Get '[JSON] GridResponse
+    :<|> "runtime" :> "log" :> Get '[JSON] [LogEntry]
 
 swarmApi :: Proxy SwarmAPI
 swarmApi = Proxy
@@ -180,6 +183,7 @@ mkApp state events =
     :<|> replHistHandler Current state
     :<|> replHistHandler Full state
     :<|> mapViewHandler state
+    :<|> runtimeLogHandler state
 
 robotsHandler :: IO AppState -> Handler [Robot]
 robotsHandler appStateRef = do
@@ -263,6 +267,11 @@ codeRenderHandler contents = do
     Right t ->
       into @Text . drawTree . fmap (T.unpack . prettyTextLine) . para Node $ t
     Left x -> x
+
+runtimeLogHandler :: IO AppState -> Handler [LogEntry]
+runtimeLogHandler appStateRef = do
+  appState <- liftIO appStateRef
+  pure $ appState ^. runtimeState . eventLog . notificationsContent
 
 {- Note [How to stream back responses as we get results]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

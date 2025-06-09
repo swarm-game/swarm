@@ -65,6 +65,7 @@ cliParser =
     userSeed <- seed
     userScenario <- scenario
     scriptToRun <- run
+    replReplay <- replay
     pausedAtStart <- paused
     autoPlay <- autoplay
     autoShowObjectives <- not <$> hideGoal
@@ -124,6 +125,8 @@ cliParser =
   scenario = optional $ strOption (long "scenario" <> short 'i' <> metavar "FILE" <> help "Name of an input scenario to load")
   run :: Parser (Maybe String)
   run = optional $ strOption (long "run" <> short 'r' <> metavar "FILE" <> help "Run the commands in a file at startup")
+  replay :: Parser (Maybe String)
+  replay = optional $ strOption (long "replay" <> metavar "JSON" <> help "Replay the previous command history.")
   paused :: Parser Bool
   paused = switch (long "paused" <> short 'p' <> help "Pause the game at start.")
   autoplay :: Parser Bool

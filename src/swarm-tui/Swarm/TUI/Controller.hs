@@ -81,7 +81,7 @@ import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Parser.Lex (reservedWords)
 import Swarm.Language.Parser.Util (showErrorPos)
-import Swarm.Language.Pipeline (processParsedTerm', processTerm')
+import Swarm.Language.Pipeline (processParsedTerm')
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Typecheck (
   ContextualTypeErr (..),
@@ -587,6 +587,7 @@ handleREPLEvent x = do
     _ -> Brick.zoom playState $ case controlMode of
       Typing -> handleREPLEventTyping menu x
       Piloting -> handleREPLEventPiloting menu x
+      Replaying -> pure () -- handled above, so that user does not change REPL
       Handling -> case x of
         -- Handle keypresses using the custom installed handler
         VtyEvent (V.EvKey k mods) -> Brick.zoom scenarioState $ runInputHandler (mkKeyCombo mods k)
@@ -658,20 +659,6 @@ runBaseWebCode uinput ureply = do
         >>= liftIO . ureply . \case
           Left err -> Rejected . ParseError $ T.unpack err
           Right () -> InProgress
-
-runBaseCode :: (MonadState ScenarioState m) => T.Text -> m (Either Text ())
-runBaseCode uinput = do
-  addREPLHistItem (REPLEntry Submitted) uinput
-  resetREPL "" (CmdPrompt [])
-  env <- fromMaybe emptyEnv <$> preuse (gameState . baseEnv)
-  case processTerm' env uinput of
-    Right mt -> do
-      uiGameplay . uiREPL . replHistory . replHasExecutedManualInput .= True
-      runBaseTerm mt
-      return (Right ())
-    Left err -> do
-      addREPLHistItem REPLError err
-      return (Left err)
 
 -- | Handle a user input event for the REPL.
 --

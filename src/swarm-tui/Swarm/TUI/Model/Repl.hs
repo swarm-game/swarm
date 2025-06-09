@@ -54,8 +54,10 @@ module Swarm.TUI.Model.Repl (
 ) where
 
 import Brick.Widgets.Edit (Editor, applyEdit, editorText, getEditContents)
+import Control.Applicative ((<|>))
 import Control.Lens hiding (from, (.=), (<.>))
-import Data.Aeson (ToJSON, object, toJSON, (.=))
+import Data.Aeson (FromJSON, ToJSON, Value (..), object, parseJSON, toJSON, (.:), (.=))
+import Data.Aeson.Types (prependFailure, typeMismatch)
 import Data.Foldable (toList)
 import Data.Maybe (fromMaybe, isJust)
 import Data.Sequence (Seq)
@@ -100,8 +102,8 @@ data REPLHistItemType
 -- | An item in the REPL history.
 data REPLHistItem = REPLHistItem
   { replItemType :: REPLHistItemType
-  , replItemTick :: TickNumber
   , replItemText :: Text
+  , replItemTick :: TickNumber
   }
   deriving (Eq, Ord, Show, Read)
 
@@ -110,28 +112,28 @@ instance ToSample REPLHistItem where
     SD.samples
       [ REPLHistItem
           (REPLEntry Submitted)
-          (TickNumber 0)
           "grab"
+          (TickNumber 0)
       , REPLHistItem
           REPLOutput
-          (TickNumber 0)
           "it0 : text = \"tree\""
+          (TickNumber 0)
       , REPLHistItem
           (REPLEntry Stashed)
-          (TickNumber 1)
           "place"
+          (TickNumber 1)
       , REPLHistItem
           (REPLEntry Submitted)
-          (TickNumber 2)
           "place tree"
+          (TickNumber 2)
       , REPLHistItem
           REPLError
-          (TickNumber 2)
           "1:7: Unbound variable tree"
+          (TickNumber 2)
       ]
 
 instance ToJSON REPLHistItem where
-  toJSON (REPLHistItem itemType tick x) = object ["tick" .= tick, label .= x]
+  toJSON (REPLHistItem itemType x tick) = object ["tick" .= tick, label .= x]
    where
     label = case itemType of
       REPLEntry Submitted -> "in"
@@ -139,11 +141,23 @@ instance ToJSON REPLHistItem where
       REPLOutput -> "out"
       REPLError -> "err"
 
+instance FromJSON REPLHistItem where
+  parseJSON = \case
+    Object v ->
+      uncurry REPLHistItem
+        <$> ( ((REPLEntry Submitted,) <$> v .: "in")
+                <|> ((REPLEntry Stashed,) <$> v .: "save")
+                <|> ((REPLOutput,) <$> v .: "out")
+                <|> ((REPLError,) <$> v .: "err")
+            )
+        <*> v .: "tick"
+    invalid -> prependFailure "parsing REPLHistItem failed, " (typeMismatch "Object" invalid)
+
 -- | Useful helper function to only get user input text.  Gets all
 --   user input, including both submitted and saved history items.
 getREPLEntry :: REPLHistItem -> Maybe Text
 getREPLEntry = \case
-  REPLHistItem (REPLEntry {}) _ t -> Just t
+  REPLHistItem (REPLEntry {}) t _ -> Just t
   _ -> Nothing
 
 -- | Useful helper function to filter out REPL output.  Returns True
@@ -155,7 +169,7 @@ isREPLEntry = isJust . getREPLEntry
 -- | Helper function to get only submitted user input text.
 getREPLSubmitted :: REPLHistItem -> Maybe Text
 getREPLSubmitted = \case
-  REPLHistItem (REPLEntry Submitted) _ t -> Just t
+  REPLHistItem (REPLEntry Submitted) t _ -> Just t
   _ -> Nothing
 
 -- | Useful helper function to filter out saved REPL entries (which
@@ -265,7 +279,7 @@ moveReplHistIndex d lastEntered history = history & replIndex .~ newIndex
   (olderP, newer) = Seq.splitAt curIndex entries
   -- find first different entry in direction
   notSameEntry = \case
-    REPLHistItem (REPLEntry {}) _tick t -> t /= curText
+    REPLHistItem (REPLEntry {}) t _tick -> t /= curText
     _ -> False
   newIndex = case d of
     Newer -> maybe historyLen (curIndex +) $ Seq.findIndexL notSameEntry newer
@@ -319,6 +333,8 @@ data ReplControlMode
     Piloting
   | -- | A custom user key handler is processing user input.
     Handling
+  | -- | Replaying a previous game, by entering the REPL entries at given tick.
+    Replaying
   deriving (Eq, Bounded, Enum)
 
 data REPLState = REPLState
@@ -338,15 +354,15 @@ newREPLEditor t = applyEdit gotoEnd $ editorText REPLInput (Just 1) t
   pos = (length ls - 1, T.length (last ls))
   gotoEnd = applyWhen (not $ null ls) $ TZ.moveCursor pos
 
-initREPLState :: REPLHistory -> REPLState
-initREPLState hist =
+initREPLState :: ReplControlMode -> REPLHistory -> REPLState
+initREPLState mode hist =
   REPLState
     { _replPromptType = defaultPrompt
     , _replPromptEditor = newREPLEditor ""
     , _replValid = Right ()
     , _replLast = ""
     , _replType = Nothing
-    , _replControlMode = Typing
+    , _replControlMode = mode
     , _replHistory = hist
     }
 
