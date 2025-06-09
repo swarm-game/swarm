@@ -36,7 +36,7 @@ import Linear
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.CESK qualified as C
-import Swarm.Game.Display (defaultRobotDisplay, invisible)
+import Swarm.Game.Cosmetic.Display (defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity

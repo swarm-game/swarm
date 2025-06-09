@@ -7,30 +7,16 @@
 module Swarm.TUI.View.CellDisplay where
 
 import Brick
-import Control.Lens (to, view, (&), (.~), (^.))
-import Data.ByteString (ByteString)
-import Data.Hash.Murmur
-import Data.List.NonEmpty qualified as NE
+import Control.Lens ((^.))
+import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (maybeToList)
-import Data.Semigroup (sconcat)
 import Data.Set (Set)
 import Data.Set qualified as S
-import Data.Tagged (unTagged)
-import Data.Word (Word32)
 import Graphics.Vty qualified as V
-import Linear.Affine ((.-.))
-import Swarm.Game.Display (
-  Attribute (AEntity),
-  Display,
-  boundaryOverride,
-  defaultEntityDisplay,
-  displayAttr,
-  displayChar,
-  displayPriority,
-  getBoundaryDisplay,
-  hidden,
- )
+import Linear (zero)
+import Swarm.Game.Cosmetic.Color (AttributeMap, PreservableColor, TrueColor (..))
+import Swarm.Game.Cosmetic.Display
+import Swarm.Game.Cosmetic.Texel (Texel, getTexelData, texelFromColor)
 import Swarm.Game.Entity
 import Swarm.Game.Land
 import Swarm.Game.Location (Point (..), toHeading)
@@ -40,10 +26,8 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByLocation)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
-import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Terrain
-import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
@@ -54,25 +38,30 @@ import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr
+import Swarm.TUI.View.Static
 import Swarm.Util (applyWhen)
 import Swarm.Util.Content (getContentAt)
-import Witch (from)
-import Witch.Encoding qualified as Encoding
 
--- | Render a display as a UI widget.
-renderDisplay :: Display -> Widget n
-renderDisplay disp = withAttr (disp ^. displayAttr . to toAttrName) $ str [displayChar disp]
+-- | Render a texel as a UI widget.
+renderTexel :: Texel TrueColor -> Widget n
+renderTexel t =
+  let (mfg, mbg) = getTexelData t
+      displayChar = maybe ' ' fst mfg
+      setFG = maybe id (\(_, c) -> modifyDefAttr (`V.withForeColor` mkBrickColor c)) mfg
+      setBG = maybe id (\c -> modifyDefAttr (`V.withBackColor` mkBrickColor c)) mbg
+   in setBG . setFG $ str [displayChar]
 
--- | Render the 'Display' for a specific location.
+-- | Render a single cell in the world.
 drawLoc :: UIGameplay -> GameState -> Cosmic Coords -> Widget Name
 drawLoc ui g cCoords@(Cosmic _ coords) =
   if shouldHideWorldCell ui coords
     then str " "
-    else boldStructure drawCell
+    else boldStructure drawnCell
  where
   showRobots = ui ^. uiShowRobots
   we = ui ^. uiWorldEditor . worldOverdraw
-  drawCell = renderDisplay $ displayLoc showRobots we g cCoords
+  aMap = ui ^. uiAttributeMap
+  drawnCell = renderTexel $ renderLoc showRobots we g aMap cCoords
 
   boldStructure = applyWhen isStructure $ modifyDefAttr (`V.withStyle` V.bold)
    where
@@ -84,25 +73,32 @@ data RenderingInput = RenderingInput
   { multiworldInfo :: W.MultiWorld Int Entity
   , isKnownFunc :: EntityPaint -> Bool
   , terrMap :: TerrainMap
+  , attributeMap :: Map Attribute PreservableColor
   }
 
-displayTerrainCell ::
+-- | Render a single terrain cell as a texel.
+renderTerrainCell ::
   WorldOverdraw ->
   RenderingInput ->
   Cosmic Coords ->
-  Display
-displayTerrainCell worldEditor ri coords =
-  maybe mempty terrainDisplay $ M.lookup t tm
+  Texel TrueColor
+renderTerrainCell worldEditor ri coords =
+  maybe mempty (terrainTexel (attributeMap ri)) $ M.lookup t tm
  where
   tm = terrainByName $ terrMap ri
   t = EU.getEditorTerrainAt (terrMap ri) worldEditor (multiworldInfo ri) coords
 
-displayRobotCell ::
+terrainTexel :: Map Attribute PreservableColor -> TerrainObj -> Texel TrueColor
+terrainTexel aMap = maybe mempty (texelFromColor 0 ' ') . (aMap M.!?) . terrainAttr
+
+-- | Render all the robots on a given cell as a combined texel.
+renderRobotCell ::
+  AttributeMap ->
   GameState ->
   Cosmic Coords ->
-  [Display]
-displayRobotCell g coords =
-  map (view robotDisplay) $
+  Texel TrueColor
+renderRobotCell aMap g coords =
+  foldMap (renderRobot aMap) $
     robotsAtLocation (fmap coordsToLoc coords) g
 
 -- | Extract the relevant subset of information from the 'GameState' to be able
@@ -128,7 +124,7 @@ data EntityKnowledgeDependencies = EntityKnowledgeDependencies
 -- normally vs as a question mark.
 getEntityIsKnown :: EntityKnowledgeDependencies -> EntityPaint -> Bool
 getEntityIsKnown knowledge ep = case ep of
-  Facade (EntityFacade _ _) -> True
+  Facade (EntityFacade {}) -> True
   Ref e -> or reasonsToShow
    where
     reasonsToShow =
@@ -139,135 +135,55 @@ getEntityIsKnown knowledge ep = case ep of
       ]
     showBasedOnRobotKnowledge = maybe False (`robotKnows` e) $ theFocusedRobot knowledge
 
-displayEntityCell ::
+-- | Render the entity at the given coordinates (if any) to a texel,
+--   taking into account things such as neighboring entities with the
+--   boundary property, and whether the entity should have its
+--   identity hidden.
+renderEntityCell ::
   WorldOverdraw ->
   RenderingInput ->
   Cosmic Coords ->
-  [Display]
-displayEntityCell worldEditor ri coords =
-  maybeToList $ assignBoundaryOverride . displayForEntity <$> maybeEntityPaint
+  Texel TrueColor
+renderEntityCell worldEditor ri coords =
+  maybe mempty (renderEntityPaint (attributeMap ri) checkPresence known) mEntPaint
  where
-  maybeEntityPaint = getEntPaintAtCoord coords
-
-  getEntPaintAtCoord = snd . EU.getEditorContentAt (terrMap ri) worldEditor (multiworldInfo ri)
+  mEntPaint = getEntityPaintAtCoord coords
+  known = maybe False (isKnownFunc ri) mEntPaint
+  getEntityPaintAtCoord = snd . EU.getEditorContentAt (terrMap ri) worldEditor (multiworldInfo ri)
   coordHasBoundary = maybe False (`hasProperty` Boundary) . snd . getContentAt (terrMap ri) (multiworldInfo ri)
 
-  assignBoundaryOverride = applyWhen (coordHasBoundary coords) (boundaryOverride .~ getBoundaryDisplay checkPresence)
+  checkPresence :: Maybe AbsoluteDir -> Bool
+  checkPresence d = coordHasBoundary offsetCoord
    where
-    checkPresence :: AbsoluteDir -> Bool
-    checkPresence d = coordHasBoundary offsettedCoord
-     where
-      offsettedCoord = (`addTuple` xy) <$> coords
-      Coords xy = locToCoords $ P $ toHeading d
+    offsetCoord = (`addTuple` xy) <$> coords
+    Coords xy = locToCoords . P $ maybe zero toHeading d
 
-  displayForEntity :: EntityPaint -> Display
-  displayForEntity e = applyWhen (not $ isKnownFunc ri e) hidden $ getDisplay e
-
--- | Get the 'Display' for a specific location, by combining the
---   'Display's for the terrain, entity, and robots at the location, and
+-- | Render a specific location, by combining the
+--   texels for the terrain, entity, and robots at the location, and
 --   taking into account "static" based on the distance to the robot
 --   being @view@ed.
-displayLoc :: Bool -> WorldOverdraw -> GameState -> Cosmic Coords -> Display
-displayLoc showRobots we g cCoords@(Cosmic _ coords) =
-  staticDisplay g coords
-    <> displayLocRaw we ri robots cCoords
+renderLoc :: Bool -> WorldOverdraw -> GameState -> Map Attribute PreservableColor -> Cosmic Coords -> Texel TrueColor
+renderLoc showRobots we g aMap cCoords@(Cosmic _ coords) =
+  renderStaticAt g coords <> robots <> renderBaseLoc we ri cCoords
  where
   ri =
     RenderingInput
       (g ^. landscape . multiWorld)
       (getEntityIsKnown $ mkEntityKnowledge g)
       (g ^. landscape . terrainAndEntities . terrainMap)
+      aMap
 
   robots =
     if showRobots
-      then displayRobotCell g cCoords
-      else []
+      then renderRobotCell aMap g cCoords
+      else mempty
 
--- | Get the 'Display' for a specific location, by combining the
---   'Display's for the terrain, entity, and robots at the location.
-displayLocRaw ::
+-- | Render a base location without robots, /i.e./ just the terrain and
+--   entity (if any).
+renderBaseLoc ::
   WorldOverdraw ->
   RenderingInput ->
-  -- | Robot displays
-  [Display] ->
   Cosmic Coords ->
-  Display
-displayLocRaw worldEditor ri robotDisplays coords =
-  sconcat $ terrain NE.:| entity <> robotDisplays
- where
-  terrain = displayTerrainCell worldEditor ri coords
-  entity = displayEntityCell worldEditor ri coords
-
--- | Random "static" based on the distance to the robot being
---   @view@ed.
-staticDisplay :: GameState -> Coords -> Display
-staticDisplay g coords = maybe mempty displayStatic (getStatic g coords)
-
--- | Draw static given a number from 0-15 representing the state of
---   the four quarter-pixels in a cell
-displayStatic :: Word32 -> Display
-displayStatic s =
-  defaultEntityDisplay (staticChar s)
-    & displayPriority .~ maxBound -- Static has higher priority than anything else
-    & displayAttr .~ AEntity
-
--- | Given a value from 0--15, considered as 4 bits, pick the
---   character with the corresponding quarter pixels turned on.
-staticChar :: Word32 -> Char
-staticChar = \case
-  0 -> ' '
-  1 -> '▖'
-  2 -> '▗'
-  3 -> '▄'
-  4 -> '▘'
-  5 -> '▌'
-  6 -> '▚'
-  7 -> '▙'
-  8 -> '▝'
-  9 -> '▞'
-  10 -> '▐'
-  11 -> '▟'
-  12 -> '▀'
-  13 -> '▛'
-  14 -> '▜'
-  15 -> '█'
-  _ -> ' '
-
--- | Random "static" based on the distance to the robot being
---   @view@ed.  A cell can either be static-free (represented by
---   @Nothing@) or can have one of sixteen values (representing the
---   state of the four quarter-pixels in one cell).
-getStatic :: GameState -> Coords -> Maybe Word32
-getStatic g coords
-  | isStatic = Just (h `mod` 16)
-  | otherwise = Nothing
- where
-  -- Offset from the location of the view center to the location under
-  -- consideration for display.
-  offset = coordsToLoc coords .-. (g ^. robotInfo . viewCenter . planar)
-
-  -- Hash.
-  h =
-    murmur3 1 . unTagged . from @String @(Encoding.UTF_8 ByteString) . show $
-      -- include the current tick count / 16 in the hash, so the pattern of static
-      -- changes once every 16 ticks
-      (offset, getTickNumber (g ^. temporal . ticks) `div` 16)
-
-  -- Hashed probability, i.e. convert the hash into a floating-point number between 0 and 1
-  hp :: Double
-  hp = fromIntegral h / fromIntegral (maxBound :: Word32)
-
-  isStatic = case focusedRange g of
-    -- If we're not viewing a robot, display static.  This
-    -- can happen if e.g. the robot we were viewing drowned.
-    -- This is overridden by creative mode, e.g. when no robots
-    -- have been defined for the scenario.
-    Nothing -> not $ g ^. creativeMode
-    -- Don't display static if the robot is close, or when we're in
-    -- creative mode or the player is allowed to scroll the world.
-    Just Close -> False
-    -- At medium distances, replace cell with static with a
-    -- probability that increases with distance.
-    Just (MidRange s) -> hp < 1 - cos (s * (pi / 2))
-    -- Far away, everything is static.
-    Just Far -> True
+  Texel TrueColor
+renderBaseLoc worldEditor ri coords =
+  renderTerrainCell worldEditor ri coords <> renderEntityCell worldEditor ri coords

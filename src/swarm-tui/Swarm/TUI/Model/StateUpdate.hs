@@ -100,7 +100,7 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
-import Swarm.TUI.View.Attribute.Attr (getWorldAttrName, swarmAttrMap)
+import Swarm.TUI.View.Attribute.Attr (swarmAttrMap, toAttrName)
 import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
 import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Structure qualified as SR
@@ -431,7 +431,7 @@ scenarioToUIState siPair u = do
       & uiPlaying .~ True
       & uiAttrMap
         .~ applyAttrMappings
-          ( map (first getWorldAttrName . toAttrPair) $
+          ( map (first toAttrName . toAttrPair) $
               siPair ^. getScenario . scenarioLandscape . scenarioAttrs
           )
           swarmAttrMap

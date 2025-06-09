@@ -8,7 +8,7 @@ module TestInventory where
 
 import Control.Lens ((^.))
 import Data.Hashable
-import Swarm.Game.Display
+import Swarm.Game.Cosmetic.Display (defaultEntityDisplay)
 import Swarm.Game.Entity qualified as E
 import Test.Tasty
 import Test.Tasty.HUnit

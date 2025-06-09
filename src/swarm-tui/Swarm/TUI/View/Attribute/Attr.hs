@@ -18,10 +18,11 @@ module Swarm.TUI.View.Attribute.Attr (
   meterAttributeNames,
   messageAttributeNames,
   toAttrName,
-  getWorldAttrName,
+  toVtyAttr,
   mkBrickColor,
 
   -- ** Common attributes
+  blankAttr,
   entityAttr,
   robotAttr,
 
@@ -59,17 +60,17 @@ import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Text (unpack)
 import Graphics.Vty qualified as V
-import Swarm.Game.Display (Attribute (..))
-import Swarm.Game.Entity.Cosmetic
-import Swarm.Game.Entity.Cosmetic.Assignment
+import Swarm.Game.Cosmetic.Assignment
+import Swarm.Game.Cosmetic.Attribute
+import Swarm.Game.Cosmetic.Color
 import Swarm.TUI.View.Attribute.Util
 
 toAttrName :: Attribute -> AttrName
 toAttrName = \case
+  ABlank -> blankAttr
   ARobot -> robotAttr
   AEntity -> entityAttr
   AWorld n -> worldPrefix <> attrName (unpack n)
-  ADefault -> defAttr
 
 toVtyAttr :: PreservableColor -> V.Attr
 toVtyAttr hifi = case fmap mkBrickColor hifi of
@@ -96,7 +97,7 @@ swarmAttrMap =
     V.defAttr
     $ NE.toList activityMeterAttributes
       <> NE.toList robotMessageAttributes
-      <> map (getWorldAttrName *** toVtyAttr) (M.toList worldAttributes)
+      <> map (toAttrName *** toVtyAttr) (M.toList worldAttributes)
       <> [ -- Robot attribute
            (robotAttr, fg V.white `V.withStyle` V.bold)
          , -- UI rendering attributes
@@ -128,12 +129,6 @@ swarmAttrMap =
 worldPrefix :: AttrName
 worldPrefix = attrName "world"
 
-getWorldAttrName :: WorldAttr -> AttrName
-getWorldAttrName (WorldAttr n) = worldPrefix <> attrName n
-
-entityAttr :: AttrName
-entityAttr = getWorldAttrName $ fst entity
-
 robotMessagePrefix :: AttrName
 robotMessagePrefix = attrName "robotMessage"
 
@@ -160,9 +155,16 @@ activityMeterAttributes =
 meterAttributeNames :: NonEmpty AttrName
 meterAttributeNames = NE.map fst activityMeterAttributes
 
+blankAttr :: AttrName
+blankAttr = attrName "blank"
+
 -- | The default robot attribute.
 robotAttr :: AttrName
 robotAttr = attrName "robot"
+
+-- | The default entity attribute.
+entityAttr :: AttrName
+entityAttr = attrName "entity"
 
 -- | Some defined attribute names used in the Swarm TUI.
 highlightAttr

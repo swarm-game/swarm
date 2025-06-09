@@ -25,14 +25,13 @@ import Control.Monad.Logger
 import Control.Monad.Trans (MonadIO)
 import Data.Aeson
 import Data.List.NonEmpty qualified as NE
-import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Tuple.Extra (both)
 import GHC.Generics (Generic)
 import Linear (V2 (..))
 import Swarm.Failure (SystemFailure, simpleErrorHandle)
-import Swarm.Game.Display (defaultChar)
-import Swarm.Game.Entity.Cosmetic
+import Swarm.Game.Cosmetic.Color (AttributeMap)
+import Swarm.Game.Cosmetic.Display (defaultChar)
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Scenario
@@ -102,10 +101,10 @@ data RenderOpts = RenderOpts
   , failureMode :: FailureMode
   }
 
-getDisplayChar :: PCell EntityFacade -> Char
-getDisplayChar = maybe ' ' facadeChar . erasableToMaybe . cellEntity
+getCellChar :: PCell EntityFacade -> Char
+getCellChar = maybe ' ' facadeChar . erasableToMaybe . cellEntity
  where
-  facadeChar (EntityFacade _ d) = view defaultChar d
+  facadeChar (EntityFacade _ d _) = d ^. defaultChar
 
 -- | When output size is not explicitly provided,
 -- uses natural map bounds (if a map exists).
@@ -190,12 +189,12 @@ doRenderCmd opts@(RenderOpts _ asPng _ _) mapPath =
 renderScenarioMap :: RenderOpts -> FilePath -> IO [String]
 renderScenarioMap opts fp = simpleErrorHandle $ do
   ThumbnailRenderContext grid _ <- getRenderableGridFromPath opts fp
-  return $ getRows $ getDisplayChar <$> grid
+  return $ getRows $ getCellChar <$> grid
 
 data ThumbnailRenderContext
   = ThumbnailRenderContext
       (Grid (PCell EntityFacade))
-      (M.Map WorldAttr PreservableColor)
+      AttributeMap
 
 renderImage ::
   ThumbnailRenderContext ->

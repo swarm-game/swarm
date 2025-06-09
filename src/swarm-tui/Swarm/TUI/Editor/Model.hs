@@ -11,13 +11,16 @@ import Control.Lens hiding (from, (.=), (<.>))
 import Data.List.Extra (enumerate)
 import Data.Map qualified as M
 import Data.Vector qualified as V
-import Swarm.Game.Display (Display)
+import Swarm.Game.Cosmetic.Color (AttributeMap, TrueColor)
+import Swarm.Game.Cosmetic.Display (renderDisplay)
+import Swarm.Game.Cosmetic.Texel (Texel)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainType)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
+import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.TUI.Model.Name
 import System.Clock
 
@@ -32,9 +35,9 @@ data EntityPaint
   | Ref E.Entity
   deriving (Eq)
 
-getDisplay :: EntityPaint -> Display
-getDisplay (Facade (EntityFacade _ d)) = d
-getDisplay (Ref e) = e ^. E.entityDisplay
+renderEntityPaint :: AttributeMap -> (Maybe AbsoluteDir -> Bool) -> Bool -> EntityPaint -> Texel TrueColor
+renderEntityPaint aMap checkBoundary known (Facade (EntityFacade _ d hdg)) = renderDisplay aMap hdg checkBoundary known d
+renderEntityPaint aMap checkBoundary known (Ref e) = E.renderEntity aMap checkBoundary known e
 
 toFacade :: EntityPaint -> EntityFacade
 toFacade = \case

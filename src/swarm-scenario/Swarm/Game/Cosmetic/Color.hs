@@ -1,12 +1,14 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Preserve color fidelity for non-TUI rendering
-module Swarm.Game.Entity.Cosmetic where
+-- Preserve color fidelity for non-TUI rendering.
+module Swarm.Game.Cosmetic.Color where
 
 import Codec.Picture (PixelRGBA8 (..))
 import Data.Colour.SRGB (RGB (..))
+import Data.Map (Map)
 import Data.Word (Word8)
+import Swarm.Game.Cosmetic.Attribute (Attribute)
 import Swarm.Game.Scenario.Topography.Rasterize
 
 data NamedColor
@@ -78,22 +80,21 @@ data ColorLayers a
 
 type PreservableColor = ColorLayers TrueColor
 
+type AttributeMap = Map Attribute PreservableColor
+
 instance ToPixel PreservableColor where
   toPixel h = PixelRGBA8 r g b 255
    where
     RGB r g b = flattenBg $ fromHiFi h
 
-getBackground :: ColorLayers a -> Maybe a
-getBackground = \case
-  FgOnly _ -> Nothing
-  BgOnly x -> Just x
-  FgAndBg _ x -> Just x
+mkColorLayers :: Maybe a -> Maybe a -> Maybe (ColorLayers a)
+mkColorLayers Nothing Nothing = Nothing
+mkColorLayers (Just fg) Nothing = Just $ FgOnly fg
+mkColorLayers Nothing (Just bg) = Just $ BgOnly bg
+mkColorLayers (Just fg) (Just bg) = Just $ FgAndBg fg bg
 
 flattenBg :: ColorLayers a -> a
 flattenBg = \case
   FgOnly x -> x
   BgOnly x -> x
   FgAndBg _ x -> x
-
-newtype WorldAttr = WorldAttr String
-  deriving (Eq, Ord, Show)

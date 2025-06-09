@@ -36,8 +36,7 @@ import Data.Tuple (swap)
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Failure
-import Swarm.Game.Display
-import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
+import Swarm.Game.Cosmetic.Attribute
 import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util (enumeratedMap, quote)
 import Swarm.Util.Effect (withThrow)
@@ -82,13 +81,13 @@ data TerrainItem = TerrainItem
 data TerrainObj = TerrainObj
   { terrainName :: TerrainType
   , terrainDesc :: Text
-  , terrainDisplay :: Display
+  , terrainAttr :: Attribute
   }
   deriving (Show)
 
 promoteTerrainObjects :: [TerrainItem] -> [TerrainObj]
 promoteTerrainObjects =
-  map (\(TerrainItem n a d) -> TerrainObj n d $ defaultTerrainDisplay (AWorld a))
+  map (\(TerrainItem n a d) -> TerrainObj n d (AWorld a))
 
 invertedIndexMap :: IntMap TerrainObj -> Map TerrainType Int
 invertedIndexMap = M.fromList . map (first terrainName . swap) . IM.toList
@@ -129,10 +128,10 @@ mkTerrainMap items =
   byIndex = enumeratedMap blankTerrainIndex items
 
 -- | Validates references to 'Display' attributes
-validateTerrainAttrRefs :: Has (Throw LoadingFailure) sig m => Set WorldAttr -> [TerrainItem] -> m [TerrainObj]
+validateTerrainAttrRefs :: Has (Throw LoadingFailure) sig m => Set Attribute -> [TerrainItem] -> m [TerrainObj]
 validateTerrainAttrRefs validAttrs rawTerrains =
   forM rawTerrains $ \(TerrainItem n a d) -> do
-    unless (Set.member (WorldAttr $ T.unpack a) validAttrs)
+    unless (Set.member (AWorld a) validAttrs)
       . throwError
       . SystemFailure
       . CustomFailure
@@ -143,7 +142,7 @@ validateTerrainAttrRefs validAttrs rawTerrains =
         , quote $ getTerrainWord n
         ]
 
-    return $ TerrainObj n d $ defaultTerrainDisplay (AWorld a)
+    return $ TerrainObj n d (AWorld a)
 
 -- | Load terrain from a data file called @terrains.yaml@, producing
 --   either an 'TerrainMap' or a parse error.
@@ -163,4 +162,4 @@ loadTerrain = do
   terrainFile = "terrains.yaml"
   terrainFailure = AssetNotLoaded (Data Terrain) terrainFile
 
-  blankTerrainObj = TerrainObj BlankT "Blank terrain" $ defaultTerrainDisplay ADefault
+  blankTerrainObj = TerrainObj BlankT "Blank terrain" ABlank

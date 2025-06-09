@@ -59,6 +59,9 @@ module Swarm.Game.Entity (
   lookupEntityName,
   devicesForCap,
 
+  -- ** Rendering
+  renderEntity,
+
   -- * Inventories
   Inventory,
 
@@ -124,15 +127,18 @@ import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Failure
+import Swarm.Game.Cosmetic.Assignment (worldAttributes)
+import Swarm.Game.Cosmetic.Attribute
+import Swarm.Game.Cosmetic.Color (AttributeMap, TrueColor)
+import Swarm.Game.Cosmetic.Display
+import Swarm.Game.Cosmetic.Texel (Texel)
 import Swarm.Game.Device
-import Swarm.Game.Display
-import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
-import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
 import Swarm.Game.Ingredients
 import Swarm.Game.Location
 import Swarm.Game.Terrain (TerrainType)
 import Swarm.Language.Capability
 import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Language.Text.Markdown (Document, docToText)
 import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util (binTuples, failT, findDup, plural, quote, (?))
@@ -490,12 +496,12 @@ devicesForCap :: Capability -> EntityMap -> [Entity]
 devicesForCap cap = maybe [] (NE.toList . NE.map device) . M.lookup cap . getMap . entitiesByCap
 
 -- | Validates references to 'Display' attributes
-validateEntityAttrRefs :: Has (Throw LoadingFailure) sig m => Set WorldAttr -> [Entity] -> m ()
+validateEntityAttrRefs :: Has (Throw LoadingFailure) sig m => Set Attribute -> [Entity] -> m ()
 validateEntityAttrRefs validAttrs es =
   forM_ namedEntities $ \(eName, ent) ->
     case ent ^. entityDisplay . displayAttr of
       AWorld n ->
-        unless (Set.member (WorldAttr $ T.unpack n) validAttrs)
+        unless (Set.member (AWorld n) validAttrs)
           . throwError
           . SystemFailure
           . CustomFailure
@@ -710,6 +716,12 @@ entityBiomes = hashedLens _entityBiomes (\e x -> e {_entityBiomes = x})
 -- | The inventory of other entities carried by this entity.
 entityInventory :: Lens' Entity Inventory
 entityInventory = hashedLens _entityInventory (\e x -> e {_entityInventory = x})
+
+-- | Render an entity to a texel, given a mapping from attributes to
+--   colors, and a function to look up whether its neighbors have the
+--   boundary property.
+renderEntity :: AttributeMap -> (Maybe AbsoluteDir -> Bool) -> Bool -> Entity -> Texel TrueColor
+renderEntity aMap boundaryCheck known e = renderDisplay aMap ((e ^. entityOrientation) >>= toDirection) boundaryCheck known . view entityDisplay $ e
 
 ------------------------------------------------------------
 -- Inventory
