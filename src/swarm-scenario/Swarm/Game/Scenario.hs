@@ -311,7 +311,7 @@ instance FromJSONE ScenarioInputs Scenario where
       mergedStructures <-
         either (fail . T.unpack) return $
           mapM
-            (sequenceA . (id &&& (Assembly.mergeStructures structureMap Root . Structure.structure)))
+            (sequenceA . (id &&& (Assembly.mergeStructures' structureMap Root . Structure.structure)))
             rootLevelSharedStructures
 
       allWorlds <- localE (WorldParseDependencies worldMap rootLevelSharedStructures rsMap) $ do

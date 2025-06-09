@@ -102,7 +102,7 @@ instance FromJSONE WorldParseDependencies WorldDescription where
         -- because all the structure definitions we need are at this
         -- point already stored inside the "Structure" object.
         either (fail . T.unpack) return $
-          Assembly.mergeStructures mempty Root unflattenedStructure
+          Assembly.mergeStructures' mempty Root unflattenedStructure
 
       worldName <- v .:? "name" .!= DefaultRootSubworld
       ul <- v .:? "upperleft" .!= origin
