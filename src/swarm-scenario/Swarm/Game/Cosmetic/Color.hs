@@ -93,12 +93,6 @@ mkColorLayers (Just fg) Nothing = Just $ FgOnly fg
 mkColorLayers Nothing (Just bg) = Just $ BgOnly bg
 mkColorLayers (Just fg) (Just bg) = Just $ FgAndBg fg bg
 
-getBackground :: ColorLayers a -> Maybe a
-getBackground = \case
-  FgOnly _ -> Nothing
-  BgOnly x -> Just x
-  FgAndBg _ x -> Just x
-
 flattenBg :: ColorLayers a -> a
 flattenBg = \case
   FgOnly x -> x
