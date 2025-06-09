@@ -105,7 +105,7 @@ mergeStructures inheritedStrucDefs parentPlacement baseStructure = do
   failOnCyclicGraph "Structure" (getStructureName . name) gEdges
 
   overlays <-
-    left (elaboratePlacement parentPlacement <>) $
+    left (elaboratePlacement' parentPlacement <>) $
       mapM (validatePlacement' structureMap) subPlacements
 
   foldLayer structureMap origArea overlays originatedWaypoints
@@ -240,17 +240,16 @@ mergeStructure graph topSorted = foldlM go mempty topSorted
   lookupHandling m path f = case HM.lookup path m of
     Nothing -> Left $ mkCouldNotFindError path
     Just x -> pure (f x)
-  validatePlacements :: [PathPlacement] -> Either Text ()
-  validatePlacements toPlace = do
+  validatePlacements :: PathToRoot -> [PathPlacement] -> Either Text ()
+  validatePlacements path toPlace = do
     result <- traverse (\(PathPlacement p pose) -> lookupHandling graph p (,pose)) $ toPlace
     let result' = map (first namedStructure) result
-    -- TODO Use elaboratePlacement HERE
-    traverse_ (uncurry validatePlacement) result'
+    left (elaboratePlacement path <>) $ traverse_ (uncurry validatePlacement) result'
   go :: HM.HashMap PathToRoot (MergedStructure (Maybe a)) -> PathToRoot -> Either Text (HM.HashMap PathToRoot (MergedStructure (Maybe a)))
   go alreadyMerged path = do
     annotatedStruct <- lookupHandling graph path id
     let toPlace = pathPlacements annotatedStruct
-    validatePlacements toPlace
+    validatePlacements path toPlace
     let f (PathPlacement pathForPlacement pose) = lookupHandling alreadyMerged pathForPlacement (,pose)
     mergedToPlace <- traverse f toPlace
     let initialMerged = MergedStructure (area . structure . namedStructure $ annotatedStruct) [] []
@@ -290,8 +289,16 @@ overlayGridExpanded
 
 -- * Validation
 
-elaboratePlacement :: Parentage Placement -> Text
+elaboratePlacement :: PathToRoot -> Text
 elaboratePlacement p =
+  T.unwords
+    [ "Within"
+    , showPath p <> ":"
+    , ""
+    ]
+
+elaboratePlacement' :: Parentage Placement -> Text
+elaboratePlacement' p =
   T.unwords
     [ "Within"
     , pTxt <> ":"
