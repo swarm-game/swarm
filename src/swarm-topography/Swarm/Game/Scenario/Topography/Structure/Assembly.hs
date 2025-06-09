@@ -70,7 +70,7 @@ overlaySingleStructure'
   (Placed p@(Placement _sName pose@(Pose loc orientation)) ns)
   (MergedStructure inputArea inputPlacements inputWaypoints) = do
     MergedStructure overlayArea overlayPlacements overlayWaypoints <-
-      mergeStructures inheritedStrucDefs (WithParent p) $ structure ns
+      mergeStructures' inheritedStrucDefs (WithParent p) $ structure ns
 
     let mergedWaypoints = inputWaypoints <> map (fmap $ placeOnArea overlayArea) overlayWaypoints
         mergedPlacements = inputPlacements <> map (placeOnArea overlayArea) overlayPlacements
@@ -96,12 +96,12 @@ makeGraphEdges =
 
 -- | Overlays all of the "child placements", such that the children encountered later
 -- in the YAML file supersede the earlier ones (dictated by using 'foldl' instead of 'foldr').
-mergeStructures ::
+mergeStructures' ::
   HM.HashMap StructureName (NamedStructure (Maybe a)) ->
   Parentage Placement ->
   PStructure (Maybe a) ->
   Either Text (MergedStructure (Maybe a))
-mergeStructures inheritedStrucDefs parentPlacement baseStructure = do
+mergeStructures' inheritedStrucDefs parentPlacement baseStructure = do
   failOnCyclicGraph "Structure" (getStructureName . name) gEdges
 
   overlays <-
@@ -120,6 +120,7 @@ mergeStructures inheritedStrucDefs parentPlacement baseStructure = do
 
 -- | NOTE: Each successive overlay may alter the coordinate origin.
 -- We make sure this new origin is propagated to subsequent sibling placements.
+-- TODO Need to replicate at some level this functionality
 foldLayer ::
   HM.HashMap StructureName (NamedStructure (Maybe a)) ->
   PositionedGrid (Maybe a) ->
@@ -252,15 +253,18 @@ mergeStructure graph topSorted = foldlM go mempty topSorted
     validatePlacements path toPlace
     let f (PathPlacement pathForPlacement pose) = lookupHandling alreadyMerged pathForPlacement (,pose)
     mergedToPlace <- traverse f toPlace
-    let initialMerged = MergedStructure (area . structure . namedStructure $ annotatedStruct) [] []
+    let origArea = area . structure . namedStructure $ annotatedStruct
+        initialWaypoints = undefined -- TODO need to change Originated Placement for substructures
+        initialOverlays = undefined
+        initialMerged = MergedStructure (area . structure . namedStructure $ annotatedStruct) [] [] -- TODO add overlays here?
         merged = foldl' overlaySingleStructure initialMerged mergedToPlace
     pure $ (HM.insert path merged alreadyMerged)
 
-mergeStructures' ::
+mergeStructures ::
   HM.HashMap StructureName (NamedStructure (Maybe a)) ->
   PStructure (Maybe a) ->
   Either Text (MergedStructure (Maybe a))
-mergeStructures' inheritedStructDefs baseStructure = do
+mergeStructures inheritedStructDefs baseStructure = do
   graph <- mkGraph inheritedStructDefs baseStructure
   topSorted <- topSortGraph graph
   mergedMap <- mergeStructure graph topSorted
