@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -8,18 +9,22 @@
 module Swarm.Game.Scenario.Topography.Structure.Assembly (
   mergeStructures,
   makeStructureMap,
+  mergeStructures',
 
   -- * Exposed for unit tests:
   foldLayer,
 )
 where
 
-import Control.Arrow (left, (&&&))
+import Control.Arrow (first, left, (&&&))
 import Control.Monad (when)
+import Control.Monad.Except
 import Data.Coerce
 import Data.Either.Extra (maybeToEither)
-import Data.Foldable (foldlM)
-import Data.Map qualified as M
+import Data.Foldable (foldlM, traverse_)
+import Data.HashMap.Strict qualified as HM
+import Data.HashSet qualified as HS
+import Data.List (singleton)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -34,17 +39,33 @@ import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Language.Syntax.Direction (directionJsonModifier)
 import Swarm.Util (commaList, quote, showT)
-import Swarm.Util.Graph
+import Swarm.Util.Graph (failOnCyclicGraph)
 
 -- | Destructively overlays one direct child structure
 -- upon the input structure.
 -- However, the child structure is assembled recursively.
 overlaySingleStructure ::
-  M.Map StructureName (NamedStructure (Maybe a)) ->
+  MergedStructure (Maybe a) ->
+  (MergedStructure (Maybe a), Pose) ->
+  MergedStructure (Maybe a)
+overlaySingleStructure (MergedStructure inputArea inputPlacements inputWaypoints) (MergedStructure overlayArea overlayPlacements overlayWaypoints, pose@(Pose loc orientation)) = MergedStructure mergedArea mergedPlacements mergedWaypoints
+ where
+  mergedWaypoints = inputWaypoints <> map (fmap $ placeOnArea overlayArea) overlayWaypoints
+  mergedPlacements = inputPlacements <> map (placeOnArea overlayArea) overlayPlacements
+  mergedArea = overlayGridExpanded inputArea pose overlayArea
+  placeOnArea (PositionedGrid _ overArea) =
+    offsetLoc (coerce loc)
+      . modifyLoc (reorientLandmark orientation $ getGridDimensions overArea)
+
+-- | Destructively overlays one direct child structure
+-- upon the input structure.
+-- However, the child structure is assembled recursively.
+overlaySingleStructure' ::
+  HM.HashMap StructureName (NamedStructure (Maybe a)) ->
   Placed (Maybe a) ->
   MergedStructure (Maybe a) ->
   Either Text (MergedStructure (Maybe a))
-overlaySingleStructure
+overlaySingleStructure'
   inheritedStrucDefs
   (Placed p@(Placement _sName pose@(Pose loc orientation)) ns)
   (MergedStructure inputArea inputPlacements inputWaypoints) = do
@@ -61,8 +82,8 @@ overlaySingleStructure
       offsetLoc (coerce loc)
         . modifyLoc (reorientLandmark orientation $ getGridDimensions overArea)
 
-makeStructureMap :: [NamedStructure a] -> M.Map StructureName (NamedStructure a)
-makeStructureMap = M.fromList . map (name &&& id)
+makeStructureMap :: [NamedStructure a] -> HM.HashMap StructureName (NamedStructure a)
+makeStructureMap = HM.fromList . map (name &&& id)
 
 type GraphEdge a = (NamedStructure a, StructureName, [StructureName])
 
@@ -76,7 +97,7 @@ makeGraphEdges =
 -- | Overlays all of the "child placements", such that the children encountered later
 -- in the YAML file supersede the earlier ones (dictated by using 'foldl' instead of 'foldr').
 mergeStructures ::
-  M.Map StructureName (NamedStructure (Maybe a)) ->
+  HM.HashMap StructureName (NamedStructure (Maybe a)) ->
   Parentage Placement ->
   PStructure (Maybe a) ->
   Either Text (MergedStructure (Maybe a))
@@ -85,7 +106,7 @@ mergeStructures inheritedStrucDefs parentPlacement baseStructure = do
 
   overlays <-
     left (elaboratePlacement parentPlacement <>) $
-      mapM (validatePlacement structureMap) subPlacements
+      mapM (validatePlacement' structureMap) subPlacements
 
   foldLayer structureMap origArea overlays originatedWaypoints
  where
@@ -94,20 +115,20 @@ mergeStructures inheritedStrucDefs parentPlacement baseStructure = do
   originatedWaypoints = map (Originated parentPlacement) subWaypoints
 
   -- deeper definitions override the outer (toplevel) ones
-  structureMap = M.union (makeStructureMap subStructures) inheritedStrucDefs
-  gEdges = makeGraphEdges $ M.elems structureMap
+  structureMap = HM.union (makeStructureMap subStructures) inheritedStrucDefs
+  gEdges = makeGraphEdges $ HM.elems structureMap
 
 -- | NOTE: Each successive overlay may alter the coordinate origin.
 -- We make sure this new origin is propagated to subsequent sibling placements.
 foldLayer ::
-  M.Map StructureName (NamedStructure (Maybe a)) ->
+  HM.HashMap StructureName (NamedStructure (Maybe a)) ->
   PositionedGrid (Maybe a) ->
   [Placed (Maybe a)] ->
   [Originated Waypoint] ->
   Either Text (MergedStructure (Maybe a))
 foldLayer structureMap origArea overlays originatedWaypoints =
   foldlM
-    (flip $ overlaySingleStructure structureMap)
+    (flip $ overlaySingleStructure' structureMap)
     (MergedStructure origArea wrappedOverlays originatedWaypoints)
     overlays
  where
@@ -121,6 +142,122 @@ foldLayer structureMap origArea overlays originatedWaypoints =
       (offset structPose)
    where
     structPose = structurePose z
+
+type PathToRoot = [StructureName]
+
+data PathPlacement = PathPlacement
+  { pathToPlacement :: PathToRoot
+  , placementPose :: Pose
+  }
+
+data AnnotatedStructure a = AnnotatedStructure
+  { pathPlacements :: [PathPlacement]
+  -- ^ TODO temp
+  , namedStructure :: NamedStructure a
+  -- ^ the named structure itself
+  }
+
+-- | TODO Only construct subgraph of relevant structures (dependent on baseStructure's placements)
+-- | Find good way to ensure that root is treated separately from everything else, but still in graph
+mkGraph ::
+  forall a.
+  HM.HashMap StructureName (NamedStructure (Maybe a)) ->
+  PStructure (Maybe a) ->
+  Either Text (HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)))
+mkGraph initialStructDefs baseStructure = go initialKnowledge [] acc0 (NamedArea (StructureName "") mempty Nothing baseStructure)
+ where
+  go ::
+    -- \| Knowledge inherited from parent, allows us to find the full path for a placement
+    HM.HashMap StructureName PathToRoot ->
+    -- \| Path from parent to root
+    [StructureName] ->
+    HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)) ->
+    NamedStructure (Maybe a) ->
+    Either Text (HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)))
+  go inheritedKnowledge parentToRootPath !acc struct = do
+    let substructures = structures . structure $ struct
+        structPlacements = placements . structure $ struct
+        structPath = name struct : parentToRootPath
+        knowledgeOfChildren = HM.fromList $ map ((id &&& (: structPath)) . name) substructures
+        knowledge = HM.union knowledgeOfChildren inheritedKnowledge
+        f :: (MonadError Text m) => Placement -> m PathPlacement
+        f placement = case HM.lookup (src placement) knowledge of
+          Nothing -> throwError $ T.unwords ["Could not look up structure", quote . getStructureName . src $ placement]
+          Just path -> pure $ PathPlacement path (structurePose placement)
+    structPathPlacements <- traverse f $ structPlacements
+    let annotatedStruct = AnnotatedStructure structPathPlacements struct
+        !acc' = HM.insert structPath annotatedStruct acc
+    foldlM (go knowledge structPath) acc' substructures
+  initialKnowledge = HM.fromList . HM.toList . fmap (singleton . name) $ initialStructDefs
+  acc0 = HM.fromList . map (\(structName, namedStruct) -> (singleton structName, AnnotatedStructure [] namedStruct)) . HM.toList $ initialStructDefs
+
+rootPathToRoot :: PathToRoot
+rootPathToRoot = [StructureName ""]
+
+data DFSPath = DFSPath (HS.HashSet PathToRoot) [PathToRoot]
+data DFSState = DFSState (HS.HashSet PathToRoot) [PathToRoot]
+
+getAcc :: DFSState -> [PathToRoot]
+getAcc (DFSState _ acc) = acc
+
+addToDFSPath :: PathToRoot -> DFSPath -> DFSPath
+addToDFSPath pathToRoot (DFSPath pathElems back) = DFSPath (HS.insert pathToRoot pathElems) (pathToRoot : back)
+
+topSortGraph :: HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)) -> Either Text [PathToRoot]
+topSortGraph graph = fmap (reverse . getAcc) . foldlM (go emptyPath) acc0 $ HM.toList graph -- fmap (reverse . getAcc) . flip execStateT emptyState . traverse_ (go emptyPath) $ HM.toList graph
+ where
+  go :: DFSPath -> DFSState -> (PathToRoot, AnnotatedStructure (Maybe a)) -> Either Text DFSState
+  go dfsPathOfParent@(DFSPath parentPathMembers _) acc@(DFSState visited _) (!pathToRoot, !annotatedStruct) = do
+    if (pathToRoot `HS.member` visited)
+      then pure acc
+      else do
+        when (pathToRoot `HS.member` parentPathMembers) $ throwError "TODO PUT CYCLE ERROR HERE"
+        let dfsPath = addToDFSPath pathToRoot dfsPathOfParent
+        let placementPaths = map pathToPlacement $ pathPlacements annotatedStruct
+        let f acc' path = case HM.lookup path graph of
+              Nothing -> throwError $ "TODO UNEXPECTED MISSING"
+              Just annotated -> go dfsPath acc' (path, annotated)
+        DFSState visited' topSortAcc' <- foldlM f acc placementPaths
+        pure $ DFSState (HS.insert pathToRoot visited') (pathToRoot : topSortAcc')
+  emptyPath = DFSPath HS.empty []
+  acc0 = DFSState HS.empty []
+
+mergeStructure :: forall a. HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)) -> [PathToRoot] -> Either Text (HM.HashMap PathToRoot (MergedStructure (Maybe a)))
+mergeStructure graph topSorted = foldlM go mempty topSorted
+ where
+  mkCouldNotFindError :: PathToRoot -> Text
+  mkCouldNotFindError path = T.unwords ["Could not look up structure", T.intercalate "." . reverse . map getStructureName $ path, "in mergeStructure"]
+  lookupHandling :: (MonadError Text m) => HM.HashMap PathToRoot c -> PathToRoot -> (c -> d) -> m d
+  lookupHandling m path f = case HM.lookup path m of
+    Nothing -> throwError $ mkCouldNotFindError path
+    Just x -> pure (f x)
+  validatePlacements :: (MonadError Text m) => [PathPlacement] -> m ()
+  validatePlacements toPlace = do
+    result <- traverse (\(PathPlacement p pose) -> lookupHandling graph p (,pose)) $ toPlace
+    let result' = map (first namedStructure) result
+    traverse_ (uncurry validatePlacement) result'
+  go :: HM.HashMap PathToRoot (MergedStructure (Maybe a)) -> PathToRoot -> Either Text (HM.HashMap PathToRoot (MergedStructure (Maybe a)))
+  go alreadyMerged path = do
+    annotatedStruct <- lookupHandling graph path id
+    let toPlace = pathPlacements annotatedStruct
+    validatePlacements toPlace
+    let f (PathPlacement pathForPlacement pose) = lookupHandling alreadyMerged pathForPlacement (,pose)
+    mergedToPlace <- traverse f toPlace
+    let initialMerged = MergedStructure (area . structure . namedStructure $ annotatedStruct) [] []
+        merged = foldl' overlaySingleStructure initialMerged mergedToPlace
+    pure $ (HM.insert path merged alreadyMerged)
+
+mergeStructures' ::
+  HM.HashMap StructureName (NamedStructure (Maybe a)) ->
+  PStructure (Maybe a) ->
+  Either Text (MergedStructure (Maybe a))
+mergeStructures' inheritedStructDefs baseStructure = do
+  graph <- mkGraph inheritedStructDefs baseStructure
+  topSorted <- topSortGraph graph
+  mergedMap <- mergeStructure graph topSorted
+  case HM.lookup rootPathToRoot mergedMap of
+    Nothing -> throwError $ "Unable to find root structure in graph"
+    Just merged -> pure merged
 
 -- * Grid manipulation
 
@@ -162,16 +299,52 @@ elaboratePlacement p =
         ]
 
 validatePlacement ::
-  M.Map StructureName (NamedStructure (Maybe a)) ->
+  (MonadError Text m) =>
+  NamedStructure (Maybe a) ->
+  Pose ->
+  m ()
+validatePlacement ns (Pose _ orientation) = do
+  let placementDirection = up orientation
+      recognizedOrientations = recognize ns
+      n = getStructureName . name $ ns
+
+  when (isRecognizable ns) $ do
+    when (flipped orientation) $
+      throwError $
+        T.unwords
+          [ "Placing recognizable structure"
+          , quote n
+          , "with flipped orientation is not supported."
+          ]
+
+    -- Redundant orientations by rotational symmetry are accounted
+    -- for at scenario parse time
+    when (Set.notMember placementDirection recognizedOrientations) $
+      throwError $
+        T.unwords
+          [ "Placing recognizable structure"
+          , quote n
+          , "with"
+          , renderDir placementDirection
+          , "orientation is not supported."
+          , "Try"
+          , commaList $ map renderDir $ Set.toList recognizedOrientations
+          , "instead."
+          ]
+ where
+  renderDir = quote . T.pack . directionJsonModifier . show
+
+validatePlacement' ::
+  HM.HashMap StructureName (NamedStructure (Maybe a)) ->
   Placement ->
   Either Text (Placed (Maybe a))
-validatePlacement
+validatePlacement'
   structureMap
   placement@(Placement sName@(StructureName n) (Pose _ orientation)) = do
     t@(_, ns) <-
       maybeToEither
         (T.unwords ["Could not look up structure", quote n])
-        $ sequenceA (placement, M.lookup sName structureMap)
+        $ sequenceA (placement, HM.lookup sName structureMap)
 
     let placementDirection = up orientation
         recognizedOrientations = recognize ns

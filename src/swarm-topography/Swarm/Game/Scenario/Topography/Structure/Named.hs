@@ -2,6 +2,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.Topography.Structure.Named where
 
+import Data.Hashable (Hashable)
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Yaml
@@ -9,7 +10,7 @@ import GHC.Generics (Generic)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 
 newtype StructureName = StructureName Text
-  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Hashable, Generic, FromJSON, ToJSON)
 
 getStructureName :: StructureName -> Text
 getStructureName (StructureName sn) = sn
