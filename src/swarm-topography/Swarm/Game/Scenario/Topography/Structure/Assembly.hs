@@ -18,9 +18,7 @@ module Swarm.Game.Scenario.Topography.Structure.Assembly (
 where
 
 import Control.Arrow (first, left, (&&&))
-import Control.Lens qualified as Lens
 import Control.Monad (when)
-import Control.Monad.Trans.State.Strict
 import Data.Coerce
 import Data.Either.Extra (maybeToEither)
 import Data.Foldable (foldlM, traverse_)
@@ -30,9 +28,6 @@ import Data.List (singleton)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Traversable (for)
-import Data.Tuple (swap)
-import Data.Vector.Strict qualified as V
 import Linear.Affine
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
@@ -160,32 +155,24 @@ showPath = f . T.intercalate "." . reverse . coerce
  where
   f txt = if T.null txt then txt else T.tail txt
 
-data PlacementWithId n = PlacementWithId
-  { placementId :: n
+data PathPlacement = PathPlacement
+  { pathToPlacement :: PathToRoot
   , placementPose :: Pose
   }
 
-data AnnotatedStructure n a = AnnotatedStructure
-  { placementIds :: [PlacementWithId n]
+data AnnotatedStructure a = AnnotatedStructure
+  { pathPlacements :: [PathPlacement]
   -- ^ TODO temp
   , namedStructure :: NamedStructure a
   -- ^ the named structure itself
   }
-
-placementIdsLens :: Lens.Lens (AnnotatedStructure n a) (AnnotatedStructure n' a) [PlacementWithId n] [PlacementWithId n']
-placementIdsLens f = \case
-  AnnotatedStructure x y -> fmap (flip AnnotatedStructure y) (f x)
-
-placementIdLens :: Lens.Lens (PlacementWithId n) (PlacementWithId n') n n'
-placementIdLens f = \case
-  PlacementWithId n pose -> fmap (flip PlacementWithId pose) (f n)
 
 -- | TODO Only construct subgraph of relevant structures (dependent on baseStructure's placements)
 mkGraph ::
   forall a.
   HM.HashMap StructureName (NamedStructure (Maybe a)) ->
   PStructure (Maybe a) ->
-  Either Text (HM.HashMap PathToRoot (AnnotatedStructure PathToRoot (Maybe a)))
+  Either Text (HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)))
 mkGraph initialStructDefs baseStructure = go initialKnowledge [] acc0 (NamedArea (StructureName "") mempty Nothing baseStructure)
  where
   go ::
@@ -193,21 +180,21 @@ mkGraph initialStructDefs baseStructure = go initialKnowledge [] acc0 (NamedArea
     HM.HashMap StructureName PathToRoot ->
     -- \| Path from parent to root
     [StructureName] ->
-    HM.HashMap PathToRoot (AnnotatedStructure PathToRoot (Maybe a)) ->
+    HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)) ->
     NamedStructure (Maybe a) ->
-    Either Text (HM.HashMap PathToRoot (AnnotatedStructure PathToRoot (Maybe a)))
+    Either Text (HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)))
   go inheritedKnowledge parentToRootPath !acc !struct = do
     let substructures = structures . structure $ struct
         structPlacements = placements . structure $ struct
         structPath = name struct : parentToRootPath
         knowledgeOfChildren = HM.fromList $ map ((id &&& (: structPath)) . name) substructures
         knowledge = HM.union knowledgeOfChildren inheritedKnowledge
-        f :: Placement -> Either Text (PlacementWithId PathToRoot)
+        f :: Placement -> Either Text PathPlacement
         f placement = case HM.lookup (src placement) knowledge of
           Nothing -> Left $ T.unwords ["Could not look up structure", quote . getStructureName . src $ placement]
-          Just path -> pure $ PlacementWithId path (structurePose placement)
-    structPlacementsWithIds <- traverse f structPlacements
-    let annotatedStruct = AnnotatedStructure structPlacementsWithIds struct
+          Just path -> pure $ PathPlacement path (structurePose placement)
+    structPathPlacements <- traverse f $ structPlacements
+    let annotatedStruct = AnnotatedStructure structPathPlacements struct
         !acc' = HM.insert structPath annotatedStruct acc
     foldlM (go knowledge structPath) acc' substructures
   initialKnowledge = HM.fromList . HM.toList . fmap (singleton . name) $ initialStructDefs
@@ -215,41 +202,6 @@ mkGraph initialStructDefs baseStructure = go initialKnowledge [] acc0 (NamedArea
 
 rootPathToRoot :: PathToRoot
 rootPathToRoot = [StructureName ""]
-
-graphToIntGraph :: HM.HashMap PathToRoot (AnnotatedStructure PathToRoot (Maybe a)) -> Either Text (HM.HashMap PathToRoot Int, (V.Vector (PathToRoot, [Int])))
-graphToIntGraph graph = sequenceA (labeled, V.generateM graphSize go)
- where
-  graphSize :: Int
-  labeled :: (HM.HashMap PathToRoot Int)
-  (labeled, graphSize) = flip runState 0 $ for graph $ \_ -> do
-    counter <- get
-    put $! counter + 1
-    pure counter
-  revLabeled = HM.fromList . map swap . HM.toList $ labeled
-  go :: Int -> Either Text (PathToRoot, [Int])
-  go i = do
-    pathToRoot <- case HM.lookup i revLabeled of
-      Nothing -> Left "TODO ERROR"
-      Just pathToRoot -> pure pathToRoot
-    annotated <- case HM.lookup pathToRoot graph of
-      Nothing -> Left "TODO ERROR"
-      Just ann -> pure ann
-    successors <- getSuccessors annotated
-    pure $ pathToRoot `seq` successors `seq` (pathToRoot, successors)
-
-  getSuccessors :: AnnotatedStructure PathToRoot (Maybe a) -> Either Text [Int]
-  getSuccessors = traverse f . Lens.toListOf fold
-   where
-    fold :: Lens.Fold (AnnotatedStructure PathToRoot (Maybe a)) PathToRoot
-    fold = placementIdsLens . Lens.folded . placementIdLens
-    f :: PathToRoot -> Either Text Int
-    f path = case HM.lookup path labeled of
-      Nothing -> Left "TODO ERROR"
-      Just x -> pure x
-
--- graphAsList = HM.toList graph
--- zipped = zip [0 ..] graphAsList
--- rearranged = map (\(x, (y, z)) -> (x, (y, z))) zipped
 
 data DFSPath = DFSPath (HS.HashSet PathToRoot) [PathToRoot]
 data DFSState = DFSState (HS.HashSet PathToRoot) [PathToRoot]
@@ -260,17 +212,17 @@ getAcc (DFSState _ acc) = acc
 addToDFSPath :: PathToRoot -> DFSPath -> DFSPath
 addToDFSPath pathToRoot (DFSPath pathElems back) = DFSPath (HS.insert pathToRoot pathElems) (pathToRoot : back)
 
-topSortGraph :: HM.HashMap PathToRoot (AnnotatedStructure PathToRoot (Maybe a)) -> Either Text [PathToRoot]
+topSortGraph :: HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)) -> Either Text [PathToRoot]
 topSortGraph graph = fmap (reverse . getAcc) . foldlM (go emptyPath) acc0 $ HM.toList graph
  where
-  go :: DFSPath -> DFSState -> (PathToRoot, AnnotatedStructure PathToRoot (Maybe a)) -> Either Text DFSState
+  go :: DFSPath -> DFSState -> (PathToRoot, AnnotatedStructure (Maybe a)) -> Either Text DFSState
   go dfsPathOfParent@(DFSPath parentPathMembers _) acc@(DFSState visited _) (!pathToRoot, !annotatedStruct) = do
     if (pathToRoot `HS.member` visited)
       then pure acc
       else do
         when (pathToRoot `HS.member` parentPathMembers) $ Left "TODO PUT CYCLE ERROR HERE"
         let dfsPath = addToDFSPath pathToRoot dfsPathOfParent
-        let placementPaths = map placementId $ placementIds annotatedStruct
+        let placementPaths = map pathToPlacement $ pathPlacements annotatedStruct
         let f acc' path = case HM.lookup path graph of
               Nothing -> Left $ "TODO UNEXPECTED MISSING"
               Just annotated -> go dfsPath acc' (path, annotated)
@@ -279,7 +231,7 @@ topSortGraph graph = fmap (reverse . getAcc) . foldlM (go emptyPath) acc0 $ HM.t
   emptyPath = DFSPath HS.empty []
   acc0 = DFSState HS.empty []
 
-mergeStructure :: forall a. HM.HashMap PathToRoot (AnnotatedStructure PathToRoot (Maybe a)) -> [PathToRoot] -> Either Text (HM.HashMap PathToRoot (MergedStructure (Maybe a)))
+mergeStructure :: forall a. HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)) -> [PathToRoot] -> Either Text (HM.HashMap PathToRoot (MergedStructure (Maybe a)))
 mergeStructure graph topSorted = foldlM go mempty topSorted
  where
   mkCouldNotFindError :: PathToRoot -> Text
@@ -288,18 +240,18 @@ mergeStructure graph topSorted = foldlM go mempty topSorted
   lookupHandling m path f = case HM.lookup path m of
     Nothing -> Left $ mkCouldNotFindError path
     Just x -> pure (f x)
-  validatePlacements :: [PlacementWithId PathToRoot] -> Either Text ()
+  validatePlacements :: [PathPlacement] -> Either Text ()
   validatePlacements toPlace = do
-    result <- traverse (\(PlacementWithId p pose) -> lookupHandling graph p (,pose)) $ toPlace
+    result <- traverse (\(PathPlacement p pose) -> lookupHandling graph p (,pose)) $ toPlace
     let result' = map (first namedStructure) result
     -- TODO Use elaboratePlacement HERE
     traverse_ (uncurry validatePlacement) result'
   go :: HM.HashMap PathToRoot (MergedStructure (Maybe a)) -> PathToRoot -> Either Text (HM.HashMap PathToRoot (MergedStructure (Maybe a)))
   go alreadyMerged path = do
     annotatedStruct <- lookupHandling graph path id
-    let toPlace = placementIds annotatedStruct
+    let toPlace = pathPlacements annotatedStruct
     validatePlacements toPlace
-    let f (PlacementWithId pathForPlacement pose) = lookupHandling alreadyMerged pathForPlacement (,pose)
+    let f (PathPlacement pathForPlacement pose) = lookupHandling alreadyMerged pathForPlacement (,pose)
     mergedToPlace <- traverse f toPlace
     let initialMerged = MergedStructure (area . structure . namedStructure $ annotatedStruct) [] []
         merged = foldl' overlaySingleStructure initialMerged mergedToPlace
