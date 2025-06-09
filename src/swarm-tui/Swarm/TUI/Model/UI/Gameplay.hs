@@ -274,6 +274,5 @@ uiShowRobots = to (\ui -> ui ^. uiTiming . lastFrameTime > ui ^. uiHideRobotsUnt
 
 -- | The currently active Scenario description, useful for starting over.
 scenarioRef :: Lens' UIGameplay (Maybe (ScenarioWith ScenarioPath))
-
 uiAttributeMap :: Traversal' UIGameplay AttributeMap
 uiAttributeMap = scenarioRef . _Just . getScenario . scenarioLandscape . scenarioCosmetics

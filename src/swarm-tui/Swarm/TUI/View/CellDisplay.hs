@@ -15,7 +15,7 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Graphics.Vty qualified as V
 import Linear (zero)
-import Swarm.Game.Cosmetic.Color (AttributeMap, TrueColor (..), PreservableColor)
+import Swarm.Game.Cosmetic.Color (AttributeMap, PreservableColor, TrueColor (..))
 import Swarm.Game.Cosmetic.Display
 import Swarm.Game.Cosmetic.Texel (Texel, getTexelData, texelFromColor)
 import Swarm.Game.Entity
@@ -50,7 +50,7 @@ renderTexel t =
       displayChar = maybe ' ' fst mfg
       setFG = maybe id (\(_, c) -> modifyDefAttr (`V.withForeColor` (mkBrickColor c))) mfg
       setBG = maybe id (\c -> modifyDefAttr (`V.withBackColor` (mkBrickColor c))) mbg
-  in setBG . setFG $ str [displayChar]
+   in setBG . setFG $ str [displayChar]
 
 -- | Render a single cell in the world.
 drawLoc :: UIGameplay -> GameState -> Cosmic Coords -> Widget Name
@@ -100,7 +100,7 @@ renderRobotCell ::
   Texel TrueColor
 renderRobotCell aMap g coords =
   foldMap (renderRobot aMap) $
-     robotsAtLocation (fmap coordsToLoc coords) g
+    robotsAtLocation (fmap coordsToLoc coords) g
 
 -- | Extract the relevant subset of information from the 'GameState' to be able
 -- to compute whether an entity is "known".
@@ -188,4 +188,3 @@ renderBaseLoc ::
   Texel TrueColor
 renderBaseLoc worldEditor ri coords =
   renderTerrainCell worldEditor ri coords <> renderEntityCell worldEditor ri coords
-

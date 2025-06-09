@@ -13,7 +13,7 @@ import Data.Hash.Murmur (murmur3)
 import Data.Tagged (unTagged)
 import Data.Word (Word32)
 import Linear.Affine ((.-.))
-import Swarm.Game.Cosmetic.Color (TrueColor (..), NamedColor (..))
+import Swarm.Game.Cosmetic.Color (NamedColor (..), TrueColor (..))
 import Swarm.Game.Cosmetic.Texel (Texel, mkTexel)
 import Swarm.Game.State
 import Swarm.Game.State.Robot (viewCenter)
@@ -23,7 +23,6 @@ import Swarm.Game.Universe (planar)
 import Swarm.Game.World.Coords (Coords, coordsToLoc)
 import Witch (from)
 import Witch.Encoding qualified as Encoding
-
 
 -- | Random "static" based on the distance to the robot being
 --   @view@ed.
@@ -98,4 +97,3 @@ getStatic g coords
     Just (MidRange s) -> hp < 1 - cos (s * (pi / 2))
     -- Far away, everything is static.
     Just Far -> True
-
