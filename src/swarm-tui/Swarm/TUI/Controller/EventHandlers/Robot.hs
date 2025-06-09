@@ -12,6 +12,7 @@
 module Swarm.TUI.Controller.EventHandlers.Robot (
   robotEventHandlers,
   handleRobotPanelEvent,
+  showEntityDescription,
 ) where
 
 import Brick
