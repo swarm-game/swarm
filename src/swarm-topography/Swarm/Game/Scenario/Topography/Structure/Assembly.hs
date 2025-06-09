@@ -1,5 +1,6 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -18,7 +19,6 @@ where
 
 import Control.Arrow (first, left, (&&&))
 import Control.Monad (when)
-import Control.Monad.Except
 import Data.Coerce
 import Data.Either.Extra (maybeToEither)
 import Data.Foldable (foldlM, traverse_)
@@ -145,6 +145,16 @@ foldLayer structureMap origArea overlays originatedWaypoints =
 
 type PathToRoot = [StructureName]
 
+-- | Converts a path to the root into a fully qualified name
+-- >>> showPath [StructureName ""]
+-- ""
+-- >>> showPath [StructureName "AB", StructureName "A", StructureName ""]
+-- "A.AB"
+showPath :: PathToRoot -> Text
+showPath = f . T.intercalate "." . reverse . coerce
+ where
+  f txt = if T.null txt then txt else T.tail txt
+
 data PathPlacement = PathPlacement
   { pathToPlacement :: PathToRoot
   , placementPose :: Pose
@@ -158,7 +168,6 @@ data AnnotatedStructure a = AnnotatedStructure
   }
 
 -- | TODO Only construct subgraph of relevant structures (dependent on baseStructure's placements)
--- | Find good way to ensure that root is treated separately from everything else, but still in graph
 mkGraph ::
   forall a.
   HM.HashMap StructureName (NamedStructure (Maybe a)) ->
@@ -174,15 +183,15 @@ mkGraph initialStructDefs baseStructure = go initialKnowledge [] acc0 (NamedArea
     HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)) ->
     NamedStructure (Maybe a) ->
     Either Text (HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)))
-  go inheritedKnowledge parentToRootPath !acc struct = do
+  go inheritedKnowledge parentToRootPath !acc !struct = do
     let substructures = structures . structure $ struct
         structPlacements = placements . structure $ struct
         structPath = name struct : parentToRootPath
         knowledgeOfChildren = HM.fromList $ map ((id &&& (: structPath)) . name) substructures
         knowledge = HM.union knowledgeOfChildren inheritedKnowledge
-        f :: (MonadError Text m) => Placement -> m PathPlacement
+        f :: Placement -> Either Text PathPlacement
         f placement = case HM.lookup (src placement) knowledge of
-          Nothing -> throwError $ T.unwords ["Could not look up structure", quote . getStructureName . src $ placement]
+          Nothing -> Left $ T.unwords ["Could not look up structure", quote . getStructureName . src $ placement]
           Just path -> pure $ PathPlacement path (structurePose placement)
     structPathPlacements <- traverse f $ structPlacements
     let annotatedStruct = AnnotatedStructure structPathPlacements struct
@@ -204,18 +213,18 @@ addToDFSPath :: PathToRoot -> DFSPath -> DFSPath
 addToDFSPath pathToRoot (DFSPath pathElems back) = DFSPath (HS.insert pathToRoot pathElems) (pathToRoot : back)
 
 topSortGraph :: HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)) -> Either Text [PathToRoot]
-topSortGraph graph = fmap (reverse . getAcc) . foldlM (go emptyPath) acc0 $ HM.toList graph -- fmap (reverse . getAcc) . flip execStateT emptyState . traverse_ (go emptyPath) $ HM.toList graph
+topSortGraph graph = fmap (reverse . getAcc) . foldlM (go emptyPath) acc0 $ HM.toList graph
  where
   go :: DFSPath -> DFSState -> (PathToRoot, AnnotatedStructure (Maybe a)) -> Either Text DFSState
   go dfsPathOfParent@(DFSPath parentPathMembers _) acc@(DFSState visited _) (!pathToRoot, !annotatedStruct) = do
     if (pathToRoot `HS.member` visited)
       then pure acc
       else do
-        when (pathToRoot `HS.member` parentPathMembers) $ throwError "TODO PUT CYCLE ERROR HERE"
+        when (pathToRoot `HS.member` parentPathMembers) $ Left "TODO PUT CYCLE ERROR HERE"
         let dfsPath = addToDFSPath pathToRoot dfsPathOfParent
         let placementPaths = map pathToPlacement $ pathPlacements annotatedStruct
         let f acc' path = case HM.lookup path graph of
-              Nothing -> throwError $ "TODO UNEXPECTED MISSING"
+              Nothing -> Left $ "TODO UNEXPECTED MISSING"
               Just annotated -> go dfsPath acc' (path, annotated)
         DFSState visited' topSortAcc' <- foldlM f acc placementPaths
         pure $ DFSState (HS.insert pathToRoot visited') (pathToRoot : topSortAcc')
@@ -226,15 +235,16 @@ mergeStructure :: forall a. HM.HashMap PathToRoot (AnnotatedStructure (Maybe a))
 mergeStructure graph topSorted = foldlM go mempty topSorted
  where
   mkCouldNotFindError :: PathToRoot -> Text
-  mkCouldNotFindError path = T.unwords ["Could not look up structure", T.intercalate "." . reverse . map getStructureName $ path, "in mergeStructure"]
-  lookupHandling :: (MonadError Text m) => HM.HashMap PathToRoot c -> PathToRoot -> (c -> d) -> m d
+  mkCouldNotFindError path = T.unwords ["Could not look up structure", showPath path, "in mergeStructure"]
+  lookupHandling :: HM.HashMap PathToRoot c -> PathToRoot -> (c -> d) -> Either Text d
   lookupHandling m path f = case HM.lookup path m of
-    Nothing -> throwError $ mkCouldNotFindError path
+    Nothing -> Left $ mkCouldNotFindError path
     Just x -> pure (f x)
-  validatePlacements :: (MonadError Text m) => [PathPlacement] -> m ()
+  validatePlacements :: [PathPlacement] -> Either Text ()
   validatePlacements toPlace = do
     result <- traverse (\(PathPlacement p pose) -> lookupHandling graph p (,pose)) $ toPlace
     let result' = map (first namedStructure) result
+    -- TODO Use elaboratePlacement HERE
     traverse_ (uncurry validatePlacement) result'
   go :: HM.HashMap PathToRoot (MergedStructure (Maybe a)) -> PathToRoot -> Either Text (HM.HashMap PathToRoot (MergedStructure (Maybe a)))
   go alreadyMerged path = do
@@ -256,7 +266,7 @@ mergeStructures' inheritedStructDefs baseStructure = do
   topSorted <- topSortGraph graph
   mergedMap <- mergeStructure graph topSorted
   case HM.lookup rootPathToRoot mergedMap of
-    Nothing -> throwError $ "Unable to find root structure in graph"
+    Nothing -> Left $ "Unable to find root structure in graph"
     Just merged -> pure merged
 
 -- * Grid manipulation
@@ -299,10 +309,9 @@ elaboratePlacement p =
         ]
 
 validatePlacement ::
-  (MonadError Text m) =>
   NamedStructure (Maybe a) ->
   Pose ->
-  m ()
+  Either Text ()
 validatePlacement ns (Pose _ orientation) = do
   let placementDirection = up orientation
       recognizedOrientations = recognize ns
@@ -310,7 +319,7 @@ validatePlacement ns (Pose _ orientation) = do
 
   when (isRecognizable ns) $ do
     when (flipped orientation) $
-      throwError $
+      Left $
         T.unwords
           [ "Placing recognizable structure"
           , quote n
@@ -320,7 +329,7 @@ validatePlacement ns (Pose _ orientation) = do
     -- Redundant orientations by rotational symmetry are accounted
     -- for at scenario parse time
     when (Set.notMember placementDirection recognizedOrientations) $
-      throwError $
+      Left $
         T.unwords
           [ "Placing recognizable structure"
           , quote n
