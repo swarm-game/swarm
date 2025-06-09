@@ -24,7 +24,7 @@ import Data.Either.Extra (maybeToEither)
 import Data.Foldable (foldlM, traverse_)
 import Data.HashMap.Strict qualified as HM
 import Data.HashSet qualified as HS
-import Data.List (singleton)
+import Data.List.NonEmpty qualified as NE
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -44,6 +44,7 @@ import Swarm.Util.Graph (failOnCyclicGraph)
 -- | Destructively overlays one direct child structure
 -- upon the input structure.
 -- However, the child structure is assembled recursively.
+-- TODO Add info from parent to properly propogate info
 overlaySingleStructure ::
   MergedStructure (Maybe a) ->
   (MergedStructure (Maybe a), Pose) ->
@@ -144,17 +145,16 @@ foldLayer structureMap origArea overlays originatedWaypoints =
    where
     structPose = structurePose z
 
-type PathToRoot = [StructureName]
+type PathToRoot = NE.NonEmpty StructureName
 
 -- | Converts a path to the root into a fully qualified name
--- >>> showPath [StructureName ""]
+-- >>> showPath (NE.singleton (StructureName ""))
 -- ""
--- >>> showPath [StructureName "AB", StructureName "A", StructureName ""]
+-- >>> showPath (NE.fromList [StructureName "AB", StructureName "A", StructureName ""])
 -- "A.AB"
 showPath :: PathToRoot -> Text
-showPath = f . T.intercalate "." . reverse . coerce
- where
-  f txt = if T.null txt then txt else T.tail txt
+showPath (_ NE.:| []) = ""
+showPath xs = T.tail . T.intercalate "." . reverse . coerce . NE.toList $ xs
 
 data PathPlacement = PathPlacement
   { pathToPlacement :: PathToRoot
@@ -188,7 +188,7 @@ mkGraph initialStructDefs baseStructure = go initialKnowledge [] acc0 (NamedArea
     let substructures = structures . structure $ struct
         structPlacements = placements . structure $ struct
         structPath = name struct : parentToRootPath
-        knowledgeOfChildren = HM.fromList $ map ((id &&& (: structPath)) . name) substructures
+        knowledgeOfChildren = HM.fromList $ map ((id &&& (NE.:| structPath)) . name) substructures
         knowledge = HM.union knowledgeOfChildren inheritedKnowledge
         f :: Placement -> Either Text PathPlacement
         f placement = case HM.lookup (src placement) knowledge of
@@ -196,13 +196,13 @@ mkGraph initialStructDefs baseStructure = go initialKnowledge [] acc0 (NamedArea
           Just path -> pure $ PathPlacement path (structurePose placement)
     structPathPlacements <- traverse f $ structPlacements
     let annotatedStruct = AnnotatedStructure structPathPlacements struct
-        !acc' = HM.insert structPath annotatedStruct acc
+        !acc' = HM.insert (name struct NE.:| parentToRootPath) annotatedStruct acc
     foldlM (go knowledge structPath) acc' substructures
-  initialKnowledge = HM.fromList . HM.toList . fmap (singleton . name) $ initialStructDefs
-  acc0 = HM.fromList . map (\(structName, namedStruct) -> (singleton structName, AnnotatedStructure [] namedStruct)) . HM.toList $ initialStructDefs
+  initialKnowledge = HM.fromList . HM.toList . fmap (NE.singleton . name) $ initialStructDefs
+  acc0 = HM.fromList . map (\(structName, namedStruct) -> (NE.singleton structName, AnnotatedStructure [] namedStruct)) . HM.toList $ initialStructDefs
 
 rootPathToRoot :: PathToRoot
-rootPathToRoot = [StructureName ""]
+rootPathToRoot = NE.singleton (StructureName "")
 
 data DFSPath = DFSPath (HS.HashSet PathToRoot) [PathToRoot]
 data DFSState = DFSState (HS.HashSet PathToRoot) [PathToRoot]
@@ -254,9 +254,9 @@ mergeStructure graph topSorted = foldlM go mempty topSorted
     let f (PathPlacement pathForPlacement pose) = lookupHandling alreadyMerged pathForPlacement (,pose)
     mergedToPlace <- traverse f toPlace
     let origArea = area . structure . namedStructure $ annotatedStruct
-        initialWaypoints = undefined -- TODO need to change Originated Placement for substructures
-        initialOverlays = undefined
-        initialMerged = MergedStructure (area . structure . namedStructure $ annotatedStruct) [] [] -- TODO add overlays here?
+        initialWaypoints :: [Originated Waypoint] = undefined -- TODO need to change Originated Placement for substructures
+        initialOverlays :: [LocatedStructure] = undefined
+        initialMerged = MergedStructure origArea initialOverlays initialWaypoints -- TODO add overlays here?. Add it to overlaySingleStructure
         merged = foldl' overlaySingleStructure initialMerged mergedToPlace
     pure $ (HM.insert path merged alreadyMerged)
 
