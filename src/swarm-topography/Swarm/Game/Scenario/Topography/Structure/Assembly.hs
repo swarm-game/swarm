@@ -10,7 +10,6 @@
 module Swarm.Game.Scenario.Topography.Structure.Assembly (
   assembleStructure,
   assembleStructures,
-  mergeStructures',
 
   -- * Exposed for unit tests:
   foldLayer,
@@ -42,9 +41,8 @@ import Swarm.Language.Syntax.Direction (directionJsonModifier)
 import Swarm.Util (commaList, quote)
 import Swarm.Util.Graph (failOnCyclicGraph)
 
--- | Destructively overlays one direct child structure
--- upon the input structure.
--- However, the child structure is assembled recursively.
+-- | Destructively overlays one already-merged direct child structure
+-- upon the input merged structure.
 overlaySingleStructure ::
   MergedStructure (Maybe a) ->
   (MergedStructure (Maybe a), Pose) ->
@@ -109,7 +107,7 @@ mergeStructures' inheritedStrucDefs parentName baseStructure = do
     left (elaboratePlacement' parentName <>) $
       mapM (validatePlacement' structureMap) subPlacements
 
-  foldLayer structureMap origArea overlays originatedWaypoints
+  foldLayer' structureMap origArea overlays originatedWaypoints
  where
   Structure origArea subStructures subPlacements subWaypoints = baseStructure
 
@@ -121,13 +119,13 @@ mergeStructures' inheritedStrucDefs parentName baseStructure = do
 
 -- | NOTE: Each successive overlay may alter the coordinate origin.
 -- We make sure this new origin is propagated to subsequent sibling placements.
-foldLayer ::
+foldLayer' ::
   HM.HashMap StructureName (NamedStructure (Maybe a)) ->
   PositionedGrid (Maybe a) ->
   [Placed (Maybe a)] ->
   [Originated Waypoint] ->
   Either Text (MergedStructure (Maybe a))
-foldLayer structureMap origArea overlays originatedWaypoints =
+foldLayer' structureMap origArea overlays originatedWaypoints =
   foldlM
     (flip $ overlaySingleStructure' structureMap)
     (MergedStructure origArea wrappedOverlays originatedWaypoints)
@@ -143,6 +141,17 @@ foldLayer structureMap origArea overlays originatedWaypoints =
       (offset structPose)
    where
     structPose = structurePose z
+
+-- | For use in unit testing
+foldLayer ::
+  PositionedGrid (Maybe a) ->
+  [Placed (Maybe a)] ->
+  Either Text (MergedStructure (Maybe a))
+foldLayer origArea overlays = assembleStructure struct
+ where
+  struct = Structure origArea (map getNamedStruct overlays) (map getPlacement overlays) []
+  getNamedStruct (Placed _ ns) = ns
+  getPlacement (Placed p _) = p
 
 -- | /Uniquely/ identifies a structure in the graph
 type PathToRoot = [StructureName]
@@ -160,7 +169,8 @@ showPath :: PathToRoot -> Text
 showPath [] = "ROOT"
 showPath xs = T.intercalate "." . coerce . reverse $ xs
 
--- | Like placement, but instead of storing the name of the structure to place, stores the path of names from that structure up to the root.
+-- | Like placement, but instead of storing the name of the structure to place,
+--   stores the path of names from that structure up to the root.
 --   This allows us disambiguate different structures which share the same name.
 data PathPlacement = PathPlacement
   { pathToPlacement :: PathToRoot
@@ -168,15 +178,14 @@ data PathPlacement = PathPlacement
   }
 
 -- | This essentially augments a named structure with its list of edges (placements). PathPlacement is used to allow us to disambiguate
---   different structures which share the same name
+--   different structures which share the same name.
 data AnnotatedStructure a = AnnotatedStructure
   { pathPlacements :: [PathPlacement]
   , namedStructure :: NamedStructure a
   }
 
--- | This function constructs from the base structure and initial structure definitions a graph.
---   If the base structure is unnamed, the PathToRoot of the base structure will be the empty list.
---   Otherwise, the PathToRoot of the base structure is the singleton containing just the name of the base structure
+-- | This function constructs a graph from the base structure.
+--   The PathToRoot of the base structure is the empty list.
 --   The nodes in the graph are ''AnnotatedStructure'\'s. Each node is uniquely identified by the
 --   path of structure names from the structure it contains to the root. Each node contains its list of edges.
 mkGraph ::
@@ -228,7 +237,7 @@ basePathToRoot = []
 -- | Given a graph constructed via 'mkGraph', this function does a dfs on the graph to find
 --   any cycles in the graph that exist. If such a cycle exists, an appropriate error message is returned (in 'Left').
 --   If there are no cycles, what is instead returned is a topologically sorted list of all the identifiers in the graph (in 'Right').
---   The list is such that if structure A places structure B, the identifier for structure B precedes the identifier for structure A.
+--   The list is sorted such that if structure A places structure B, the identifier for structure B precedes the identifier for structure A.
 topSortGraph :: HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)) -> Either Text [PathToRoot]
 topSortGraph graph = fmap (reverse . getAcc) . foldlM (go emptyPath) acc0 $ HM.toList graph
  where

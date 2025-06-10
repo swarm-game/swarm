@@ -40,7 +40,7 @@ compareToReferenceImage ::
 compareToReferenceImage refreshReferenceImage fileStem = do
   dataDir <- getDataDir
   parentStruct <- parseStructures dataDir $ fileStem <.> "yaml"
-  let MergedStructure overlayArea _ _ = forceEither $ mergeStructures mempty Root parentStruct
+  let MergedStructure overlayArea _ _ = forceEither $ assembleStructure parentStruct
       encodedImgBytestring = encodePng $ makeImage $ gridContent overlayArea
       referenceFilepath = dataDir </> "test/standalone-topography" </> fileStem <.> "png"
   if refreshReferenceImage
