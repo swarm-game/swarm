@@ -46,9 +46,9 @@ import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Import (ImportLoc)
-import Swarm.Language.Syntax.Loc
 import Swarm.Language.TDVar
 import Swarm.Language.Types
+import Swarm.Util.SrcLoc
 
 -- | Syntax without type annotations.
 type Syntax = Syntax' ()

@@ -6,10 +6,9 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Types for working with locations of something in source code.
-module Swarm.Language.Syntax.Loc (
+module Swarm.Util.SrcLoc (
   SrcLoc (..),
   Located (..),
-  LocVar,
   srcLocStartsBefore,
   srcLocEndsBefore,
 ) where
@@ -18,7 +17,6 @@ import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Data (Data)
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
-import Swarm.Language.Var (Var)
 import Swarm.Util.JSON (optionsUntagged)
 
 ------------------------------------------------------------
@@ -68,8 +66,6 @@ srcLocEndsBefore _ _ = False
 
 -- | A variable with associated source location, used for variable
 --   binding sites. (Variable occurrences are a bare TVar which gets
---   wrapped in a Syntax node, so we don't need LocVar for those.)
+--   wrapped in a Syntax node, so we don't need Located for those.)
 data Located v = LV {lvSrcLoc :: SrcLoc, lvVar :: v}
   deriving (Eq, Ord, Functor, Show, Data, Generic, Hashable, FromJSON, ToJSON)
-
-type LocVar = Located Var

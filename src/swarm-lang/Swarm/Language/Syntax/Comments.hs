@@ -30,8 +30,8 @@ import Data.Sequence (Seq)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter (pretty)
-import Swarm.Language.Syntax.Loc
 import Swarm.Pretty (PrettyPrec (..))
+import Swarm.Util.SrcLoc
 
 -- | Line vs block comments.
 data CommentType = LineComment | BlockComment
