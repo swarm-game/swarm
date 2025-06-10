@@ -34,16 +34,16 @@ import Data.Set qualified as S
 import Data.Tree
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Constants
-import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern
-import Swarm.Language.Var (Var)
+import Swarm.Language.Var (LocVar, Var)
+import Swarm.Util.SrcLoc
 
 -- Setup for doctests
 
 -- $setup
 -- >>> import Control.Lens ((^.))
 -- >>> import Swarm.Language.Syntax.Constants
--- >>> import Swarm.Language.Syntax.Loc
+-- >>> import Swarm.Util.SrcLoc
 -- >>> import Swarm.Language.Syntax.Pattern
 -- >>> import Swarm.Language.Syntax.AST
 
