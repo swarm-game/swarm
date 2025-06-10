@@ -490,7 +490,6 @@ library swarm-lang
     Swarm.Language.Syntax.Comments
     Swarm.Language.Syntax.Constants
     Swarm.Language.Syntax.Import
-    Swarm.Language.Syntax.Loc
     Swarm.Language.Syntax.Pattern
     Swarm.Language.Syntax.Pretty
     Swarm.Language.Syntax.Util
@@ -960,6 +959,7 @@ library swarm-util
     Swarm.Util.InputSource
     Swarm.Util.JSON
     Swarm.Util.Lens
+    Swarm.Util.SrcLoc
     Swarm.Util.OccurrenceEncoder
     Swarm.Util.RingBuffer
     Swarm.Util.UnitInterval
