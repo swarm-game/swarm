@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -137,7 +138,7 @@ import Swarm.Game.Ingredients
 import Swarm.Game.Location
 import Swarm.Game.Terrain (TerrainType)
 import Swarm.Language.Capability
-import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Syntax (Phase (Raw), Syntax)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Language.Text.Markdown (Document, docToText)
 import Swarm.ResourceLoading (getDataFileNameSafe)
@@ -339,7 +340,7 @@ data Entity = Entity
   -- ^ The plural of the entity name, in case it is irregular.  If
   --   this field is @Nothing@, default pluralization heuristics
   --   will be used (see 'plural').
-  , _entityDescription :: Document Syntax
+  , _entityDescription :: Document (Syntax Raw)
   -- ^ A longer-form description. Each 'Text' value is one
   --   paragraph.
   , _entityTags :: Set Text
@@ -409,7 +410,7 @@ mkEntity ::
   -- | Entity name
   Text ->
   -- | Entity description
-  Document Syntax ->
+  Document (Syntax Raw) ->
   -- | Properties
   [EntityProperty] ->
   -- | Capabilities
@@ -673,7 +674,7 @@ entityNameFor _ = to $ \e ->
 
 -- | A longer, free-form description of the entity.  Each 'Text' value
 --   represents a paragraph.
-entityDescription :: Lens' Entity (Document Syntax)
+entityDescription :: Lens' Entity (Document (Syntax Raw))
 entityDescription = hashedLens _entityDescription (\e x -> e {_entityDescription = x})
 
 -- | A set of categories to which the entity belongs

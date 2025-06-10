@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -44,7 +46,7 @@ import Swarm.Language.Syntax
 
 -- | Re-insert parsed comments into an AST.  Prerequisite: the sequence of comments
 --   must be in order by 'SrcLoc'.
-populateComments :: Seq Comment -> Syntax -> Syntax
+populateComments :: Seq Comment -> Syntax Raw -> Syntax Raw
 populateComments cmts = populateStandaloneComments standalone . populateSuffixComments suffix
  where
   (standalone, suffix) = partition isStandalone (F.toList cmts)
@@ -56,8 +58,8 @@ populateComments cmts = populateStandaloneComments standalone . populateSuffixCo
 insertComments ::
   (SrcLoc -> SrcLoc -> Bool) ->
   (Comment -> Comments -> Comments) ->
-  Syntax ->
-  State [Comment] Syntax
+  Syntax Raw ->
+  State [Comment] (Syntax Raw)
 insertComments cmpLoc ins = go
  where
   go s@(CSyntax l t cs) = do
@@ -71,7 +73,7 @@ insertComments cmpLoc ins = go
 -- | Given a list of standalone comments sorted by 'SrcLoc', insert
 --   them into the given AST, attaching each comment to the earliest
 --   node in a preorder traversal which begins after it.
-populateStandaloneComments :: [Comment] -> Syntax -> Syntax
+populateStandaloneComments :: [Comment] -> Syntax Raw -> Syntax Raw
 populateStandaloneComments cmts =
   flip evalState cmts
     . preorder (insertComments srcLocStartsBefore (\c -> beforeComments %~ (|> c)))
@@ -79,7 +81,7 @@ populateStandaloneComments cmts =
 -- | Given a list of suffix comments sorted by 'SrcLoc', insert
 --   them into the given AST, attaching each comment to the latest
 --   node in a postorder traversal which ends before it.
-populateSuffixComments :: [Comment] -> Syntax -> Syntax
+populateSuffixComments :: [Comment] -> Syntax Raw -> Syntax Raw
 populateSuffixComments cmts =
   flip evalState (reverse cmts)
     . revpostorder (insertComments (flip srcLocEndsBefore) (\c -> afterComments %~ (c <|)))

@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -38,9 +39,9 @@ import Data.Tuple.Extra (both, swap)
 import Swarm.Game.Entity
 import Swarm.Game.Land
 import Swarm.Game.Location
-import Swarm.Game.Robot (TRobot, trobotLocation)
+import Swarm.Game.Robot (Robot, trobotLocation)
 import Swarm.Game.Scenario
-import Swarm.Game.Scenario.RobotLookup (IndexedTRobot)
+import Swarm.Game.Scenario.RobotLookup (IndexedRobot)
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Grid
@@ -55,16 +56,17 @@ import Swarm.Game.World
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Eval (runWorld)
 import Swarm.Game.World.Gen (Seed)
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.Util.Erasable
 import Swarm.Util.Lens (makeLensesNoSigs)
 
-type SubworldDescription = (SubworldName, ([IndexedTRobot], Seed -> WorldFun Int Entity))
+type SubworldDescription phase = (SubworldName, ([IndexedRobot phase], Seed -> WorldFun Int Entity))
 
-data Landscape = Landscape
+data Landscape phase = Landscape
   { _worldNavigation :: Navigation (M.Map SubworldName) Location
   , _multiWorld :: MultiWorld Int Entity
   , _terrainAndEntities :: TerrainEntityMaps
-  , _recognizerAutomatons :: RecognizerAutomatons RecognizableStructureContent Entity
+  , _recognizerAutomatons :: RecognizerAutomatons (RecognizableStructureContent phase) Entity
   , _worldScrollable :: Bool
   }
 
@@ -72,26 +74,25 @@ makeLensesNoSigs ''Landscape
 
 -- | Includes a 'Map' of named locations and an
 -- "edge list" (graph) that maps portal entrances to exits
-worldNavigation :: Lens' Landscape (Navigation (M.Map SubworldName) Location)
+worldNavigation :: Lens' (Landscape phase) (Navigation (M.Map SubworldName) Location)
 
 -- | The current state of the world (terrain and entities only; robots
 --   are stored in the 'robotMap').  'Int' is used instead of
 --   'TerrainType' because we need to be able to store terrain values in
 --   unboxed tile arrays.
-multiWorld :: Lens' Landscape (MultiWorld Int Entity)
+multiWorld :: Lens' (Landscape phase) (MultiWorld Int Entity)
 
 -- | The catalogs of all terrain and entities that the game knows about.
-terrainAndEntities :: Lens' Landscape TerrainEntityMaps
+terrainAndEntities :: Lens' (Landscape phase) TerrainEntityMaps
 
 -- | Recognition engine for predefined structures
-recognizerAutomatons :: Lens' Landscape (RecognizerAutomatons RecognizableStructureContent Entity)
+recognizerAutomatons :: Lens' (Landscape phase) (RecognizerAutomatons (RecognizableStructureContent phase) Entity)
 
 -- | Whether the world map is supposed to be scrollable or not.
-worldScrollable :: Lens' Landscape Bool
+worldScrollable :: Lens' (Landscape phase) Bool
 
--- | Create an record that is empty except for
--- system-provided entities.
-initLandscape :: GameStateConfig -> Landscape
+-- | Create an record that is empty except for system-provided entities.
+initLandscape :: GameStateConfig -> Landscape phase
 initLandscape gsc =
   Landscape
     { _worldNavigation = Navigation mempty mempty
@@ -101,7 +102,7 @@ initLandscape gsc =
     , _worldScrollable = True
     }
 
-mkLandscape :: ScenarioLandscape -> NonEmpty SubworldDescription -> Seed -> Landscape
+mkLandscape :: ScenarioLandscape phase -> NonEmpty (SubworldDescription phase) -> Seed -> Landscape phase
 mkLandscape sLandscape worldTuples theSeed =
   Landscape
     { _worldNavigation = sLandscape ^. scenarioNavigation
@@ -114,12 +115,12 @@ mkLandscape sLandscape worldTuples theSeed =
       _worldScrollable = NE.head (sLandscape ^. scenarioWorlds) ^. to scrollable
     }
 
-buildWorldTuples :: ScenarioLandscape -> NonEmpty SubworldDescription
+buildWorldTuples :: ScenarioLandscape Typed -> NonEmpty (SubworldDescription Typed)
 buildWorldTuples sLandscape =
   NE.map (worldName &&& buildWorld (sLandscape ^. scenarioTerrainAndEntities)) $
     sLandscape ^. scenarioWorlds
 
-genMultiWorld :: NonEmpty SubworldDescription -> Seed -> MultiWorld Int Entity
+genMultiWorld :: NonEmpty (SubworldDescription phase) -> Seed -> MultiWorld Int Entity
 genMultiWorld worldTuples s =
   M.map genWorld
     . M.fromList
@@ -132,8 +133,8 @@ genMultiWorld worldTuples s =
 --   it into a list of located robots and a world function.
 buildWorld ::
   TerrainEntityMaps ->
-  WorldDescription ->
-  ([IndexedTRobot], Seed -> WorldFun Int Entity)
+  WorldDescription Typed ->
+  ([IndexedRobot Typed], Seed -> WorldFun Int Entity)
 buildWorld tem WorldDescription {..} =
   (robots worldName, first getTerrainIndex . wf)
  where
@@ -171,10 +172,11 @@ buildWorld tem WorldDescription {..} =
   wf = dslWF <> arrayWF
 
   -- Get all the robots described in cells and set their locations appropriately
-  robots :: SubworldName -> [IndexedTRobot]
+  robots :: SubworldName -> [IndexedRobot Typed]
   robots swName =
     concat $ mapWithCoords extractRobots g
    where
+    extractRobots :: Coords -> Maybe (PCell Entity Typed) -> [IndexedRobot Typed]
     extractRobots (Coords coordsTuple) maybeCell =
       let robotWithLoc = trobotLocation ?~ Cosmic swName (coordsToLoc (coords `addTuple` coordsTuple))
        in map (fmap robotWithLoc) (maybe [] cellRobots maybeCell)
@@ -213,7 +215,7 @@ buildWorld tem WorldDescription {..} =
 --        same subworld, then
 --        prefer the one closest to the upper-left of the screen, with higher
 --        rows given precedence over columns (i.e. first in row-major order).
-genRobotTemplates :: ScenarioLandscape -> NonEmpty (a, ([(Int, TRobot)], b)) -> [TRobot]
+genRobotTemplates :: ScenarioLandscape Typed -> NonEmpty (a, ([(Int, Robot Typed)], b)) -> [Robot Typed]
 genRobotTemplates sLandscape worldTuples =
   locatedRobots ++ map snd (sortOn fst genRobots)
  where
@@ -225,5 +227,5 @@ genRobotTemplates sLandscape worldTuples =
   -- Subworld order as encountered in the scenario YAML file is preserved for
   -- the purpose of numbering robots, other than the "root" subworld
   -- guaranteed to be first.
-  genRobots :: [(Int, TRobot)]
+  genRobots :: [(Int, Robot Typed)]
   genRobots = concat $ NE.toList $ NE.map (fst . snd) worldTuples

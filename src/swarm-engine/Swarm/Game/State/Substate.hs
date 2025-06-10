@@ -112,7 +112,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (emptyFound
 import Swarm.Game.State.Config
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World.Gen (Seed)
-import Swarm.Language.Syntax (Const, Syntax)
+import Swarm.Language.Syntax (Const, Phase (..), Syntax)
 import Swarm.Language.Types (Polytype)
 import Swarm.Language.Value (Value)
 import Swarm.Log
@@ -149,17 +149,19 @@ data WinStatus
     Unwinnable Bool
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
-data WinCondition
+data WinCondition phase
   = -- | There is no winning condition.
     NoWinCondition
   | -- | NOTE: It is possible to continue to achieve "optional" objectives
     -- even after the game has been won (or deemed unwinnable).
-    WinConditions WinStatus ObjectiveCompletion
-  deriving (Show, Generic, FromJSON, ToJSON)
+    WinConditions WinStatus (ObjectiveCompletion phase)
+  deriving (Generic)
+
+deriving instance FromJSON (WinCondition Raw)
 
 makePrisms ''WinCondition
 
-instance ToSample WinCondition where
+instance ToSample (WinCondition phase) where
   toSamples _ =
     SD.samples
       [ NoWinCondition
@@ -313,7 +315,7 @@ data GameControls = GameControls
   , _replNextValueIndex :: Integer
   , _replListener :: Text -> IO ()
   , _inputHandler :: Maybe (Text, Value)
-  , _initiallyRunCode :: Maybe Syntax
+  , _initiallyRunCode :: Maybe (Syntax Typed)
   }
 
 makeLensesNoSigs ''GameControls
@@ -333,7 +335,7 @@ inputHandler :: Lens' GameControls (Maybe (Text, Value))
 
 -- | Code that is run upon scenario start, before any
 -- REPL interaction.
-initiallyRunCode :: Lens' GameControls (Maybe Syntax)
+initiallyRunCode :: Lens' GameControls (Maybe (Syntax Typed))
 
 data Discovery = Discovery
   { _allDiscoveredEntities :: Inventory
@@ -342,7 +344,7 @@ data Discovery = Discovery
   , _knownEntities :: S.Set EntityName
   , _craftableDevices :: S.Set EntityName
   , _gameAchievements :: Map GameplayAchievement Attainment
-  , _structureRecognition :: RecognitionState RecognizableStructureContent Entity
+  , _structureRecognition :: RecognitionState (RecognizableStructureContent Typed) Entity
   , _tagMembers :: Map Text (NonEmpty EntityName)
   }
 
@@ -369,7 +371,7 @@ craftableDevices :: Lens' Discovery (S.Set EntityName)
 gameAchievements :: Lens' Discovery (Map GameplayAchievement Attainment)
 
 -- | Recognizer for robot-constructed structures
-structureRecognition :: Lens' Discovery (RecognitionState RecognizableStructureContent Entity)
+structureRecognition :: Lens' Discovery (RecognitionState (RecognizableStructureContent Typed) Entity)
 
 -- | Map from tags to entities that possess that tag
 tagMembers :: Lens' Discovery (Map Text (NonEmpty EntityName))

@@ -48,7 +48,7 @@ import Swarm.Game.Universe (SubworldName (DefaultRootSubworld))
 import Swarm.Game.World.Parse ()
 import Swarm.Game.World.Syntax
 import Swarm.Game.World.Typecheck
-import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Syntax (Phase (Raw), Syntax)
 import Swarm.Language.Text.Markdown (Document, fromText)
 import Swarm.Pretty (prettyString)
 import Swarm.Util.Erasable (Erasable (..))
@@ -61,10 +61,10 @@ import Swarm.Util.Yaml
 -- | A description of a world parsed from a YAML file.
 -- This type is parameterized to accommodate Cells that
 -- utilize a less stateful Entity type.
-data PWorldDescription e = WorldDescription
+data PWorldDescription e phase = WorldDescription
   { scrollable :: Bool
-  , palette :: WorldPalette e
-  , area :: PositionedGrid (Maybe (PCell e))
+  , palette :: WorldPalette e phase
+  , area :: PositionedGrid (Maybe (PCell e phase))
   , navigation :: Navigation Identity WaypointName
   , placedStructures :: [LocatedStructure]
   -- ^ statically-placed structures to pre-populate
@@ -72,36 +72,35 @@ data PWorldDescription e = WorldDescription
   , worldName :: SubworldName
   , worldProg :: Maybe (TTerm '[] (World CellVal))
   }
-  deriving (Show)
 
 type WorldDescription = PWorldDescription Entity
 
-type InheritedStructureDefs = [NamedStructure (Maybe Cell)]
+type InheritedStructureDefs phase = [NamedStructure (Maybe (Cell phase))]
 
-data WorldParseDependencies
+data WorldParseDependencies phase
   = WorldParseDependencies
       WorldMap
-      InheritedStructureDefs
-      RobotMap
+      (InheritedStructureDefs phase)
+      (RobotMap phase)
       -- | last for the benefit of partial application
       TerrainEntityMaps
 
 -- | Generate default character entities for characters in 'paletteChars'.
-generateCharEntities :: WorldPalette Entity -> WorldPalette Entity
+generateCharEntities :: WorldPalette Entity phase -> WorldPalette Entity phase
 generateCharEntities (StructurePalette charSet explicit pal) = StructurePalette charSet explicit (pal <> charPal)
  where
   charPal = M.fromList . map (id &&& mkCharCell) . S.toList $ charSet
 
-  mkCharCell :: Char -> SignpostableCell (PCell Entity)
+  mkCharCell :: Char -> SignpostableCell (PCell Entity phase)
   mkCharCell c = SignpostableCell Nothing Nothing (Cell BlankT (EJust (mkCharEntity c)) [])
 
   mkCharEntity :: Char -> Entity
   mkCharEntity c = mkEntity (defaultEntityDisplay c) (T.pack [c]) (mkCharDesc c) [Known] mempty
 
-  mkCharDesc :: Char -> Document Syntax
+  mkCharDesc :: Char -> Document (Syntax Raw)
   mkCharDesc c = fromText $ "The letter " <> T.pack [c] <> "."
 
-instance FromJSONE WorldParseDependencies WorldDescription where
+instance FromJSONE (WorldParseDependencies Raw) (WorldDescription Raw) where
   parseJSONE = withObjectE "world description" $ \v -> do
     WorldParseDependencies worldMap scenarioLevelStructureDefs rm tem <- getE
 
@@ -159,7 +158,7 @@ instance FromJSONE WorldParseDependencies WorldDescription where
 -- the purpose of rendering a Scenario file
 type WorldDescriptionPaint = PWorldDescription EntityFacade
 
-instance ToJSON WorldDescriptionPaint where
+instance ToJSON (WorldDescriptionPaint phase) where
   toJSON w =
     object
       [ "palette" .= Y.toJSON paletteKeymap
