@@ -7,12 +7,12 @@ module Swarm.Game.Scenario.Scoring.CodeSize where
 
 import Control.Monad (guard)
 import Data.Aeson
-import Data.Data (Data)
+import Data.Data (Data, Typeable)
 import GHC.Generics (Generic)
 import Swarm.Language.Syntax
 
 data CodeSizeDeterminators = CodeSizeDeterminators
-  { initialCode :: Maybe Syntax
+  { initialCode :: Maybe (Syntax Raw)
   , hasUsedREPL :: Bool
   }
   deriving (Show)
@@ -24,10 +24,10 @@ data ScenarioCodeMetrics = ScenarioCodeMetrics
   deriving (Eq, Ord, Show, Read, Generic, ToJSON, FromJSON)
 
 codeMetricsFromSyntax ::
-  Data a =>
-  Syntax' a ->
+  (Data (SwarmType phase), Typeable phase) =>
+  Syntax phase ->
   ScenarioCodeMetrics
-codeMetricsFromSyntax s@(Syntax' srcLoc _ _ _) =
+codeMetricsFromSyntax s@(Syntax srcLoc _ _ _) =
   ScenarioCodeMetrics (charCount srcLoc) (measureAstSize s)
  where
   charCount :: SrcLoc -> Int

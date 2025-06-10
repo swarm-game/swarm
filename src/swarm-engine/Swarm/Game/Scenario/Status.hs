@@ -27,6 +27,7 @@ import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Tick (TickNumber)
 import Swarm.Game.World.Gen (Seed)
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.Util.Lens (makeLensesNoSigs)
 
 -- | These launch parameters are used in a number of ways:
@@ -86,7 +87,7 @@ instance IsString ScenarioPath where
   fromString = ScenarioPath
 
 data ScenarioWith a = ScenarioWith
-  { _getScenario :: Scenario
+  { _getScenario :: Scenario Typed
   , _getScenarioInfo :: a
   }
   deriving (Generic, Functor)

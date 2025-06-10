@@ -31,7 +31,7 @@ import Swarm.Game.Entity (EntityMap, devicesForCap, entityName)
 import Swarm.Language.Capability (Capability (CGod), capabilityName)
 import Swarm.Language.JSON ()
 import Swarm.Language.Requirements.Type (Requirements (..))
-import Swarm.Language.Syntax (Const, Term)
+import Swarm.Language.Syntax (Const, Term, Phase (..))
 import Swarm.Log (Severity (..))
 import Swarm.Pretty (prettyText)
 import Swarm.Util
@@ -82,7 +82,7 @@ data Exn
     --   @try@ block.  Also contains the missing requirements, the
     --   term that caused the problem, and a suggestion for how to fix
     --   things.
-    Incapable IncapableFix Requirements Term
+    Incapable IncapableFix Requirements (Term Raw)
   | -- | A command failed in some "normal" way (/e.g./ a 'Swarm.Language.Syntax.Move'
     --   command could not move, or a 'Swarm.Language.Syntax.Grab' command found nothing to
     --   grab, /etc./).  Can be caught by a @try@ block.
@@ -90,7 +90,7 @@ data Exn
   | -- | The user program explicitly called 'Swarm.Language.Syntax.Undefined' or 'Swarm.Language.Syntax.Fail'. Can
     --   be caught by a @try@ block.
     User Text
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic, ToJSON)
 
 -- | Pretty-print an exception for displaying to the player.
 formatExn :: EntityMap -> Exn -> Text
@@ -169,7 +169,7 @@ formatIncapableFix = \case
 --   'noop'
 --   Please obtain:
 --   - tree (3)
-formatIncapable :: EntityMap -> IncapableFix -> Requirements -> Term -> Text
+formatIncapable :: EntityMap -> IncapableFix -> Requirements -> Term phase -> Text
 formatIncapable em f (Requirements caps _ inv) tm
   | CGod `S.member` caps =
       unlinesExText $
