@@ -25,7 +25,7 @@ import Data.Either.Extra (maybeToEither)
 import Data.Foldable (foldlM, traverse_)
 import Data.HashMap.Strict qualified as HM
 import Data.HashSet qualified as HS
-import Data.List.NonEmpty qualified as NE
+import Data.List (singleton, uncons)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -149,7 +149,7 @@ foldLayer structureMap origArea overlays originatedWaypoints =
    where
     structPose = structurePose z
 
-type PathToRoot = NE.NonEmpty StructureName
+type PathToRoot = [StructureName]
 
 -- | Converts a path to the root into a fully qualified name
 -- >>> showPath (NE.singleton (StructureName ""))
@@ -157,8 +157,8 @@ type PathToRoot = NE.NonEmpty StructureName
 -- >>> showPath (NE.fromList [StructureName "AB", StructureName "A", StructureName ""])
 -- "A.AB"
 showPath :: PathToRoot -> Text
-showPath (_ NE.:| []) = ""
-showPath xs = T.tail . T.intercalate "." . reverse . coerce . NE.toList $ xs
+showPath [] = ""
+showPath xs = T.tail . T.intercalate "." . reverse . coerce $ xs
 
 -- | Like placement, but instead of storing the name of the structure to place, stores the path of names from that structure up to the root.
 --   This allows us disambiguate different structures which share the same name.
@@ -197,7 +197,7 @@ mkGraph initialStructDefs baseStructure = go initialKnowledge [] acc0 (NamedArea
         structName = name struct
         structPlacements = placements . structure $ struct
         structPath = structName : parentToRootPath
-        knowledgeOfChildren = HM.fromList $ map ((id &&& (NE.:| structPath)) . name) substructures
+        knowledgeOfChildren = HM.fromList $ map ((id &&& (: structPath)) . name) substructures
         knowledge = HM.union knowledgeOfChildren inheritedKnowledge
         f :: Placement -> Either Text PathPlacement
         f placement = case HM.lookup (src placement) knowledge of
@@ -208,14 +208,14 @@ mkGraph initialStructDefs baseStructure = go initialKnowledge [] acc0 (NamedArea
           Just path -> pure $ PathPlacement path (structurePose placement)
     structPathPlacements <- traverse f $ structPlacements
     let annotatedStruct = AnnotatedStructure structPathPlacements struct
-        !acc' = HM.insert (name struct NE.:| parentToRootPath) annotatedStruct acc -- TODO Could this possible make us become confused between an initial struct def with no name and the base structure?
+        !acc' = HM.insert structPath annotatedStruct acc
     foldlM (go knowledge structPath) acc' substructures
-  initialKnowledge = HM.fromList . HM.toList . fmap (NE.singleton . name) $ initialStructDefs
-  acc0 = HM.fromList . map (\(structName, namedStruct) -> (NE.singleton structName, AnnotatedStructure [] namedStruct)) . HM.toList $ initialStructDefs
+  initialKnowledge = HM.fromList . HM.toList . fmap (singleton . name) $ initialStructDefs
+  acc0 = HM.fromList . map (\(structName, namedStruct) -> (singleton structName, AnnotatedStructure [] namedStruct)) . HM.toList $ initialStructDefs
 
 -- | The unique identifier of the root (or base) structure in the graph
 rootPathToRoot :: PathToRoot
-rootPathToRoot = NE.singleton (StructureName "")
+rootPathToRoot = []
 
 data DFSPath = DFSPath (HS.HashSet PathToRoot) [PathToRoot]
 data DFSState = DFSState (HS.HashSet PathToRoot) [PathToRoot]
@@ -272,7 +272,7 @@ mergeStructures graph topSorted = foldlM go mempty topSorted
     toPlaceAnnotated <- validatePlacements path toPlace
     let f (PathPlacement pathForPlacement pose) = lookupHandling alreadyMerged pathForPlacement (,pose)
     mergedToPlace <- traverse f toPlace
-    let parentage = if NE.length path == 1 then Root else WithParent (NE.head path)
+    let parentage = maybe Root (WithParent . fst) (uncons path)
         struct = structure . namedStructure $ annotatedStruct
         origArea = area struct
         initialWaypoints = map (Originated parentage) . waypoints $ struct
