@@ -79,7 +79,7 @@ processTerm' ::
   Env -> Text -> m (Maybe TSyntax)
 processTerm' e txt = do
   mt <- withThrow CanNotParseMegaparsec . liftEither $ readTerm' defaultParserConfig txt
-  withError (DoesNotTypecheck . prettyTypeErrText txt) $ traverse (processParsedTerm' e . (txt,)) mt
+  withError (typeErrToSystemFailure txt) $ traverse (processParsedTerm' e . (txt,)) mt
 
 -- | Like 'processTerm'', but use a term that has already been parsed
 --   (along with the original unparsed concrete syntax, for use in
@@ -99,9 +99,12 @@ processParsedTermWithSrcMap ::
   (Has (Error SystemFailure) sig m) =>
   SourceMap -> Env -> (Text, Syntax) -> m TSyntax
 processParsedTermWithSrcMap srcMap e (s,t) = do
-  tt <- withError (DoesNotTypecheck . prettyTypeErrText s) $
+  tt <- withError (typeErrToSystemFailure s) $
     inferTop (e ^. envTypes) (e ^. envReqs) (e ^. envTydefs) srcMap t
   return $ elaborate tt
+
+typeErrToSystemFailure :: Text -> ContextualTypeErr -> SystemFailure
+typeErrToSystemFailure s cte@(CTE loc _ _) = DoesNotTypecheck loc (prettyTypeErrText s cte)
 
 ------------------------------------------------------------
 -- Some utility functions
