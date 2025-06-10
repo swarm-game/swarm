@@ -8,8 +8,8 @@
 -- Definitions of "structures" for use within a map
 -- as well as logic for combining them.
 module Swarm.Game.Scenario.Topography.Structure.Assembly (
-  makeStructureMap,
   assembleStructure,
+  assembleStructures,
   mergeStructures',
 
   -- * Exposed for unit tests:
@@ -19,6 +19,8 @@ where
 
 import Control.Arrow (first, left, (&&&))
 import Control.Monad (when)
+import Control.Monad.Except
+import Control.Monad.State.Strict
 import Data.Coerce
 import Data.Either.Extra (maybeToEither)
 import Data.Foldable (foldlM, traverse_)
@@ -181,10 +183,10 @@ mkGraph ::
 mkGraph initialStructDefs baseStructure = go initialKnowledge [] acc0 baseNamed
  where
   go ::
-    -- \| Knowledge inherited from parent, allows us to find the full path for a placement
+    -- Knowledge inherited from parent, allows us to find the full path for a placement
     HM.HashMap StructureName PathToRoot ->
-    -- \| Path from parent to root
-    [StructureName] ->
+    -- Path from parent to root
+    PathToRoot ->
     HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)) ->
     NamedStructure (Maybe a) ->
     Either Text (HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)))
@@ -274,14 +276,15 @@ mergeStructures graph topSorted = foldlM go mempty topSorted
         merged = foldl' overlaySingleStructure initialMerged mergedToPlace
     pure $ HM.insert path merged alreadyMerged
 
--- | Given a list of initial structure definitions and a base structure, this function returns the assembled structure (in 'Right').
+-- | Given a list of initial structure definitions and a base structure, this function returns the assembled structure (in 'Right')
+--   along with the a map of merged structures.
 --   If the input is invalid, this functions instead returns an appropriate error message (in 'Left').
-assembleStructure ::
+assembleStructure' ::
   HM.HashMap StructureName (NamedStructure (Maybe a)) ->
   HM.HashMap PathToRoot (MergedStructure (Maybe a)) ->
   Either (PStructure (Maybe a)) (NamedStructure (Maybe a)) ->
   Either Text ((MergedStructure (Maybe a)), HM.HashMap PathToRoot (MergedStructure (Maybe a)))
-assembleStructure initialStructDefs alreadyMerged baseStructure =
+assembleStructure' initialStructDefs alreadyMerged baseStructure =
   case baseStructure of
     Left _ -> assemble baseStructure
     Right ns ->
@@ -297,6 +300,25 @@ assembleStructure initialStructDefs alreadyMerged baseStructure =
     case HM.lookup pathToRoot mergedMap of
       Nothing -> Left $ "Unable to find root structure in graph"
       Just merged -> pure (merged, mergedMap)
+
+-- | Version of 'assembleStructure'' that discards the map of merged structures
+assembleStructure ::
+  PStructure (Maybe a) ->
+  Either Text (MergedStructure (Maybe a))
+assembleStructure baseStructure = fst <$> assembleStructure' mempty mempty (Left baseStructure)
+
+-- | Assembles the list of named structures
+assembleStructures ::
+  [NamedStructure (Maybe a)] ->
+  Either Text [(NamedStructure (Maybe a), MergedStructure (Maybe a))]
+assembleStructures namedStructs = flip evalStateT mempty (traverse f namedStructs)
+ where
+  structureMap = makeStructureMap namedStructs
+  f named = do
+    cached <- get
+    (result, cached') <- liftEither $ assembleStructure' structureMap cached (Right named)
+    put $! cached'
+    pure (named, result)
 
 -- * Grid manipulation
 
