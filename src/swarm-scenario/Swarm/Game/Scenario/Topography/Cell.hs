@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -27,6 +28,7 @@ import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.ProtoCell hiding (name)
 import Swarm.Game.Terrain
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.Util (quote, showT)
 import Swarm.Util.Erasable (Erasable (..), erasableToMaybe)
 import Swarm.Util.Yaml
@@ -36,25 +38,24 @@ import Swarm.Util.Yaml
 ------------------------------------------------------------
 
 -- | A single cell in a world map, which contains a terrain value,
---   and optionally an entity and robot.
+--   and optionally an entity and a list of robots.
 --   It is parameterized on the 'Entity' type to facilitate less
 --   stateful versions of the 'Entity' type in rendering scenario data.
-data PCell e = Cell
+data PCell e phase = Cell
   { cellTerrain :: TerrainType
   , cellEntity :: Erasable e
-  , cellRobots :: [IndexedTRobot]
+  , cellRobots :: [IndexedRobot phase]
   }
-  deriving (Eq, Show)
 
 -- | A single cell in a world map, which contains a terrain value,
 --   and optionally an entity and robot.
 type Cell = PCell Entity
 
 -- | Supplements a cell with waypoint information
-type AugmentedCell e = SignpostableCell (PCell e)
+type AugmentedCell e phase = SignpostableCell (PCell e phase)
 
 -- | Re-usable serialization for variants of 'PCell'
-mkPCellJson :: ToJSON b => (Erasable a -> Maybe b) -> PCell a -> Value
+mkPCellJson :: ToJSON b => (Erasable a -> Maybe b) -> PCell a phase -> Value
 mkPCellJson modifier x =
   toJSON $
     catMaybes
@@ -63,7 +64,7 @@ mkPCellJson modifier x =
       , listToMaybe []
       ]
 
-instance ToJSON Cell where
+instance ToJSON (Cell phase) where
   toJSON = mkPCellJson $ \case
     EErase -> Just "erase"
     ENothing -> Nothing
@@ -73,7 +74,7 @@ instance ToJSON Cell where
 --   entity and robot, if present, are immediately looked up and
 --   converted into 'Entity' and 'TRobot' values.  If they are not
 --   found, a parse error results.
-instance FromJSONE (TerrainEntityMaps, RobotMap) Cell where
+instance FromJSONE (TerrainEntityMaps, RobotMap Raw) (Cell Raw) where
   parseJSONE = withArrayE "tuple" $ \v -> do
     let tupRaw = V.toList v
     tup <- case NE.nonEmpty tupRaw of
@@ -109,7 +110,7 @@ instance FromJSONE (TerrainEntityMaps, RobotMap) Cell where
 
     return $ Cell terr ent robs
 
-cellToEntity :: Maybe Cell -> Maybe Entity
+cellToEntity :: Maybe (Cell phase) -> Maybe Entity
 cellToEntity = ((erasableToMaybe . cellEntity) =<<)
 
 ------------------------------------------------------------
@@ -122,7 +123,7 @@ cellToEntity = ((erasableToMaybe . cellEntity) =<<)
 type CellPaintDisplay = PCell EntityFacade
 
 -- Note: This instance is used only for the purpose of 'WorldPalette'
-instance ToJSON CellPaintDisplay where
+instance ToJSON (CellPaintDisplay phase) where
   toJSON = mkPCellJson $ \case
     ENothing -> Nothing
     EErase -> Just $ EntityFacade "erase" (defaultEntityDisplay ' ') Nothing

@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -7,7 +8,9 @@
 module Swarm.Language.Elaborate where
 
 import Control.Lens (transform, (^.))
+import Swarm.Language.Phase
 import Swarm.Language.Syntax
+import Unsafe.Coerce (unsafeCoerce)
 
 -- | Perform some elaboration / rewriting on a fully type-annotated
 --   term.  This currently performs such operations as rewriting @if@
@@ -19,13 +22,17 @@ import Swarm.Language.Syntax
 --   constants depending on the actual type they are used at, but
 --   currently that sort of thing tends to make type inference fall
 --   over.
-elaborate :: TSyntax -> TSyntax
+--
+--   XXX would be theoretically nicer to output Syntax Elaborated but
+--   it would be very annoying to have to change the type.
+--   `transform` would not work.
+elaborate :: Syntax Typed -> Syntax Typed
 elaborate = transform rewrite
  where
-  rewrite :: TSyntax -> TSyntax
-  rewrite (Syntax' l t cs ty) = Syntax' l (rewriteTerm t) cs ty
+  rewrite :: Syntax Typed -> Syntax Typed
+  rewrite (Syntax l t cs ty) = Syntax l (rewriteTerm t) cs ty
 
-  rewriteTerm :: TTerm -> TTerm
+  rewriteTerm :: Term Typed -> Term Typed
   rewriteTerm = \case
     -- Here we take inferred types for variables bound by def or
     -- bind (but NOT let) and stuff them into the term itself, so that
@@ -52,13 +59,13 @@ elaborate = transform rewrite
        in SLet ls r x mty mpty mreq t1 t2
     SBind x (Just ty) _ mreq c1 c2 -> SBind x Nothing (Just ty) mreq c1 c2
     -- Rewrite @f $ x@ to @f x@.
-    SApp (Syntax' _ (SApp (Syntax' _ (TConst AppF) _ _) l) _ _) r -> SApp l r
+    SApp (Syntax _ (SApp (Syntax _ (TConst AppF) _ _) l) _ _) r -> SApp l r
     -- Leave any other subterms alone.
-    t -> t
+    t -> unsafeCoerce t
 
 -- | Insert a special 'suspend' primitive at the very end of an erased
 --   term which must have a command type.
-insertSuspend :: Term -> Term
+insertSuspend :: Term Raw -> Term Raw
 insertSuspend t = case t of
   -- Primitive things which have type Cmd Unit: p => (p ; suspend ())
   TRequire {} -> thenSuspend
