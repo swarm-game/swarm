@@ -62,8 +62,6 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw
 import Control.Lens hiding (from, (.=), (<.>))
 import Control.Monad (filterM, forM_, unless, (<=<))
-import Control.Monad.Except qualified as MTL
-import Control.Monad.State.Strict
 import Data.Aeson
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
@@ -300,14 +298,7 @@ instance FromJSONE ScenarioInputs Scenario where
         localE (,rsMap) $
           v ..:? "structures" ..!= []
 
-      let structureMap = Assembly.makeStructureMap rootLevelSharedStructures
-          f named = do
-            cached <- get
-            (result, cached') <- MTL.liftEither $ Assembly.assembleStructure structureMap cached (Right named)
-            put $! cached'
-            pure (named, result)
-
-      mergedStructures <- either (fail . T.unpack) pure $ flip evalStateT mempty (traverse f rootLevelSharedStructures)
+      mergedStructures <- either (fail . T.unpack) pure $ Assembly.assembleStructures rootLevelSharedStructures
 
       allWorlds <- localE (WorldParseDependencies worldMap rootLevelSharedStructures rsMap) $ do
         rootWorld <- v ..: "world"
