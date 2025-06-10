@@ -63,13 +63,15 @@ processTerm :: Text -> IO (Either SystemFailure (Maybe TSyntax))
 processTerm = runError . processTerm' emptyEnv
 
 -- | Like 'processTerm', but use a term that has already been parsed.
+--   (along with the original unparsed concrete syntax, for use in
+--   generating error messages).
 processParsedTerm :: (Text, Syntax) -> IO (Either SystemFailure TSyntax)
 processParsedTerm = runError . processParsedTerm' emptyEnv
 
 -- | Like 'processParsedTerm', but don't allow any imports (and hence
 --   don't require IO).
 processParsedTermNoImports :: (Text, Syntax) -> Either SystemFailure TSyntax
-processParsedTermNoImports = run . runError . processParsedTermWithSrcMap mempty mempty
+processParsedTermNoImports = run . runError . processParsedTermWithSrcMap mempty emptyEnv
 
 -- | Like 'processTerm', but use explicit starting contexts.
 processTerm' ::

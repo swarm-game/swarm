@@ -46,6 +46,7 @@ import Swarm.Language.Syntax.AST (Syntax')
 import Swarm.Language.Syntax.Import (Anchor (..), ImportDir, ImportLoc (..), currentDir, importAnchor, withImportDir)
 import Swarm.Language.Syntax.Pattern (Syntax, sTerm, pattern TImportIn)
 import Swarm.Language.Types (Polytype, UType, Poly, ImplicitQuantification (Quantified))
+import Swarm.Language.Var (Var)
 import Swarm.Util (readFileMayT)
 import Swarm.Util.Graph (findCycle)
 import System.Directory (doesFileExist, getCurrentDirectory, getHomeDirectory)
@@ -120,7 +121,7 @@ resolveImportLoc parent (ImportLoc d f) = do
 --   canonicalized imports.
 data Module' ty = Module
   { moduleTerm :: Maybe (Syntax' ty)
-  , moduleCtx :: Ctx (Poly Quantified ty)
+  , moduleCtx :: Ctx Var (Poly Quantified ty)
   , moduleImports :: [ImportLoc]
   }
   deriving (Data, Generic)
