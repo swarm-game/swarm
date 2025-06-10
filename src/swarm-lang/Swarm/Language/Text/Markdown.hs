@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -54,7 +55,7 @@ import Data.Yaml
 import GHC.Exts qualified (IsList (..), IsString (..))
 import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Pipeline (processParsedTermNoImports)
-import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Syntax (Phase (Raw), Syntax)
 import Swarm.Pretty (PrettyPrec (..), prettyText, prettyTextLine)
 
 -- | The top-level markdown document.
@@ -129,10 +130,10 @@ instance GHC.Exts.IsList (Document a) where
   toList = paragraphs
   fromList = Document
 
-instance GHC.Exts.IsString (Document Syntax) where
+instance GHC.Exts.IsString (Document (Syntax Raw)) where
   fromString = fromText . T.pack
 
-instance GHC.Exts.IsString (Paragraph Syntax) where
+instance GHC.Exts.IsString (Paragraph (Syntax Raw)) where
   fromString s = case paragraphs $ GHC.Exts.fromString s of
     [] -> mempty
     (p : _) -> p
@@ -167,7 +168,7 @@ instance Mark.IsBlock (Paragraph Text) (Document Text) where
 
 -- | Parse some syntax and make sure it typechecks, but without
 --   resolving any imports.
-parseSyntax :: Text -> Either String Syntax
+parseSyntax :: Text -> Either String (Syntax Raw)
 parseSyntax s = case readTerm s of
   Left e -> Left (T.unpack e)
   Right Nothing -> Left "empty code"
@@ -178,7 +179,7 @@ parseSyntax s = case readTerm s of
     -- (*unelaborated*) AST.  See #1496.
     Right _ -> Right t
 
-findCode :: Document Syntax -> [Syntax]
+findCode :: Document (Syntax Raw) -> [(Syntax Raw)]
 findCode = concatMap (mapMaybe codeOnly . nodes) . paragraphs
  where
   codeOnly = \case
@@ -186,13 +187,13 @@ findCode = concatMap (mapMaybe codeOnly . nodes) . paragraphs
     LeafCodeBlock _i s -> Just s
     _l -> Nothing
 
-instance ToJSON (Paragraph Syntax) where
+instance ToJSON (Paragraph (Syntax phase)) where
   toJSON = String . toText
 
-instance ToJSON (Document Syntax) where
+instance ToJSON (Document (Syntax phase)) where
   toJSON = String . docToMark
 
-instance FromJSON (Document Syntax) where
+instance FromJSON (Document (Syntax Raw)) where
   parseJSON v = parseDoc v <|> parsePars v
    where
     parseDoc = withText "markdown" fromTextM
@@ -202,7 +203,7 @@ instance FromJSON (Document Syntax) where
 
 -- | Parse Markdown document, but re-inject a generated error into the
 --   document itself.
-fromText :: Text -> Document Syntax
+fromText :: Text -> Document (Syntax Raw)
 fromText = either injectErr id . fromTextE
  where
   injectErr err = Document [Paragraph [LeafRaw "" (T.pack err)]]
@@ -211,10 +212,10 @@ fromText = either injectErr id . fromTextE
 --
 -- If you want only the document with code as `Text`,
 -- use the 'fromTextPure' function.
-fromTextM :: MonadFail m => Text -> m (Document Syntax)
+fromTextM :: MonadFail m => Text -> m (Document (Syntax Raw))
 fromTextM = either fail pure . fromTextE
 
-fromTextE :: Text -> Either String (Document Syntax)
+fromTextE :: Text -> Either String (Document (Syntax Raw))
 fromTextE t = fromTextPure t >>= traverse parseSyntax
 
 -- | Read Markdown document without code validation.

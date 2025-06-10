@@ -20,17 +20,18 @@ import Servant.Docs qualified as SD
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph (getDistinctConstants)
 import Swarm.Game.Scenario.Objective.Logic as L
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.Util.Lens (concatFold)
 
 -- | We have "won" if all of the "unwinnable" or remaining "incomplete" objectives are "optional".
-didWin :: ObjectiveCompletion -> Bool
+didWin :: ObjectiveCompletion phase -> Bool
 didWin = andOf ((incompleteObjectives `concatFold` unwinnableObjectives) . objectiveOptional)
 
 -- | We have "lost" if any of the "unwinnable" objectives are not "optional".
-didLose :: ObjectiveCompletion -> Bool
+didLose :: ObjectiveCompletion phase -> Bool
 didLose = not . andOf (unwinnableObjectives . objectiveOptional)
 
-isPrereqsSatisfied :: ObjectiveCompletion -> Objective -> Bool
+isPrereqsSatisfied :: ObjectiveCompletion phase -> Objective phase -> Bool
 isPrereqsSatisfied completions =
   maybe True f . view objectivePrerequisite
  where
@@ -45,23 +46,23 @@ isUnwinnablePrereq completed =
  where
   boolMap = M.fromList . map (,True) . Set.toList $ completed
 
-isUnwinnable :: ObjectiveCompletion -> Objective -> Bool
+isUnwinnable :: ObjectiveCompletion phase -> Objective phase -> Bool
 isUnwinnable completions obj =
   maybe False (isUnwinnablePrereq (completions ^. completedIDs) . logic) $ obj ^. objectivePrerequisite
 
 -- | The first element of the returned tuple consists of "active" objectives,
 -- the second element "inactive".
-partitionActiveObjectives :: ObjectiveCompletion -> ([Objective], [Objective])
+partitionActiveObjectives :: ObjectiveCompletion phase -> ([Objective phase], [Objective phase])
 partitionActiveObjectives oc =
   partition (isPrereqsSatisfied oc) $ oc ^.. incompleteObjectives
 
-getActiveObjectives :: ObjectiveCompletion -> [Objective]
+getActiveObjectives :: ObjectiveCompletion phase -> [Objective phase]
 getActiveObjectives =
   fst . partitionActiveObjectives
 
 -- | For debugging only (via Web API)
 data PrereqSatisfaction = PrereqSatisfaction
-  { objective :: Objective
+  { objective :: Objective Typed
   , deps :: Set (BE.Signed ObjectiveLabel)
   , prereqsSatisfied :: Bool
   }
@@ -71,7 +72,7 @@ instance ToSample PrereqSatisfaction where
   toSamples _ = SD.noSamples
 
 -- | Used only by the web interface for debugging
-getSatisfaction :: ObjectiveCompletion -> [PrereqSatisfaction]
+getSatisfaction :: ObjectiveCompletion Typed -> [PrereqSatisfaction]
 getSatisfaction oc = map f $ oc ^.. allObjectives
  where
   f y =

@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
@@ -12,13 +13,8 @@ module Swarm.Language.Load (
   dirToFilePath,
   locToFilePath,
   resolveImportLoc,
-  Module' (..),
-  Module,
-  UModule,
-  TModule,
+  Module (..),
   SourceMap,
-  USourceMap,
-  TSourceMap,
   buildSourceMap,
   load,
   loadWith,
@@ -31,7 +27,7 @@ import Control.Effect.State (State, get, modify)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (universe, view)
 import Control.Monad (forM_)
-import Data.Data (Data)
+import Data.Data (Data, Typeable)
 import Data.Function ((&))
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -42,10 +38,11 @@ import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
-import Swarm.Language.Syntax.AST (Syntax')
+import Swarm.Language.Syntax (Phase (Raw))
+import Swarm.Language.Syntax.AST (Syntax, SwarmType)
 import Swarm.Language.Syntax.Import (Anchor (..), ImportDir, ImportLoc (..), currentDir, importAnchor, withImportDir)
-import Swarm.Language.Syntax.Pattern (Syntax, sTerm, pattern TImportIn)
-import Swarm.Language.Types (Polytype, UType, Poly, ImplicitQuantification (Quantified))
+import Swarm.Language.Syntax.Pattern (sTerm, pattern TImportIn)
+import Swarm.Language.Types (Poly, ImplicitQuantification (Quantified))
 import Swarm.Language.Var (Var)
 import Swarm.Util (readFileMayT)
 import Swarm.Util.Graph (findCycle)
@@ -119,28 +116,22 @@ resolveImportLoc parent (ImportLoc d f) = do
 -- | A 'Module' is a (possibly empty) AST, along with a context for
 --   any definitions contained in it, and a list of transitive,
 --   canonicalized imports.
-data Module' ty = Module
-  { moduleTerm :: Maybe (Syntax' ty)
-  , moduleCtx :: Ctx Var (Poly Quantified ty)
+data Module phase = Module
+  { moduleTerm :: Maybe (Syntax phase)
+  , moduleCtx :: Ctx Var (Poly Quantified (SwarmType phase))
   , moduleImports :: [ImportLoc]
   }
-  deriving (Data, Generic)
+  deriving (Generic)
 
-type Module = Module' ()
-type UModule = Module' UType
-type TModule = Module' Polytype
+deriving instance (Typeable phase, Data (SwarmType phase)) => Data (Module phase)
 
 -- | A SourceMap associates canonical 'ImportLocation's to modules.
-type SourceMap' ty = Map ImportLoc (Module' ty)
-
-type SourceMap = SourceMap' ()
-type USourceMap = SourceMap' UType
-type TSourceMap = SourceMap' Polytype
+type SourceMap phase = Map ImportLoc (Module phase)
 
 -- | XXX
 buildSourceMap ::
   (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) =>
-  Syntax -> m SourceMap
+  Syntax Raw -> m (SourceMap Raw)
 buildSourceMap = load . enumerateImports
 
 -- | Load and parse Swarm source code from a list of given import
@@ -149,7 +140,7 @@ buildSourceMap = load . enumerateImports
 load ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   [ImportLoc] ->
-  m SourceMap
+  m (SourceMap Raw)
 load = loadWith M.empty
 
 -- | Like 'load', but use an existing 'SourceMap' as a starting point.
@@ -164,16 +155,16 @@ load = loadWith M.empty
 --   'load' instead.
 loadWith ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  SourceMap ->
+  SourceMap Raw ->
   [ImportLoc] ->
-  m SourceMap
+  m (SourceMap Raw)
 loadWith srcMap locs = do
   resMap <- execState srcMap . mapM_ (loadRec currentDir) $ locs
   checkImportCycles resMap
   pure resMap
 
 -- | Convert a 'SourceMap' into a suitable form for 'findCycle'.
-toImportGraph :: SourceMap -> [(ImportLoc, ImportLoc, [ImportLoc])]
+toImportGraph :: SourceMap Raw -> [(ImportLoc, ImportLoc, [ImportLoc])]
 toImportGraph = map processNode . M.assocs
  where
   processNode (imp, Module _ _ imps) = (imp, imp, imps)
@@ -181,7 +172,7 @@ toImportGraph = map processNode . M.assocs
 -- | Check a 'SourceMap' to ensure that it contains no import cycles.
 checkImportCycles ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  SourceMap ->
+  SourceMap Raw ->
   m ()
 checkImportCycles srcMap = do
   forM_ (findCycle (toImportGraph srcMap)) $ \importCycle -> do
@@ -193,13 +184,13 @@ checkImportCycles srcMap = do
 --   transitively.  Also return a canonicalized version of the import
 --   location.
 loadRec ::
-  (Has (Throw SystemFailure) sig m, Has (State SourceMap) sig m, Has (Lift IO) sig m) =>
+  (Has (Throw SystemFailure) sig m, Has (State (SourceMap Raw)) sig m, Has (Lift IO) sig m) =>
   ImportDir ->
   ImportLoc ->
   m ImportLoc
 loadRec parent loc = do
   canonicalLoc <- resolveImportLoc parent loc
-  srcMap <- get @SourceMap
+  srcMap <- get @(SourceMap Raw)
   case M.lookup canonicalLoc srcMap of
     Just _ -> pure () -- Already loaded - do nothing
     Nothing -> do
@@ -208,12 +199,12 @@ loadRec parent loc = do
       let recImports = maybe [] enumerateImports mt
       canonicalImports <- mapM (loadRec (importDir canonicalLoc)) recImports
       -- Finally, record it in the SourceMap
-      modify @SourceMap (M.insert canonicalLoc $ Module mt Ctx.empty canonicalImports)
+      modify @(SourceMap Raw) (M.insert canonicalLoc $ Module mt Ctx.empty canonicalImports)
 
   pure canonicalLoc
 
 -- | Enumerate all the @import@ expressions in an AST.
-enumerateImports :: Syntax -> [ImportLoc]
+enumerateImports :: Syntax Raw -> [ImportLoc]
 enumerateImports = mapMaybe getImportLoc . universe . view sTerm
  where
   getImportLoc (TImportIn loc _) = Just loc
@@ -224,7 +215,7 @@ enumerateImports = mapMaybe getImportLoc . universe . view sTerm
 readLoc ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   ImportLoc ->
-  m (Maybe Syntax)
+  m (Maybe (Syntax Raw))
 readLoc loc = do
   path <- locToFilePath loc
   let badImport = throwError . AssetNotLoaded (Data Script) path

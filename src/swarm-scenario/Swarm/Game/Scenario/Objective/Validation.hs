@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -14,6 +15,7 @@ import Data.Set qualified as Set
 import Data.Text qualified as T
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
+import Swarm.Language.Phase (Phase (Raw))
 import Swarm.Util (failT, quote)
 import Swarm.Util.Graph
 
@@ -26,8 +28,8 @@ import Swarm.Util.Graph
 -- 2. Ensuring that the graph of dependencies is acyclic.
 validateObjectives ::
   MonadFail m =>
-  [Objective] ->
-  m [Objective]
+  [Objective Raw] ->
+  m [Objective Raw]
 validateObjectives objectives = do
   for_ objectives $ \x -> forM_ (x ^. objectivePrerequisite) $ \p ->
     let refs = Set.fromList $ toList $ logic p

@@ -479,6 +479,7 @@ library swarm-lang
     Swarm.Language.Parser.Type
     Swarm.Language.Parser.Util
     Swarm.Language.Parser.Value
+    Swarm.Language.Phase
     Swarm.Language.Pipeline
     Swarm.Language.Pipeline.QQ
     Swarm.Language.Requirements
@@ -496,10 +497,10 @@ library swarm-lang
     Swarm.Language.TDVar
     Swarm.Language.Text.Markdown
     Swarm.Language.Typecheck
-    Swarm.Language.Typed
     Swarm.Language.Types
     Swarm.Language.Value
     Swarm.Language.Var
+    Swarm.Language.WithType
 
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm

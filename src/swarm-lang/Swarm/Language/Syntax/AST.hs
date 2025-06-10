@@ -2,25 +2,30 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Types representing the surface syntax and terms for Swarm programming language.
 module Swarm.Language.Syntax.AST (
-  Syntax' (..),
+  SwarmType,
+  Syntax (..),
   LetSyntax (..),
-  Term' (..),
+  Term (..),
 ) where
 
 import Control.Lens (Plated (..))
 import Data.Aeson.Types hiding (Key)
-import Data.Data (Data)
+import Data.Data (Data, Typeable)
 import Data.Data.Lens (uniplate)
 import Data.Hashable (Hashable)
 import Data.Map.Strict (Map)
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Swarm.Language.Phase
 import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
@@ -35,18 +40,26 @@ import Swarm.Util.SrcLoc
 -- Syntax: annotation on top of Terms with SrcLoc, comments, + type
 ------------------------------------------------------------
 
--- XXX generalize ty annotation to phase?  Raw -> Imports loaded -> Typechecked -> Elaborated ?
+type family SwarmType (phase :: Phase) where
+  SwarmType Raw = ()
+  SwarmType Inferred = UType
+  SwarmType Typed = Polytype
+  SwarmType Instantiated = Polytype
 
 -- | The surface syntax for the language, with location and type annotations.
-data Syntax' ty = Syntax'
+data Syntax phase = Syntax
   { _sLoc :: SrcLoc
-  , _sTerm :: Term' ty
+  , _sTerm :: Term phase
   , _sComments :: Comments
-  , _sType :: ty
+  , _sType :: SwarmType phase
   }
-  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, Hashable)
+  deriving (Generic)
 
-instance Data ty => Plated (Syntax' ty) where
+deriving instance Eq (SwarmType phase) => Eq (Syntax phase)
+deriving instance Show (SwarmType phase) => Show (Syntax phase)
+deriving instance (Data (SwarmType phase), Typeable phase) => Data (Syntax phase)
+deriving instance Hashable (SwarmType phase) => Hashable (Syntax phase)
+instance (Data (SwarmType phase), Typeable phase) => Plated (Syntax phase) where
   plate = uniplate
 
 -- | A @let@ expression can be written either as @let x = e1 in e2@ or
@@ -60,7 +73,7 @@ data LetSyntax = LSLet | LSDef
 ------------------------------------------------------------
 
 -- | Terms of the Swarm language.
-data Term' ty
+data Term phase
   = -- | The unit value.
     TUnit
   | -- | A constant.
@@ -95,16 +108,16 @@ data Term' ty
     --   in displaying the log message (since once we get to execution time the
     --   original term may have been elaborated, e.g. `force` may have been added
     --   around some variables, etc.)
-    SRequirements Text (Syntax' ty)
+    SRequirements Text (Syntax phase)
   | -- | A variable.
     TVar Var
   | -- | A pair.
-    SPair (Syntax' ty) (Syntax' ty)
+    SPair (Syntax phase) (Syntax phase)
   | -- | A lambda expression, with or without a type annotation on the
     --   binder.
-    SLam LocVar (Maybe Type) (Syntax' ty)
+    SLam LocVar (Maybe Type) (Syntax phase)
   | -- | Function application.
-    SApp (Syntax' ty) (Syntax' ty)
+    SApp (Syntax phase) (Syntax phase)
   | -- | A (recursive) let/def expression, with or without a type
     --   annotation on the variable. The @Bool@ indicates whether
     --   it is known to be recursive.
@@ -113,11 +126,11 @@ data Term' ty
     --   for annotating the requirements of a definition after
     --   typechecking; there is no way to annotate requirements in the
     --   surface syntax.
-    SLet LetSyntax Bool LocVar (Maybe RawPolytype) (Maybe Polytype) (Maybe Requirements) (Syntax' ty) (Syntax' ty)
+    SLet LetSyntax Bool LocVar (Maybe RawPolytype) (Maybe Polytype) (Maybe Requirements) (Syntax phase) (Syntax phase)
   | -- | A type synonym definition.  Note that this acts like a @let@
-    --   (just like @def@), /i.e./ the @Syntax' ty@ field is the local
+    --   (just like @def@), /i.e./ the @Syntax phase@ field is the local
     --   context over which the type definition is in scope.
-    STydef (Located TDVar) Polytype (Maybe TydefInfo) (Syntax' ty)
+    STydef (Located TDVar) Polytype (Maybe TydefInfo) (Syntax phase)
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
     --
     --   The @Maybe ty@ field is a place to stash the inferred type of
@@ -130,7 +143,7 @@ data Term' ty
     --   for annotating the type of a bind after typechecking; there
     --   is no surface syntax that allows directly annotating a bind
     --   with either one.
-    SBind (Maybe LocVar) (Maybe ty) (Maybe Polytype) (Maybe Requirements) (Syntax' ty) (Syntax' ty)
+    SBind (Maybe LocVar) (Maybe (SwarmType phase)) (Maybe Polytype) (Maybe Requirements) (Syntax phase) (Syntax phase)
   | -- | Delay evaluation of a term, written @{...}@.  Swarm is an
     --   eager language, but in some cases (e.g. for @if@ statements
     --   and recursive bindings) we need to delay evaluation.  The
@@ -138,46 +151,46 @@ data Term' ty
     --   Note that 'Force' is just a constant, whereas 'SDelay' has to
     --   be a special syntactic form so its argument can get special
     --   treatment during evaluation.
-    SDelay (Syntax' ty)
+    SDelay (Syntax phase)
   | -- | Record literals @[x1 = e1, x2 = e2, x3, ...]@ Names @x@
     --   without an accompanying definition are sugar for writing
     --   @x=x@.
-    SRcd (Map Var (Maybe (Syntax' ty)))
+    SRcd (Map Var (Maybe (Syntax phase)))
   | -- | Record projection @e.x@
-    SProj (Syntax' ty) Var
+    SProj (Syntax phase) Var
   | -- | Annotate a term with a type
-    SAnnotate (Syntax' ty) RawPolytype
+    SAnnotate (Syntax phase) RawPolytype
   | -- | Run the given command, then suspend and wait for a new REPL
     --   input.
-    SSuspend (Syntax' ty)
+    SSuspend (Syntax phase)
   | -- | An explicit representation of parentheses in the input.  We
     --   need this to be able to print formatted code with parentheses
     --   and comments preserved, but we get rid of them during
     --   elaboration.
-    SParens (Syntax' ty)
+    SParens (Syntax phase)
   | -- | A type literal.
     TType Type
   | -- | Import a term containing definitions, which will be in scope
     --   in the following term.
-    SImportIn ImportLoc (Syntax' ty)
-  deriving
-    ( Eq
-    , Show
-    , Functor
-    , Foldable
-    , Data
-    , Generic
-    , Hashable
-    , -- | The Traversable instance for Term (and for Syntax') is used during
-      -- typechecking: during intermediate type inference, many of the type
-      -- annotations placed on AST nodes will have unification variables in
-      -- them. Once we have finished solving everything we need to do a
-      -- final traversal over all the types in the AST to substitute away
-      -- all the unification variables (and generalize, i.e. stick 'forall'
-      -- on, as appropriate).  See the call to 'mapM' in
-      -- Swarm.Language.Typecheck.runInfer.
-      Traversable
-    )
+    SImportIn ImportLoc (Syntax phase)
+  deriving ( Generic )
 
-instance Data ty => Plated (Term' ty) where
+deriving instance Eq (SwarmType phase) => Eq (Term phase)
+deriving instance Show (SwarmType phase) => Show (Term phase)
+deriving instance (Data (SwarmType phase), Typeable phase) => Data (Term phase)
+deriving instance Hashable (SwarmType phase) => Hashable (Term phase)
+
+    -- XXX
+    -- , -- | The Traversable instance for Term (and for Syntax) is used during
+    --   -- typechecking: during intermediate type inference, many of the type
+    --   -- annotations placed on AST nodes will have unification variables in
+    --   -- them. Once we have finished solving everything we need to do a
+    --   -- final traversal over all the types in the AST to substitute away
+    --   -- all the unification variables (and generalize, i.e. stick 'forall'
+    --   -- on, as appropriate).  See the call to 'mapM' in
+    --   -- Swarm.Language.Typecheck.runInfer.
+    --   Traversable
+
+
+instance (Data (SwarmType phase), Typeable phase) => Plated (Term phase) where
   plate = uniplate
