@@ -26,7 +26,7 @@ import Data.Text qualified as T
 import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Game.Location
-import Swarm.Game.Scenario.Topography.Placement
+import Swarm.Game.Scenario.Topography.Structure.Named
 
 -- | This type is isomorphic to 'Maybe'.
 data Parentage a
@@ -37,7 +37,7 @@ data Parentage a
 -- | Indicates which structure something came from
 -- for debugging purposes.
 data Originated a = Originated
-  { parent :: Parentage Placement
+  { parent :: Parentage StructureName
   , value :: a
   }
   deriving (Show, Eq, Functor)

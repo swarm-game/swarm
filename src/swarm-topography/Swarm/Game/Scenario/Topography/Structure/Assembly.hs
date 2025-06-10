@@ -38,7 +38,7 @@ import Swarm.Game.Scenario.Topography.Structure.Named
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Language.Syntax.Direction (directionJsonModifier)
-import Swarm.Util (commaList, quote, showT)
+import Swarm.Util (commaList, quote)
 import Swarm.Util.Graph (failOnCyclicGraph)
 
 -- | Destructively overlays one direct child structure
@@ -71,7 +71,7 @@ overlaySingleStructure'
   (Placed p@(Placement _sName pose@(Pose loc orientation)) ns)
   (MergedStructure inputArea inputPlacements inputWaypoints) = do
     MergedStructure overlayArea overlayPlacements overlayWaypoints <-
-      mergeStructures' inheritedStrucDefs (WithParent p) $ structure ns
+      mergeStructures' inheritedStrucDefs (WithParent (src p)) $ structure ns
 
     let mergedWaypoints = inputWaypoints <> map (fmap $ placeOnArea overlayArea) overlayWaypoints
         mergedPlacements = inputPlacements <> map (placeOnArea overlayArea) overlayPlacements
@@ -99,21 +99,21 @@ makeGraphEdges =
 -- in the YAML file supersede the earlier ones (dictated by using 'foldl' instead of 'foldr').
 mergeStructures' ::
   HM.HashMap StructureName (NamedStructure (Maybe a)) ->
-  Parentage Placement ->
+  Parentage StructureName ->
   PStructure (Maybe a) ->
   Either Text (MergedStructure (Maybe a))
-mergeStructures' inheritedStrucDefs parentPlacement baseStructure = do
+mergeStructures' inheritedStrucDefs parentName baseStructure = do
   failOnCyclicGraph "Structure" (getStructureName . name) gEdges
 
   overlays <-
-    left (elaboratePlacement' parentPlacement <>) $
+    left (elaboratePlacement' parentName <>) $
       mapM (validatePlacement' structureMap) subPlacements
 
   foldLayer structureMap origArea overlays originatedWaypoints
  where
   Structure origArea subStructures subPlacements subWaypoints = baseStructure
 
-  originatedWaypoints = map (Originated parentPlacement) subWaypoints
+  originatedWaypoints = map (Originated parentName) subWaypoints
 
   -- deeper definitions override the outer (toplevel) ones
   structureMap = HM.union (makeStructureMap subStructures) inheritedStrucDefs
@@ -250,6 +250,8 @@ mergeStructure graph topSorted = foldlM go mempty topSorted
     result <- traverse (\(PathPlacement p pose) -> lookupHandling graph p (,pose)) $ toPlace
     let result' = map (first namedStructure) result
     left (elaboratePlacement path <>) $ traverse_ (uncurry validatePlacement) result'
+  placementToLocated :: Placement -> LocatedStructure
+  placementToLocated (Placement sn pose) = LocatedStructure (OrientedStructure sn (up $ orient pose)) (offset pose)
   go :: HM.HashMap PathToRoot (MergedStructure (Maybe a)) -> PathToRoot -> Either Text (HM.HashMap PathToRoot (MergedStructure (Maybe a)))
   go alreadyMerged path = do
     annotatedStruct <- lookupHandling graph path id
@@ -257,11 +259,12 @@ mergeStructure graph topSorted = foldlM go mempty topSorted
     validatePlacements path toPlace
     let f (PathPlacement pathForPlacement pose) = lookupHandling alreadyMerged pathForPlacement (,pose)
     mergedToPlace <- traverse f toPlace
-    let structName = name . namedStructure $ annotatedStruct
-    let origArea = area . structure . namedStructure $ annotatedStruct
-        initialWaypoints :: [Originated Waypoint] = undefined -- TODO need to change Originated Placement for substructures
-        initialOverlays :: [LocatedStructure] = undefined
-        initialMerged = MergedStructure origArea initialOverlays initialWaypoints -- TODO add overlays here?. Add it to overlaySingleStructure
+    let parentage = if NE.length path == 1 then Root else WithParent (NE.head path)
+        struct = structure . namedStructure $ annotatedStruct
+        origArea = area struct
+        initialWaypoints = map (Originated parentage) . waypoints $ struct -- TODO need to change Originated Placement for substructures
+        initialOverlays = map placementToLocated . placements $ struct
+        initialMerged = MergedStructure origArea initialOverlays initialWaypoints
         merged = foldl' overlaySingleStructure initialMerged mergedToPlace
     pure $ (HM.insert path merged alreadyMerged)
 
@@ -301,12 +304,12 @@ overlayGridExpanded
 elaboratePlacement :: PathToRoot -> Text
 elaboratePlacement p =
   T.unwords
-    [ "Within"
+    [ "Within placement of"
     , showPath p <> ":"
     , ""
     ]
 
-elaboratePlacement' :: Parentage Placement -> Text
+elaboratePlacement' :: Parentage StructureName -> Text
 elaboratePlacement' p =
   T.unwords
     [ "Within"
@@ -316,12 +319,10 @@ elaboratePlacement' p =
  where
   pTxt = case p of
     Root -> "root placement"
-    WithParent (Placement (StructureName sn) (Pose loc _)) ->
+    WithParent (StructureName sn) ->
       T.unwords
         [ "placement of"
         , quote sn
-        , "at"
-        , showT loc
         ]
 
 validatePlacement ::
