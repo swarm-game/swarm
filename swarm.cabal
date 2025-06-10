@@ -519,7 +519,6 @@ library swarm-topography
     hashable,
     lens,
     linear,
-    mtl,
     nonempty-containers,
     servant-docs,
     split,
