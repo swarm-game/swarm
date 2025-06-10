@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -88,13 +89,13 @@ formatSwarm (FormatConfig _ _ mWidth ver) content = case readTerm' cfg content o
 -- | Version 0.6 of Swarm had keywords 'fst' and 'snd'; version 0.7
 --   has 'match' instead.  Add definitions of 'fst' and 'snd' if the AST
 --   contains free variables with those names.
-addProjections_v7 :: Syntax -> Syntax
+addProjections_v7 :: Syntax Raw -> Syntax Raw
 addProjections_v7 ast = foldl' addDefn ast (reverse $ S.toList freeProjs)
  where
   -- Any free occurrences of 'fst' or 'snd'?
   freeProjs = setOf freeVarsV ast `S.intersection` S.fromList ["fst", "snd"]
 
-  addDefn :: Syntax -> Var -> Syntax
+  addDefn :: Syntax Raw -> Var -> Syntax Raw
   addDefn rest = \case
     "fst" -> [astQ| def fst = \p. match p (\a. \_. a) end; $syn:rest |]
     "snd" -> [astQ| def snd = \p. match p (\_. \b. b) end; $syn:rest |]

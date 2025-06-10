@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
@@ -60,6 +61,6 @@ quoteASTExp s = do
   parsed <- runParserTH loc (fully sc parseTerm) (into @Text s)
   dataToExpQ ((fmap liftText . cast) `extQ` antiASTExp) parsed
 
-antiASTExp :: Syntax -> Maybe TH.ExpQ
-antiASTExp (STerm (TAntiSyn v)) = Just $ TH.varE (TH.mkName (from v))
+antiASTExp :: Syntax Raw -> Maybe TH.ExpQ
+antiASTExp (RTerm (TAntiSyn v)) = Just $ TH.varE (TH.mkName (from v))
 antiASTExp _ = Nothing

@@ -1,4 +1,6 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -8,32 +10,21 @@
 -- to put them all here to avoid circular module dependencies.
 module Swarm.Language.JSON where
 
-import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON, withText)
-import Data.Aeson qualified as Ae
-import Swarm.Language.Pipeline (processTermEither)
-import Swarm.Language.Syntax (Term)
-import Swarm.Language.Syntax.Pattern (Syntax, TSyntax)
+import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
+import Swarm.Language.Syntax (SwarmType, Syntax, Term, Phase (Raw))
 import Swarm.Language.Value (Env, Value (..))
-import Swarm.Pretty (prettyText)
 import Swarm.Util.JSON (optionsMinimize)
-import Witch (into)
 
-instance FromJSON TSyntax where
-  parseJSON = withText "Term" $ either (fail . into @String) return . processTermEither
-
-instance ToJSON TSyntax where
-  toJSON = Ae.String . prettyText
-
-instance FromJSON Term where
+instance FromJSON (Term Raw) where
   parseJSON = genericParseJSON optionsMinimize
 
-instance FromJSON Syntax where
+instance FromJSON (Syntax Raw) where
   parseJSON = genericParseJSON optionsMinimize
 
-instance ToJSON Term where
+instance ToJSON (SwarmType phase) => ToJSON (Term phase) where
   toJSON = genericToJSON optionsMinimize
 
-instance ToJSON Syntax where
+instance ToJSON (SwarmType phase) => ToJSON (Syntax phase) where
   toJSON = genericToJSON optionsMinimize
 
 instance ToJSON Value where
