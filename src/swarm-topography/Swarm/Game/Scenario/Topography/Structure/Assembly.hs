@@ -1,4 +1,3 @@
-{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
@@ -63,7 +62,7 @@ data PathPlacement = PathPlacement
   , placementPose :: Pose
   }
 
--- | This essentially augments a named structure with its list of edges (placements). PathPlacement is used to allow us to disambiguate
+-- | This augments a named structure with its list of edges (placements). PathPlacement is used to allow us to disambiguate
 --   different structures which share the same name.
 data AnnotatedStructure a = AnnotatedStructure
   { pathPlacements :: [PathPlacement]
