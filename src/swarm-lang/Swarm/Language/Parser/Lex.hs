@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -83,8 +84,8 @@ parseLocG pa = do
   pure (SrcLoc start end, a)
 
 -- | Add 'SrcLoc' to a 'Term' parser
-parseLoc :: Parser Term -> Parser Syntax
-parseLoc pterm = uncurry Syntax <$> parseLocG pterm
+parseLoc :: Parser (Term Raw) -> Parser (Syntax Raw)
+parseLoc pterm = uncurry RSyntax <$> parseLocG pterm
 
 ------------------------------------------------------------
 -- Whitespace

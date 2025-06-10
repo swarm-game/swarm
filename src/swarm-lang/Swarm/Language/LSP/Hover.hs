@@ -18,7 +18,7 @@ module Swarm.Language.LSP.Hover (
 
 import Control.Applicative ((<|>))
 import Control.Lens ((^.))
-import Control.Monad (guard, void)
+import Control.Monad (guard)
 import Data.Foldable (asum)
 import Data.Graph
 import Data.List.NonEmpty (NonEmpty (..))
@@ -89,31 +89,31 @@ posToRange myRope foundSloc = do
       (ropeToLspPosition $ R.charLengthAsPosition endRope)
 
 descend ::
-  ExplainableType ty =>
+  ExplainableType (SwarmType phase) =>
   -- | position
   Int ->
   -- | next element to inspect
-  Syntax' ty ->
-  Maybe (Syntax' ty)
-descend pos s1@(Syntax' l1 _ _ _) = do
+  Syntax phase ->
+  Maybe (Syntax phase)
+descend pos s1@(Syntax l1 _ _ _) = do
   guard $ withinBound pos l1
   return $ narrowToPosition s1 pos
 
 -- | Find the most specific term for a given
 -- position within the code.
 narrowToPosition ::
-  ExplainableType ty =>
+  ExplainableType (SwarmType phase) =>
   -- | parent term
-  Syntax' ty ->
+  Syntax phase ->
   -- | absolute offset within the file
   Int ->
-  Syntax' ty
-narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
-  SLam lv _ s -> d (locVarToSyntax' lv $ getInnerType ty) <|> d s
+  Syntax phase
+narrowToPosition s0@(Syntax _ t _ ty) pos = fromMaybe s0 $ case t of
+  SLam lv _ s -> d (locVarToSyntax lv $ getInnerType ty) <|> d s
   SApp s1 s2 -> d s1 <|> d s2
-  SLet _ _ lv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
-  SBind mlv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
-  STydef typ typBody _ti s1 -> d s1 <|> Just (locVarToSyntax' (tdVarName <$> typ) $ fromPoly typBody)
+  SLet _ _ lv _ _ _ s1@(Syntax _ _ _ lty) s2 -> d (locVarToSyntax lv lty) <|> d s1 <|> d s2
+  SBind mlv _ _ _ s1@(Syntax _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax (getInnerType lty)) <|> d s1 <|> d s2
+  STydef typ typBody _ti s1 -> d s1 <|> Just (locVarToSyntax (tdVarName <$> typ) $ fromPoly typBody)
   SPair s1 s2 -> d s1 <|> d s2
   SDelay s -> d s
   SRcd m -> asum . map d . catMaybes . M.elems $ m
@@ -195,7 +195,7 @@ instance ExplainableType RawPolytype where
     t -> t
   eq r t = r == forgetQ t
 
-explain :: ExplainableType ty => Syntax' ty -> Tree Text
+explain :: ExplainableType (SwarmType phase) => Syntax phase -> Tree Text
 explain trm = case trm ^. sTerm of
   TUnit -> literal "The unit value."
   TConst c -> literal . constGenSig c $ briefDoc (constDoc $ constInfo c)
@@ -255,7 +255,7 @@ explain trm = case trm ^. sTerm of
   SSuspend {} -> internal "A suspension."
  where
   ty = trm ^. sType
-  literal = pure . typeSignature (prettyText . void $ trm ^. sTerm) ty
+  literal = pure . typeSignature (prettyText $ trm ^. sTerm) ty
   internal description = literal $ description <> "\n**These should never show up in surface syntax.**"
   constGenSig c =
     let ity = inferConst c
@@ -265,11 +265,11 @@ explain trm = case trm ^. sTerm of
 --
 -- Note that 'Force' is often inserted internally, so
 -- if it shows up here we drop it.
-explainFunction :: ExplainableType ty => Syntax' ty -> Tree Text
+explainFunction :: ExplainableType (SwarmType phase) => Syntax phase -> Tree Text
 explainFunction s =
   case unfoldApps s of
-    (Syntax' _ (TConst Force) _ _ :| [innerT]) -> explain innerT
-    (Syntax' _ (TConst Force) _ _ :| f : params) -> explainF f params
+    (Syntax _ (TConst Force) _ _ :| [innerT]) -> explain innerT
+    (Syntax _ (TConst Force) _ _ :| f : params) -> explainF f params
     (f :| params) -> explainF f params
  where
   explainF f params =

@@ -44,23 +44,24 @@ module Swarm.Language.Syntax (
   beforeComments,
   afterComments,
 
+  -- * Phase
+  Phase (..),
+  SwarmType,
+
   -- * Syntax
   ImportDir,
   ImportLoc (..),
-  Syntax' (..),
+  Syntax (..),
   sLoc,
   sTerm,
   sType,
   sComments,
-  Syntax,
-  TSyntax,
-  USyntax,
-  pattern Syntax,
+  pattern RSyntax,
   pattern CSyntax,
   Located (..),
   LocVar,
   LetSyntax (..),
-  pattern STerm,
+  pattern RTerm,
   pattern TRequirements,
   pattern TPair,
   pattern TLam,
@@ -79,10 +80,7 @@ module Swarm.Language.Syntax (
 
   -- * Terms
   Var,
-  Term' (..),
-  Term,
-  TTerm,
-  UTerm,
+  Term (..),
   mkOp,
   mkOp',
   unfoldApps,
@@ -98,11 +96,12 @@ module Swarm.Language.Syntax (
   freeVarsT,
   freeVarsV,
   mapFreeS,
-  locVarToSyntax',
+  locVarToSyntax,
   asTree,
   measureAstSize,
 ) where
 
+import Swarm.Language.Phase
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants

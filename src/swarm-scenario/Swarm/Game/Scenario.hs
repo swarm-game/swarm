@@ -1,9 +1,12 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -14,7 +17,9 @@
 -- tutorials and for standalone puzzles and scenarios.
 module Swarm.Game.Scenario (
   -- * Scenario
-  Scenario (..),
+  Scenario' (..),
+  Scenario,
+  TScenario,
   ScenarioLandscape (..),
   ScenarioMetadata (ScenarioMetadata),
   RecognizableStructureContent,
@@ -81,7 +86,7 @@ import Swarm.Game.Entity
 import Swarm.Game.Land
 import Swarm.Game.Location (Location)
 import Swarm.Game.Recipe
-import Swarm.Game.Robot (TRobot, trobotLocation, trobotName)
+import Swarm.Game.Robot (Robot, robotLocation, robotName)
 import Swarm.Game.Scenario.Objective (Objective)
 import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup
@@ -103,8 +108,9 @@ import Swarm.Game.Universe
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (WorldMap)
-import Swarm.Language.Syntax (Syntax, TSyntax)
+import Swarm.Language.Syntax (Phase (..), SwarmType, Syntax)
 import Swarm.Language.Text.Markdown (Document)
+import Swarm.Language.Types (Polytype)
 import Swarm.Pretty (prettyText)
 import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util (binTuples, commaList, failT, quote)
@@ -148,41 +154,42 @@ scenarioAuthor :: Lens' ScenarioMetadata (Maybe Text)
 
 -- | Non-structural gameplay content of the scenario;
 -- how it is to be played.
-data ScenarioOperation = ScenarioOperation
+data ScenarioOperation (phase :: Phase) = ScenarioOperation
   { _scenarioCreative :: Bool
-  , _scenarioDescription :: Document Syntax
+  , _scenarioDescription :: Document (Syntax Typed)
   -- ^ Note: the description is in this record instead of
   -- 'ScenarioMetadata' because it relates to the goals.
-  , _scenarioObjectives :: [Objective]
-  , _scenarioSolution :: Maybe TSyntax
+  , _scenarioObjectives :: [Objective phase]
+  , _scenarioSolution :: Maybe (Syntax phase)
   , _scenarioRecipes :: [Recipe Entity]
   , _scenarioStepsPerTick :: Maybe Int
   }
-  deriving (Show)
+
+deriving instance Show (SwarmType phase) => Show (ScenarioOperation phase)
 
 makeLensesNoSigs ''ScenarioOperation
 
 -- | A high-level description of the scenario, shown /e.g./ in the
 --   menu.
-scenarioDescription :: Lens' ScenarioOperation (Document Syntax)
+scenarioDescription :: Lens' (ScenarioOperation phase) (Document (Syntax Typed))
 
 -- | Whether the scenario should start in creative mode.
-scenarioCreative :: Lens' ScenarioOperation Bool
+scenarioCreative :: Lens' (ScenarioOperation phase) Bool
 
 -- | Any custom recipes used in this scenario.
-scenarioRecipes :: Lens' ScenarioOperation [Recipe Entity]
+scenarioRecipes :: Lens' (ScenarioOperation phase) [Recipe Entity]
 
 -- | A sequence of objectives for the scenario (if any).
-scenarioObjectives :: Lens' ScenarioOperation [Objective]
+scenarioObjectives :: Lens' (ScenarioOperation phase) [Objective phase]
 
 -- | An optional solution of the scenario, expressed as a
 --   program of type @cmd a@. This is useful for automated
 --   testing of the win condition.
-scenarioSolution :: Lens' ScenarioOperation (Maybe TSyntax)
+scenarioSolution :: Lens' (ScenarioOperation phase) (Maybe (Syntax phase))
 
 -- | Optionally, specify the maximum number of steps each robot may
 --   take during a single tick.
-scenarioStepsPerTick :: Lens' ScenarioOperation (Maybe Int)
+scenarioStepsPerTick :: Lens' (ScenarioOperation phase) (Maybe Int)
 
 type RecognizableStructureContent = NonEmptyGrid (Maybe Cell)
 
@@ -196,7 +203,7 @@ data ScenarioLandscape = ScenarioLandscape
   , _scenarioWorlds :: NonEmpty WorldDescription
   , _scenarioNavigation :: Navigation (M.Map SubworldName) Location
   , _scenarioStructures :: StaticStructureInfo RecognizableStructureContent Entity
-  , _scenarioRobots :: [TRobot]
+  , _scenarioRobots :: [Robot Typed]
   }
 
 makeLensesNoSigs ''ScenarioLandscape
@@ -231,31 +238,31 @@ scenarioNavigation :: Lens' ScenarioLandscape (Navigation (M.Map SubworldName) L
 
 -- | The starting robots for the scenario.  Note this should
 --   include the base.
-scenarioRobots :: Lens' ScenarioLandscape [TRobot]
+scenarioRobots :: Lens' ScenarioLandscape [Robot Typed]
 
 -- | A 'Scenario' contains all the information to describe a
 --   scenario.
-data Scenario = Scenario
+data Scenario (phase :: Phase) = Scenario
   { _scenarioMetadata :: ScenarioMetadata
-  , _scenarioOperation :: ScenarioOperation
+  , _scenarioOperation :: ScenarioOperation phase
   , _scenarioLandscape :: ScenarioLandscape
   }
 
 makeLensesNoSigs ''Scenario
 
 -- | Authorship information about scenario not used at play-time
-scenarioMetadata :: Lens' Scenario ScenarioMetadata
+scenarioMetadata :: Lens' (Scenario phase) ScenarioMetadata
 
 -- | Non-structural gameplay content of the scenario;
 -- how it is to be played.
-scenarioOperation :: Lens' Scenario ScenarioOperation
+scenarioOperation :: Lens' (Scenario phase) (ScenarioOperation phase)
 
 -- | All cosmetic and structural content of the scenario.
-scenarioLandscape :: Lens' Scenario ScenarioLandscape
+scenarioLandscape :: Lens' (Scenario phase) ScenarioLandscape
 
 -- * Parsing
 
-instance FromJSONE ScenarioInputs Scenario where
+instance FromJSONE ScenarioInputs (Scenario Raw) where
   parseJSONE = withObjectE "scenario" $ \v -> do
     -- parse custom terrain
     tmRaw <- liftE (v .:? "terrains" .!= [])
@@ -328,11 +335,11 @@ instance FromJSONE ScenarioInputs Scenario where
           ]
 
       -- Validate robot locations
-      forM_ rs $ \r -> forM_ (r ^. trobotLocation) $ \rLoc ->
+      forM_ rs $ \r -> forM_ (r ^. robotLocation) $ \rLoc ->
         unless ((rLoc ^. subworld) `M.member` worldsByName)
           . failT
           $ [ "Robot"
-            , quote $ r ^. trobotName
+            , quote $ r ^. robotName
             , "specifies location in nonexistent subworld"
             , renderQuotedWorldName (rLoc ^. subworld) <> "."
             , "Valid subworlds are:"
@@ -423,7 +430,7 @@ loadScenario ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   FilePath ->
   ScenarioInputs ->
-  m (Scenario, FilePath)
+  m (Scenario Typed, FilePath)
 loadScenario scenario scenarioInputs = do
   mfileName <- getScenarioPath scenario
   fileName <- maybe (throwError $ ScenarioNotFound scenario) return mfileName
@@ -434,7 +441,7 @@ loadScenarioFile ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   ScenarioInputs ->
   FilePath ->
-  m Scenario
+  m (Scenario Typed)
 loadScenarioFile scenarioInputs fileName =
   (withThrow adaptError . (liftEither <=< sendIO)) $
     decodeFileEitherE scenarioInputs fileName
@@ -449,7 +456,7 @@ loadScenarioFile scenarioInputs fileName =
 loadStandaloneScenario ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   FilePath ->
-  m (Scenario, GameStateInputs)
+  m (Scenario Typed, GameStateInputs)
 loadStandaloneScenario fp = do
   tem <- loadEntitiesAndTerrain
   worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds tem

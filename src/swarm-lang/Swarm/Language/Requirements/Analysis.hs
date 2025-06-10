@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -23,6 +25,7 @@ import Data.Foldable (forM_)
 import Data.Map qualified as M
 import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Context qualified as Ctx
+import Swarm.Language.Phase
 import Swarm.Language.Requirements.Type
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction (isCardinal)
@@ -44,7 +47,7 @@ import Swarm.Util (applyWhen)
 --
 --   This is all a bit of a hack at the moment, to be honest; see #231
 --   for a description of a more correct approach.
-requirements :: TDCtx -> ReqCtx -> Term -> Requirements
+requirements :: TDCtx -> ReqCtx -> Term Raw -> Requirements
 requirements tdCtx ctx =
   run . execAccum mempty . runReader tdCtx . runReader ctx . (add (singletonCap CPower) *>) . go
  where
@@ -53,7 +56,7 @@ requirements tdCtx ctx =
     , Has (Reader ReqCtx) sig m
     , Has (Reader TDCtx) sig m
     ) =>
-    Term ->
+    Term Raw ->
     m ()
   go = \case
     -- Some primitive literals that don't require any special

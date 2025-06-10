@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -13,7 +14,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Swarm.Game.Entity
-import Swarm.Game.Robot (TRobot, trobotName)
+import Swarm.Game.Robot (Robot, robotName)
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.Util (failT, quote)
 import Swarm.Util.Yaml
 
@@ -26,15 +28,15 @@ newtype RobotName = RobotName Text
 
 -- | A robot template paired with its definition's index within
 -- the Scenario file
-type IndexedTRobot = (Int, TRobot)
+type IndexedTRobot = (Int, Robot Typed)
 
 -- | A map from names to robots, used to look up robots in scenario
 --   descriptions.
 type RobotMap = Map RobotName IndexedTRobot
 
 -- | Create a 'RobotMap' from a list of robot templates.
-buildRobotMap :: [TRobot] -> RobotMap
-buildRobotMap rs = M.fromList $ zipWith (\x y -> (RobotName $ view trobotName y, (x, y))) [0 ..] rs
+buildRobotMap :: [Robot Typed] -> RobotMap
+buildRobotMap rs = M.fromList $ zipWith (\x y -> (RobotName $ view robotName y, (x, y))) [0 ..] rs
 
 ------------------------------------------------------------
 -- Lookup utilities
