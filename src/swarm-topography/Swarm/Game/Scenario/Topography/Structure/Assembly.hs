@@ -9,7 +9,6 @@
 -- as well as logic for combining them.
 module Swarm.Game.Scenario.Topography.Structure.Assembly (
   makeStructureMap,
-  packageStructures,
   assembleStructure,
   mergeStructures',
 
@@ -32,7 +31,6 @@ import Data.Text qualified as T
 import Linear.Affine
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
-import Swarm.Game.Scenario.Topography.Grid (Grid (..))
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.Structure
@@ -86,9 +84,6 @@ overlaySingleStructure'
 
 makeStructureMap :: [NamedStructure a] -> HM.HashMap StructureName (NamedStructure a)
 makeStructureMap = HM.fromList . map (name &&& id)
-
-packageStructures :: [NamedStructure a] -> PStructure a
-packageStructures namedStructs = Structure (PositionedGrid origin EmptyGrid) namedStructs [] []
 
 type GraphEdge a = (NamedStructure a, StructureName, [StructureName])
 
@@ -175,14 +170,16 @@ data AnnotatedStructure a = AnnotatedStructure
   }
 
 -- | This function constructs from the base structure and initial structure definitions a graph.
+--   If the base structure is unnamed, the PathToRoot of the base structure will be the empty list.
+--   Otherwise, the PathToRoot of the base structure is the singleton containing just the name of the base structure
 --   The nodes in the graph are ''AnnotatedStructure'\'s. Each node is uniquely identified by the
 --   path of structure names from the structure it contains to the root. Each node contains its list of edges.
 mkGraph ::
   forall a.
   HM.HashMap StructureName (NamedStructure (Maybe a)) ->
-  PStructure (Maybe a) ->
+  Either (PStructure (Maybe a)) (NamedStructure (Maybe a)) ->
   Either Text (HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)))
-mkGraph initialStructDefs baseStructure = go initialKnowledge [] acc0 (NamedArea (StructureName "") mempty Nothing baseStructure)
+mkGraph initialStructDefs baseStructure = go initialKnowledge [] acc0 baseNamed
  where
   go ::
     -- \| Knowledge inherited from parent, allows us to find the full path for a placement
@@ -212,10 +209,7 @@ mkGraph initialStructDefs baseStructure = go initialKnowledge [] acc0 (NamedArea
     foldlM (go knowledge structPath) acc' substructures
   initialKnowledge = HM.fromList . HM.toList . fmap (singleton . name) $ initialStructDefs
   acc0 = HM.fromList . map (\(structName, namedStruct) -> (singleton structName, AnnotatedStructure [] namedStruct)) . HM.toList $ initialStructDefs
-
--- | The unique identifier of the root (or base) structure in the graph
-rootPathToRoot :: PathToRoot
-rootPathToRoot = []
+  baseNamed = either (NamedArea (StructureName "") mempty Nothing) id baseStructure
 
 data DFSPath = DFSPath (HS.HashSet PathToRoot) [PathToRoot]
 data DFSState = DFSState (HS.HashSet PathToRoot) [PathToRoot]
@@ -283,18 +277,27 @@ mergeStructures graph topSorted = foldlM go mempty topSorted
 
 -- | Given a list of initial structure definitions and a base structure, this function returns the assembled structure (in 'Right').
 --   If the input is invalid, this functions instead returns an appropriate error message (in 'Left').
--- TODO Properly handle initialStructDefs. As it is they may be not added to the graph correctly
 assembleStructure ::
   HM.HashMap StructureName (NamedStructure (Maybe a)) ->
-  PStructure (Maybe a) ->
-  Either Text (MergedStructure (Maybe a))
-assembleStructure initialStructDefs baseStructure = do
-  graph <- mkGraph initialStructDefs baseStructure
-  topSorted <- topSortGraph graph
-  mergedMap <- mergeStructures graph topSorted
-  case HM.lookup rootPathToRoot mergedMap of
-    Nothing -> Left $ "Unable to find root structure in graph"
-    Just merged -> pure merged
+  HM.HashMap PathToRoot (MergedStructure (Maybe a)) ->
+  Either (PStructure (Maybe a)) (NamedStructure (Maybe a)) ->
+  Either Text ((MergedStructure (Maybe a)), HM.HashMap PathToRoot (MergedStructure (Maybe a)))
+assembleStructure initialStructDefs alreadyMerged baseStructure =
+  case baseStructure of
+    Left _ -> assemble
+    Right ns ->
+      case HM.lookup [name ns] alreadyMerged of
+        Nothing -> assemble
+        Just x -> pure (x, alreadyMerged)
+ where
+  assemble = do
+    graph <- mkGraph initialStructDefs baseStructure
+    topSorted <- topSortGraph graph
+    mergedMap <- mergeStructures graph topSorted
+    let pathToRoot = either (const [StructureName ""]) (singleton . name) baseStructure
+    case HM.lookup pathToRoot mergedMap of
+      Nothing -> Left $ "Unable to find root structure in graph"
+      Just merged -> pure (merged, mergedMap)
 
 -- * Grid manipulation
 
