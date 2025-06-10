@@ -8,6 +8,7 @@
 -- of the proper type.
 module Swarm.Language.Parser.Value (readValue) where
 
+import Control.Carrier.Error.Either (runError)
 import Control.Lens ((^.))
 import Data.Either.Extra (eitherToMaybe)
 import Data.Map qualified as M
@@ -17,7 +18,7 @@ import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Parser (readNonemptyTerm)
 import Swarm.Language.Syntax
-import Swarm.Language.Typecheck (checkTop)
+import Swarm.Language.Typecheck (ContextualTypeErr, checkTop)
 import Swarm.Language.Types (Type, emptyTDCtx)
 import Swarm.Language.Value
 import Text.Megaparsec qualified as MP
@@ -42,7 +43,7 @@ readValue ty txt = do
         Just (':', t) -> t
         _ -> txt
   s <- eitherToMaybe $ readNonemptyTerm txt'
-  _ <- eitherToMaybe $ checkTop Ctx.empty Ctx.empty emptyTDCtx M.empty s ty
+  _ <- eitherToMaybe . runError @ContextualTypeErr $ checkTop Ctx.empty Ctx.empty emptyTDCtx M.empty s ty
   toValue $ s ^. sTerm
 
 toValue :: Term -> Maybe Value
