@@ -120,7 +120,6 @@ mergeStructures' inheritedStrucDefs parentName baseStructure = do
 
 -- | NOTE: Each successive overlay may alter the coordinate origin.
 -- We make sure this new origin is propagated to subsequent sibling placements.
--- TODO Need to replicate at some level this functionality
 foldLayer ::
   HM.HashMap StructureName (NamedStructure (Maybe a)) ->
   PositionedGrid (Maybe a) ->
@@ -284,17 +283,17 @@ assembleStructure ::
   Either Text ((MergedStructure (Maybe a)), HM.HashMap PathToRoot (MergedStructure (Maybe a)))
 assembleStructure initialStructDefs alreadyMerged baseStructure =
   case baseStructure of
-    Left _ -> assemble
+    Left _ -> assemble baseStructure
     Right ns ->
       case HM.lookup [name ns] alreadyMerged of
-        Nothing -> assemble
+        Nothing -> assemble baseStructure
         Just x -> pure (x, alreadyMerged)
  where
-  assemble = do
-    graph <- mkGraph initialStructDefs baseStructure
+  assemble struct = do
+    graph <- mkGraph initialStructDefs struct
     topSorted <- topSortGraph graph
     mergedMap <- mergeStructures graph topSorted
-    let pathToRoot = either (const [StructureName ""]) (singleton . name) baseStructure
+    let pathToRoot = either (const [StructureName ""]) (singleton . name) struct
     case HM.lookup pathToRoot mergedMap of
       Nothing -> Left $ "Unable to find root structure in graph"
       Just merged -> pure (merged, mergedMap)
