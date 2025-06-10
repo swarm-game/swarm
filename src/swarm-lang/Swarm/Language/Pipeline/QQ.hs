@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
@@ -16,7 +17,6 @@ import Swarm.Language.Parser.Term (parseTerm)
 import Swarm.Language.Parser.Util (fully)
 import Swarm.Language.Pipeline
 import Swarm.Language.Syntax
-import Swarm.Language.Types (Polytype)
 import Swarm.Pretty (prettyText)
 import Swarm.Util (failT, liftText)
 import Witch (from, into)
@@ -47,7 +47,7 @@ quoteTermExp (into @Text -> s) = do
     Left err -> failT [prettyText err]
     Right ptm -> dataToExpQ ((fmap liftText . cast) `extQ` antiTermExp) ptm
 
-antiTermExp :: Term' Polytype -> Maybe TH.ExpQ
+antiTermExp :: Term Typed -> Maybe TH.ExpQ
 antiTermExp (TAntiText v) =
   Just $ TH.appE (TH.conE (TH.mkName "TText")) (TH.varE (TH.mkName (from v)))
 antiTermExp (TAntiInt v) =

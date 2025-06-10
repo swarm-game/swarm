@@ -44,7 +44,7 @@ import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Tick
 import Swarm.Game.Universe
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Syntax (TSyntax)
+import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Value as V
 import Swarm.Log
 
@@ -107,7 +107,7 @@ instance ToSample Robot where
           emptyExceptions
           0
 
-mkMachine :: Maybe TSyntax -> C.CESK
+mkMachine :: Maybe (Syntax Typed) -> C.CESK
 mkMachine Nothing = C.Out VUnit C.emptyStore []
 mkMachine (Just t) = C.initMachine t
 
