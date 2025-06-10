@@ -62,6 +62,8 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw
 import Control.Lens hiding (from, (.=), (<.>))
 import Control.Monad (filterM, forM_, unless, (<=<))
+import Control.Monad.Except qualified as MTL
+import Control.Monad.State.Strict
 import Data.Aeson
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
@@ -89,7 +91,6 @@ import Swarm.Game.Scenario.Style
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Navigation.Portal
-import Swarm.Game.Scenario.Topography.Navigation.Waypoint (Parentage (..))
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
 import Swarm.Game.Scenario.Topography.Structure.Named qualified as Structure
@@ -299,20 +300,14 @@ instance FromJSONE ScenarioInputs Scenario where
         localE (,rsMap) $
           v ..:? "structures" ..!= []
 
-      -- TODO (#1611) This is inefficient; instead, we should
-      -- form a DAG of structure references and visit deepest first,
-      -- caching in a map as we go.
-      -- Then, if a given sub-structure is referenced more than once, we don't
-      -- have to re-assemble it.
-      --
-      -- We should also make use of such a pre-computed map in the
-      -- invocation of 'mergeStructures' inside WorldDescription.hs.
       let structureMap = Assembly.makeStructureMap rootLevelSharedStructures
-      mergedStructures <-
-        either (fail . T.unpack) return $
-          mapM
-            (sequenceA . (id &&& (Assembly.mergeStructures' structureMap Root . Structure.structure)))
-            rootLevelSharedStructures
+          f named = do
+            cached <- get
+            (result, cached') <- MTL.liftEither $ Assembly.assembleStructure structureMap cached (Right named)
+            put $! cached'
+            pure (named, result)
+
+      mergedStructures <- either (fail . T.unpack) pure $ flip evalStateT mempty (traverse f rootLevelSharedStructures)
 
       allWorlds <- localE (WorldParseDependencies worldMap rootLevelSharedStructures rsMap) $ do
         rootWorld <- v ..: "world"
