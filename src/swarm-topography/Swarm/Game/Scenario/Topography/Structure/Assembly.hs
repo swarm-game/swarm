@@ -8,8 +8,9 @@
 -- Definitions of "structures" for use within a map
 -- as well as logic for combining them.
 module Swarm.Game.Scenario.Topography.Structure.Assembly (
-  assembleStructure,
   makeStructureMap,
+  packageStructures,
+  assembleStructure,
   mergeStructures',
 
   -- * Exposed for unit tests:
@@ -31,6 +32,7 @@ import Data.Text qualified as T
 import Linear.Affine
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
+import Swarm.Game.Scenario.Topography.Grid (Grid (..))
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.Structure
@@ -44,7 +46,6 @@ import Swarm.Util.Graph (failOnCyclicGraph)
 -- | Destructively overlays one direct child structure
 -- upon the input structure.
 -- However, the child structure is assembled recursively.
--- TODO Add info from parent to properly propogate info
 overlaySingleStructure ::
   MergedStructure (Maybe a) ->
   (MergedStructure (Maybe a), Pose) ->
@@ -85,6 +86,9 @@ overlaySingleStructure'
 
 makeStructureMap :: [NamedStructure a] -> HM.HashMap StructureName (NamedStructure a)
 makeStructureMap = HM.fromList . map (name &&& id)
+
+packageStructures :: [NamedStructure a] -> PStructure a
+packageStructures namedStructs = Structure (PositionedGrid origin EmptyGrid) namedStructs [] []
 
 type GraphEdge a = (NamedStructure a, StructureName, [StructureName])
 
@@ -204,7 +208,7 @@ mkGraph initialStructDefs baseStructure = go initialKnowledge [] acc0 (NamedArea
           Just path -> pure $ PathPlacement path (structurePose placement)
     structPathPlacements <- traverse f $ structPlacements
     let annotatedStruct = AnnotatedStructure structPathPlacements struct
-        !acc' = HM.insert (name struct NE.:| parentToRootPath) annotatedStruct acc
+        !acc' = HM.insert (name struct NE.:| parentToRootPath) annotatedStruct acc -- TODO Could this possible make us become confused between an initial struct def with no name and the base structure?
     foldlM (go knowledge structPath) acc' substructures
   initialKnowledge = HM.fromList . HM.toList . fmap (NE.singleton . name) $ initialStructDefs
   acc0 = HM.fromList . map (\(structName, namedStruct) -> (NE.singleton structName, AnnotatedStructure [] namedStruct)) . HM.toList $ initialStructDefs
@@ -233,8 +237,8 @@ topSortGraph graph = fmap (reverse . getAcc) . foldlM (go emptyPath) acc0 $ HM.t
       else do
         when (pathToRoot `HS.member` parentPathMembers) $ Left "TODO PUT CYCLE ERROR HERE"
         let dfsPath = addToDFSPath pathToRoot dfsPathOfParent
-        let placementPaths = map pathToPlacement $ pathPlacements annotatedStruct
-        let f acc' path = case HM.lookup path graph of
+            placementPaths = map pathToPlacement $ pathPlacements annotatedStruct
+            f acc' path = case HM.lookup path graph of
               Nothing -> Left $ "TODO UNEXPECTED MISSING"
               Just annotated -> go dfsPath acc' (path, annotated)
         DFSState visited' topSortAcc' <- foldlM f acc placementPaths
@@ -279,6 +283,7 @@ mergeStructures graph topSorted = foldlM go mempty topSorted
 
 -- | Given a list of initial structure definitions and a base structure, this function returns the assembled structure (in 'Right').
 --   If the input is invalid, this functions instead returns an appropriate error message (in 'Left').
+-- TODO Properly handle initialStructDefs. As it is they may be not added to the graph correctly
 assembleStructure ::
   HM.HashMap StructureName (NamedStructure (Maybe a)) ->
   PStructure (Maybe a) ->
