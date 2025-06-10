@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -21,6 +22,7 @@ module Swarm.Language.Pipeline (
   -- * Utilities
   extractTCtx,
   extractReqCtx,
+  typeErrToSystemFailure,
 ) where
 
 import Control.Algebra (Has, run)
@@ -43,7 +45,7 @@ import Swarm.Language.Types (TCtx)
 import Swarm.Language.Value (Env, emptyEnv, envReqs, envTydefs, envTypes)
 import Swarm.Util.Effect (withError, withThrow)
 
-processTermEither :: Text -> IO (Either SystemFailure TSyntax)
+processTermEither :: Text -> IO (Either SystemFailure (Syntax Typed))
 processTermEither t = do
   res <- processTerm t
   pure $ case res of
@@ -59,24 +61,24 @@ processTermEither t = do
 --
 --   Return either the end result (or @Nothing@ if the input was only
 --   whitespace) or a pretty-printed error message.
-processTerm :: Text -> IO (Either SystemFailure (Maybe TSyntax))
+processTerm :: Text -> IO (Either SystemFailure (Maybe (Syntax Typed)))
 processTerm = runError . processTerm' emptyEnv
 
 -- | Like 'processTerm', but use a term that has already been parsed.
 --   (along with the original unparsed concrete syntax, for use in
 --   generating error messages).
-processParsedTerm :: (Text, Syntax) -> IO (Either SystemFailure TSyntax)
+processParsedTerm :: (Text, Syntax Raw) -> IO (Either SystemFailure (Syntax Typed))
 processParsedTerm = runError . processParsedTerm' emptyEnv
 
 -- | Like 'processParsedTerm', but don't allow any imports (and hence
 --   don't require IO).
-processParsedTermNoImports :: (Text, Syntax) -> Either SystemFailure TSyntax
+processParsedTermNoImports :: (Text, Syntax Raw) -> Either SystemFailure (Syntax Typed)
 processParsedTermNoImports = run . runError . processParsedTermWithSrcMap mempty emptyEnv
 
 -- | Like 'processTerm', but use explicit starting contexts.
 processTerm' ::
   (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
-  Env -> Text -> m (Maybe TSyntax)
+  Env -> Text -> m (Maybe (Syntax Typed))
 processTerm' e txt = do
   mt <- withThrow CanNotParseMegaparsec . liftEither $ readTerm' defaultParserConfig txt
   withError (typeErrToSystemFailure txt) $ traverse (processParsedTerm' e . (txt,)) mt
@@ -86,7 +88,7 @@ processTerm' e txt = do
 --   generating error messages).
 processParsedTerm' ::
   (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
-  Env -> (Text, Syntax) -> m TSyntax
+  Env -> (Text, Syntax Raw) -> m (Syntax Typed)
 processParsedTerm' e (s,t) = do
   srcMap <- buildSourceMap t
   processParsedTermWithSrcMap srcMap e (s,t)
@@ -97,12 +99,15 @@ processParsedTerm' e (s,t) = do
 --   any imports have already been loaded.
 processParsedTermWithSrcMap ::
   (Has (Error SystemFailure) sig m) =>
-  SourceMap -> Env -> (Text, Syntax) -> m TSyntax
+  SourceMap Raw -> Env -> (Text, Syntax Raw) -> m (Syntax Typed)
 processParsedTermWithSrcMap srcMap e (s,t) = do
   tt <- withError (typeErrToSystemFailure s) $
     inferTop (e ^. envTypes) (e ^. envReqs) (e ^. envTydefs) srcMap t
   return $ elaborate tt
 
+-- | Convert a 'ContextualTypeErr' into a 'SystemFailure', by
+--   pretty-printing it (given the original source code) and
+--   preserving the 'SrcLoc'.
 typeErrToSystemFailure :: Text -> ContextualTypeErr -> SystemFailure
 typeErrToSystemFailure s cte@(CTE loc _ _) = DoesNotTypecheck loc (prettyTypeErrText s cte)
 
@@ -112,8 +117,8 @@ typeErrToSystemFailure s cte@(CTE loc _ _) = DoesNotTypecheck loc (prettyTypeErr
 
 -- | Extract a type context from type annotations on definitions
 --   contained in a term.  Should probably only be used for testing.
-extractTCtx :: Syntax' ty -> TCtx
-extractTCtx (Syntax' _ t _ _) = extractTCtxTerm t
+extractTCtx :: Syntax phase -> TCtx
+extractTCtx (Syntax _ t _ _) = extractTCtxTerm t
  where
   extractTCtxTerm = \case
     SLet _ _ (Loc _ x) _ mty _ _ t2 -> maybe id (Ctx.addBinding x) mty (extractTCtx t2)
@@ -129,8 +134,8 @@ extractTCtx (Syntax' _ t _ _) = extractTCtxTerm t
 -- | Extract a requirements context from requirements annotations on
 --   definitions contained in a term.  Should probably only be used
 --   for testing.
-extractReqCtx :: Syntax' ty -> ReqCtx
-extractReqCtx (Syntax' _ t _ _) = extractReqCtxTerm t
+extractReqCtx :: Syntax phase -> ReqCtx
+extractReqCtx (Syntax _ t _ _) = extractReqCtxTerm t
  where
   extractReqCtxTerm = \case
     SLet _ _ (Loc _ x) _ _ mreq _ t2 -> maybe id (Ctx.addBinding x) mreq (extractReqCtx t2)

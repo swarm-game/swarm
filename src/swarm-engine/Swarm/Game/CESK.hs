@@ -110,7 +110,7 @@ data Frame
   = -- | We were evaluating the first component of a pair; next, we
     --   should evaluate the second component which was saved in this
     --   frame (and push a 'FFst' frame on the stack to save the first component).
-    FSnd Term Env
+    FSnd (Term Raw) Env
   | -- | We were evaluating the second component of a pair; when done,
     --   we should combine it with the value of the first component saved
     --   in this frame to construct a fully evaluated pair.
@@ -120,7 +120,7 @@ data Frame
     -- term @t@ (the right-hand side, /i.e./ argument of the
     -- application) in environment @e@.  We will also push an 'FApp'
     -- frame on the stack.
-    FArg Term Env
+    FArg (Term Raw) Env
   | -- | @FVArg v@ says that we were evaluating the left-hand side of
     --   an application, and the next thing we should do is apply it
     --   to the given value.  This does not normally occur as part of
@@ -137,7 +137,7 @@ data Frame
     -- is, we were evaluating the definition of @x@; the next thing we
     -- should do is evaluate @t2@ in the environment @e@ extended with
     -- a binding for @x@.
-    FLet Var (Maybe (Polytype, Requirements)) Term Env
+    FLet Var (Maybe (Polytype, Requirements)) (Term Raw) Env
   | -- | We are executing inside a 'Try' block.  If an exception is
     --   raised, we will execute the stored term (the "catch" block).
     FTry Value
@@ -148,7 +148,7 @@ data Frame
     --   bind; once done, we should also execute the second component
     --   in the given environment (extended by binding the variable,
     --   if there is one, to the output of the first command).
-    FBind (Maybe Var) (Maybe (Polytype, Requirements)) Term Env
+    FBind (Maybe Var) (Maybe (Polytype, Requirements)) (Term Raw) Env
   | -- | Apply specific updates to the world and current robot.
     --
     -- The 'Const' is used to track the original command for error messages.
@@ -160,7 +160,7 @@ data Frame
   | -- | We are in the middle of evaluating a record: some fields have
     --   already been evaluated; we are focusing on evaluating one
     --   field; and some fields have yet to be evaluated.
-    FRcd Env [(Var, Value)] Var [(Var, Maybe Term)]
+    FRcd Env [(Var, Value)] Var [(Var, Maybe (Term Raw))]
   | -- | We are in the middle of evaluating a record field projection.
     FProj Var
   | -- | We should suspend with the given environment once we finish
@@ -238,7 +238,7 @@ data CESK
     --   currently focused term to evaluate in the environment, a store,
     --   and a continuation.  In this mode we generally pattern-match on the
     --   'Term' to decide what to do next.
-    In Term Env Store Cont
+    In (Term Raw) Env Store Cont
   | -- | Once we finish evaluating a term, we end up with a 'Value'
     --   and we switch into "out" mode, bringing the value back up
     --   out of the depths to the context that was expecting it.  In
@@ -326,7 +326,7 @@ cont = lens get set
 --   store, to evaluate a given term.  We always initialize the
 --   machine with a single FExec frame as the continuation; if the
 --   given term does not have a command type, we wrap it in @pure@.
-initMachine :: TSyntax -> CESK
+initMachine :: Syntax Typed -> CESK
 initMachine t = In (prepareTerm V.emptyEnv t) V.emptyEnv emptyStore [FExec]
 
 -- | Load a program into an existing robot CESK machine: either
@@ -335,7 +335,7 @@ initMachine t = In (prepareTerm V.emptyEnv t) V.emptyEnv emptyStore [FExec]
 --
 --   Also insert a @suspend@ primitive at the end, so the resulting
 --   term is suitable for execution by the base (REPL) robot.
-continue :: TSyntax -> CESK -> CESK
+continue :: Syntax Typed -> CESK -> CESK
 continue t = \case
   -- The normal case is when we are continuing from a suspended state. We:
   --
@@ -362,7 +362,7 @@ continue t = \case
 --   the environment might contain type aliases, we have to be careful
 --   to expand them before concluding whether the term has a command
 --   type or not.
-prepareTerm :: Env -> TSyntax -> Term
+prepareTerm :: Env -> Syntax Typed -> Term Raw
 prepareTerm e t = case whnfType (e ^. envTydefs) (ptBody (t ^. sType)) of
   TyCmd _ -> t'
   _ -> TApp (TConst Pure) t'

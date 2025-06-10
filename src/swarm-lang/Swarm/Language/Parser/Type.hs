@@ -31,8 +31,8 @@ import Swarm.Language.Parser.Lex (
   tyVar,
  )
 import Swarm.Language.Parser.Record (parseRecord)
-import Swarm.Language.Syntax.Loc (locVal)
 import Swarm.Language.Types
+import Swarm.Util.SrcLoc (locVal)
 import Text.Megaparsec (choice, optional, some, (<|>))
 
 -- | Parse a Swarm language polytype, which starts with an optional

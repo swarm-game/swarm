@@ -20,6 +20,7 @@ import Swarm.ResourceLoading (getDataDirSafe)
 import Swarm.Util (acquireAllWithExt)
 import Swarm.Util.Effect (withThrow)
 import System.FilePath (dropExtension, takeFileName)
+import Swarm.Util.SrcLoc (SrcLoc (..))
 import Witch (into)
 
 -- | Load and typecheck all world descriptions from `worlds/*.world`.
@@ -46,7 +47,7 @@ loadWorld tem (fp, src) = do
     liftEither . left (AssetNotLoaded (Data Worlds) fp . SystemFailure . CanNotParseMegaparsec) $
       runParser parseWExp src
   t <-
-    withThrow (AssetNotLoaded (Data Worlds) fp . SystemFailure . DoesNotTypecheck . prettyText @CheckErr) $
+    withThrow (AssetNotLoaded (Data Worlds) fp . SystemFailure . DoesNotTypecheck NoLoc . prettyText @CheckErr) $
       runReader tem . runReader @WorldMap M.empty $
         infer CNil wexp
   return (into @Text (dropExtension (takeFileName fp)), t)

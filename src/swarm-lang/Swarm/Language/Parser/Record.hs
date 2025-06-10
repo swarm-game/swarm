@@ -10,8 +10,9 @@ module Swarm.Language.Parser.Record (
 
 import Swarm.Language.Parser.Core (Parser)
 import Swarm.Language.Parser.Lex (locTmVar, symbol)
-import Swarm.Language.Syntax.Loc (LocVar, locVal)
+import Swarm.Language.Var (LocVar)
 import Swarm.Util (failT, findDup, squote)
+import Swarm.Util.SrcLoc (locVal)
 import Text.Megaparsec (sepBy)
 
 -- | Parse something using record syntax of the form @x1 v1, x2 v2,

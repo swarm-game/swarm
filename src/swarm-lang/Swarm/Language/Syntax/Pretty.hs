@@ -31,7 +31,7 @@ import Prettyprinter
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
-import Swarm.Language.Syntax.Pattern (sComments, pattern STerm)
+import Swarm.Language.Syntax.Pattern (sComments, pattern RTerm)
 import Swarm.Language.Syntax.Util (erase, unTuple)
 import Swarm.Language.TDVar (TDVar)
 import Swarm.Language.Types
@@ -40,8 +40,8 @@ import Swarm.Util.SrcLoc
 import Text.Show.Unicode (ushow)
 
 -- | Pretty-print a syntax node with comments.
-instance PrettyPrec (Syntax' ty) where
-  prettyPrec p (Syntax' _ t (Comments before after) _) = case before of
+instance PrettyPrec (Syntax phase) where
+  prettyPrec p (Syntax _ t (Comments before after) _) = case before of
     Empty -> t'
     _ ->
       -- Print out any comments before the node
@@ -62,7 +62,7 @@ instance PrettyPrec (Syntax' ty) where
       -- The pretty-printed node with suffix comments
       tWithComments = prettyPrec p t <+> hsep (map ppr (F.toList after))
 
-instance PrettyPrec (Term' ty) where
+instance PrettyPrec (Term phase) where
   prettyPrec p = \case
     TUnit -> "()"
     TConst c -> prettyPrec p c
@@ -79,7 +79,7 @@ instance PrettyPrec (Term' ty) where
     TStock n e -> pparens (p > 10) $ "stock" <+> pretty n <+> ppr (TText e)
     SRequirements _ e -> pparens (p > 10) $ "requirements" <+> ppr e
     TVar s -> ppr s
-    SDelay (Syntax' _ (TConst Noop) _ _) -> "{}"
+    SDelay (Syntax _ (TConst Noop) _ _) -> "{}"
     SDelay t -> group . encloseWithIndent 2 lbrace rbrace $ ppr t
     t@SPair {} -> prettyTuple t
     t@SLam {} ->
@@ -88,7 +88,7 @@ instance PrettyPrec (Term' ty) where
     -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3.
     -- Note a comment right after the operator will end up attached to
     -- the application of the operator to the first argument.
-    SApp t@(Syntax' _ (SApp op@(Syntax' _ (TConst c) _ _) l) opcom _) r ->
+    SApp t@(Syntax _ (SApp op@(Syntax _ (TConst c) _ _) l) opcom _) r ->
       let ci = constInfo c
           pC = fixity ci
        in case constMeta ci of
@@ -102,7 +102,7 @@ instance PrettyPrec (Term' ty) where
                   ]
             _ -> prettyPrecApp p t r
     SApp t1 t2 -> case t1 of
-      Syntax' _ (TConst c) _ _ ->
+      Syntax _ (TConst c) _ _ ->
         let ci = constInfo c
             pC = fixity ci
          in case constMeta ci of
@@ -119,13 +119,13 @@ instance PrettyPrec (Term' ty) where
       mconcat $
         sep [prettyDefinition "def" x mty t1, "end"]
           : case t2 of
-            Syntax' _ (TConst Noop) _ _ -> []
+            Syntax _ (TConst Noop) _ _ -> []
             _ -> [hardline, hardline, ppr t2]
     STydef (Loc _ x) pty _ t1 ->
       mconcat $
         prettyTydef x pty
           : case t1 of
-            Syntax' _ (TConst Noop) _ _ -> []
+            Syntax _ (TConst Noop) _ _ -> []
             _ -> [hardline, hardline, ppr t1]
     SBind Nothing _ _ _ t1 t2 ->
       pparens (p > 0) $
@@ -145,7 +145,7 @@ instance PrettyPrec (Term' ty) where
     TType ty -> "@" <> prettyPrec 11 ty
     SImportIn _x _t -> error "XXX unimplemented: pretty SImportIn"
 
-prettyDefinition :: Doc ann -> Var -> Maybe (Poly q Type) -> Syntax' ty -> Doc ann
+prettyDefinition :: Doc ann -> Var -> Maybe (Poly q Type) -> Syntax phase -> Doc ann
 prettyDefinition defName x mty t1 =
   nest 2 . sep $
     [ flatAlt
@@ -165,24 +165,24 @@ prettyTydef :: TDVar -> Polytype -> Doc ann
 prettyTydef x (unPoly -> ([], ty)) = "tydef" <+> ppr x <+> "=" <+> ppr ty <+> "end"
 prettyTydef x (unPoly -> (xs, ty)) = "tydef" <+> ppr x <+> hsep (map ppr xs) <+> "=" <+> ppr ty <+> "end"
 
-prettyPrecApp :: Int -> Syntax' ty -> Syntax' ty -> Doc a
+prettyPrecApp :: Int -> Syntax phase -> Syntax phase -> Doc a
 prettyPrecApp p t1 t2 =
   pparens (p > 10) $
     prettyPrec 10 t1 <+> prettyPrec 11 t2
 
-prettyTuple :: Term' ty -> Doc a
-prettyTuple = tupled . map ppr . unTuple . STerm . erase
+prettyTuple :: Term phase -> Doc a
+prettyTuple = tupled . map ppr . unTuple . RTerm . erase
 
-prettyLambdas :: Term' ty -> Doc a
+prettyLambdas :: Term phase -> Doc a
 prettyLambdas t = hsep (prettyLambda <$> lms) <> softline <> ppr rest
  where
-  (rest, lms) = unchainLambdas (STerm (erase t))
+  (rest, lms) = unchainLambdas (RTerm (erase t))
 
-unchainLambdas :: Syntax' ty -> (Syntax' ty, [(Var, Maybe Type)])
+unchainLambdas :: Syntax phase -> (Syntax phase, [(Var, Maybe Type)])
 unchainLambdas = \case
   -- Peel off consecutive lambdas, being sure to accumulate any
   -- attached comments along the way so they attach to the body
-  Syntax' _ (SLam (Loc _ x) mty body) coms _ -> ((x, mty) :) <$> unchainLambdas (body & sComments <>~ coms)
+  Syntax _ (SLam (Loc _ x) mty body) coms _ -> ((x, mty) :) <$> unchainLambdas (body & sComments <>~ coms)
   body -> (body, [])
 
 prettyLambda :: (PrettyPrec a1, PrettyPrec a2) => (a1, Maybe a2) -> Doc ann

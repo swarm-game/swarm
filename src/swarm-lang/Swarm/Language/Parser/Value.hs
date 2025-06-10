@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -47,7 +48,7 @@ readValue ty txt = do
   _ <- eitherToMaybe . runError @ContextualTypeErr $ checkTop Ctx.empty Ctx.empty emptyTDCtx M.empty s ty
   toValue $ s ^. sTerm
 
-toValue :: Term -> Maybe Value
+toValue :: Term Raw -> Maybe Value
 toValue = \case
   TUnit -> Just VUnit
   TDir d -> Just $ VDir d

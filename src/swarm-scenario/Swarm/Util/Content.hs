@@ -32,7 +32,7 @@ getMapRectangle ::
   (d -> e) ->
   (Coords -> (TerrainType, Maybe d)) ->
   BoundsRectangle ->
-  Grid (PCell e)
+  Grid (PCell e phase)
 getMapRectangle paintTransform contentFunc coords =
   mkGrid $ map renderRow [yTop .. yBottom]
  where
@@ -52,7 +52,7 @@ getMapRectangle paintTransform contentFunc coords =
 --   entity and terrain, and extracting its color.
 getTerrainEntityColor ::
   AttributeMap ->
-  PCell EntityFacade ->
+  PCell EntityFacade phase ->
   Maybe PreservableColor
 getTerrainEntityColor aMap (Cell terr cellEnt _) =
   getTexelColor $ entityTexel <> terrainTexel
