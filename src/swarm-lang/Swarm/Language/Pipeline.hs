@@ -21,6 +21,7 @@ module Swarm.Language.Pipeline (
   -- * Utilities
   extractTCtx,
   extractReqCtx,
+  typeErrToSystemFailure,
 ) where
 
 import Control.Algebra (Has, run)
@@ -103,6 +104,9 @@ processParsedTermWithSrcMap srcMap e (s,t) = do
     inferTop (e ^. envTypes) (e ^. envReqs) (e ^. envTydefs) srcMap t
   return $ elaborate tt
 
+-- | Convert a 'ContextualTypeErr' into a 'SystemFailure', by
+--   pretty-printing it (given the original source code) and
+--   preserving the 'SrcLoc'.
 typeErrToSystemFailure :: Text -> ContextualTypeErr -> SystemFailure
 typeErrToSystemFailure s cte@(CTE loc _ _) = DoesNotTypecheck loc (prettyTypeErrText s cte)
 

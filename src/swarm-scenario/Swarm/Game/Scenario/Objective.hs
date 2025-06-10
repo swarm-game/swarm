@@ -9,7 +9,9 @@
 module Swarm.Game.Scenario.Objective (
   -- * Scenario objectives
   PrerequisiteConfig (..),
+  Objective' (..),
   Objective,
+  TObjective,
   objectiveGoal,
   objectiveTeaser,
   objectiveCondition,
@@ -21,7 +23,9 @@ module Swarm.Game.Scenario.Objective (
   Announcement (..),
 
   -- * Objective completion tracking
+  ObjectiveCompletion' (..),
   ObjectiveCompletion,
+  TObjectiveCompletion,
   initCompletion,
   completedIDs,
   incompleteObjectives,
@@ -46,8 +50,9 @@ import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Definitions qualified as AD
 import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.JSON ()
-import Swarm.Language.Syntax (Syntax, TSyntax)
+import Swarm.Language.Syntax (Syntax', Syntax)
 import Swarm.Language.Text.Markdown qualified as Markdown
+import Swarm.Language.Types (Polytype)
 import Swarm.Util.Lens (concatFold, makeLensesExcluding, makeLensesNoSigs)
 
 ------------------------------------------------------------
@@ -94,59 +99,64 @@ instance FromJSON PrerequisiteConfig where
 
 -- | An objective is a condition to be achieved by a player in a
 --   scenario.
-data Objective = Objective
+data Objective' ty = Objective
   { _objectiveGoal :: Markdown.Document Syntax
   , _objectiveTeaser :: Maybe Text
-  , _objectiveCondition :: TSyntax
+  , _objectiveCondition :: Syntax' ty
   , _objectiveId :: Maybe ObjectiveLabel
   , _objectiveOptional :: Bool
   , _objectivePrerequisite :: Maybe PrerequisiteConfig
   , _objectiveHidden :: Bool
   , _objectiveAchievement :: Maybe AD.AchievementInfo
   }
-  deriving (Eq, Show, Generic, ToJSON)
+  deriving (Eq, Show, Generic)
 
-makeLensesNoSigs ''Objective
+makeLensesNoSigs ''Objective'
+
+deriving instance ToJSON Objective
+
+type Objective = Objective' ()
+type TObjective = Objective' Polytype
 
 instance ToSample Objective where
   toSamples _ = SD.noSamples
 
 -- | An explanation of the goal of the objective, shown to the player
 --   during play.  It is represented as a list of paragraphs.
-objectiveGoal :: Lens' Objective (Markdown.Document Syntax)
+objectiveGoal :: Lens' (Objective' ty) (Markdown.Document Syntax)
 
 -- | A very short (3-5 words) description of the goal for
 -- displaying on the left side of the Objectives modal.
-objectiveTeaser :: Lens' Objective (Maybe Text)
+objectiveTeaser :: Lens' (Objective' ty) (Maybe Text)
 
 -- | A winning condition for the objective, expressed as a
 --   program of type @cmd bool@.  By default, this program will be
 --   run to completion every tick (the usual limits on the number
 --   of CESK steps per tick do not apply).
-objectiveCondition :: Lens' Objective TSyntax
+objectiveCondition :: Lens' (Objective' ty) (Syntax' ty)
 
 -- | Optional name by which this objective may be referenced
 -- as a prerequisite for other objectives.
-objectiveId :: Lens' Objective (Maybe Text)
+objectiveId :: Lens' (Objective' ty) (Maybe Text)
 
 -- | Indicates whether the objective is not required in order
 -- to "win" the scenario. Useful for (potentially hidden) achievements.
 -- If the field is not supplied, it defaults to False (i.e. the
 -- objective is mandatory to "win").
-objectiveOptional :: Lens' Objective Bool
+objectiveOptional :: Lens' (Objective' ty) Bool
 
 -- | Dependencies upon other objectives
-objectivePrerequisite :: Lens' Objective (Maybe PrerequisiteConfig)
+objectivePrerequisite :: Lens' (Objective' ty) (Maybe PrerequisiteConfig)
 
 -- | Whether the goal is displayed in the UI before completion.
 -- The goal will always be revealed after it is completed.
 --
 -- This attribute often goes along with an Achievement.
-objectiveHidden :: Lens' Objective Bool
+objectiveHidden :: Lens' (Objective' ty) Bool
 
 -- | An optional achievement that is to be registered globally
 -- when this objective is completed.
-objectiveAchievement :: Lens' Objective (Maybe AD.AchievementInfo)
+objectiveAchievement :: Lens' (Objective' ty) (Maybe AD.AchievementInfo)
 
 instance FromJSON Objective where
   parseJSON = withObject "objective" $ \v -> do
@@ -172,33 +182,38 @@ newtype Announcement
 -- | Gather together lists of objectives that are incomplete,
 --   complete, or unwinnable.  This type is not exported from this
 --   module.
-data CompletionBuckets = CompletionBuckets
-  { _incomplete :: [Objective]
-  , _completed :: [Objective]
-  , _unwinnable :: [Objective]
+data CompletionBuckets' ty = CompletionBuckets
+  { _incomplete :: [Objective' ty]
+  , _completed :: [Objective' ty]
+  , _unwinnable :: [Objective' ty]
   }
-  deriving (Show, Generic, FromJSON, ToJSON)
+  deriving (Show, Generic)
+
+type CompletionBuckets = CompletionBuckets' ()
+
+deriving instance FromJSON CompletionBuckets
+deriving instance ToJSON CompletionBuckets
 
 -- Note we derive these lenses for `CompletionBuckets` but we do NOT
 -- export them; they are used only internally to this module.  In
 -- fact, the `CompletionBuckets` type itself is not exported.
-makeLensesNoSigs ''CompletionBuckets
+makeLensesNoSigs ''CompletionBuckets'
 
 -- | The incomplete objectives in a 'CompletionBuckets' record.
-incomplete :: Lens' CompletionBuckets [Objective]
+incomplete :: Lens' (CompletionBuckets' ty) [Objective' ty]
 
 -- | The completed objectives in a 'CompletionBuckets' record.
-completed :: Lens' CompletionBuckets [Objective]
+completed :: Lens' (CompletionBuckets' ty) [Objective' ty]
 
 -- | The unwinnable objectives in a 'CompletionBuckets' record.
-unwinnable :: Lens' CompletionBuckets [Objective]
+unwinnable :: Lens' (CompletionBuckets' ty) [Objective' ty]
 
 -- | A record to keep track of the completion status of all a
 --   scenario's objectives.  We do not export the constructor or
 --   record field labels of this type in order to ensure that its
 --   internal invariants cannot be violated.
-data ObjectiveCompletion = ObjectiveCompletion
-  { _completionBuckets :: CompletionBuckets
+data ObjectiveCompletion' ty = ObjectiveCompletion
+  { _completionBuckets :: CompletionBuckets' ty
   -- ^ This is the authoritative "completion status"
   -- for all objectives.
   -- Note that there is a separate Set to store the
@@ -210,25 +225,31 @@ data ObjectiveCompletion = ObjectiveCompletion
   -- map keyed by label.
   , _completedIDs :: Set.Set ObjectiveLabel
   }
-  deriving (Show, Generic, FromJSON, ToJSON)
+  deriving (Show, Generic)
 
-makeLensesFor [("_completedIDs", "internalCompletedIDs")] ''ObjectiveCompletion
-makeLensesExcluding ['_completedIDs] ''ObjectiveCompletion
+makeLensesFor [("_completedIDs", "internalCompletedIDs")] ''ObjectiveCompletion'
+makeLensesExcluding ['_completedIDs] ''ObjectiveCompletion'
+
+type ObjectiveCompletion = ObjectiveCompletion' ()
+type TObjectiveCompletion = CompletionBuckets' Polytype
+
+deriving instance FromJSON ObjectiveCompletion
+deriving instance ToJSON ObjectiveCompletion
 
 -- | Initialize an objective completion tracking record from a list of
 --   (initially incomplete) objectives.
-initCompletion :: [Objective] -> ObjectiveCompletion
+initCompletion :: [Objective' ty] -> ObjectiveCompletion' ty
 initCompletion objs = ObjectiveCompletion (CompletionBuckets objs [] []) mempty
 
 -- | A lens onto the 'CompletionBuckets' member of an
 --   'ObjectiveCompletion' record.  This lens is not exported.
-completionBuckets :: Lens' ObjectiveCompletion CompletionBuckets
+completionBuckets :: Lens' (ObjectiveCompletion' ty) (CompletionBuckets' ty)
 
 -- | A 'Getter' allowing one to read the set of completed objective
 --   IDs for a given scenario.  Note that this is a 'Getter', not a
 --   'Lens', to allow for read-only access without the possibility of
 --   violating the internal invariants of 'ObjectiveCompletion'.
-completedIDs :: Getter ObjectiveCompletion (Set.Set ObjectiveLabel)
+completedIDs :: Getter (ObjectiveCompletion' ty) (Set.Set ObjectiveLabel)
 completedIDs = to _completedIDs
 
 -- | A 'Fold' giving read-only access to all the incomplete objectives
@@ -240,48 +261,48 @@ completedIDs = to _completedIDs
 --   To get an actual list of objectives, use the '(^..)' operator, as
 --   in @objCompl ^.. incompleteObjectives@, where @objCompl ::
 --   ObjectiveCompletion@.
-incompleteObjectives :: Fold ObjectiveCompletion Objective
+incompleteObjectives :: Fold (ObjectiveCompletion' ty) (Objective' ty)
 incompleteObjectives = completionBuckets . folding _incomplete
 
 -- | A 'Fold' giving read-only access to all the completed objectives
 --   tracked by an 'ObjectiveCompletion' record.  See the
 --   documentation for 'incompleteObjectives' for more about 'Fold'.
-completedObjectives :: Fold ObjectiveCompletion Objective
+completedObjectives :: Fold (ObjectiveCompletion' ty) (Objective' ty)
 completedObjectives = completionBuckets . folding _completed
 
 -- | A 'Fold' giving read-only access to all the unwinnable objectives
 --   tracked by an 'ObjectiveCompletion' record.  See the
 --   documentation for 'incompleteObjectives' for more about 'Fold'.
-unwinnableObjectives :: Fold ObjectiveCompletion Objective
+unwinnableObjectives :: Fold (ObjectiveCompletion' ty) (Objective' ty)
 unwinnableObjectives = completionBuckets . folding _unwinnable
 
 -- | A 'Fold' over /all/ objectives (whether incomplete, complete, or
 --   unwinnable) tracked by an 'ObjectiveCompletion' record. See the
 --   documentation for 'incompleteObjectives' for more about 'Fold'.
-allObjectives :: Fold ObjectiveCompletion Objective
+allObjectives :: Fold (ObjectiveCompletion' ty) (Objective' ty)
 allObjectives = incompleteObjectives `concatFold` completedObjectives `concatFold` unwinnableObjectives
 
 -- | Add a completed objective to an 'ObjectiveCompletion' record,
 --   being careful to maintain its internal invariants.
-addCompleted :: Objective -> ObjectiveCompletion -> ObjectiveCompletion
+addCompleted :: Objective' ty -> ObjectiveCompletion' ty -> ObjectiveCompletion' ty
 addCompleted obj =
   (completionBuckets . completed %~ (obj :))
     . (internalCompletedIDs %~ maybe id Set.insert (obj ^. objectiveId))
 
 -- | Add an unwinnable objective to an 'ObjectiveCompletion' record,
 --   being careful to maintain its internal invariants.
-addUnwinnable :: Objective -> ObjectiveCompletion -> ObjectiveCompletion
+addUnwinnable :: Objective' ty -> ObjectiveCompletion' ty -> ObjectiveCompletion' ty
 addUnwinnable obj = completionBuckets . unwinnable %~ (obj :)
 
 -- | Add an incomplete objective to an 'ObjectiveCompletion' record,
 --   being careful to maintain its internal invariants.
-addIncomplete :: Objective -> ObjectiveCompletion -> ObjectiveCompletion
+addIncomplete :: Objective' ty -> ObjectiveCompletion' ty -> ObjectiveCompletion' ty
 addIncomplete obj = completionBuckets . incomplete %~ (obj :)
 
 -- | Returns the 'ObjectiveCompletion' with the incomplete goals
 --   extracted to a separate tuple member.  This is intended to be
 --   used as input to a fold.
-extractIncomplete :: ObjectiveCompletion -> (ObjectiveCompletion, [Objective])
+extractIncomplete :: ObjectiveCompletion' ty -> (ObjectiveCompletion' ty, [Objective' ty])
 extractIncomplete oc =
   (withoutIncomplete, incompleteGoals)
  where

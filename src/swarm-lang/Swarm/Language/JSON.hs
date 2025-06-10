@@ -8,21 +8,11 @@
 -- to put them all here to avoid circular module dependencies.
 module Swarm.Language.JSON where
 
-import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON, withText)
-import Data.Aeson qualified as Ae
-import Swarm.Language.Pipeline (processTermEither)
+import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Swarm.Language.Syntax (Term)
-import Swarm.Language.Syntax.Pattern (Syntax, TSyntax)
+import Swarm.Language.Syntax.Pattern (Syntax)
 import Swarm.Language.Value (Env, Value (..))
-import Swarm.Pretty (prettyText)
 import Swarm.Util.JSON (optionsMinimize)
-import Witch (into)
-
-instance FromJSON TSyntax where
-  parseJSON = withText "Term" $ either (fail . into @String) return . processTermEither
-
-instance ToJSON TSyntax where
-  toJSON = Ae.String . prettyText
 
 instance FromJSON Term where
   parseJSON = genericParseJSON optionsMinimize

@@ -14,7 +14,9 @@
 -- tutorials and for standalone puzzles and scenarios.
 module Swarm.Game.Scenario (
   -- * Scenario
-  Scenario (..),
+  Scenario' (..),
+  Scenario,
+  TScenario,
   ScenarioLandscape (..),
   ScenarioMetadata (ScenarioMetadata),
   RecognizableStructureContent,
@@ -81,7 +83,7 @@ import Swarm.Game.Land
 import Swarm.Game.Location (Location)
 import Swarm.Game.Recipe
 import Swarm.Game.Robot (TRobot, trobotLocation, trobotName)
-import Swarm.Game.Scenario.Objective (Objective)
+import Swarm.Game.Scenario.Objective (Objective')
 import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Style
@@ -102,8 +104,9 @@ import Swarm.Game.Universe
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (WorldMap)
-import Swarm.Language.Syntax (Syntax, TSyntax)
+import Swarm.Language.Syntax (Syntax', Syntax)
 import Swarm.Language.Text.Markdown (Document)
+import Swarm.Language.Types (Polytype)
 import Swarm.Pretty (prettyText)
 import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util (binTuples, commaList, failT, quote)
@@ -147,41 +150,44 @@ scenarioAuthor :: Lens' ScenarioMetadata (Maybe Text)
 
 -- | Non-structural gameplay content of the scenario;
 -- how it is to be played.
-data ScenarioOperation = ScenarioOperation
+data ScenarioOperation' ty = ScenarioOperation
   { _scenarioCreative :: Bool
   , _scenarioDescription :: Document Syntax
   -- ^ Note: the description is in this record instead of
   -- 'ScenarioMetadata' because it relates to the goals.
-  , _scenarioObjectives :: [Objective]
-  , _scenarioSolution :: Maybe TSyntax
+  , _scenarioObjectives :: [Objective' ty]
+  , _scenarioSolution :: Maybe (Syntax' ty)
   , _scenarioRecipes :: [Recipe Entity]
   , _scenarioStepsPerTick :: Maybe Int
   }
   deriving (Show)
 
-makeLensesNoSigs ''ScenarioOperation
+makeLensesNoSigs ''ScenarioOperation'
+
+type ScenarioOperation = ScenarioOperation' ()
+type TScenarioOperation = ScenarioOperation' Polytype
 
 -- | A high-level description of the scenario, shown /e.g./ in the
 --   menu.
-scenarioDescription :: Lens' ScenarioOperation (Document Syntax)
+scenarioDescription :: Lens' (ScenarioOperation' ty) (Document Syntax)
 
 -- | Whether the scenario should start in creative mode.
-scenarioCreative :: Lens' ScenarioOperation Bool
+scenarioCreative :: Lens' (ScenarioOperation' ty) Bool
 
 -- | Any custom recipes used in this scenario.
-scenarioRecipes :: Lens' ScenarioOperation [Recipe Entity]
+scenarioRecipes :: Lens' (ScenarioOperation' ty) [Recipe Entity]
 
 -- | A sequence of objectives for the scenario (if any).
-scenarioObjectives :: Lens' ScenarioOperation [Objective]
+scenarioObjectives :: Lens' (ScenarioOperation' ty) [Objective' ty]
 
 -- | An optional solution of the scenario, expressed as a
 --   program of type @cmd a@. This is useful for automated
 --   testing of the win condition.
-scenarioSolution :: Lens' ScenarioOperation (Maybe TSyntax)
+scenarioSolution :: Lens' (ScenarioOperation' ty) (Maybe (Syntax' ty))
 
 -- | Optionally, specify the maximum number of steps each robot may
 --   take during a single tick.
-scenarioStepsPerTick :: Lens' ScenarioOperation (Maybe Int)
+scenarioStepsPerTick :: Lens' (ScenarioOperation' ty) (Maybe Int)
 
 type RecognizableStructureContent = NonEmptyGrid (Maybe Cell)
 
@@ -234,23 +240,26 @@ scenarioRobots :: Lens' ScenarioLandscape [TRobot]
 
 -- | A 'Scenario' contains all the information to describe a
 --   scenario.
-data Scenario = Scenario
+data Scenario' ty = Scenario
   { _scenarioMetadata :: ScenarioMetadata
-  , _scenarioOperation :: ScenarioOperation
+  , _scenarioOperation :: ScenarioOperation' ty
   , _scenarioLandscape :: ScenarioLandscape
   }
 
-makeLensesNoSigs ''Scenario
+makeLensesNoSigs ''Scenario'
+
+type Scenario = Scenario' ()
+type TScenario = Scenario' Polytype
 
 -- | Authorship information about scenario not used at play-time
-scenarioMetadata :: Lens' Scenario ScenarioMetadata
+scenarioMetadata :: Lens' (Scenario' ty) ScenarioMetadata
 
 -- | Non-structural gameplay content of the scenario;
 -- how it is to be played.
-scenarioOperation :: Lens' Scenario ScenarioOperation
+scenarioOperation :: Lens' (Scenario' ty) (ScenarioOperation' ty)
 
 -- | All cosmetic and structural content of the scenario.
-scenarioLandscape :: Lens' Scenario ScenarioLandscape
+scenarioLandscape :: Lens' (Scenario' ty) ScenarioLandscape
 
 -- * Parsing
 

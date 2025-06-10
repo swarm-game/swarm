@@ -36,6 +36,8 @@ import Swarm.Util.SrcLoc
 ------------------------------------------------------------
 
 -- XXX generalize ty annotation to phase?  Raw -> Imports loaded -> Typechecked -> Elaborated ?
+-- Going to need some phase distinctions for other records that currently contain TSyntax
+-- but can't have a FromJSON instance now because we need to do IO to load imports.
 
 -- | The surface syntax for the language, with location and type annotations.
 data Syntax' ty = Syntax'

@@ -83,7 +83,7 @@ import Swarm.Game.Location (Heading, Location, toDirection, toHeading)
 import Swarm.Game.Robot.Walk
 import Swarm.Game.Universe
 import Swarm.Language.JSON ()
-import Swarm.Language.Syntax (Syntax, TSyntax)
+import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Util.Lens (makeLensesExcluding)
 import Swarm.Util.Yaml
@@ -113,7 +113,7 @@ type family RobotID (phase :: RobotPhase) :: Data.Kind.Type where
   RobotID 'ConcreteRobot = RID
 
 type family RobotMachine (phase :: RobotPhase) :: Data.Kind.Type
-type instance RobotMachine 'TemplateRobot = Maybe TSyntax
+type instance RobotMachine 'TemplateRobot = Maybe Syntax
 
 type family RobotActivity (phase :: RobotPhase) :: Data.Kind.Type
 type instance RobotActivity 'TemplateRobot = ()
@@ -325,7 +325,7 @@ mkRobot ::
   -- | Robot display.
   Display ->
   -- | Initial CESK machine.
-  Maybe TSyntax ->
+  Maybe Syntax ->
   -- | Equipped devices.
   [Entity] ->
   -- | Initial inventory.
