@@ -186,13 +186,17 @@ mkGraph initialStructDefs baseStructure = go initialKnowledge [] acc0 (NamedArea
     Either Text (HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)))
   go inheritedKnowledge parentToRootPath !acc !struct = do
     let substructures = structures . structure $ struct
+        structName = name struct
         structPlacements = placements . structure $ struct
-        structPath = name struct : parentToRootPath
+        structPath = structName : parentToRootPath
         knowledgeOfChildren = HM.fromList $ map ((id &&& (NE.:| structPath)) . name) substructures
         knowledge = HM.union knowledgeOfChildren inheritedKnowledge
         f :: Placement -> Either Text PathPlacement
         f placement = case HM.lookup (src placement) knowledge of
-          Nothing -> Left $ T.unwords ["Could not look up structure", quote . getStructureName . src $ placement]
+          Nothing ->
+            Left $
+              T.unwords
+                ["Within", getStructureName structName <> ":", "Could not look up structure", quote . getStructureName . src $ placement]
           Just path -> pure $ PathPlacement path (structurePose placement)
     structPathPlacements <- traverse f $ structPlacements
     let annotatedStruct = AnnotatedStructure structPathPlacements struct
@@ -253,6 +257,7 @@ mergeStructure graph topSorted = foldlM go mempty topSorted
     validatePlacements path toPlace
     let f (PathPlacement pathForPlacement pose) = lookupHandling alreadyMerged pathForPlacement (,pose)
     mergedToPlace <- traverse f toPlace
+    let structName = name . namedStructure $ annotatedStruct
     let origArea = area . structure . namedStructure $ annotatedStruct
         initialWaypoints :: [Originated Waypoint] = undefined -- TODO need to change Originated Placement for substructures
         initialOverlays :: [LocatedStructure] = undefined
