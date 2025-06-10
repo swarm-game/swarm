@@ -57,7 +57,7 @@ astQ =
 quoteASTExp :: String -> TH.ExpQ
 quoteASTExp s = do
   loc <- TH.location
-  parsed <- runParserTH loc (fully sc parseTerm) s
+  parsed <- runParserTH loc (fully sc parseTerm) (into @Text s)
   dataToExpQ ((fmap liftText . cast) `extQ` antiASTExp) parsed
 
 antiASTExp :: Syntax -> Maybe TH.ExpQ
