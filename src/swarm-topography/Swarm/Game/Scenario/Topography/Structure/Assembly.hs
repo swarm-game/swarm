@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-unused-imports #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 -- |
@@ -37,7 +38,6 @@ import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Language.Syntax.Direction (directionJsonModifier)
 import Swarm.Util (brackets, commaList, quote)
-import Prelude hiding (foldl')
 
 -- | /Uniquely/ identifies a structure in the graph
 type PathToRoot = [StructureName]
