@@ -10,9 +10,6 @@ import Data.ByteString.Lazy qualified as LBS
 import Data.Either.Utils (forceEither)
 import Data.Yaml (prettyPrintParseException)
 import Paths_swarm (getDataDir)
-import Swarm.Game.Scenario.Topography.Navigation.Waypoint (
-  Parentage (Root),
- )
 import Swarm.Game.Scenario.Topography.Rasterize
 import Swarm.Game.Scenario.Topography.Structure
 import Swarm.Game.Scenario.Topography.Structure.Assembly
