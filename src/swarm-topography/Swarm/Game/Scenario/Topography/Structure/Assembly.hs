@@ -18,7 +18,7 @@ where
 import Control.Arrow (first, left, (&&&))
 import Control.Monad (when)
 import Data.Coerce
-import Data.Foldable (foldlM, traverse_)
+import Data.Foldable (foldl', foldlM, traverse_)
 import Data.HashMap.Strict qualified as HM
 import Data.HashSet qualified as HS
 import Data.List (singleton, uncons)
@@ -36,7 +36,7 @@ import Swarm.Game.Scenario.Topography.Structure.Named
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Language.Syntax.Direction (directionJsonModifier)
-import Swarm.Util (commaList, quote)
+import Swarm.Util (brackets, commaList, quote)
 
 -- | /Uniquely/ identifies a structure in the graph
 type PathToRoot = [StructureName]
@@ -45,11 +45,11 @@ type PathToRoot = [StructureName]
 -- >>> showPath $ []
 -- >>> showPath $ [StructureName "A"]
 -- >>> showPath $ [StructureName "B", StructureName "", StructureName "C"]
--- >>> showPath $ [StructureName "AB", StructureName "A", StructureName ""]
+-- >>> showPath $ [StructureName "AB", StructureName "A"]
 -- "ROOT"
 -- "A"
 -- "C..B"
--- ".A.AB"
+-- "A.AB"
 showPath :: PathToRoot -> Text
 showPath [] = "ROOT"
 showPath xs = T.intercalate "." . coerce . reverse $ xs
@@ -119,6 +119,12 @@ addToDFSPath pathToRoot (DFSPath pathElems back) = DFSPath (HS.insert pathToRoot
 basePathToRoot :: PathToRoot
 basePathToRoot = []
 
+cycleError :: PathToRoot -> [PathToRoot] -> Text
+cycleError path dfsPath = T.unwords ["Structure graph contains a cycle:", cycleText]
+ where
+  cyc = (path :) . reverse $ takeWhile (/= path) $ dfsPath
+  cycleText = brackets . T.intercalate " -> " . fmap showPath $ cyc
+
 -- | Given a graph constructed via 'mkGraph', this function does a dfs on the graph to find
 --   any cycles in the graph that exist. If such a cycle exists, an appropriate error message is returned (in 'Left').
 --   If there are no cycles, what is instead returned is a topologically sorted list of all the identifiers in the graph (in 'Right').
@@ -127,15 +133,15 @@ topSortGraph :: HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)) -> Either T
 topSortGraph graph = fmap (reverse . getAcc) . foldlM (go emptyPath) acc0 $ HM.toList graph
  where
   go :: DFSPath -> DFSState -> (PathToRoot, AnnotatedStructure (Maybe a)) -> Either Text DFSState
-  go dfsPathOfParent@(DFSPath parentPathMembers _) acc@(DFSState visited _) (!pathToRoot, !annotatedStruct) = do
+  go dfsPathOfParent@(DFSPath parentPathMembers parentPath) acc@(DFSState visited _) (!pathToRoot, !annotatedStruct) = do
     if (pathToRoot `HS.member` visited)
       then pure acc
       else do
-        when (pathToRoot `HS.member` parentPathMembers) $ Left "TODO PUT CYCLE ERROR HERE"
+        when (pathToRoot `HS.member` parentPathMembers) $ Left $ cycleError pathToRoot parentPath
         let dfsPath = addToDFSPath pathToRoot dfsPathOfParent
             placementPaths = map pathToPlacement $ pathPlacements annotatedStruct
             f acc' path = case HM.lookup path graph of
-              Nothing -> Left $ "TODO UNEXPECTED MISSING"
+              Nothing -> Left $ T.unwords ["Could not find structure at path", showPath path, "in topological sort of graph"]
               Just annotated -> go dfsPath acc' (path, annotated)
         DFSState visited' topSortAcc' <- foldlM f acc placementPaths
         pure $ DFSState (HS.insert pathToRoot visited') (pathToRoot : topSortAcc')
