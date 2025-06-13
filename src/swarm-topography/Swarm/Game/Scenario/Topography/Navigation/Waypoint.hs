@@ -12,8 +12,8 @@
 -- The sequence of waypoints of a given name is dictated by criteria in the following order:
 --
 -- 1. Ordering of structure placements
---    (see implementation of 'Swarm.Game.Scenario.Topography.Structure.mergeStructures');
---    later placements are ordered first.
+--    (see implementation of 'Swarm.Game.Scenario.Topography.Structure.assembleStructure');
+--    later placements are ordered later.
 -- 2. Placement of cells within a map. Map locations go by row-major order
 --    (compare to docs for 'Swarm.Game.State.genRobotTemplates').
 --
