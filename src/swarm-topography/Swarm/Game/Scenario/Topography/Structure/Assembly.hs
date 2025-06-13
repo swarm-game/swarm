@@ -214,7 +214,7 @@ assembleStructure ::
 assembleStructure baseStructure = do
   mergedMap <- assembleStructure' baseStructure
   case HM.lookup basePathToRoot mergedMap of
-    Nothing -> Left "Unable to find root structure in graph"
+    Nothing -> Left "Unable to find root structure in graph" -- This path this should not be taken unless the implementations of mkGraph, topSortGraph, mergedStructures, and assembleStructure' are correct
     Just merged -> pure merged
 
 packageStructures :: [NamedStructure a] -> PStructure a
