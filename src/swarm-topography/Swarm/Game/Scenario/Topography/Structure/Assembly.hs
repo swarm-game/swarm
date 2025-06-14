@@ -44,7 +44,7 @@ type PathToRoot = [StructureName]
 
 -- | Converts a path to the root into a fully qualified name
 showPath :: PathToRoot -> Text
-showPath [] = "ROOT"
+showPath [] = "root structure"
 showPath xs = T.intercalate "." . coerce . reverse $ xs
 
 -- | Like placement, but instead of storing the name of the structure to place,
@@ -95,7 +95,7 @@ mkGraph baseStructure = go True mempty [] mempty baseNamed
           Nothing ->
             Left $
               T.unwords
-                ["Within", getStructureName structName <> ":", "Could not look up structure", quote . getStructureName . src $ placement]
+                ["Within", showPath structPath <> ":", "Could not look up structure", quote . getStructureName . src $ placement]
           Just path -> pure $ PathPlacement path (structurePose placement)
 
     structPathPlacements <- traverse f structPlacements
@@ -116,7 +116,7 @@ basePathToRoot = []
 cycleError :: PathToRoot -> [PathToRoot] -> Text
 cycleError path dfsPath = T.unwords ["Structure graph contains a cycle:", cycleText]
  where
-  cyc = (path :) . reverse . takeWhile (/= path) $ dfsPath
+  cyc = (path :) . reverse . (path :) . takeWhile (/= path) $ dfsPath
   cycleText = brackets . T.intercalate " -> " . fmap showPath $ cyc
 
 -- | Given a graph constructed via 'mkGraph', this function does a dfs on the graph to find
@@ -135,7 +135,7 @@ topSortGraph graph = fmap (reverse . getAcc) . foldlM (go emptyPath) acc0 $ HM.t
         let dfsPath = addToDFSPath pathToRoot dfsPathOfParent
             placementPaths = map pathToPlacement $ pathPlacements annotatedStruct
             f acc' path = case HM.lookup path graph of
-              Nothing -> Left $ T.unwords ["Could not find structure at path", showPath path, "in topological sort of graph"] -- As long as mkGraph is correct, this path should not be taken
+              Nothing -> Left $ T.unwords ["Could not find structure", showPath path, "in topological sort of graph"] -- As long as mkGraph is correct, this path should not be taken
               Just annotated -> go dfsPath acc' (path, annotated)
         DFSState visited' topSortAcc' <- foldlM f acc placementPaths
         pure $ DFSState (HS.insert pathToRoot visited') (pathToRoot : topSortAcc')
@@ -229,7 +229,7 @@ assembleStructures namedStructs = do
   let f !namedStruct = do
         let path = singleton . name $ namedStruct
         !merged <- case HM.lookup path mergedMap of
-          Nothing -> Left $ T.unwords ["Unable to find structure at path", showPath path, "in collection of merged structures"]
+          Nothing -> Left $ T.unwords ["Unable to find structure", showPath path, "in collection of merged structures"]
           Just x -> pure x
         pure (namedStruct, merged)
   traverse f namedStructs
