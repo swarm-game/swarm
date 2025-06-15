@@ -90,7 +90,6 @@ mkGraph baseStructure = go True mempty [] mempty baseNamed
         knowledgeOfChildren = HM.fromList $ map ((id &&& (: structPath)) . name) substructures
         -- Deeper structure definitions supersede more shallow ones, so we pass knowledgeOfChildren first as HM.union is left-biased.
         knowledge = HM.union knowledgeOfChildren inheritedKnowledge
-        f :: Placement -> Either Text PathPlacement
         f placement = case HM.lookup (src placement) knowledge of
           Nothing ->
             Left $
@@ -166,14 +165,14 @@ mergeStructures graph = foldlM go mempty
  where
   -- This will not be called unless the graph and topological sort are incorrect
   mkCouldNotFindError path = T.unwords ["Could not look up structure", showPath path, "in mergeStructure"]
+
   lookupHandling m path f = case HM.lookup path m of
     Nothing -> Left $ mkCouldNotFindError path
     Just x -> pure (f x)
 
   validatePlacements path toPlace = do
     result <- traverse (\(PathPlacement p pose) -> lookupHandling graph p (,pose)) toPlace
-    let result' = map (first namedStructure) result
-    left (elaboratePlacement path <>) $ traverse_ (uncurry validatePlacement) result'
+    left (elaboratePlacement path <>) $ traverse_ (uncurry validatePlacement . first namedStructure) result
     pure result
 
   placementToLocated (Placement sn pose) = LocatedStructure (OrientedStructure sn (up $ orient pose)) (offset pose)
@@ -214,7 +213,7 @@ assembleStructure ::
 assembleStructure baseStructure = do
   mergedMap <- assembleStructure' baseStructure
   case HM.lookup basePathToRoot mergedMap of
-    Nothing -> Left "Unable to find root structure in graph" -- This path this should not be taken unless the implementations of mkGraph, topSortGraph, mergedStructures, and assembleStructure' are correct
+    Nothing -> Left "Unable to find root structure in graph" -- This path this should not be taken unless there is a bug in the implementation
     Just merged -> pure merged
 
 packageStructures :: [NamedStructure a] -> PStructure a
@@ -226,9 +225,9 @@ assembleStructures ::
   Either Text [(NamedStructure (Maybe a), MergedStructure (Maybe a))]
 assembleStructures namedStructs = do
   mergedMap <- assembleStructure' (packageStructures namedStructs)
-  let f !namedStruct = do
+  let f namedStruct = do
         let path = singleton . name $ namedStruct
-        !merged <- case HM.lookup path mergedMap of
+        merged <- case HM.lookup path mergedMap of
           Nothing -> Left $ T.unwords ["Unable to find structure", showPath path, "in collection of merged structures"]
           Just x -> pure x
         pure (namedStruct, merged)
