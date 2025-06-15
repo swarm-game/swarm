@@ -35,7 +35,7 @@ module Swarm.Web (
 
 import Commonmark qualified as Mark (commonmark, renderHtml)
 import Control.Arrow (left)
-import Control.Concurrent (forkIO)
+import Control.Concurrent (forkIO, threadDelay)
 import Control.Concurrent.MVar
 import Control.Exception (Exception (displayException), IOException, catch, throwIO)
 import Control.Lens
@@ -79,10 +79,12 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
+import Swarm.Game.State.Runtime (eventLog)
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Universe (SubworldName)
 import Swarm.Language.Pipeline (processTermEither)
+import Swarm.Log (LogEntry)
 import Swarm.Pretty (prettyTextLine)
 import Swarm.TUI.Model hiding (SwarmKeyDispatchers (..))
 import Swarm.TUI.Model.Dialog.Goal
@@ -121,6 +123,7 @@ type SwarmAPI =
     :<|> "repl" :> "history" :> "current" :> Get '[JSON] [REPLHistItem]
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [REPLHistItem]
     :<|> "map" :> Capture "size" AreaDimensions :> Get '[JSON] GridResponse
+    :<|> "runtime" :> "log" :> StreamGet NewlineFraming JSON (SourceIO LogEntry)
 
 swarmApi :: Proxy SwarmAPI
 swarmApi = Proxy
@@ -180,6 +183,7 @@ mkApp state events =
     :<|> replHistHandler Current state
     :<|> replHistHandler Full state
     :<|> mapViewHandler state
+    :<|> runtimeLogHandler state
 
 robotsHandler :: IO AppState -> Handler [Robot]
 robotsHandler appStateRef = do
@@ -284,6 +288,20 @@ This gives the user an immediate feedback (did the code parse) and would
 be well suited for streaming large collections of data like the logs
 while consuming constant memory.
 -}
+
+runtimeLogHandler :: IO AppState -> Handler (S.SourceT IO LogEntry)
+runtimeLogHandler appStateRef = pure . S.fromStepT $ go 0
+ where
+  go :: Int -> S.StepT IO LogEntry
+  go shownCount = S.Effect $ do
+    appState <- liftIO appStateRef
+    let logs = reverse $ appState ^. runtimeState . eventLog . notificationsContent
+        unshownLogs = drop shownCount logs
+        next :: S.StepT IO LogEntry
+        next = S.Effect $ do
+          threadDelay 1_000_000 -- check each second
+          pure $ go (shownCount + length unshownLogs)
+    pure $ foldr S.Yield next unshownLogs
 
 codeRunHandler :: EventChannel -> Text -> Handler (S.SourceT IO WebInvocationState)
 codeRunHandler chan contents = do
