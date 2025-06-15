@@ -49,6 +49,8 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Map.NonEmpty qualified as NEM
 import Data.Maybe (fromMaybe)
+import Data.Sequence (Seq)
+import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
@@ -67,6 +69,7 @@ import Servant.Types.SourceT qualified as S
 import Swarm.Game.Entity (EntityName, entityName)
 import Swarm.Game.Location (Location)
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Concrete (robotLog)
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
 import Swarm.Game.Scenario.Objective.WinCheck
@@ -108,6 +111,7 @@ newtype RobotID = RobotID Int
 type SwarmAPI =
   "robots" :> Get '[JSON] [Robot]
     :<|> "robot" :> Capture "id" RobotID :> Get '[JSON] (Maybe Robot)
+    :<|> "robot" :> Capture "id" RobotID :> "log" :> StreamGet NewlineFraming JSON (SourceIO LogEntry)
     :<|> "goals" :> "prereqs" :> Get '[JSON] [PrereqSatisfaction]
     :<|> "goals" :> "active" :> Get '[JSON] [Objective]
     :<|> "goals" :> "graph" :> Get '[JSON] (Maybe GraphInfo)
@@ -168,6 +172,7 @@ mkApp ::
 mkApp state events =
   robotsHandler state
     :<|> robotHandler state
+    :<|> robotLogHandler state
     :<|> prereqsHandler state
     :<|> activeGoalsHandler state
     :<|> goalsGraphHandler state
@@ -284,24 +289,43 @@ With the endpoint type 'StreamGet NewlineFraming JSON', servant will send each
 result as a JSON on a separate line. That is not a valid JSON document, but
 it's commonly used because it works well with line-oriented tools.
 
-This gives the user an immediate feedback (did the code parse) and would
-be well suited for streaming large collections of data like the logs
-while consuming constant memory.
+This gives the user an immediate feedback (did the code parse) and is well
+suited for streaming large collections of data like the logs while consuming
+constant memory.
 -}
 
 runtimeLogHandler :: IO AppState -> Handler (S.SourceT IO LogEntry)
-runtimeLogHandler appStateRef = pure . S.fromStepT $ go 0
+runtimeLogHandler appStateRef = logHandler $ runtimeLogsGetter <$> appStateRef
  where
+  getRuntimeLogs :: AppState -> [LogEntry]
+  getRuntimeLogs = view $ runtimeState . eventLog . notificationsContent
+  runtimeLogsGetter :: AppState -> Maybe (Seq LogEntry)
+  runtimeLogsGetter = Just . Seq.fromList . reverse . getRuntimeLogs
+
+robotLogHandler :: IO AppState -> RobotID -> Handler (S.SourceT IO LogEntry)
+robotLogHandler appStateRef (RobotID rid) = logHandler $ getRobotLogs <$> appStateRef
+ where
+  robotMapGetter :: Getter AppState (IM.IntMap Robot)
+  robotMapGetter = playState . scenarioState . gameState . robotInfo . robotMap
+  getRobotLogs :: AppState -> Maybe (Seq LogEntry)
+  getRobotLogs = preview $ robotMapGetter . at rid . _Just . robotLog
+
+logHandler :: IO (Maybe (Seq LogEntry)) -> Handler (S.SourceT IO LogEntry)
+logHandler getLogs = pure . S.fromStepT $ go 0
+ where
+  -- See note [How to stream back responses as we get results]
   go :: Int -> S.StepT IO LogEntry
-  go shownCount = S.Effect $ do
-    appState <- liftIO appStateRef
-    let logs = reverse $ appState ^. runtimeState . eventLog . notificationsContent
-        unshownLogs = drop shownCount logs
-        next :: S.StepT IO LogEntry
-        next = S.Effect $ do
-          threadDelay 1_000_000 -- check each second
-          pure $ go (shownCount + length unshownLogs)
-    pure $ foldr S.Yield next unshownLogs
+  go shownCount =
+    S.Effect $
+      liftIO getLogs >>= \case
+        Nothing -> pure S.Stop
+        Just logs ->
+          let unshownLogs = Seq.drop shownCount logs
+              next :: S.StepT IO LogEntry
+              next = S.Effect $ do
+                threadDelay 1_000_000 -- check each second
+                pure $ go (Seq.length logs)
+           in pure $ foldr S.Yield next unshownLogs
 
 codeRunHandler :: EventChannel -> Text -> Handler (S.SourceT IO WebInvocationState)
 codeRunHandler chan contents = do
