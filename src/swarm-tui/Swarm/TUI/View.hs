@@ -556,7 +556,7 @@ drawWorldCursorInfo worldEditor g aMap cCoords =
   mRobot = renderTexel <$> nonEmptyTexel (renderRobotCell aMap g cCoords)
   terrain = renderTexel $ renderTerrainCell worldEditor ri cCoords
 
-  tileMemberWidgets = map (padRight $ Pad 1) . (++[terrain, txt "at"]) $
+  tileMemberWidgets = map (padRight $ Pad 1) . (++ [terrain, txt "at"]) $
     case (mRobot, mEntity) of
       (Just robot, Just entity) -> [robot, txt "with", entity, txt "on"]
       (Nothing, Just entity) -> [entity, txt "on"]
