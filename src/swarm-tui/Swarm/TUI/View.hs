@@ -551,30 +551,17 @@ drawWorldCursorInfo worldEditor g aMap cCoords =
   Cosmic _ coords = cCoords
   coordsWidget = str $ renderCoordsString $ fmap coordsToLoc cCoords
 
-  tileMemberWidgets =
-    map (padRight $ Pad 1) . concat . reverse $
-      zipWith prep ["at", "on", "with"] (filter (not . texelIsEmpty) [terrain, entity, robot])
+  nonEmptyTexel t = if texelIsEmpty t then Nothing else Just t
+  mEntity = renderTexel <$> nonEmptyTexel (renderEntityCell worldEditor ri cCoords)
+  mRobot = renderTexel <$> nonEmptyTexel (renderRobotCell aMap g cCoords)
+  terrain = renderTexel $ renderTerrainCell worldEditor ri cCoords
 
-  prep p texel = [renderTexel texel, txt p]
-
-  -- The above code for tileMemberWidgets gave me fits.  It's quite
-  -- confusing but I couldn't figure out any nicer way to write it.
-  -- We want "with" before an entity (if any), "on" before the
-  -- terrain, and "at" at the end (before the coordinates)... but any
-  -- given preposition should only be used if there is something
-  -- before it.  Since the terrain will always exist, the
-  -- possibilities are as follows:
-
-  -- R with E on T at
-  -- R on T at
-  -- E on T at
-  -- T at
-
-  -- We can accomplish this by filtering out the empty texels from the
-  -- list [T, E, R], then zipping with the list of prepositions ["at",
-  -- "on", "with"] to get things in reverse order.  This *only* works
-  -- because the terrain is guaranteed to be present and there are at
-  -- most 3 items.
+  tileMemberWidgets = map (padRight $ Pad 1) . (++[terrain, txt "at"]) $
+    case (mRobot, mEntity) of
+      (Just robot, Just entity) -> [robot, txt "with", entity, txt "on"]
+      (Nothing, Just entity) -> [entity, txt "on"]
+      (Just robot, Nothing) -> [robot, txt "on"]
+      (Nothing, Nothing) -> []
 
   ri =
     RenderingInput
@@ -582,10 +569,6 @@ drawWorldCursorInfo worldEditor g aMap cCoords =
       (getEntityIsKnown $ mkEntityKnowledge g)
       (g ^. landscape . terrainAndEntities . terrainMap)
       aMap
-
-  terrain = renderTerrainCell worldEditor ri cCoords
-  entity = renderEntityCell worldEditor ri cCoords
-  robot = renderRobotCell aMap g cCoords
 
 -- | Format the clock display to be shown in the upper right of the
 --   world panel.
