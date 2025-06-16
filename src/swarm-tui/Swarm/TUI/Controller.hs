@@ -90,6 +90,7 @@ import Swarm.Language.Value (Value (VKey), emptyEnv, envTypes)
 import Swarm.Log
 import Swarm.ResourceLoading (getSwarmHistoryPath)
 import Swarm.TUI.Controller.EventHandlers
+import Swarm.TUI.Controller.EventHandlers.Robot (showEntityDescription)
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
 import Swarm.TUI.Controller.UpdateUI
 import Swarm.TUI.Controller.Util
@@ -402,7 +403,9 @@ handleMainEvent forceRedraw ev = do
     MouseUp n _ _mouseLoc ->
       Brick.zoom (playState . scenarioState) $ do
         case n of
-          InventoryListItem pos -> uiGameplay . uiInventory . uiInventoryList . traverse . _2 %= BL.listMoveTo pos
+          InventoryListItem pos -> do
+            uiGameplay . uiInventory . uiInventoryList . traverse . _2 %= BL.listMoveTo pos
+            vScrollToBeginning infoScroll
           x@(WorldEditorPanelControl y) -> do
             uiGameplay . uiWorldEditor . editorFocusRing %= focusSetCurrent x
             EC.activateWorldEditorFunction y
@@ -436,7 +439,7 @@ handleMainEvent forceRedraw ev = do
           WorldPanel | otherwise -> continueWithoutRedraw
           WorldEditorPanel -> Brick.zoom (playState . scenarioState) $ EC.handleWorldEditorPanelEvent ev
           RobotPanel -> handleRobotPanelEvent ev
-          InfoPanel -> handleInfoPanelEvent infoScroll ev
+          InfoPanel -> Brick.zoom (playState . scenarioState) $ handleInfoPanelEvent infoScroll ev
         _ -> continueWithoutRedraw
 
 closeModal :: Modal -> EventM Name ScenarioState ()
@@ -915,7 +918,7 @@ adjReplHistIndex d s =
 -- | Handle user events in the info panel (just scrolling).
 --
 -- TODO: #2010 Finish porting Controller to KeyEventHandlers
-handleInfoPanelEvent :: ViewportScroll Name -> BrickEvent Name AppEvent -> EventM Name s ()
+handleInfoPanelEvent :: ViewportScroll Name -> BrickEvent Name AppEvent -> EventM Name ScenarioState ()
 handleInfoPanelEvent vs = \case
   Key V.KDown -> vScrollBy vs 1
   Key V.KUp -> vScrollBy vs (-1)
@@ -925,6 +928,7 @@ handleInfoPanelEvent vs = \case
   Key V.KPageUp -> vScrollPage vs Brick.Up
   Key V.KHome -> vScrollToBeginning vs
   Key V.KEnd -> vScrollToEnd vs
+  Key V.KEnter -> showEntityDescription
   _ -> return ()
 
 -- * Util

@@ -17,15 +17,15 @@ objectives:
     condition: |
       try {
         l <- robotNamed "listener";
-        as l {has "READY"}
+        as l {has "TIPS"}
       } { pure false }
 solution: |
   say "Ready!"
 entities:
-  - name: READY
+  - name: TIPS
     display:
       attr: device
-      char: 'R'
+      char: '?'
     description:
       - |
         When you're ready for your first tutorial challenge, type at the prompt:
@@ -36,6 +36,17 @@ entities:
       - |
         To open the full goal text again, you can hit **Ctrl+G**.
     properties: [known, pickable]
+  - name: logger
+    display:
+      attr: device
+      char: 'l'
+    description:
+      - |
+        Allows a robot to generate and store messages for later viewing.
+      - |
+        For this scenario it shows errors and tips.
+    properties: [pickable]
+    capabilities: [log, listen]
 robots:
   - name: base
     display:
@@ -44,7 +55,7 @@ robots:
     dir: east
     loc: [0, 0]
     inventory:
-      - [1, READY]
+      - [1, TIPS]
     devices:
       - logger
   - name: listener
@@ -54,7 +65,7 @@ robots:
     loc: [0, 0]
     dir: [0, 0]
     inventory:
-      - [0, READY]
+      - [0, TIPS]
     devices:
       - logger
     program: |
@@ -62,16 +73,15 @@ robots:
       forever {
         try {
           m <- listen;
-          if (m == "Ready!" || m == "ready!" || m == "ready") {
-            create "READY";
+          if (m == "Ready!" || m == "Ready" || m == "ready!" || m == "ready") {
+            create "TIPS";
             log "The player is ready!"
           } {
-            say $ "Wrong message: " ++ format m
+            say $ "Wrong message " ++ format m ++ ", you should say \"Ready!\""
           }
         } {log "Something bad happened!"}
       }
 seed: 0
-creative: true
 world:
   scrollable: false
   dsl: |
