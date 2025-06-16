@@ -234,7 +234,7 @@ colRowHdr :: BL.ColHdrRowHdr Name
 colRowHdr = BL.ColHdrRowHdr $ \_ (WdthD _wd) -> fill ' ' <=> hBorder
 
 drawRobotGridCell :: UIGameplay -> GameState -> ListFocused -> WidthDeficit -> BL.GridCtxt -> RID -> Widget Name
-drawRobotGridCell t g _foc (WdthD widthDef) ctx rid =
+drawRobotGridCell uig g _foc (WdthD widthDef) ctx rid =
   colGap . withSelectedAttr $
     case g ^. robotInfo . robotMap . at rid of
       -- this would be a synchronisation error, but crashing the game is not worth it
@@ -266,10 +266,12 @@ drawRobotGridCell t g _foc (WdthD widthDef) ctx rid =
   highlightSystem r = applyWhen (r ^. systemRobot) $ withAttr highlightAttr
   colGap = padLeft (Pad $ if widthDef > 0 then 0 else 1)
 
+  aMap = uig ^. uiAttributeMap
+
   nameWidget :: Robot -> Widget Name
   nameWidget r =
     hBox
-      [ renderDisplay (r ^. robotDisplay)
+      [ renderTexel (renderRobot aMap r)
       , highlightSystem r . txt $ " " <> r ^. robotName
       ]
 
@@ -277,7 +279,7 @@ drawRobotGridCell t g _foc (WdthD widthDef) ctx rid =
   ageWidget r = str ageStr
    where
     TimeSpec createdAtSec _ = r ^. robotCreatedAt
-    TimeSpec nowSec _ = t ^. uiTiming . lastFrameTime
+    TimeSpec nowSec _ = uig ^. uiTiming . lastFrameTime
     age = nowSec - createdAtSec
     ageStr
       | age < 60 = show age <> "sec"
@@ -296,7 +298,7 @@ drawRobotGridCell t g _foc (WdthD widthDef) ctx rid =
    where
     rCoords = fmap locToCoords rLoc
     rLoc = r ^. robotLocation
-    worldCell = drawLoc t g rCoords
+    worldCell = drawLoc uig g rCoords
     locStr = renderCoordsString rLoc
 
   statusWidget :: Robot -> Widget Name

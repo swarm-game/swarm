@@ -64,6 +64,9 @@ module Swarm.Game.Robot (
 
   -- ** Constants
   hearingDistance,
+
+  -- ** Rendering
+  renderRobot,
 ) where
 
 import Control.Applicative ((<|>))
@@ -74,12 +77,14 @@ import Data.Text (Text)
 import Data.Yaml (FromJSON (parseJSON), (.!=), (.:), (.:?))
 import GHC.Generics (Generic)
 import Linear
+import Swarm.Game.Cosmetic.Color (AttributeMap, TrueColor)
+import Swarm.Game.Cosmetic.Display (Display, defaultRobotDisplay, invisible)
+import Swarm.Game.Cosmetic.Texel (Texel)
 import Swarm.Game.Device
-import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Ingredients
 import Swarm.Game.Land
-import Swarm.Game.Location (Heading, Location, toDirection, toHeading)
+import Swarm.Game.Location (Heading, Location, toHeading)
 import Swarm.Game.Robot.Walk
 import Swarm.Game.Universe
 import Swarm.Language.JSON ()
@@ -200,19 +205,9 @@ robotName = robotEntity . entityName
 trobotName :: Lens' TRobot Text
 trobotName = robotEntity . entityName
 
--- | The 'Display' of a robot.  This is a special lens that
---   automatically sets the 'curOrientation' to the orientation of the
---   robot every time you do a @get@ operation.  Technically this does
---   not satisfy the lens laws---in particular, the get/put law does
---   not hold.  But we should think of the 'curOrientation' as being
---   simply a cache of the displayed entity's direction.
+-- | The 'Display' of a robot.
 robotDisplay :: Lens' Robot Display
-robotDisplay = lens getDisplay setDisplay
- where
-  getDisplay r =
-    (r ^. robotEntity . entityDisplay)
-      & curOrientation .~ ((r ^. robotOrientation) >>= toDirection)
-  setDisplay r d = r & robotEntity . entityDisplay .~ d
+robotDisplay = robotEntity . entityDisplay
 
 -- | The robot's current location, represented as @(x,y)@.  This is only
 --   a getter, since when changing a robot's location we must remember
@@ -397,3 +392,7 @@ instance FromJSONE TerrainEntityMaps TRobot where
 
 hearingDistance :: (Num i) => i
 hearingDistance = 32
+
+-- | Render a robot to a texel.
+renderRobot :: AttributeMap -> Robot -> Texel TrueColor
+renderRobot aMap r = renderEntity aMap (const False) True (r ^. robotEntity)
