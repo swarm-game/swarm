@@ -1,0 +1,98 @@
+version: 1
+name: Photocopier
+author: Brent Yorgey
+description: |
+  Copy an invisible pattern
+creative: false
+objectives:
+  - id: photocopy
+    goal:
+      - |
+        Inside the left-hand rectangular frame is a pattern drawn with
+        invisible pixels.  Your job is to copy the invisible pattern
+        on the left into the frame on the right.  Empty cells on the
+        left should be drawn with black pixels on the right, and cells
+        containing invisible pixels on the left should be drawn with
+        white pixels on the right.
+    condition: |
+      judge <- robotNamed "judge";
+      as judge { has "gold" }
+solution: |
+  run "scenarios/Challenges/_photocopier/solution.sw"
+robots:
+  - name: base
+    dir: north
+    devices:
+      - solar panel
+      - treads
+      - logger
+      - scanner
+      - branch predictor
+      - grabber
+      - compass
+      - lambda
+      - dictionary
+      - ADT calculator
+      - comparator
+      - counter
+      - strange loop
+      - clock
+      - GPS receiver
+    inventory:
+      - [100, pixel (W)]
+      - [100, pixel (B)]
+  - name: judge
+    system: true
+    dir: east
+    devices:
+      - logger
+    program: |
+      run "scenarios/Challenges/_photocopier/judge.sw"
+entities:
+  - name: pixel (W)
+    display:
+      attr: entity
+      char: '█'
+    description:
+      - White pixel
+    properties: [known]
+  - name: pixel (B)
+    display:
+      attr: black
+      char: '█'
+    description:
+      - Black pixel
+    properties: [known]
+  - name: invisible pixel
+    display:
+      invisible: true
+    description:
+      - An invisible pixel
+    properties: [known]
+  - name: frame
+    display:
+      char: '+'
+      attr: entity
+    description:
+      - A frame
+    properties: [known, boundary]
+known: [wall]
+world:
+  dsl: |
+    {grass}
+  upperleft: [-1, 1]
+  palette:
+    'B': [grass, null, base]
+    '.': [grass]
+    '+': [grass, frame]
+    'X': [grass, invisible pixel]
+    'J': [grass, null, judge]
+  map: |
+    ++++++++++++.....++++++++++++
+    +BXX.......+.....+..........+
+    +..XX......+.....+..........+
+    +...XX.....+.....+..........+
+    +..XXXX....+.....+..........+
+    +.XX..XXX.X+.....+..........+
+    +XX.....XX.+.....+J.........+
+    ++++++++++++.....++++++++++++
