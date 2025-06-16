@@ -616,6 +616,7 @@ library swarm-scenario
   exposed-modules:
     Swarm.Constant
     Swarm.Game.Achievement.Definitions
+    Swarm.Game.Cosmetic
     Swarm.Game.Cosmetic.Assignment
     Swarm.Game.Cosmetic.Attribute
     Swarm.Game.Cosmetic.Color
