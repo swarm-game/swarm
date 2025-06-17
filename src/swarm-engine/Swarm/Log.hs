@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -22,19 +23,28 @@ module Swarm.Log (
   logToText,
 ) where
 
-import Control.Lens (makeLenses, view)
-import Data.Aeson (FromJSON, ToJSON)
+import Control.Lens (makeLenses, over, view, _head)
+import Data.Aeson
+import Data.Char (toLower)
 import Data.Foldable (toList)
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Servant.Docs qualified as SD
 import Swarm.Game.Location (Location)
-import Swarm.Game.Tick (TickNumber)
+import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.Universe (Cosmic)
+import Swarm.Util.JSON (optionsMinimize, optionsUntagged)
 
 -- | Severity of the error - critical errors are bugs
 --   and should be reported as Issues.
-data Severity = Info | Debug | Warning | Error | Critical
-  deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
+data Severity = Debug | Info | Warning | Error | Critical
+  deriving (Show, Eq, Ord, Generic)
+
+instance ToJSON Severity where
+  toJSON = genericToJSON optionsUntagged
+
+instance FromJSON Severity where
+  parseJSON = genericParseJSON optionsUntagged
 
 -- | How a robot log entry was produced.
 data RobotLogSource
@@ -46,7 +56,13 @@ data RobotLogSource
     RobotError
   | -- | Produced as a status message from a command.
     CmdStatus
-  deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
+  deriving (Show, Eq, Ord, Generic)
+
+instance ToJSON RobotLogSource where
+  toJSON = genericToJSON optionsUntagged
+
+instance FromJSON RobotLogSource where
+  parseJSON = genericParseJSON optionsUntagged
 
 -- | Source of a log entry.
 data LogSource
@@ -56,7 +72,15 @@ data LogSource
     RobotLog RobotLogSource Int (Cosmic Location)
   | -- | Log produced by an exception or system.
     SystemLog
-  deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
+  deriving (Show, Eq, Ord, Generic)
+
+instance ToJSON LogSource where
+  toJSON = genericToJSON optionsUntagged
+
+instance FromJSON LogSource where
+  -- This is not ambiguos for Robot/System constructor, but
+  -- read aeson docs before adding new LogSource constructor
+  parseJSON = genericParseJSON optionsUntagged
 
 -- | A log entry.
 data LogEntry = LogEntry
@@ -72,10 +96,33 @@ data LogEntry = LogEntry
   , _leText :: Text
   -- ^ The text of the log entry.
   }
-  deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
+  deriving (Show, Eq, Ord, Generic)
 
 makeLenses ''LogEntry
 
 -- | Extract the text from a container of log entries.
 logToText :: Foldable t => t LogEntry -> [Text]
 logToText = map (view leText) . toList
+
+instance FromJSON LogEntry where
+  parseJSON = genericParseJSON entryJsonOptions
+
+instance ToJSON LogEntry where
+  toJSON = genericToJSON entryJsonOptions
+
+entryJsonOptions :: Options
+entryJsonOptions =
+  optionsMinimize
+    { fieldLabelModifier = over _head toLower . drop 3 -- drops prefix
+    }
+
+instance SD.ToSample LogEntry where
+  toSamples _ =
+    SD.singleSample $
+      LogEntry
+        { _leTime = TickNumber 0
+        , _leSource = SystemLog
+        , _leSeverity = Warning
+        , _leName = "Loading game"
+        , _leText = "Can not open file XYZ!"
+        }
