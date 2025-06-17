@@ -33,13 +33,7 @@ import Servant.Docs qualified as SD
 import Swarm.Game.Location (Location)
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.Universe (Cosmic)
-import Swarm.Util.JSON (optionsMinimize)
-
-enumJsonOptions :: Options
-enumJsonOptions =
-  defaultOptions
-    { sumEncoding = UntaggedValue
-    }
+import Swarm.Util.JSON (optionsMinimize, optionsUntagged)
 
 -- | Severity of the error - critical errors are bugs
 --   and should be reported as Issues.
@@ -47,10 +41,10 @@ data Severity = Debug | Info | Warning | Error | Critical
   deriving (Show, Eq, Ord, Generic)
 
 instance ToJSON Severity where
-  toJSON = genericToJSON enumJsonOptions
+  toJSON = genericToJSON optionsUntagged
 
 instance FromJSON Severity where
-  parseJSON = genericParseJSON enumJsonOptions
+  parseJSON = genericParseJSON optionsUntagged
 
 -- | How a robot log entry was produced.
 data RobotLogSource
@@ -65,10 +59,10 @@ data RobotLogSource
   deriving (Show, Eq, Ord, Generic)
 
 instance ToJSON RobotLogSource where
-  toJSON = genericToJSON enumJsonOptions
+  toJSON = genericToJSON optionsUntagged
 
 instance FromJSON RobotLogSource where
-  parseJSON = genericParseJSON enumJsonOptions
+  parseJSON = genericParseJSON optionsUntagged
 
 -- | Source of a log entry.
 data LogSource
@@ -81,12 +75,12 @@ data LogSource
   deriving (Show, Eq, Ord, Generic)
 
 instance ToJSON LogSource where
-  toJSON = genericToJSON enumJsonOptions
+  toJSON = genericToJSON optionsUntagged
 
 instance FromJSON LogSource where
   -- This is not ambiguos for Robot/System constructor, but
   -- read aeson docs before adding new LogSource constructor
-  parseJSON = genericParseJSON enumJsonOptions
+  parseJSON = genericParseJSON optionsUntagged
 
 -- | A log entry.
 data LogEntry = LogEntry
