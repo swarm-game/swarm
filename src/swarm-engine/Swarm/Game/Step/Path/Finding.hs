@@ -30,7 +30,7 @@ import Control.Effect.Lens
 import Control.Lens ((^.))
 import Control.Monad (filterM, guard)
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
+import Control.Monad.Trans.Maybe (MaybeT (..), hoistMaybe, runMaybeT)
 import Data.Graph.AStar (aStarM)
 import Data.HashSet (HashSet)
 import Data.HashSet qualified as HashSet
@@ -49,7 +49,6 @@ import Swarm.Game.Step.Util.Inspect
 import Swarm.Game.Universe
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
-import Swarm.Util (hoistMaybe)
 
 -- | Swarm command arguments are converted to idiomatic Haskell
 -- types before invoking this function, and conversely the callsite

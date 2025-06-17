@@ -12,7 +12,7 @@ import Control.Lens
 import Control.Monad (forM_, guard, when)
 import Control.Monad.Extra (whenJust)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
+import Control.Monad.Trans.Maybe (MaybeT (..), hoistMaybe, runMaybeT)
 import Data.Map qualified as M
 import Data.Yaml qualified as Y
 import Graphics.Vty qualified as V
@@ -31,7 +31,6 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI.Gameplay
-import Swarm.Util (hoistMaybe)
 import Swarm.Util.Erasable (maybeToErasable)
 import System.Clock
 
