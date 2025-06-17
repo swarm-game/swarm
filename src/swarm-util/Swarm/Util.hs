@@ -30,7 +30,6 @@ module Swarm.Util (
   lookupEither,
   applyWhen,
   applyJust,
-  hoistMaybe,
   unsnocNE,
 
   -- * Directory utilities
@@ -86,7 +85,6 @@ import Control.Carrier.Throw.Either
 import Control.Effect.State (State, modify, state)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<&>), (<>~))
 import Control.Monad (filterM, unless)
-import Control.Monad.Trans.Maybe (MaybeT (..))
 import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum, toLower)
 import Data.Either.Extra (maybeToEither)
@@ -283,12 +281,6 @@ applyWhen False _ x = x
 applyJust :: Maybe (a -> a) -> a -> a
 applyJust Nothing x = x
 applyJust (Just f) x = f x
-
--- | Convert a 'Maybe' computation to 'MaybeT'.
---
--- TODO (#1151): Use implementation from "transformers" package v0.6.0.0
-hoistMaybe :: (Applicative m) => Maybe b -> MaybeT m b
-hoistMaybe = MaybeT . pure
 
 -- | Like 'unsnoc', but for 'NonEmpty' so without the 'Maybe'
 --

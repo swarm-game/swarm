@@ -14,7 +14,7 @@ import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Monad (forM_, guard, when)
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
+import Control.Monad.Trans.Maybe (MaybeT (..), hoistMaybe, runMaybeT)
 import Control.Monad.Trans.State.Strict qualified as TS
 import Data.Array (bounds, (!))
 import Data.IntMap qualified as IM
