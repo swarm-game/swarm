@@ -36,8 +36,8 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Description (getValidityRequirements)
 import Swarm.Game.CESK
+import Swarm.Game.Cosmetic.Display
 import Swarm.Game.Device
-import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception

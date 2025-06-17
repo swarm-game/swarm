@@ -16,7 +16,7 @@ import Data.Tuple.Extra (dupe)
 import Swarm.Effect (runTimeIO)
 import Swarm.Failure (SystemFailure, simpleErrorHandle)
 import Swarm.Game.CESK (initMachine)
-import Swarm.Game.Display (defaultRobotDisplay)
+import Swarm.Game.Cosmetic.Display (defaultRobotDisplay)
 import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, mkRobot)
 import Swarm.Game.Robot.Walk (emptyExceptions)

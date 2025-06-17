@@ -25,7 +25,8 @@ import Data.Text qualified as T
 import Linear (zero)
 import Swarm.Effect as Effect (Time, getNow)
 import Swarm.Game.CESK (initMachine)
-import Swarm.Game.Display
+import Swarm.Game.Cosmetic.Attribute
+import Swarm.Game.Cosmetic.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Land

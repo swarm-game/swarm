@@ -20,6 +20,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Data.Yaml as Y
+import Swarm.Game.Cosmetic.Display (defaultEntityDisplay)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Land
 import Swarm.Game.Scenario.RobotLookup
@@ -124,5 +125,5 @@ type CellPaintDisplay = PCell EntityFacade
 instance ToJSON CellPaintDisplay where
   toJSON = mkPCellJson $ \case
     ENothing -> Nothing
-    EErase -> Just $ EntityFacade "erase" mempty
+    EErase -> Just $ EntityFacade "erase" (defaultEntityDisplay ' ') Nothing
     EJust e -> Just e

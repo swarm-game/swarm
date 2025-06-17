@@ -49,6 +49,7 @@ module Swarm.TUI.Model.UI.Gameplay (
   uiTPF,
   uiFPS,
   scenarioRef,
+  uiAttributeMap,
 ) where
 
 import Brick.Focus
@@ -56,7 +57,9 @@ import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
 import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Text (Text)
-import Swarm.Game.Scenario.Status (ScenarioPath)
+import Swarm.Game.Cosmetic.Color (AttributeMap)
+import Swarm.Game.Scenario (scenarioCosmetics, scenarioLandscape)
+import Swarm.Game.Scenario.Status (ScenarioPath, getScenario)
 import Swarm.Game.ScenarioInfo (
   ScenarioWith,
  )
@@ -271,3 +274,5 @@ uiShowRobots = to (\ui -> ui ^. uiTiming . lastFrameTime > ui ^. uiHideRobotsUnt
 
 -- | The currently active Scenario description, useful for starting over.
 scenarioRef :: Lens' UIGameplay (Maybe (ScenarioWith ScenarioPath))
+uiAttributeMap :: Traversal' UIGameplay AttributeMap
+uiAttributeMap = scenarioRef . _Just . getScenario . scenarioLandscape . scenarioCosmetics

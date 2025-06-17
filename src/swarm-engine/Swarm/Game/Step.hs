@@ -44,7 +44,7 @@ import Prettyprinter (pretty)
 import Swarm.Effect as Effect (Time, getNow)
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
-import Swarm.Game.Display
+import Swarm.Game.Cosmetic.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Exception
 import Swarm.Game.Land

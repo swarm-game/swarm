@@ -14,7 +14,6 @@ module Swarm.Doc.Wiki.Cheatsheet (
 
 import Control.Effect.Lift
 import Control.Lens (view, (^.))
-import Control.Lens.Combinators (to)
 import Data.Foldable (find, toList)
 import Data.List (transpose)
 import Data.List.Extra (enumerate)
@@ -29,8 +28,8 @@ import Swarm.Doc.Util
 import Swarm.Doc.Wiki.Matrix
 import Swarm.Doc.Wiki.Util
 import Swarm.Failure (simpleErrorHandle)
+import Swarm.Game.Cosmetic.Display (defaultChar)
 import Swarm.Game.Device qualified as D
-import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeCatalysts, recipeInputs, recipeOutputs, recipeTime, recipeWeight)
@@ -200,7 +199,7 @@ entityToList :: Entity -> [Text]
 entityToList e =
   map
     escapeTable
-    [ codeQuote . T.singleton $ e ^. entityDisplay . to displayChar
+    [ codeQuote . T.singleton $ e ^. entityDisplay . defaultChar
     , addLink ("#" <> linkID) $ view entityName e
     , T.intercalate ", " $ Capability.capabilityName <$> Map.keys (D.getMap $ view E.entityCapabilities e)
     , T.intercalate ", " . map showT . filter (/= E.Pickable) $ toList props
@@ -224,7 +223,7 @@ entityToSection e =
   T.unlines $
     [ "## " <> view E.entityName e
     , ""
-    , " - Char: " <> (codeQuote . T.singleton $ e ^. entityDisplay . to displayChar)
+    , " - Char: " <> (codeQuote . T.singleton $ e ^. entityDisplay . defaultChar)
     ]
       <> [" - Properties: " <> T.intercalate ", " (map showT $ toList props) | not $ null props]
       <> [" - Capabilities: " <> T.intercalate ", " (Capability.capabilityName <$> caps) | not $ null caps]
