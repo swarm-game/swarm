@@ -16,8 +16,8 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Void (Void)
 import Data.Tuple (swap)
+import Data.Void (Void)
 import Swarm.Game.Scenario.Topography.ProtoCell
 import Swarm.Util (quote)
 import Swarm.Util.Yaml
@@ -26,9 +26,9 @@ import Text.Megaparsec.Char
 
 data StructurePalette e = StructurePalette
   { paletteChars :: Set Char
-      -- ^ List of characters that can be used as special character
-      --   entities that just look like themselves, for use in labelling
-      --   things in the world with text
+  -- ^ List of characters that can be used as special character
+  --   entities that just look like themselves, for use in labelling
+  --   things in the world with text
   , unPalette :: Map Char (SignpostableCell e)
   }
   deriving (Eq, Show)
