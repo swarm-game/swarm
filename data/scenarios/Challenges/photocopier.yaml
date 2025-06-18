@@ -9,7 +9,7 @@ objectives:
     goal:
       - |
         Inside the left-hand rectangular frame is a pattern drawn with
-        invisible pixels.  Your job is to copy the invisible pattern
+        `invisible pixel`{=entity}s.  Your job is to copy the invisible pattern
         on the left into the frame on the right.  Empty cells on the
         left should be drawn with black pixels on the right, and cells
         containing invisible pixels on the left should be drawn with
