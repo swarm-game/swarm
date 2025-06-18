@@ -26,7 +26,7 @@ import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
-import Swarm.Game.Scenario.Topography.ProtoCell
+import Swarm.Game.Scenario.Topography.Palette
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Scenario.Topography.WorldPalette
@@ -135,7 +135,7 @@ constructScenario maybeOriginalScenario cellGrid =
   wd =
     WorldDescription
       { scrollable = True
-      , palette = StructurePalette suggestedPalette
+      , palette = StructurePalette mempty suggestedPalette
       , area = PositionedGrid upperLeftCoord cellGrid
       , navigation = Navigation mempty mempty
       , placedStructures = mempty

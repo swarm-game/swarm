@@ -21,7 +21,7 @@ import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Scenario.Topography.Placement
-import Swarm.Game.Scenario.Topography.ProtoCell
+import Swarm.Game.Scenario.Topography.Palette
 import Swarm.Game.Scenario.Topography.Structure.Named
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
@@ -85,7 +85,7 @@ parseStructure pal structures v = do
 
 instance (FromJSONE e a) => FromJSONE e (PStructure (Maybe a)) where
   parseJSONE = withObjectE "structure definition" $ \v -> do
-    pal <- v ..:? "palette" ..!= StructurePalette mempty
+    pal <- v ..:? "palette" ..!= StructurePalette mempty mempty
     structures <- v ..:? "structures" ..!= []
     liftE $ parseStructure pal structures v
 
@@ -138,7 +138,7 @@ paintMap maskChar pal g = do
 
   usedChars = Set.fromList $ allMembers g
   paletteKeys = M.keysSet $ unPalette pal
-  unusedPaletteChars = Set.difference paletteKeys usedChars
+  unusedPaletteChars = Set.difference paletteKeys (usedChars <> paletteChars pal)
 
   toCell c =
     if Just c == maskChar

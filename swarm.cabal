@@ -519,6 +519,7 @@ library swarm-topography
     hashable,
     lens,
     linear,
+    megaparsec,
     nonempty-containers,
     servant-docs,
     split,
@@ -536,6 +537,7 @@ library swarm-topography
     Swarm.Game.Scenario.Topography.Grid
     Swarm.Game.Scenario.Topography.Modify
     Swarm.Game.Scenario.Topography.Navigation.Waypoint
+    Swarm.Game.Scenario.Topography.Palette
     Swarm.Game.Scenario.Topography.Placement
     Swarm.Game.Scenario.Topography.ProtoCell
     Swarm.Game.Scenario.Topography.Rasterize

@@ -7,14 +7,18 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.Topography.WorldDescription where
 
+import Control.Arrow ((&&&))
 import Control.Carrier.Reader (runReader)
 import Control.Carrier.Throw.Either
 import Control.Monad (forM)
 import Data.Coerce
 import Data.Functor.Identity
+import Data.Map qualified as M
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Yaml as Y
-import Swarm.Game.Entity (Entity)
+import Swarm.Game.Cosmetic.Display (defaultEntityDisplay)
+import Swarm.Game.Entity (Entity, EntityProperty (Known), mkEntity)
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Scenario.RobotLookup (RobotMap)
@@ -25,8 +29,9 @@ import Swarm.Game.Scenario.Topography.Navigation.Waypoint (
   Parentage (Root),
   WaypointName,
  )
-import Swarm.Game.Scenario.Topography.ProtoCell (
+import Swarm.Game.Scenario.Topography.Palette (
   StructurePalette (StructurePalette),
+  SignpostableCell (..)
  )
 import Swarm.Game.Scenario.Topography.Structure (
   MergedStructure (MergedStructure),
@@ -39,11 +44,15 @@ import Swarm.Game.Scenario.Topography.Structure.Overlay (
  )
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static (LocatedStructure)
 import Swarm.Game.Scenario.Topography.WorldPalette
+import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.Universe (SubworldName (DefaultRootSubworld))
 import Swarm.Game.World.Parse ()
 import Swarm.Game.World.Syntax
 import Swarm.Game.World.Typecheck
+import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Text.Markdown (Document, fromText)
 import Swarm.Pretty (prettyString)
+import Swarm.Util.Erasable (Erasable (..))
 import Swarm.Util.Yaml
 
 ------------------------------------------------------------
@@ -78,14 +87,29 @@ data WorldParseDependencies
       -- | last for the benefit of partial application
       TerrainEntityMaps
 
+-- | Generate default character entities for characters in 'paletteChars'.
+generateCharEntities :: WorldPalette Entity -> WorldPalette Entity
+generateCharEntities (StructurePalette charSet pal) = StructurePalette charSet (pal <> charPal)
+  where
+    charPal = M.fromList . map (id &&& mkCharCell) . S.toList $ charSet
+
+    mkCharCell :: Char -> SignpostableCell (PCell Entity)
+    mkCharCell c = SignpostableCell Nothing Nothing (Cell BlankT (EJust (mkCharEntity c)) [])
+
+    mkCharEntity :: Char -> Entity
+    mkCharEntity c = mkEntity (defaultEntityDisplay c) (T.pack [c]) (mkCharDesc c) [Known] mempty
+
+    mkCharDesc :: Char -> Document Syntax
+    mkCharDesc c = fromText $ "The letter " <> T.pack [c] <> "."
+
 instance FromJSONE WorldParseDependencies WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
     WorldParseDependencies worldMap scenarioLevelStructureDefs rm tem <- getE
 
     let withDeps = localE (const (tem, rm))
     palette <-
-      withDeps $
-        v ..:? "palette" ..!= StructurePalette mempty
+      fmap generateCharEntities . withDeps $
+        v ..:? "palette" ..!= StructurePalette mempty mempty
     subworldLocalStructureDefs <-
       withDeps $
         v ..:? "structures" ..!= []
