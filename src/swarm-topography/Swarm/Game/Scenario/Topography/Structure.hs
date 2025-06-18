@@ -20,8 +20,8 @@ import Data.Yaml as Y
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
-import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.Palette
+import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.Structure.Named
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static

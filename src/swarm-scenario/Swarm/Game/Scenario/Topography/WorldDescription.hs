@@ -30,8 +30,8 @@ import Swarm.Game.Scenario.Topography.Navigation.Waypoint (
   WaypointName,
  )
 import Swarm.Game.Scenario.Topography.Palette (
+  SignpostableCell (..),
   StructurePalette (StructurePalette),
-  SignpostableCell (..)
  )
 import Swarm.Game.Scenario.Topography.Structure (
   MergedStructure (MergedStructure),
@@ -90,17 +90,17 @@ data WorldParseDependencies
 -- | Generate default character entities for characters in 'paletteChars'.
 generateCharEntities :: WorldPalette Entity -> WorldPalette Entity
 generateCharEntities (StructurePalette charSet pal) = StructurePalette charSet (pal <> charPal)
-  where
-    charPal = M.fromList . map (id &&& mkCharCell) . S.toList $ charSet
+ where
+  charPal = M.fromList . map (id &&& mkCharCell) . S.toList $ charSet
 
-    mkCharCell :: Char -> SignpostableCell (PCell Entity)
-    mkCharCell c = SignpostableCell Nothing Nothing (Cell BlankT (EJust (mkCharEntity c)) [])
+  mkCharCell :: Char -> SignpostableCell (PCell Entity)
+  mkCharCell c = SignpostableCell Nothing Nothing (Cell BlankT (EJust (mkCharEntity c)) [])
 
-    mkCharEntity :: Char -> Entity
-    mkCharEntity c = mkEntity (defaultEntityDisplay c) (T.pack [c]) (mkCharDesc c) [Known] mempty
+  mkCharEntity :: Char -> Entity
+  mkCharEntity c = mkEntity (defaultEntityDisplay c) (T.pack [c]) (mkCharDesc c) [Known] mempty
 
-    mkCharDesc :: Char -> Document Syntax
-    mkCharDesc c = fromText $ "The letter " <> T.pack [c] <> "."
+  mkCharDesc :: Char -> Document Syntax
+  mkCharDesc c = fromText $ "The letter " <> T.pack [c] <> "."
 
 instance FromJSONE WorldParseDependencies WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
