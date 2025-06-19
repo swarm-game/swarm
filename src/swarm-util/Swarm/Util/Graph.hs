@@ -79,7 +79,7 @@ findCycle es = runST $ do
 
   dfs :: STUArray s Vertex Bool -> DFSPath -> Vertex -> ST s (Maybe [Vertex])
   dfs visited p@(DFSPath pathMembers path) v
-    | v `IS.member` pathMembers = pure . Just . (v :) . reverse $ takeWhile (/= v) path
+    | v `IS.member` pathMembers = pure . Just . (v :) . reverse . (v :) $ takeWhile (/= v) path
     | otherwise = do
         vis <- readArray visited v
         case vis of

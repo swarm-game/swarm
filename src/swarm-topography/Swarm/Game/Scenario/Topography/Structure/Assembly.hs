@@ -20,9 +20,9 @@ import Control.Arrow (first, left, (&&&))
 import Control.Monad (when)
 import Data.Coerce
 import Data.Foldable (foldl', foldlM, traverse_)
-import Data.HashMap.Strict qualified as HM
-import Data.HashSet qualified as HS
 import Data.List (singleton, uncons)
+import Data.Map.Lazy qualified as ML
+import Data.Map.Strict qualified as M
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -37,7 +37,8 @@ import Swarm.Game.Scenario.Topography.Structure.Named
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Language.Syntax.Direction (directionJsonModifier)
-import Swarm.Util (brackets, commaList, quote)
+import Swarm.Util (commaList, quote)
+import Swarm.Util.Graph (failOnCyclicGraph)
 
 -- | /Uniquely/ identifies a structure in the graph
 type PathToRoot = [StructureName]
@@ -58,7 +59,8 @@ data PathPlacement = PathPlacement
 -- | This augments a named structure with its list of edges (placements). PathPlacement is used to allow us to disambiguate
 --   different structures which share the same name.
 data AnnotatedStructure a = AnnotatedStructure
-  { pathPlacements :: [PathPlacement]
+  { annPathToRoot :: PathToRoot
+  , pathPlacements :: [PathPlacement]
   , namedStructure :: NamedStructure a
   }
 
@@ -69,28 +71,28 @@ data AnnotatedStructure a = AnnotatedStructure
 mkGraph ::
   forall a.
   PStructure (Maybe a) ->
-  Either Text (HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)))
+  Either Text (M.Map PathToRoot (AnnotatedStructure (Maybe a)))
 mkGraph baseStructure = go True mempty [] mempty baseNamed
  where
   go ::
     Bool ->
     -- Knowledge inherited from parent, allows us to find the full path for a placement
-    HM.HashMap StructureName PathToRoot ->
+    M.Map StructureName PathToRoot ->
     -- Path from parent to root
     [StructureName] ->
-    HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)) ->
+    M.Map PathToRoot (AnnotatedStructure (Maybe a)) ->
     NamedStructure (Maybe a) ->
-    Either Text (HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)))
+    Either Text (M.Map PathToRoot (AnnotatedStructure (Maybe a)))
   go isBase inheritedKnowledge parentToRootPath !acc !namedStruct = do
     let struct = structure namedStruct
         substructures = structures struct
         structName = name namedStruct
         structPlacements = placements struct
         structPath = if isBase then [] else structName : parentToRootPath
-        knowledgeOfChildren = HM.fromList $ map ((id &&& (: structPath)) . name) substructures
+        knowledgeOfChildren = M.fromList $ map ((id &&& (: structPath)) . name) substructures
         -- Deeper structure definitions supersede more shallow ones, so we pass knowledgeOfChildren first as HM.union is left-biased.
-        knowledge = HM.union knowledgeOfChildren inheritedKnowledge
-        f placement = case HM.lookup (src placement) knowledge of
+        knowledge = M.union knowledgeOfChildren inheritedKnowledge
+        f placement = case M.lookup (src placement) knowledge of
           Nothing ->
             Left $
               T.unwords
@@ -98,49 +100,13 @@ mkGraph baseStructure = go True mempty [] mempty baseNamed
           Just path -> pure $ PathPlacement path (structurePose placement)
 
     structPathPlacements <- traverse f structPlacements
-    let annotatedStruct = AnnotatedStructure structPathPlacements namedStruct
-        !acc' = HM.insert structPath annotatedStruct acc
+    let annotatedStruct = AnnotatedStructure structPath structPathPlacements namedStruct
+        !acc' = M.insert structPath annotatedStruct acc
     foldlM (go False knowledge structPath) acc' substructures
   baseNamed = NamedArea (StructureName "") mempty Nothing baseStructure
 
-data DFSPath = DFSPath (HS.HashSet PathToRoot) [PathToRoot]
-data DFSState = DFSState (HS.HashSet PathToRoot) [PathToRoot]
-
-addToDFSPath :: PathToRoot -> DFSPath -> DFSPath
-addToDFSPath pathToRoot (DFSPath pathElems back) = DFSPath (HS.insert pathToRoot pathElems) (pathToRoot : back)
-
 basePathToRoot :: PathToRoot
 basePathToRoot = []
-
-cycleError :: PathToRoot -> [PathToRoot] -> Text
-cycleError path dfsPath = T.unwords ["Structure graph contains a cycle:", cycleText]
- where
-  cyc = (path :) . reverse . (path :) . takeWhile (/= path) $ dfsPath
-  cycleText = brackets . T.intercalate " -> " . fmap showPath $ cyc
-
--- | Given a graph constructed via 'mkGraph', this function does a dfs on the graph to find
---   any cycles in the graph that exist. If such a cycle exists, an appropriate error message is returned (in 'Left').
---   If there are no cycles, what is instead returned is a topologically sorted list of all the identifiers in the graph (in 'Right').
---   The list is sorted such that if structure A places structure B, the identifier for structure B precedes the identifier for structure A.
-topSortGraph :: HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)) -> Either Text [PathToRoot]
-topSortGraph graph = fmap (reverse . getAcc) . foldlM (go emptyPath) acc0 $ HM.toList graph
- where
-  go :: DFSPath -> DFSState -> (PathToRoot, AnnotatedStructure (Maybe a)) -> Either Text DFSState
-  go dfsPathOfParent@(DFSPath parentPathMembers parentPath) acc@(DFSState visited _) (!pathToRoot, !annotatedStruct) = do
-    if pathToRoot `HS.member` visited
-      then pure acc
-      else do
-        when (pathToRoot `HS.member` parentPathMembers) $ Left $ cycleError pathToRoot parentPath
-        let dfsPath = addToDFSPath pathToRoot dfsPathOfParent
-            placementPaths = map pathToPlacement $ pathPlacements annotatedStruct
-            f acc' path = case HM.lookup path graph of
-              Nothing -> Left $ T.unwords ["Could not find structure", showPath path, "in topological sort of graph"] -- As long as mkGraph is correct, this path should not be taken
-              Just annotated -> go dfsPath acc' (path, annotated)
-        DFSState visited' topSortAcc' <- foldlM f acc placementPaths
-        pure $ DFSState (HS.insert pathToRoot visited') (pathToRoot : topSortAcc')
-  emptyPath = DFSPath HS.empty []
-  acc0 = DFSState HS.empty []
-  getAcc (DFSState _ acc) = acc
 
 -- | Destructively overlays one already-merged direct child structure
 --   upon the input merged structure.
@@ -157,53 +123,52 @@ overlaySingleStructure (MergedStructure inputArea inputPlacements inputWaypoints
     offsetLoc (coerce loc)
       . modifyLoc (reorientLandmark orientation $ getGridDimensions overArea)
 
--- | Given a graph constructed via 'mkGraph' and a topologically sorted listed of identifiers constructed via 'topSortGraph',
---   this function assembles all the structures in the graph, taking care to avoid redundant work. The assembled structure for
---   an identifier can be found by looking up the identifier in the HashMap that this function returns.
-mergeStructures :: forall a. HM.HashMap PathToRoot (AnnotatedStructure (Maybe a)) -> [PathToRoot] -> Either Text (HM.HashMap PathToRoot (MergedStructure (Maybe a)))
-mergeStructures graph = foldlM go mempty
+-- | Given the structure graph, ensure that the graph is not acyclic and that all placements are valid
+validateGraph :: M.Map PathToRoot (AnnotatedStructure (Maybe a)) -> Either Text (M.Map PathToRoot (AnnotatedStructure (Maybe a)))
+validateGraph graph = do
+  validated <- M.traverseWithKey go graph
+  failOnCyclicGraph "Structure" (showPath . annPathToRoot) [(ann, path, map pathToPlacement (pathPlacements ann)) | (path, ann) <- M.toList validated]
+  pure validated
  where
-  -- This will not be called unless the graph and topological sort are incorrect
-  mkCouldNotFindError path = T.unwords ["Could not look up structure", showPath path, "in mergeStructure"]
+  go :: PathToRoot -> AnnotatedStructure (Maybe a) -> Either Text (AnnotatedStructure (Maybe a))
+  go path ann = do
+    let toPlace = pathPlacements ann
+        f (PathPlacement p pose) = (graph M.! p, pose)
+    left (elaboratePlacement path <>) $ traverse_ (uncurry validatePlacement . first namedStructure . f) toPlace
+    pure ann
 
-  lookupHandling m path f = case HM.lookup path m of
-    Nothing -> Left $ mkCouldNotFindError path
-    Just x -> pure (f x)
-
-  validatePlacements path toPlace = do
-    result <- traverse (\(PathPlacement p pose) -> lookupHandling graph p (,pose)) toPlace
-    left (elaboratePlacement path <>) $ traverse_ (uncurry validatePlacement . first namedStructure) result
-    pure result
+-- | Given a graph constructed via 'mkGraph',this function assembles all the structures in the graph, taking care to avoid redundant work.
+--   The assembled structure for an identifier can be found by looking up the identifier in the Map that this function returns.
+mergeStructures :: M.Map PathToRoot (AnnotatedStructure (Maybe a)) -> M.Map PathToRoot (MergedStructure (Maybe a))
+mergeStructures graph = M.fromList . ML.toList $ mergedMap
+ where
+  mergedMap = ML.fromList [(p, toMerged p ann) | (p, ann) <- M.toList graph]
 
   placementToLocated (Placement sn pose) = LocatedStructure (OrientedStructure sn (up $ orient pose)) (offset pose)
+  computeInitialOverlays = map (placementToLocated . uncurry Placement . first (name . namedStructure)) . filter (isRecognizable . namedStructure . fst) . map (\(PathPlacement p pose) -> (graph M.! p, pose))
 
-  computeInitialOverlays = map (placementToLocated . uncurry Placement . first (name . namedStructure)) . filter (isRecognizable . namedStructure . fst)
+  toMerged path ann = foldl' overlaySingleStructure initialMerged toPlaceMerged
+   where
+    toPlace = pathPlacements ann
+    toPlaceMerged = map (\(PathPlacement p pose) -> (mergedMap ML.! p, pose)) toPlace
 
-  go :: HM.HashMap PathToRoot (MergedStructure (Maybe a)) -> PathToRoot -> Either Text (HM.HashMap PathToRoot (MergedStructure (Maybe a)))
-  go !alreadyMerged !path = do
-    annotatedStruct <- lookupHandling graph path id
-    let toPlace = pathPlacements annotatedStruct
-    toPlaceAnnotated <- validatePlacements path toPlace
-    let f (PathPlacement pathForPlacement pose) = lookupHandling alreadyMerged pathForPlacement (,pose)
-    mergedToPlace <- traverse f toPlace
-    let parentage = maybe Root (WithParent . fst) (uncons path)
-        struct = structure . namedStructure $ annotatedStruct
-        origArea = area struct
-        initialWaypoints = map (Originated parentage) . waypoints $ struct
-        initialOverlays = computeInitialOverlays toPlaceAnnotated
-        initialMerged = MergedStructure origArea initialOverlays initialWaypoints
-        merged = foldl' overlaySingleStructure initialMerged mergedToPlace
-    pure $ HM.insert path merged alreadyMerged
+    parentage = maybe Root (WithParent . fst) (uncons path)
+    struct = structure . namedStructure $ ann
+
+    origArea = area struct
+    initialWaypoints = map (Originated parentage) . waypoints $ struct
+    initialOverlays = computeInitialOverlays toPlace
+    initialMerged = MergedStructure origArea initialOverlays initialWaypoints
 
 -- | Given a base structure, this function returns the HashMap of merged structures (in 'Right').
 --   If the input is invalid, this functions instead returns an appropriate error message (in 'Left').
 assembleStructure' ::
   PStructure (Maybe a) ->
-  Either Text (HM.HashMap PathToRoot (MergedStructure (Maybe a)))
+  Either Text (M.Map PathToRoot (MergedStructure (Maybe a)))
 assembleStructure' baseStructure = do
   graph <- mkGraph baseStructure
-  topSorted <- topSortGraph graph
-  !mergedMap <- mergeStructures graph topSorted
+  validatedGraph <- validateGraph graph
+  let !mergedMap = mergeStructures validatedGraph
   pure mergedMap
 
 -- | Assembles the given base structure into a 'MergedStructure'
@@ -212,7 +177,7 @@ assembleStructure ::
   Either Text (MergedStructure (Maybe a))
 assembleStructure baseStructure = do
   mergedMap <- assembleStructure' baseStructure
-  case HM.lookup basePathToRoot mergedMap of
+  case M.lookup basePathToRoot mergedMap of
     Nothing -> Left "Unable to find root structure in graph" -- This path this should not be taken unless there is a bug in the implementation
     Just merged -> pure merged
 
@@ -227,7 +192,7 @@ assembleStructures namedStructs = do
   mergedMap <- assembleStructure' (packageStructures namedStructs)
   let f namedStruct = do
         let path = singleton . name $ namedStruct
-        merged <- case HM.lookup path mergedMap of
+        merged <- case M.lookup path mergedMap of
           Nothing -> Left $ T.unwords ["Unable to find structure", showPath path, "in collection of merged structures"]
           Just x -> pure x
         pure (namedStruct, merged)
