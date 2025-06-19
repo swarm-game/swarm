@@ -57,8 +57,8 @@
         },
         "palette": {
             "type": "object",
-            "examples": [{"T": ["grass", "tree"]}],
-            "description": "The palette maps single character keys to tuples representing contents of cells in the world, so that a world containing entities and robots can be drawn graphically. See [Cells](#cells) for the contents of the tuples representing a cell."
+            "examples": [{"T": ["grass", "tree"]}, {"chars": "A-Z0-9!? "}],
+            "description": "The palette maps single character keys to tuples representing contents of cells in the world, so that a world containing entities and robots can be drawn graphically. See [Cells](#cells) for the contents of the tuples representing a cell.  Optionally, a special 'chars' key can be specified, mapped to a string of characters and character ranges.  These characters will be available in the palette as default auto-generated entities that look like themselves, to be used for writing text or purely cosmetic designs."
         },
         "portals": {
             "description": "A list of portal definitions that reference waypoints.",
