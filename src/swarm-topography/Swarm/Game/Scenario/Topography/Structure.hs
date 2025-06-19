@@ -85,7 +85,7 @@ parseStructure pal structures v = do
 
 instance (FromJSONE e a) => FromJSONE e (PStructure (Maybe a)) where
   parseJSONE = withObjectE "structure definition" $ \v -> do
-    pal <- v ..:? "palette" ..!= StructurePalette mempty mempty
+    pal <- v ..:? "palette" ..!= mempty
     structures <- v ..:? "structures" ..!= []
     liftE $ parseStructure pal structures v
 
@@ -136,9 +136,9 @@ paintMap maskChar pal g = do
     wpCfg <- waypointCfg =<< maybeAugmentedCell
     return . Waypoint wpCfg . coordsToLoc $ coords
 
-  usedChars = Set.fromList $ allMembers g
   paletteKeys = M.keysSet $ unPalette pal
-  unusedPaletteChars = Set.difference paletteKeys (usedChars <> paletteChars pal)
+  usedChars = Set.fromList $ allMembers g
+  unusedPaletteChars = Set.difference (explicitChars pal) usedChars
 
   toCell c =
     if Just c == maskChar

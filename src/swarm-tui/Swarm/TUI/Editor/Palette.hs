@@ -135,7 +135,7 @@ constructScenario maybeOriginalScenario cellGrid =
   wd =
     WorldDescription
       { scrollable = True
-      , palette = StructurePalette mempty suggestedPalette
+      , palette = StructurePalette mempty (M.keysSet suggestedPalette) suggestedPalette
       , area = PositionedGrid upperLeftCoord cellGrid
       , navigation = Navigation mempty mempty
       , placedStructures = mempty

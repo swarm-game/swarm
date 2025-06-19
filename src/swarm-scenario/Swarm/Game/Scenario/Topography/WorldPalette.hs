@@ -99,7 +99,7 @@ prepForJson ::
   PaletteAndMaskChar ->
   Grid (Maybe CellPaintDisplay) ->
   (String, KM.KeyMap CellPaintDisplay)
-prepForJson (PaletteAndMaskChar (StructurePalette _ suggestedPalette) maybeMaskChar) cellGrid =
+prepForJson (PaletteAndMaskChar (StructurePalette _ _ suggestedPalette) maybeMaskChar) cellGrid =
   (constructWorldMap mappedPairs maskCharacter cellGrid, constructPalette mappedPairs)
  where
   preassignments :: [(Char, TerrainWith EntityFacade)]

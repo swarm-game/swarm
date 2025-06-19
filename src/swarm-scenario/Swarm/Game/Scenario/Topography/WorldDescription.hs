@@ -89,7 +89,7 @@ data WorldParseDependencies
 
 -- | Generate default character entities for characters in 'paletteChars'.
 generateCharEntities :: WorldPalette Entity -> WorldPalette Entity
-generateCharEntities (StructurePalette charSet pal) = StructurePalette charSet (pal <> charPal)
+generateCharEntities (StructurePalette charSet explicit pal) = StructurePalette charSet explicit (pal <> charPal)
  where
   charPal = M.fromList . map (id &&& mkCharCell) . S.toList $ charSet
 
@@ -109,7 +109,7 @@ instance FromJSONE WorldParseDependencies WorldDescription where
     let withDeps = localE (const (tem, rm))
     palette <-
       fmap generateCharEntities . withDeps $
-        v ..:? "palette" ..!= StructurePalette mempty mempty
+        v ..:? "palette" ..!= mempty
     subworldLocalStructureDefs <-
       withDeps $
         v ..:? "structures" ..!= []

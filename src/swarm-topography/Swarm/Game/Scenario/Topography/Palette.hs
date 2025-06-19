@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DerivingVia #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -18,6 +19,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Tuple (swap)
 import Data.Void (Void)
+import GHC.Generics (Generic, Generically (..))
 import Swarm.Game.Scenario.Topography.ProtoCell
 import Swarm.Util (quote)
 import Swarm.Util.Yaml
@@ -26,12 +28,16 @@ import Text.Megaparsec.Char
 
 data StructurePalette e = StructurePalette
   { paletteChars :: Set Char
-  -- ^ List of characters that can be used as special character
+  -- ^ Set of characters that can be used as special character
   --   entities that just look like themselves, for use in labelling
   --   things in the world with text
+  , explicitChars :: Set Char
+  -- ^ Set of characters that were explicitly given individual
+  --   definitions (as opposed to just being part of paletteChars)
   , unPalette :: Map Char (SignpostableCell e)
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+  deriving (Semigroup, Monoid) via Generically (StructurePalette e)
 
 instance (FromJSONE e a) => FromJSONE e (StructurePalette a) where
   parseJSONE =
@@ -45,7 +51,8 @@ instance (FromJSONE e a) => FromJSONE e (StructurePalette a) where
       -- We swap the tuples twice so we can traverse over the second
       -- element of the tuple in between.
       swappedPairs <- mapM (verifyChar . swap) $ M.toList $ KM.toMap m
-      return . StructurePalette chars . M.fromList $ map swap swappedPairs
+      let pairs = map swap swappedPairs
+      return . StructurePalette chars (S.fromList $ map fst pairs) . M.fromList $ pairs
    where
     verifyChar = traverse $ ensureSingleChar . K.toString
     ensureSingleChar [x] = return x
