@@ -123,7 +123,7 @@ overlaySingleStructure (MergedStructure inputArea inputPlacements inputWaypoints
     offsetLoc (coerce loc)
       . modifyLoc (reorientLandmark orientation $ getGridDimensions overArea)
 
--- | Given the structure graph, ensure that the graph is not acyclic and that all placements are valid
+-- | Given the structure graph, ensure that the graph is not cyclic and that all placements are valid
 validateGraph :: M.Map PathToRoot (AnnotatedStructure (Maybe a)) -> Either Text (M.Map PathToRoot (AnnotatedStructure (Maybe a)))
 validateGraph graph = do
   validated <- M.traverseWithKey go graph
@@ -140,7 +140,7 @@ validateGraph graph = do
 -- | Given a graph constructed via 'mkGraph',this function assembles all the structures in the graph, taking care to avoid redundant work.
 --   The assembled structure for an identifier can be found by looking up the identifier in the Map that this function returns.
 mergeStructures :: M.Map PathToRoot (AnnotatedStructure (Maybe a)) -> M.Map PathToRoot (MergedStructure (Maybe a))
-mergeStructures graph = M.fromList . ML.toList $ mergedMap
+mergeStructures graph = mergedMap
  where
   mergedMap = ML.fromList [(p, toMerged p ann) | (p, ann) <- M.toList graph]
 
@@ -179,7 +179,7 @@ assembleStructure baseStructure = do
   mergedMap <- assembleStructure' baseStructure
   case M.lookup basePathToRoot mergedMap of
     Nothing -> Left "Unable to find root structure in graph" -- This path this should not be taken unless there is a bug in the implementation
-    Just merged -> pure merged
+    Just !merged -> pure merged
 
 packageStructures :: [NamedStructure a] -> PStructure a
 packageStructures namedStructs = Structure (PositionedGrid origin EmptyGrid) namedStructs [] []
@@ -192,7 +192,7 @@ assembleStructures namedStructs = do
   mergedMap <- assembleStructure' (packageStructures namedStructs)
   let f namedStruct = do
         let path = singleton . name $ namedStruct
-        merged <- case M.lookup path mergedMap of
+        !merged <- case M.lookup path mergedMap of
           Nothing -> Left $ T.unwords ["Unable to find structure", showPath path, "in collection of merged structures"]
           Just x -> pure x
         pure (namedStruct, merged)
