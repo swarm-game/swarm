@@ -66,7 +66,7 @@ end
 
 def judge =
   let r = 6 in
-  let c = 10 in
+  let c = 8 in
   instant (
     loc <- whereami;
     match loc \locx. \locy.
