@@ -9,20 +9,11 @@ module Swarm.Game.Scenario.Topography.ProtoCell (
 ) where
 
 import Control.Applicative ((<|>))
-import Data.Aeson.Key qualified as K
-import Data.Aeson.KeyMap qualified as KM
-import Data.Map (Map, fromList, toList)
-import Data.Set (Set)
-import Data.Set qualified as S
-import Data.Text (Text)
-import Data.Text qualified as T
-import Data.Tuple (swap)
 import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointConfig)
 import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.Structure.Named (StructureName)
-import Swarm.Util (quote)
 import Swarm.Util.Yaml
 
 data StructureMarker = StructureMarker
