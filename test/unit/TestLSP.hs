@@ -99,16 +99,61 @@ testLSP =
         ]
     , testGroup
         "narrowToPosition"
-        [ testCase "" $
+        [ testCase "narrow to TVar" $
             assertEqual
               ""
-              (S.Syntax' (S.SrcLoc 1 52) (S.TInt 3) (S.Comments mempty mempty) ())
-              ( narrowTrace
+              (S.Syntax' (S.SrcLoc 57 59) (S.TVar "m2") (S.Comments mempty mempty) ())
+              ( narrowToPosition
                   [astQ|def m2 = move; move end
                         def m4 = m2; m2 end
                         def m8 = m4; m4 end
                         def m16 = m8; m8 end|]
-                  98
+                  58
+              )
+        , testCase "narrow to forever" $
+            assertEqual
+              ""
+              (S.Syntax' (S.SrcLoc 136 143) (S.TVar "forever") (S.Comments mempty mempty) ())
+              ( narrowToPosition
+                  [astQ|// A "cat" that wanders around randomly.  Shows off use of the
+                        // 'random' command.
+                        let forever : Cmd Unit -> Cmd Unit = \c. c ; forever c in
+                        let repeat : Int -> Cmd Unit -> Cmd Unit =
+                          \n. \c. if (n == 0) {} {c ; repeat (n-1) c} in
+                        let randdir : Cmd Dir =
+                          d <- random 4;
+                          pure (
+                            if (d == 0) {north}
+                            {if (d == 1) {east}
+                            {if (d == 2) {south} {west}}})
+                          in
+
+                        forever (
+                          n <- random 20;
+                          wait (10 + n);
+                          d <- randdir;
+                          turn d;
+                          dist <- random 10;
+                          repeat dist move;
+                          r <- random 5;
+                          if (r == 0) { say "meow" } {})|]
+                  140
+              )
+        , testCase "narrow to maybe" $
+            assertEqual
+              ""
+              (S.Syntax' (S.SrcLoc 6 11) (S.TVar "Maybe") (S.Comments mempty mempty) ())
+              ( narrowToPosition
+                  [astQ|tydef Maybe a = Unit + a end
+
+                        def just : a -> Maybe a = inr end
+
+                        def nothing : Maybe a = inl () end
+
+                        def positive : Int -> Maybe Int = \x.
+                          if (x > 0) {just x} {nothing}
+                        end|]
+                  8
               )
         ]
     ]
@@ -128,7 +173,3 @@ testLSP =
        where
         VU.Usage _ problems = VU.getUsage mempty term
       _ -> []
-
-narrowTrace i n =
-  let g = narrowToPosition i n
-   in traceShow (ppr g) g
