@@ -98,7 +98,7 @@ testLSP =
               [UnusedVar "y" VU.Lambda]
         ]
     , testGroup
-        "pathToPosition"
+        "narrowToPosition"
         [ testCase "" $
             assertEqual
               ""
@@ -108,7 +108,7 @@ testLSP =
                         def m4 = m2; m2 end
                         def m8 = m4; m4 end
                         def m16 = m8; m8 end|]
-                  0
+                  80
               )
         ]
     ]
