@@ -11,6 +11,7 @@ module Swarm.Language.LSP.Hover (
 
   -- * Finding source location
   narrowToPosition,
+  pathToPosition,
 
   -- * Explaining source position
   explain,
