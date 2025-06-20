@@ -14,7 +14,6 @@ import Swarm.Language.LSP.VarUsage qualified as VU
 import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ
 import Swarm.Language.Syntax qualified as S
-import Swarm.Pretty (PrettyPrec (prettyPrec))
 import System.FilePath ((</>))
 import Test.Tasty
 import Test.Tasty.HUnit
