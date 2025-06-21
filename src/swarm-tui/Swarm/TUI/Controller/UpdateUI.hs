@@ -223,6 +223,7 @@ replayRepl = do
             inProgress <- use $ gameState . gameControls . replWorking
             if inProgress then handleStillRunning item tick else void $ runBaseCode item.replItemText
             invalidateCacheEntry REPLHistoryCache
+            vScrollToEnd replScroll
         -- not yet time of repl item, lets at least save the dropWhile
         | otherwise -> uiGameplay . uiREPLReplay .= (item : rest)
       -- nothing left to replay
