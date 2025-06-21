@@ -25,7 +25,6 @@ import Brick.AttrMap (applyAttrMappings)
 import Brick.BChan (BChan, newBChan)
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
-import Control.Applicative ((<|>))
 import Control.Arrow ((&&&))
 import Control.Carrier.Accum.Strict (runAccum)
 import Control.Carrier.State.Strict (State, execState)
@@ -34,7 +33,7 @@ import Control.Effect.Lens qualified as EL
 import Control.Effect.Lift
 import Control.Effect.Throw
 import Control.Lens hiding (from, (<.>))
-import Control.Monad (guard, unless, void)
+import Control.Monad (unless, void)
 import Control.Monad.Except (ExceptT (..))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execStateT)
@@ -137,7 +136,7 @@ addWarnings = List.foldl' logWarning
 skipMenu :: AppOpts -> Bool
 skipMenu AppOpts {..} = isJust userScenario || isRunningInitialProgram || isJust userSeed
  where
-  isRunningInitialProgram = isJust scriptToRun || autoPlay
+  isRunningInitialProgram = isJust runOpts
 
 mkRuntimeOptions :: AppOpts -> RuntimeOptions
 mkRuntimeOptions AppOpts {..} =
@@ -231,20 +230,22 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mCha
         loadScenario
           (fromMaybe "classic" userScenario)
           (ScenarioInputs (initWorldMap . gsiScenarioInputs . initState $ rs ^. stdGameConfigInputs) tem)
-      maybeRunScript <- traverse parseCodeFile scriptToRun
+      
+      codeToRun <- case runOpts of
+        Just (RunScript s) -> Just <$> parseCodeFile s
+        Just AutoPlay -> case scenario ^. scenarioOperation . scenarioSolution of
+          Nothing -> throwError $ CustomFailure "No solution to autoplay"
+          Just sol -> pure . Just $ CodeToRun ScenarioSuggested sol
+        Just (Replay _) -> pure Nothing
+        Nothing -> pure Nothing
 
-      let maybeAutoplay = do
-            guard autoPlay
-            soln <- scenario ^. scenarioOperation . scenarioSolution
-            return $ CodeToRun ScenarioSuggested soln
-          codeToRun = maybeAutoplay <|> maybeRunScript
-
-      let si = getScenarioInfoFromPath (progState ^. scenarios) path
-
+      let replReplay = runOpts ^? _Just . _Replay
       appStateWithReplay <-
         execState
           (AppState ps ui key rs animMgr)
           (maybe (pure ()) startGameWithReplay replReplay)
+
+      let si = getScenarioInfoFromPath (progState ^. scenarios) path
 
       sendIO $
         execStateT
@@ -480,7 +481,7 @@ initAppStateForScenario sceneName userSeed toRun =
     defaultAppOpts
       { userScenario = Just sceneName
       , userSeed = userSeed
-      , scriptToRun = toRun
+      , runOpts = RunScript <$> toRun
       }
 
 -- | For convenience, the 'AppState' corresponding to the classic game

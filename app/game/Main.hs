@@ -21,7 +21,7 @@ import Swarm.Language.Format
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Parser.Core (LanguageVersion (..))
 import Swarm.ResourceLoading (getSwarmConfigIniFile)
-import Swarm.TUI.Model (AppOpts (..), ColorMode (..))
+import Swarm.TUI.Model (AppOpts (..), RunOpts (..), ColorMode (..))
 import Swarm.TUI.Model.DebugOption
 import Swarm.TUI.Model.KeyBindings (KeybindingPrint (..), showKeybindings)
 import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond)
@@ -64,10 +64,8 @@ cliParser =
     let repoGitInfo = gitInfo
     userSeed <- seed
     userScenario <- scenario
-    scriptToRun <- run
-    replReplay <- replay
+    runOpts <- (run <|> replay <|> autoplay)
     pausedAtStart <- paused
-    autoPlay <- autoplay
     autoShowObjectives <- not <$> hideGoal
     speed <- speedFactor
     debugOptions <- debug
@@ -123,14 +121,15 @@ cliParser =
         )
   scenario :: Parser (Maybe String)
   scenario = optional $ strOption (long "scenario" <> short 'i' <> metavar "FILE" <> help "Name of an input scenario to load")
-  run :: Parser (Maybe String)
-  run = optional $ strOption (long "run" <> short 'r' <> metavar "FILE" <> help "Run the commands in a file at startup")
-  replay :: Parser (Maybe String)
-  replay = optional $ strOption (long "replay" <> metavar "JSON" <> help "Replay the previous command history.")
+  run :: Parser (Maybe RunOpts)
+  run = optional $ RunScript <$> strOption (long "run" <> short 'r' <> metavar "FILE" <> help "Run the commands in a file at startup")
+  replay :: Parser (Maybe RunOpts)
+  replay = optional $ Replay <$> strOption (long "replay" <> metavar "JSON" <> help "Replay the previous command history.")
+  autoplay :: Parser (Maybe RunOpts)
+  autoplay = ifAuto <$> switch (long "autoplay" <> short 'a' <> help "Automatically run the solution defined in the scenario, if there is one. Mutually exclusive with --run.")
+  ifAuto b = if b then Just AutoPlay else Nothing
   paused :: Parser Bool
   paused = switch (long "paused" <> short 'p' <> help "Pause the game at start.")
-  autoplay :: Parser Bool
-  autoplay = switch (long "autoplay" <> short 'a' <> help "Automatically run the solution defined in the scenario, if there is one. Mutually exclusive with --run.")
   hideGoal :: Parser Bool
   hideGoal = switch (long "hide-goal" <> help "Do not show goal modal window that pauses the game.")
   speedFactor :: Parser Int
