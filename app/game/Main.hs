@@ -21,7 +21,7 @@ import Swarm.Language.Format
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Parser.Core (LanguageVersion (..))
 import Swarm.ResourceLoading (getSwarmConfigIniFile)
-import Swarm.TUI.Model (AppOpts (..), RunOpts (..), ColorMode (..))
+import Swarm.TUI.Model (AppOpts (..), ColorMode (..), RunOpts (..))
 import Swarm.TUI.Model.DebugOption
 import Swarm.TUI.Model.KeyBindings (KeybindingPrint (..), showKeybindings)
 import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond)

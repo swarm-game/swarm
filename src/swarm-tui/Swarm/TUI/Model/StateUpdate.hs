@@ -230,7 +230,7 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mCha
         loadScenario
           (fromMaybe "classic" userScenario)
           (ScenarioInputs (initWorldMap . gsiScenarioInputs . initState $ rs ^. stdGameConfigInputs) tem)
-      
+
       codeToRun <- case runOpts of
         Just (RunScript s) -> Just <$> parseCodeFile s
         Just AutoPlay -> case scenario ^. scenarioOperation . scenarioSolution of
