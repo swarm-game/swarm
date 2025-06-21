@@ -536,7 +536,7 @@ drawGameUI s =
           ( vLimit replHeight
               . padBottom Max
               . padLeft (Pad 1)
-              $ drawREPL ps
+              $ drawREPL keyConf ps
           )
     ]
 
@@ -952,15 +952,15 @@ drawKeyMenu ps keyConf debugOpts =
   canScroll = creative || (gs ^. landscape . worldScrollable)
   handlerInstalled = isJust (gs ^. gameControls . inputHandler)
 
-  renderPilotModeSwitch :: ReplControlMode -> T.Text
-  renderPilotModeSwitch = \case
-    Piloting -> "REPL"
-    _ -> "pilot"
-
-  renderHandlerModeSwitch :: ReplControlMode -> T.Text
-  renderHandlerModeSwitch = \case
-    Handling -> "REPL"
-    _ -> "key handler"
+  renderREPLToggle :: ReplControlMode -> ReplControlMode -> T.Text
+  renderREPLToggle target current =
+    if target == current
+      then "REPL"
+      else case target of
+        Piloting -> "pilot"
+        Handling -> "key handler"
+        Typing -> "REPL"
+        Replaying -> "replay"
 
   gameModeWidget =
     padLeft Max
@@ -1011,8 +1011,8 @@ drawKeyMenu ps keyConf debugOpts =
     ]
       ++ [("Enter", "execute") | not isReplWorking]
       ++ [(keyR SE.CancelRunningProgramEvent, "cancel") | isReplWorking]
-      ++ [(keyR SE.TogglePilotingModeEvent, renderPilotModeSwitch ctrlMode) | creative]
-      ++ [(keyR SE.ToggleCustomKeyHandlingEvent, renderHandlerModeSwitch ctrlMode) | handlerInstalled]
+      ++ [(keyR SE.TogglePilotingModeEvent, renderREPLToggle Piloting ctrlMode) | creative]
+      ++ [(keyR SE.ToggleCustomKeyHandlingEvent, renderREPLToggle Handling ctrlMode) | handlerInstalled]
       ++ [("PgUp/Dn", "scroll")]
   keyCmdsFor (Just (FocusablePanel WorldPanel)) =
     [(T.intercalate "/" $ map keyW enumerate, "scroll") | canScroll]
@@ -1524,8 +1524,8 @@ renderREPLPrompt focus theRepl = ps1 <+> replE
       replEditor
 
 -- | Draw the REPL.
-drawREPL :: ScenarioState -> Widget Name
-drawREPL ps =
+drawREPL :: KeyConfig SE.SwarmEvent -> ScenarioState -> Widget Name
+drawREPL keyConf ps =
   vBox
     [ withLeftPaddedVScrollBars
         . viewport REPLViewport Vertical
@@ -1542,16 +1542,20 @@ drawREPL ps =
   history = map fmt . filter (not . isREPLSaved) . toList . getSessionREPLHistoryItems $ theRepl ^. replHistory
   currentPrompt :: Widget Name
   currentPrompt = case (isActive <$> base, theRepl ^. replControlMode) of
-    (_, Handling) -> padRight Max $ txt "[key handler running, M-k to toggle]"
+    (_, Handling) -> padRight Max . txt $ "[key handler running, " <> handlingKey <> " to toggle]"
+    (_, Replaying) -> padRight Max . txt $ "[replaying game, " <> cancelKey <> " to cancel]"
     (Just False, _) -> renderREPLPrompt (uig ^. uiFocusRing) theRepl
     _running -> padRight Max $ txt "..."
   theRepl = uig ^. uiREPL
+  handlingKey = keyR SE.ToggleCustomKeyHandlingEvent
+  cancelKey = keyR SE.CancelRunningProgramEvent
+  keyR = VU.bindingText keyConf . SE.REPL
 
   -- NOTE: there exists a lens named 'baseRobot' that uses "unsafe"
   -- indexing that may be an alternative to this:
   base = gs ^. robotInfo . robotMap . at 0
 
-  fmt (REPLHistItem itemType _tick t) = case itemType of
+  fmt (REPLHistItem itemType t _tick) = case itemType of
     REPLEntry {} -> txt $ "> " <> t
     REPLOutput -> txt t
     REPLError -> txtWrapWith indent2 {preserveIndentation = True} t

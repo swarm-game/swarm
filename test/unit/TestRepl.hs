@@ -92,7 +92,7 @@ testRepl =
   addInOutInt i = addREPLItem (mkREPLOutput $ toT i <> ":Int") . addREPLItem (mkREPLSubmission $ toT i)
 
 mkREPLSubmission :: Text -> REPLHistItem
-mkREPLSubmission = REPLHistItem (REPLEntry Submitted) (TickNumber 0)
+mkREPLSubmission t = REPLHistItem (REPLEntry Submitted) t (TickNumber 0)
 
 mkREPLOutput :: Text -> REPLHistItem
-mkREPLOutput = REPLHistItem REPLOutput (TickNumber 0)
+mkREPLOutput t = REPLHistItem REPLOutput t (TickNumber 0)

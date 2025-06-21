@@ -44,6 +44,9 @@ cancelRunningBase = do
   Brick.zoom (uiGameplay . uiREPL) $ do
     replPromptType .= CmdPrompt []
     replPromptText .= ""
+    -- Cancel Replay mode
+    mode <- use replControlMode
+    when (mode == Replaying) $ replControlMode .= Typing
 
 togglePilotingMode :: EventM Name ScenarioState ()
 togglePilotingMode = do
