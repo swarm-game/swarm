@@ -38,7 +38,7 @@ ticksPerFrameCap = 30
 --   this may involve stepping the game any number of ticks (including
 --   zero).
 runFrameUI :: Bool -> EventM Name AppState ()
-runFrameUI forceRedraw = Brick.zoom playState runFrame >> updateAndRedrawUI forceRedraw -- TODO: ONDRA
+runFrameUI forceRedraw = Brick.zoom playState runFrame >> updateAndRedrawUI forceRedraw
 
 oneSecond :: Integer
 oneSecond = 1_000_000_000 -- one second = 10^9 nanoseconds
@@ -140,7 +140,7 @@ runFrameTicks dt = do
 
 -- | Run the game for a single tick, and update the UI.
 runGameTickUI :: EventM Name AppState ()
-runGameTickUI = Brick.zoom playState runGameTick >> void updateUI -- TODO: ONDRA - tick
+runGameTickUI = Brick.zoom playState runGameTick >> void updateUI
 
 updateAchievements :: EventM Name PlayState ()
 updateAchievements = do
