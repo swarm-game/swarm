@@ -99,7 +99,7 @@ testLSP =
         "narrowToPosition"
         [ testCase "narrow to TVar" $
             assertEqualTerms
-              (S.Syntax' (S.SrcLoc 57 59) (S.TVar "m2") (S.Comments mempty mempty) ())
+              (S.Syntax' S.NoLoc (S.TVar "m2") (S.Comments mempty mempty) ())
               ( narrowToPosition
                   [astQ|def m2 = move; move end
                         def m4 = m2; m2 end
@@ -109,7 +109,7 @@ testLSP =
               )
         , testCase "narrow to forever" $
             assertEqualTerms
-              (S.Syntax' (S.SrcLoc 136 143) (S.TVar "forever") (S.Comments mempty mempty) ())
+              (S.Syntax' S.NoLoc (S.TVar "forever") (S.Comments mempty mempty) ())
               ( narrowToPosition
                   [astQ|// A "cat" that wanders around randomly.  Shows off use of the
                         // 'random' command.
@@ -137,7 +137,7 @@ testLSP =
               )
         , testCase "narrow to maybe" $
             assertEqualTerms
-              (S.Syntax' (S.SrcLoc 6 11) (S.TVar "Maybe") (S.Comments mempty mempty) ())
+              (S.Syntax' S.NoLoc (S.TVar "Maybe") (S.Comments mempty mempty) ())
               ( narrowToPosition
                   [astQ|tydef Maybe a = Unit + a end
 
