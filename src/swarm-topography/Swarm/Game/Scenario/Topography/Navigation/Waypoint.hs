@@ -12,8 +12,8 @@
 -- The sequence of waypoints of a given name is dictated by criteria in the following order:
 --
 -- 1. Ordering of structure placements
---    (see implementation of 'Swarm.Game.Scenario.Topography.Structure.mergeStructures');
---    later placements are ordered first.
+--    (see implementation of 'Swarm.Game.Scenario.Topography.Structure.assembleStructure');
+--    later placements are ordered later.
 -- 2. Placement of cells within a map. Map locations go by row-major order
 --    (compare to docs for 'Swarm.Game.State.genRobotTemplates').
 --
@@ -26,7 +26,7 @@ import Data.Text qualified as T
 import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Game.Location
-import Swarm.Game.Scenario.Topography.Placement
+import Swarm.Game.Scenario.Topography.Structure.Named
 
 -- | This type is isomorphic to 'Maybe'.
 data Parentage a
@@ -37,7 +37,7 @@ data Parentage a
 -- | Indicates which structure something came from
 -- for debugging purposes.
 data Originated a = Originated
-  { parent :: Parentage Placement
+  { parent :: Parentage StructureName
   , value :: a
   }
   deriving (Show, Eq, Functor)

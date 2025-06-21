@@ -10,9 +10,6 @@ import Data.ByteString.Lazy qualified as LBS
 import Data.Either.Utils (forceEither)
 import Data.Yaml (prettyPrintParseException)
 import Paths_swarm (getDataDir)
-import Swarm.Game.Scenario.Topography.Navigation.Waypoint (
-  Parentage (Root),
- )
 import Swarm.Game.Scenario.Topography.Rasterize
 import Swarm.Game.Scenario.Topography.Structure
 import Swarm.Game.Scenario.Topography.Structure.Assembly
@@ -40,7 +37,7 @@ compareToReferenceImage ::
 compareToReferenceImage refreshReferenceImage fileStem = do
   dataDir <- getDataDir
   parentStruct <- parseStructures dataDir $ fileStem <.> "yaml"
-  let MergedStructure overlayArea _ _ = forceEither $ mergeStructures mempty Root parentStruct
+  let MergedStructure overlayArea _ _ = forceEither $ assembleStructure parentStruct
       encodedImgBytestring = encodePng $ makeImage $ gridContent overlayArea
       referenceFilepath = dataDir </> "test/standalone-topography" </> fileStem <.> "png"
   if refreshReferenceImage
