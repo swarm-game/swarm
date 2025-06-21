@@ -13,6 +13,7 @@ import Swarm.Language.LSP.Hover (narrowToPosition)
 import Swarm.Language.LSP.VarUsage qualified as VU
 import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ
+import Swarm.Language.Syntax (Syntax' (Syntax'))
 import Swarm.Language.Syntax qualified as S
 import System.FilePath ((</>))
 import Test.Tasty
@@ -97,8 +98,7 @@ testLSP =
     , testGroup
         "narrowToPosition"
         [ testCase "narrow to TVar" $
-            assertEqual
-              ""
+            assertEqualTerms
               (S.Syntax' (S.SrcLoc 57 59) (S.TVar "m2") (S.Comments mempty mempty) ())
               ( narrowToPosition
                   [astQ|def m2 = move; move end
@@ -108,8 +108,7 @@ testLSP =
                   58
               )
         , testCase "narrow to forever" $
-            assertEqual
-              ""
+            assertEqualTerms
               (S.Syntax' (S.SrcLoc 136 143) (S.TVar "forever") (S.Comments mempty mempty) ())
               ( narrowToPosition
                   [astQ|// A "cat" that wanders around randomly.  Shows off use of the
@@ -137,8 +136,7 @@ testLSP =
                   140
               )
         , testCase "narrow to maybe" $
-            assertEqual
-              ""
+            assertEqualTerms
               (S.Syntax' (S.SrcLoc 6 11) (S.TVar "Maybe") (S.Comments mempty mempty) ())
               ( narrowToPosition
                   [astQ|tydef Maybe a = Unit + a end
@@ -170,3 +168,7 @@ testLSP =
        where
         VU.Usage _ problems = VU.getUsage mempty term
       _ -> []
+
+  -- When comparing Syntax elements we aren't interested in the SrcLoc or the comments so just compare the terms.
+  -- This is because depending on the operating system the loc could be different due to line endings.
+  assertEqualTerms (Syntax' _ t1 _ _) (Syntax' _ t2 _ _) = assertEqual "" t1 t2
