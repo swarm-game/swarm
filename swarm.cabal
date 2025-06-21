@@ -1018,6 +1018,7 @@ library swarm-tui
     extra,
     filepath,
     fused-effects,
+    fused-effects-lens,
     fuzzy,
     generic-data,
     githash,

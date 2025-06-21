@@ -313,6 +313,8 @@ data AppOpts = AppOpts
   -- ^ Scenario the user wants to play.
   , scriptToRun :: Maybe FilePath
   -- ^ Code to be run on base.
+  , replReplay :: Maybe FilePath
+  -- ^ Previous JSON REPL history to replay.
   , pausedAtStart :: Bool
   -- ^ Pause the game on start by default.
   , autoPlay :: Bool
@@ -338,6 +340,7 @@ defaultAppOpts =
     { userSeed = Nothing
     , userScenario = Nothing
     , scriptToRun = Nothing
+    , replReplay = Nothing
     , pausedAtStart = False
     , autoShowObjectives = True
     , autoPlay = False

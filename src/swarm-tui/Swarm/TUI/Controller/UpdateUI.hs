@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -16,7 +17,7 @@ import Brick hiding (Direction, Location, on)
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Lens as Lens
-import Control.Monad (forM_, unless, when)
+import Control.Monad (forM_, unless, void, when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (toList)
 import Data.List.Extra (enumerate)
@@ -35,6 +36,7 @@ import Swarm.Game.Robot.Concrete
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
+import Swarm.Game.Tick (TickNumber)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value (VExc, VUnit), emptyEnv, envTydefs, prettyValue)
@@ -171,8 +173,13 @@ updateUI = do
   let fr = g ^. to focusedRobot
   inventoryUpdated <- Brick.zoom (playState . scenarioState) $ checkInventoryUpdated fr
 
-  -- Now check if the base finished running a program entered at the REPL.
-  replUpdated <- Brick.zoom (playState . scenarioState) $ checkReplUpdated g
+  replUpdated <- Brick.zoom (playState . scenarioState) $ do
+    -- NORMAL REPL UPDATE ---
+    -- Now check if the base finished running a program entered at the REPL.
+    b <- checkReplUpdated g
+    -- REPL REPLAY ----------
+    replayRepl
+    pure b
 
   -- If the focused robot's log has been updated and the UI focus
   -- isn't currently on the inventory or info panels, attempt to
@@ -201,6 +208,41 @@ updateUI = do
           || goalOrWinUpdated
           || newPopups
   pure redraw
+
+replayRepl :: EventM Name ScenarioState ()
+replayRepl = do
+  replControl <- use $ uiGameplay . uiREPL . replControlMode
+  when (replControl == Replaying) $ do
+    tick <- use $ gameState . temporal . ticks
+    replay <- use $ uiGameplay . uiREPLReplay
+    case dropWhile notInput replay of
+      (item : rest)
+        -- replay current repl item
+        | item.replItemTick <= tick -> do
+            uiGameplay . uiREPLReplay .= rest
+            inProgress <- use $ gameState . gameControls . replWorking
+            if inProgress then handleStillRunning item tick else void $ runBaseCode item.replItemText
+            invalidateCacheEntry REPLHistoryCache
+        -- not yet time of repl item, lets at least save the dropWhile
+        | otherwise -> uiGameplay . uiREPLReplay .= (item : rest)
+      -- nothing left to replay
+      [] -> exitReplayMode
+ where
+  exitReplayMode :: EventM Name ScenarioState ()
+  exitReplayMode = do
+    uiGameplay . uiREPLReplay .= []
+    uiGameplay . uiREPL . replControlMode .= Typing
+  handleStillRunning :: REPLHistItem -> TickNumber -> EventM Name ScenarioState ()
+  handleStillRunning item tick = do
+    addREPLHistItem REPLError . T.pack $
+      "Can not replay REPL item, base is still running."
+        <> " ITEM: "
+        <> show item
+        <> " CURRENT: "
+        <> show tick
+    exitReplayMode
+  notInput :: REPLHistItem -> Bool
+  notInput e = replItemType e /= REPLEntry Submitted
 
 doRobotListUpdate :: Set DebugOption -> GameState -> EventM Name RobotDisplay ()
 doRobotListUpdate dOps g = do
