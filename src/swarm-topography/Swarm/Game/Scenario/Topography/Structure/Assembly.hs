@@ -1,6 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -19,7 +17,7 @@ where
 import Control.Arrow (first, left, (&&&))
 import Control.Monad (when)
 import Data.Coerce
-import Data.Foldable (foldl', foldlM, traverse_)
+import Data.Foldable (Foldable (..), foldl', foldlM, traverse_)
 import Data.List (singleton, uncons)
 import Data.Map.Lazy qualified as ML
 import Data.Map.Strict qualified as M
@@ -39,6 +37,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Language.Syntax.Direction (directionJsonModifier)
 import Swarm.Util (commaList, quote)
 import Swarm.Util.Graph (failOnCyclicGraph)
+import Prelude hiding (Foldable (..))
 
 -- | /Uniquely/ identifies a structure in the graph
 type PathToRoot = [StructureName]
@@ -53,7 +52,7 @@ showPath xs = T.intercalate "." . coerce . reverse $ xs
 --   This allows us disambiguate different structures which share the same name.
 data PathPlacement = PathPlacement
   { pathToPlacement :: PathToRoot
-  , placementPose :: Pose
+  , _placementPose :: Pose
   }
 
 -- | This augments a named structure with its list of edges (placements). PathPlacement is used to allow us to disambiguate
