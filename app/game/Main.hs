@@ -64,7 +64,7 @@ cliParser =
     let repoGitInfo = gitInfo
     userSeed <- seed
     userScenario <- scenario
-    runOpts <- (run <|> replay <|> autoplay)
+    runOpts <- run <|> replay <|> autoplay
     pausedAtStart <- paused
     autoShowObjectives <- not <$> hideGoal
     speed <- speedFactor
