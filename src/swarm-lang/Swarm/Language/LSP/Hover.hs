@@ -30,6 +30,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lines qualified as R
 import Data.Text.Utf16.Rope.Mixed qualified as R
+import Debug.Trace
 import Language.LSP.Protocol.Types qualified as J
 import Language.LSP.VFS
 import Swarm.Language.Parser (readTerm')
@@ -99,7 +100,9 @@ narrowToPosition ::
   -- | absolute offset within the file.
   Int ->
   Syntax' ty
-narrowToPosition s = NE.last . pathToPosition s
+narrowToPosition s i =
+  let p = pathToPosition s i
+   in traceShow p NE.last p
 
 -- | Find the most specific term for a given
 -- position within the code, recording the terms along the way for later processing.
