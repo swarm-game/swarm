@@ -25,14 +25,15 @@ import Brick.AttrMap (applyAttrMappings)
 import Brick.BChan (BChan, newBChan)
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
-import Control.Applicative ((<|>))
 import Control.Arrow ((&&&))
 import Control.Carrier.Accum.Strict (runAccum)
+import Control.Carrier.State.Strict (State, execState)
 import Control.Effect.Accum
+import Control.Effect.Lens qualified as EL
 import Control.Effect.Lift
 import Control.Effect.Throw
 import Control.Lens hiding (from, (<.>))
-import Control.Monad (guard, unless, void)
+import Control.Monad (unless, void)
 import Control.Monad.Except (ExceptT (..))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execStateT)
@@ -49,6 +50,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (getZonedTime)
+import Data.Yaml (decodeFileEither, prettyPrintParseException)
 import Swarm.Failure (SystemFailure (..))
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Persistence
@@ -134,7 +136,7 @@ addWarnings = List.foldl' logWarning
 skipMenu :: AppOpts -> Bool
 skipMenu AppOpts {..} = isJust userScenario || isRunningInitialProgram || isJust userSeed
  where
-  isRunningInitialProgram = isJust scriptToRun || autoPlay
+  isRunningInitialProgram = isJust runOpts
 
 mkRuntimeOptions :: AppOpts -> RuntimeOptions
 mkRuntimeOptions AppOpts {..} =
@@ -206,7 +208,7 @@ constructAppState ::
   m AppState
 constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mChan = do
   historyT <- sendIO $ readFileMayT =<< getSwarmHistoryPath False
-  let mkREPLSubmission = REPLHistItem (REPLEntry Submitted) (TickNumber $ -1)
+  let mkREPLSubmission msg = REPLHistItem (REPLEntry Submitted) msg (TickNumber $ -1)
   let history = maybe [] (map mkREPLSubmission . T.lines) historyT
   startTime <- sendIO $ getTime Monotonic
   chan <- sendIO $ maybe initTestChan pure mChan
@@ -228,27 +230,35 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mCha
         loadScenario
           (fromMaybe "classic" userScenario)
           (ScenarioInputs (initWorldMap . gsiScenarioInputs . initState $ rs ^. stdGameConfigInputs) tem)
-      maybeRunScript <- traverse parseCodeFile scriptToRun
 
-      let maybeAutoplay = do
-            guard autoPlay
-            soln <- scenario ^. scenarioOperation . scenarioSolution
-            return $ CodeToRun ScenarioSuggested soln
-          codeToRun = maybeAutoplay <|> maybeRunScript
+      codeToRun <- case runOpts of
+        Just (RunScript s) -> Just <$> parseCodeFile s
+        Just AutoPlay -> case scenario ^. scenarioOperation . scenarioSolution of
+          Nothing -> throwError $ CustomFailure "No solution to autoplay"
+          Just sol -> pure . Just $ CodeToRun ScenarioSuggested sol
+        Just (Replay _) -> pure Nothing
+        Nothing -> pure Nothing
+
+      let replReplay = runOpts ^? _Just . _Replay
+      appStateWithReplay <-
+        execState
+          (AppState ps ui key rs animMgr)
+          (maybe (pure ()) startGameWithReplay replReplay)
 
       let si = getScenarioInfoFromPath (progState ^. scenarios) path
 
       sendIO $
         execStateT
           (startGameWithSeed (ScenarioWith scenario si) $ LaunchParams (pure userSeed) (pure codeToRun))
-          (AppState ps ui key rs animMgr)
+          appStateWithReplay
  where
   initialUiGameplay startTime history =
     UIGameplay
       { _uiFocusRing = initFocusRing
       , _uiWorldCursor = Nothing
       , _uiWorldEditor = initialWorldEditor startTime
-      , _uiREPL = initREPLState $ newREPLHistory history
+      , _uiREPL = initREPLState Typing (newREPLHistory history)
+      , _uiREPLReplay = mempty
       , _uiInventory =
           UIInventory
             { _uiInventoryList = Nothing
@@ -285,6 +295,23 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mCha
       , _uiHideRobotsUntil = startTime - 1
       , _scenarioRef = Nothing
       }
+
+startGameWithReplay ::
+  ( Has (Throw SystemFailure) sig m
+  , Has (Lift IO) sig m
+  , Has (State AppState) sig m
+  ) =>
+  FilePath ->
+  m ()
+startGameWithReplay historySave = do
+  runtimeState . eventLog EL.%= logEvent SystemLog Info "Replay" ("FILE: " <> T.pack (show historySave))
+  sendIO (decodeFileEither historySave) >>= \case
+    Left err -> throwError . CustomFailure . T.pack $ "Error parsing file: " <> prettyPrintParseException err
+    Right repl -> do
+      runtimeState . eventLog EL.%= logEvent SystemLog Info "Replay" ("PARSED: " <> T.pack (show repl))
+      -- replControlMode is set based on this being not empty
+      playState . scenarioState . uiGameplay . uiREPLReplay EL..= repl
+      playState . scenarioState . uiGameplay . uiREPL . replControlMode EL..= Replaying
 
 -- | Load a 'Scenario' and start playing the game.
 startGame ::
@@ -397,7 +424,7 @@ setUIGameplay gs curTime isAutoplaying siPair@(ScenarioWith scenario _) uig =
     & uiInventory . uiInventorySort .~ defaultSortOptions
     & uiInventory . uiShowZero .~ True
     & uiTiming . uiShowFPS .~ False
-    & uiREPL .~ initREPLState (uig ^. uiREPL . replHistory)
+    & uiREPL .~ initREPLState replMode (uig ^. uiREPL . replHistory)
     & uiREPL . replHistory %~ restartREPLHistory
     & scenarioRef ?~ siPair
     & uiTiming . lastFrameTime .~ curTime
@@ -408,6 +435,7 @@ setUIGameplay gs curTime isAutoplaying siPair@(ScenarioWith scenario _) uig =
         (SR.makeListWidget . M.elems $ gs ^. landscape . recognizerAutomatons . originalStructureDefinitions)
         (focusSetCurrent (StructureWidgets StructuresList) $ focusRing $ map StructureWidgets enumerate)
  where
+  replMode = if null $ uig ^. uiREPLReplay then Typing else Replaying
   entityList = EU.getEntitiesForList $ gs ^. landscape . terrainAndEntities . entityMap
 
   (isEmptyArea, newBounds) =
@@ -453,7 +481,7 @@ initAppStateForScenario sceneName userSeed toRun =
     defaultAppOpts
       { userScenario = Just sceneName
       , userSeed = userSeed
-      , scriptToRun = toRun
+      , runOpts = RunScript <$> toRun
       }
 
 -- | For convenience, the 'AppState' corresponding to the classic game
