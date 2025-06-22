@@ -18,6 +18,8 @@ import Swarm.Language.Syntax qualified as S
 import System.FilePath ((</>))
 import Test.Tasty
 import Test.Tasty.HUnit
+import Control.Monad (unless)
+import Swarm.Pretty (prettyString)
 
 baseTestPath :: FilePath
 baseTestPath = "data/test/language-snippets/warnings/unused-vars"
