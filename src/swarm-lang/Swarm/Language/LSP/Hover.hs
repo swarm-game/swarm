@@ -11,6 +11,7 @@ module Swarm.Language.LSP.Hover (
 
   -- * Finding source location
   narrowToPosition,
+  pathToPosition,
 
   -- * Explaining source position
   explain,
@@ -22,6 +23,7 @@ import Control.Monad (guard, void)
 import Data.Foldable (asum)
 import Data.Graph
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isNothing)
 import Data.Text (Text)
@@ -88,59 +90,76 @@ posToRange myRope foundSloc = do
       (ropeToLspPosition $ R.charLengthAsPosition startRope)
       (ropeToLspPosition $ R.charLengthAsPosition endRope)
 
-descend ::
-  ExplainableType ty =>
-  -- | position
-  Int ->
-  -- | next element to inspect
-  Syntax' ty ->
-  Maybe (Syntax' ty)
-descend pos s1@(Syntax' l1 _ _ _) = do
-  guard $ withinBound pos l1
-  return $ narrowToPosition s1 pos
-
 -- | Find the most specific term for a given
 -- position within the code.
 narrowToPosition ::
   ExplainableType ty =>
   -- | parent term
   Syntax' ty ->
-  -- | absolute offset within the file
+  -- | absolute offset within the file.
   Int ->
   Syntax' ty
-narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
-  SLam lv _ s -> d (locVarToSyntax' lv $ getInnerType ty) <|> d s
-  SApp s1 s2 -> d s1 <|> d s2
-  SLet _ _ lv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
-  SBind mlv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
-  STydef typ typBody _ti s1 -> d s1 <|> Just (locVarToSyntax' (tdVarName <$> typ) $ fromPoly typBody)
-  SPair s1 s2 -> d s1 <|> d s2
-  SDelay s -> d s
-  SRcd m -> asum . map d . catMaybes . M.elems $ m
-  SProj s1 _ -> d s1
-  SAnnotate s _ -> d s
-  SRequirements _ s -> d s
-  SParens s -> d s
-  -- atoms - return their position and end recursion
-  TUnit -> Nothing
-  TConst {} -> Nothing
-  TDir {} -> Nothing
-  TInt {} -> Nothing
-  TText {} -> Nothing
-  TBool {} -> Nothing
-  TVar {} -> Nothing
-  TStock {} -> Nothing
-  TRequire {} -> Nothing
-  TType {} -> Nothing
-  -- these should not show up in surface language
-  TRef {} -> Nothing
-  TRobot {} -> Nothing
-  TAntiInt {} -> Nothing
-  TAntiText {} -> Nothing
-  TAntiSyn {} -> Nothing
-  SSuspend {} -> Nothing
+narrowToPosition s i = NE.last $ pathToPosition s i
+
+-- | Find the most specific term for a given
+-- position within the code, recording the terms along the way for later processing.
+
+-- The list is nonempty because at minimum we can return the element of the syntax we are currently processing.
+pathToPosition ::
+  forall ty.
+  ExplainableType ty =>
+  -- | parent term
+  Syntax' ty ->
+  -- | absolute offset within the file
+  Int ->
+  NonEmpty (Syntax' ty)
+pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
  where
+  innerPath :: Syntax' ty -> Maybe [Syntax' ty]
+  innerPath (Syntax' _ t _ ty) = case t of
+    SLam lv _ s -> d (locVarToSyntax' lv $ getInnerType ty) <|> d s
+    SApp s1 s2 -> d s1 <|> d s2
+    SLet _ _ lv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
+    SBind mlv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
+    STydef typ typBody _ti s1 -> d s1 <|> Just [locVarToSyntax' (tdVarName <$> typ) $ fromPoly typBody]
+    SPair s1 s2 -> d s1 <|> d s2
+    SDelay s -> d s
+    SRcd m -> asum . map d . catMaybes . M.elems $ m
+    SProj s1 _ -> d s1
+    SAnnotate s _ -> d s
+    SRequirements _ s -> d s
+    SParens s -> d s
+    -- atoms - return their position and end recursion
+    TUnit -> mempty
+    TConst {} -> mempty
+    TDir {} -> mempty
+    TInt {} -> mempty
+    TText {} -> mempty
+    TBool {} -> mempty
+    TVar {} -> mempty
+    TStock {} -> mempty
+    TRequire {} -> mempty
+    TType {} -> mempty
+    -- these should not show up in surface language
+    TRef {} -> mempty
+    TRobot {} -> mempty
+    TAntiInt {} -> mempty
+    TAntiText {} -> mempty
+    TAntiSyn {} -> mempty
+    SSuspend {} -> mempty
+
   d = descend pos
+  -- try and decend into the syntax element if it is contained with position
+  descend ::
+    ExplainableType ty =>
+    Int ->
+    Syntax' ty ->
+    Maybe [Syntax' ty]
+  descend p s1@(Syntax' l1 _ _ _) = do
+    guard $ withinBound p l1
+    pure $ case innerPath s1 of
+      Nothing -> [s1]
+      Just iss -> s1 : iss
 
 renderDoc :: Int -> Text -> Text
 renderDoc d t
