@@ -30,7 +30,6 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lines qualified as R
 import Data.Text.Utf16.Rope.Mixed qualified as R
-import Debug.Trace
 import Language.LSP.Protocol.Types qualified as J
 import Language.LSP.VFS
 import Swarm.Language.Parser (readTerm')
