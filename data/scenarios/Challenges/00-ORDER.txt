@@ -20,6 +20,7 @@ dna.yaml
 friend.yaml
 pack-tetrominoes.yaml
 dimsum.yaml
+photocopier.yaml
 telephone.yaml
 flower-count.yaml
 Mazes
