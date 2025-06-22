@@ -100,9 +100,7 @@ narrowToPosition ::
   -- | absolute offset within the file.
   Int ->
   Syntax' ty
-narrowToPosition s i =
-  let p = pathToPosition s i
-   in traceShow p NE.last p
+narrowToPosition s i = NE.last $ pathToPosition s i
 
 -- | Find the most specific term for a given
 -- position within the code, recording the terms along the way for later processing.
@@ -160,7 +158,9 @@ pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
     Maybe [Syntax' ty]
   descend p s1@(Syntax' l1 _ _ _) = do
     guard $ withinBound p l1
-    (s1 :) <$> innerPath s1
+    pure $ case innerPath s1 of
+      Nothing -> [s1]
+      Just iss -> s1 : iss
 
 renderDoc :: Int -> Text -> Text
 renderDoc d t
