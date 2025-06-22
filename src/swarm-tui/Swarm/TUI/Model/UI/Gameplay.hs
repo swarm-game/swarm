@@ -21,6 +21,7 @@ module Swarm.TUI.Model.UI.Gameplay (
   uiWorldCursor,
   uiWorldEditor,
   uiREPL,
+  uiREPLReplay,
   uiInventoryList,
   uiInventorySort,
   uiInventorySearch,
@@ -207,6 +208,7 @@ data UIGameplay = UIGameplay
   , _uiWorldCursor :: Maybe (Cosmic Coords)
   , _uiWorldEditor :: WorldEditor Name
   , _uiREPL :: REPLState
+  , _uiREPLReplay :: [REPLHistItem]
   , _uiInventory :: UIInventory
   , _uiScrollToEnd :: Bool
   , _uiDialogs :: UIDialogs
@@ -241,6 +243,7 @@ uiWorldEditor :: Lens' UIGameplay (WorldEditor Name)
 
 -- | The state of REPL panel.
 uiREPL :: Lens' UIGameplay REPLState
+uiREPLReplay :: Lens' UIGameplay [REPLHistItem]
 
 -- | A flag telling the UI to scroll the info panel to the very end
 --   (used when a new log message is appended).

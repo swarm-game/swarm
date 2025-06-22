@@ -81,6 +81,10 @@ module Swarm.TUI.Model (
   -- ** Initialization
   AppOpts (..),
   defaultAppOpts,
+  RunOpts (..),
+  _AutoPlay,
+  _RunScript,
+  _Replay,
 
   -- *** Re-exported types used in options
   ColorMode (..),
@@ -311,12 +315,10 @@ data AppOpts = AppOpts
   -- ^ Explicit seed chosen by the user.
   , userScenario :: Maybe FilePath
   -- ^ Scenario the user wants to play.
-  , scriptToRun :: Maybe FilePath
+  , runOpts :: Maybe RunOpts
   -- ^ Code to be run on base.
   , pausedAtStart :: Bool
   -- ^ Pause the game on start by default.
-  , autoPlay :: Bool
-  -- ^ Automatically run the solution defined in the scenario file
   , autoShowObjectives :: Bool
   -- ^ Show objectives dialogs when an objective is achieved/failed.
   , speed :: Int
@@ -331,16 +333,25 @@ data AppOpts = AppOpts
   -- ^ Information about the Git repository (not present in release).
   }
 
+data RunOpts
+  = -- | Automatically run the solution defined in the scenario file.
+    AutoPlay
+  | -- | Swarm script to be run on base.
+    RunScript FilePath
+  | -- | Previous JSON REPL history to replay.
+    Replay FilePath
+
+makePrisms ''RunOpts
+
 -- | A default/empty 'AppOpts' record.
 defaultAppOpts :: AppOpts
 defaultAppOpts =
   AppOpts
     { userSeed = Nothing
     , userScenario = Nothing
-    , scriptToRun = Nothing
+    , runOpts = Nothing
     , pausedAtStart = False
     , autoShowObjectives = True
-    , autoPlay = False
     , speed = defaultInitLgTicksPerSecond
     , debugOptions = mempty
     , colorMode = Nothing
