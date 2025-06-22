@@ -7,6 +7,7 @@
 -- LSP unit tests
 module TestLSP (testLSP) where
 
+import Control.Monad (unless)
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Swarm.Language.LSP.Hover (narrowToPosition)
@@ -15,11 +16,10 @@ import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ
 import Swarm.Language.Syntax (Syntax' (Syntax'))
 import Swarm.Language.Syntax qualified as S
+import Swarm.Pretty (prettyString)
 import System.FilePath ((</>))
 import Test.Tasty
 import Test.Tasty.HUnit
-import Control.Monad (unless)
-import Swarm.Pretty (prettyString)
 
 baseTestPath :: FilePath
 baseTestPath = "data/test/language-snippets/warnings/unused-vars"
