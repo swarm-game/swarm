@@ -23,7 +23,7 @@ import Brick.BChan
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
 import Control.Concurrent (forkIO, threadDelay)
-import Control.Lens (view, (%~), (?~))
+import Control.Lens (view, (%~), (?~), (^.))
 import Control.Monad (forever, void, when)
 import Control.Monad.IO.Class (liftIO)
 import Data.IORef (IORef, modifyIORef, newIORef, readIORef, writeIORef)
@@ -45,6 +45,7 @@ import Swarm.Version (getNewerReleaseVersion)
 import Swarm.Web
 import System.Exit
 import System.IO (stderr)
+import System.Remote.Monitoring.Wai qualified as WaiMetrics
 
 type EventHandler = BrickEvent Name AppEvent -> EventM Name AppState ()
 
@@ -71,6 +72,10 @@ appMain opts = do
       T.hPutStrLn stderr (prettyText @SystemFailure err)
       exitFailure
     Right s -> do
+      _ <- WaiMetrics.forkServerWith
+        (s ^. runtimeState . metrics)
+        "localhost"
+        6543
       -- NOTE: The state reference is read-only by the web service;
       -- the brick app has the real state and updates the reference.
       appStateRef <- newIORef s

@@ -192,6 +192,11 @@ common dotgen
 common either
   build-depends: either >=5.0 && <5.1
 
+common ekg
+  build-depends: ekg-core >=0.1.1 && <0.1.2
+  build-depends: ekg-json >=0.1.1 && <0.1.2
+  build-depends: ekg-wai >=0.1.1 && <0.1.3
+
 common exceptions
   build-depends: exceptions >=0.10 && <0.11
 
@@ -691,6 +696,7 @@ library swarm-engine
     containers,
     directory,
     extra,
+    ekg,
     filepath,
     fused-effects,
     fused-effects-lens,
@@ -1016,6 +1022,7 @@ library swarm-tui
     colour,
     containers,
     extra,
+    ekg,
     filepath,
     fused-effects,
     fused-effects-lens,
@@ -1131,6 +1138,7 @@ executable swarm
     bytestring,
     containers,
     extra,
+    ekg,
     fused-effects,
     githash,
     http-client,
