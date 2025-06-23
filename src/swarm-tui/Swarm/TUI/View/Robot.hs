@@ -69,16 +69,27 @@ NEW GRID LIST
 
 -- | The columns in the Robot modal grid.
 data RobotColumn
-  = ColName
-  | ColAge
-  | ColPos
-  | ColItems
-  | ColStatus
-  | ColActns
-  | ColCmds
-  | ColCycles
-  | ColActivity
-  | ColLog
+  = -- | The name of the robot.
+    ColName
+  | -- | The age of the robot, measured in seconds.
+    ColAge
+  | -- | The position (coordinates) of the robot, along with a visual
+    --   indication of what the robot looks like.
+    ColPos
+  | -- | The number of items in the robot's inventory (not counting equipped devices).
+    ColItems
+  | -- | The robot's status (busy, waiting, or idle)
+    ColStatus
+  | -- | The total count of tangible commands invoked so far.
+    ColActns
+  | -- | The total count of all commands invoked so far.
+    ColCmds
+  | -- | The number of CESK machine steps executed so far.
+    ColCycles
+  | -- | Percentage of ticks in a sliding window during which the robot was busy.
+    ColActivity
+  | -- | Whether the robot has generated any additional log entries.
+    ColLog
   | -- | The ID is the only optional field.
     --   It is shown last to make indexing code easier.
     ColID
