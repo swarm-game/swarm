@@ -75,3 +75,4 @@ Achievements
 2240-overridden-entity-capabilities.yaml
 2253-halt-waiting.yaml
 2270-instant-defs.yaml
+2193-text-entities.yaml

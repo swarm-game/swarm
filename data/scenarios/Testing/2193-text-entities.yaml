@@ -1,0 +1,27 @@
+version: 1
+name: Automatic character entities
+description: |
+  Demo writing text in a world with auto-generated character entities
+robots:
+  - name: base
+    dir: east
+    devices:
+      - treads
+      - logger
+      - grabber
+      - scanner
+world:
+  dsl: |
+    {grass}
+  palette:
+    # These characters will exist in the palette mapped to default
+    # auto-generated character entities, unless explicitly overridden.
+    chars: "A-Za-z0-9! "
+    # 'D' in the palette maps to [stone, null, base], even though it
+    # exists in the range A-Z above.
+    'D': [stone, null, base]
+    '.': [stone]
+  map: |-
+    .......................................................................
+    ...Hello world! This is a Demo! 1234098765abcdefghijklmnopqrstuvwxyz...
+    .......................................................................

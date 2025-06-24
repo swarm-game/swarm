@@ -13,7 +13,7 @@ import Swarm.Game.Entity
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Grid
-import Swarm.Game.Scenario.Topography.ProtoCell
+import Swarm.Game.Scenario.Topography.Palette
 import Swarm.Game.Terrain (TerrainType)
 import Swarm.Util.Erasable
 
@@ -99,7 +99,7 @@ prepForJson ::
   PaletteAndMaskChar ->
   Grid (Maybe CellPaintDisplay) ->
   (String, KM.KeyMap CellPaintDisplay)
-prepForJson (PaletteAndMaskChar (StructurePalette suggestedPalette) maybeMaskChar) cellGrid =
+prepForJson (PaletteAndMaskChar (StructurePalette _ _ suggestedPalette) maybeMaskChar) cellGrid =
   (constructWorldMap mappedPairs maskCharacter cellGrid, constructPalette mappedPairs)
  where
   preassignments :: [(Char, TerrainWith EntityFacade)]

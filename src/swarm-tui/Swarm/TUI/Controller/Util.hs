@@ -17,8 +17,10 @@ import Control.Monad.IO.Class (MonadIO (liftIO), liftIO)
 import Control.Monad.State (MonadState, execState)
 import Data.List.Extra (enumerate)
 import Data.Map qualified as M
+import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text (Text)
+import Data.Text qualified as T
 import Graphics.Vty qualified as V
 import Swarm.Effect (TimeIOC, runTimeIO)
 import Swarm.Game.CESK (continue)
@@ -34,7 +36,9 @@ import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (CDebug))
+import Swarm.Language.Pipeline (processTerm')
 import Swarm.Language.Syntax hiding (Key)
+import Swarm.Language.Value (emptyEnv)
 import Swarm.TUI.Model (
   AppState,
   PlayState,
@@ -49,7 +53,7 @@ import Swarm.TUI.Model (
  )
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
-import Swarm.TUI.Model.Repl (REPLHistItem (..), REPLHistItemType, REPLPrompt, REPLState, addREPLItem, replHistory, replPromptText, replPromptType)
+import Swarm.TUI.Model.Repl (REPLEntryType (..), REPLHistItem (..), REPLHistItemType (..), REPLPrompt (..), REPLState, addREPLItem, replHasExecutedManualInput, replHistory, replPromptText, replPromptType)
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Util (ScenarioSeriesContext (..), curMenuName, generateModal, generateScenarioEndModal)
 import System.Clock (Clock (..), getTime)
@@ -289,5 +293,19 @@ resetREPL t p = uiGameplay . uiREPL %= modifyResetREPL t p
 addREPLHistItem :: MonadState ScenarioState m => REPLHistItemType -> Text -> m ()
 addREPLHistItem itemType msg = do
   t <- use $ gameState . temporal . ticks
-  let item = REPLHistItem itemType t msg
+  let item = REPLHistItem itemType msg t
   uiGameplay . uiREPL . replHistory %= addREPLItem item
+
+runBaseCode :: (MonadState ScenarioState m) => T.Text -> m (Either Text ())
+runBaseCode uinput = do
+  addREPLHistItem (REPLEntry Submitted) uinput
+  resetREPL T.empty (CmdPrompt [])
+  env <- fromMaybe emptyEnv <$> preuse (gameState . baseEnv)
+  case processTerm' env uinput of
+    Right mt -> do
+      uiGameplay . uiREPL . replHistory . replHasExecutedManualInput .= True
+      runBaseTerm mt
+      return (Right ())
+    Left err -> do
+      addREPLHistItem REPLError err
+      return (Left err)

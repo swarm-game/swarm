@@ -130,7 +130,7 @@ common JuicyPixels
   build-depends: JuicyPixels >=3.3 && <3.4
 
 common QuickCheck
-  build-depends: QuickCheck >=2.14 && <2.16
+  build-depends: QuickCheck >=2.14 && <2.17
 
 common SHA
   build-depends: SHA >=1.6.4 && <1.6.5
@@ -148,7 +148,7 @@ common boolexpr
   build-depends: boolexpr >=0.2 && <0.3
 
 common brick
-  build-depends: brick >=2.1.1 && <2.9
+  build-depends: brick >=2.1.1 && <2.10
 
 common brick-list-skip
   build-depends: brick-list-skip >=0.1.1.2 && <0.2
@@ -271,10 +271,10 @@ common natural-sort
   build-depends: natural-sort >=0.1.2 && <0.2
 
 common nonempty-containers
-  build-depends: nonempty-containers >=0.3.4 && <0.3.5
+  build-depends: nonempty-containers >=0.3.4 && <0.3.6
 
 common optparse-applicative
-  build-depends: optparse-applicative >=0.16 && <0.19
+  build-depends: optparse-applicative >=0.16 && <0.20
 
 common ordered-containers
   build-depends: ordered-containers >=0.2.4 && <0.2.5
@@ -283,7 +283,7 @@ common palette
   build-depends: palette >=0.3 && <0.4
 
 common pandoc
-  build-depends: pandoc >=3.0 && <3.7
+  build-depends: pandoc >=3.0 && <3.8
 
 common pandoc-types
   build-depends: pandoc-types >=1.23 && <1.24
@@ -519,6 +519,7 @@ library swarm-topography
     hashable,
     lens,
     linear,
+    megaparsec,
     nonempty-containers,
     servant-docs,
     split,
@@ -536,6 +537,7 @@ library swarm-topography
     Swarm.Game.Scenario.Topography.Grid
     Swarm.Game.Scenario.Topography.Modify
     Swarm.Game.Scenario.Topography.Navigation.Waypoint
+    Swarm.Game.Scenario.Topography.Palette
     Swarm.Game.Scenario.Topography.Placement
     Swarm.Game.Scenario.Topography.ProtoCell
     Swarm.Game.Scenario.Topography.Rasterize
@@ -1016,6 +1018,7 @@ library swarm-tui
     extra,
     filepath,
     fused-effects,
+    fused-effects-lens,
     fuzzy,
     generic-data,
     githash,
