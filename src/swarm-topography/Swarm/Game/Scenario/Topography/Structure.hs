@@ -39,7 +39,7 @@ data PStructure c = Structure
   -- ^ earlier placements will be overlaid on top of later placements in the YAML file
   , waypoints :: [Waypoint]
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Functor)
 
 data Placed c = Placed Placement (NamedStructure c)
   deriving (Show)

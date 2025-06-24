@@ -24,6 +24,8 @@ module Swarm.Game.Scenario (
   scenarioMetadata,
   scenarioOperation,
   scenarioLandscape,
+  scenarioDiagnostic,
+  scenarioStructureMap,
   scenarioVersion,
   scenarioName,
   scenarioAuthor,
@@ -233,12 +235,22 @@ scenarioNavigation :: Lens' ScenarioLandscape (Navigation (M.Map SubworldName) L
 --   include the base.
 scenarioRobots :: Lens' ScenarioLandscape [TRobot]
 
+newtype ScenarioDiagnostic = ScenarioDiagnostic
+  { _scenarioStructureMap :: M.Map Structure.StructureName (Structure.NamedStructure (Maybe Cell))
+  }
+
+makeLensesNoSigs ''ScenarioDiagnostic
+
+-- | Raw structure definitions at the scenario level
+scenarioStructureMap :: Lens' ScenarioDiagnostic (M.Map Structure.StructureName (Structure.NamedStructure (Maybe Cell)))
+
 -- | A 'Scenario' contains all the information to describe a
 --   scenario.
 data Scenario = Scenario
   { _scenarioMetadata :: ScenarioMetadata
   , _scenarioOperation :: ScenarioOperation
   , _scenarioLandscape :: ScenarioLandscape
+  , _scenarioDiagnostic :: ScenarioDiagnostic
   }
 
 makeLensesNoSigs ''Scenario
@@ -252,6 +264,10 @@ scenarioOperation :: Lens' Scenario ScenarioOperation
 
 -- | All cosmetic and structural content of the scenario.
 scenarioLandscape :: Lens' Scenario ScenarioLandscape
+
+-- | Intermediate content not required for scenario
+-- play, but useful for development
+scenarioDiagnostic :: Lens' Scenario ScenarioDiagnostic
 
 -- * Parsing
 
@@ -398,7 +414,9 @@ instance FromJSONE ScenarioInputs Scenario where
           <*> localE (view entityMap) (v ..:? "recipes" ..!= [])
           <*> liftE (v .:? "stepsPerTick")
 
-      return $ Scenario metadata playInfo landscape
+      let diagnostic = ScenarioDiagnostic structureMap
+
+      return $ Scenario metadata playInfo landscape diagnostic
    where
     runValidation f = case run . runThrow $ f of
       Right x -> return x

@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- |
@@ -10,6 +11,7 @@ module Swarm.Game.Scenario.Topography.WorldDescription where
 import Control.Arrow ((&&&))
 import Control.Carrier.Reader (runReader)
 import Control.Carrier.Throw.Either
+import Swarm.Util.Lens (makeLensesNoSigs)
 import Control.Monad (forM)
 import Data.Coerce
 import Data.Functor.Identity
@@ -47,6 +49,7 @@ import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.Universe (SubworldName (DefaultRootSubworld))
 import Swarm.Game.World.Parse ()
+import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Swarm.Game.World.Syntax
 import Swarm.Game.World.Typecheck
 import Swarm.Language.Syntax (Syntax)
@@ -54,10 +57,23 @@ import Swarm.Language.Text.Markdown (Document, fromText)
 import Swarm.Pretty (prettyString)
 import Swarm.Util.Erasable (Erasable (..))
 import Swarm.Util.Yaml
+import Data.Map qualified as M
+import Swarm.Game.Scenario.Topography.Structure qualified as Structure
+import Swarm.Game.Scenario.Topography.Structure.Named qualified as Structure
 
 ------------------------------------------------------------
 -- World description
 ------------------------------------------------------------
+
+newtype WorldDiagnostic = WorldDiagnostic
+  { _worldStructureMap :: M.Map Structure.StructureName (Structure.NamedStructure (Maybe Cell))
+  }
+
+makeLensesNoSigs ''WorldDiagnostic
+
+-- | Raw structure definitions at the subworld level
+worldStructureMap :: Lens' WorldDiagnostic (M.Map Structure.StructureName (Structure.NamedStructure (Maybe Cell)))
+
 
 -- | A description of a world parsed from a YAML file.
 -- This type is parameterized to accommodate Cells that
@@ -72,8 +88,8 @@ data PWorldDescription e = WorldDescription
   -- the structure recognizer
   , worldName :: SubworldName
   , worldProg :: Maybe (TTerm '[] (World CellVal))
+  , worldDiagnostic :: WorldDiagnostic
   }
-  deriving (Show)
 
 type WorldDescription = PWorldDescription Entity
 
@@ -114,10 +130,10 @@ instance FromJSONE WorldParseDependencies WorldDescription where
       withDeps $
         v ..:? "structures" ..!= []
 
-    let initialStructureDefs = scenarioLevelStructureDefs <> subworldLocalStructureDefs
-    liftE $ mkWorld tem worldMap palette initialStructureDefs v
+    liftE $ mkWorld tem worldMap palette scenarioLevelStructureDefs subworldLocalStructureDefs v
    where
-    mkWorld tem worldMap palette initialStructureDefs v = do
+    mkWorld tem worldMap palette scenarioLevelStructureDefs subworldLocalStructureDefs v = do
+      let initialStructureDefs = scenarioLevelStructureDefs <> subworldLocalStructureDefs
       MergedStructure mergedGrid staticStructurePlacements unmergedWaypoints <- do
         unflattenedStructure <- parseStructure palette initialStructureDefs v
 
@@ -150,6 +166,7 @@ instance FromJSONE WorldParseDependencies WorldDescription where
             map (offsetLoc $ coerce ul) staticStructurePlacements
 
       let area = modifyLoc ((ul .+^) . asVector) mergedGrid
+      let worldDiagnostic = WorldDiagnostic $ Assembly.makeStructureMap subworldLocalStructureDefs
       return $ WorldDescription {..}
 
 ------------------------------------------------------------

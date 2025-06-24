@@ -5,15 +5,30 @@
 module Main where
 
 import Options.Applicative
+import Swarm.Failure (simpleErrorHandle)
 import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..))
 import Swarm.Game.World.Render (FailureMode (..), OuputFormat (..), RenderComputationContext (..), RenderOpts (..), doRenderCmd)
+import Swarm.Render.Structures
+
+data CLIToplevel
+  = CLIToplevel FilePath CLI
 
 data CLI
-  = RenderMap FilePath RenderOpts
+  = RenderMap RenderOpts
+  | RenderStructures RenderOpts
 
-cliParser :: Parser CLI
+cliParser :: Parser CLIToplevel
 cliParser =
-  RenderMap <$> strArgument (metavar "SCENARIO") <*> subOpts
+  CLIToplevel
+    <$> strArgument (metavar "SCENARIO")
+    <*> ( subparser
+            ( mconcat
+                [ command "scene" (info (RenderMap <$> subOpts <**> helper) (progDesc "Run the Swarm game (default)"))
+                , command "structures" (info (RenderStructures <$> subOpts <**> helper) (progDesc "Format a file"))
+                ]
+            )
+            <|> (RenderMap <$> subOpts)
+        )
  where
   sizeOpts =
     AreaDimensions
@@ -35,7 +50,7 @@ cliParser =
   seed :: Parser (Maybe Int)
   seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
 
-cliInfo :: ParserInfo CLI
+cliInfo :: ParserInfo CLIToplevel
 cliInfo =
   info
     (cliParser <**> helper)
@@ -46,6 +61,10 @@ cliInfo =
 
 main :: IO ()
 main = do
-  cli <- execParser cliInfo
+  CLIToplevel mapPath cli <- execParser cliInfo
   case cli of
-    RenderMap mapPath opts -> doRenderCmd opts mapPath
+    RenderMap opts -> doRenderCmd opts mapPath
+    RenderStructures opts ->
+      simpleErrorHandle $
+        doRenderStructures mapPath $
+          outputFilepath opts
