@@ -562,6 +562,40 @@ seedProgram minTime randTime seedlingCount seedlingRadius thing =
     selfdestruct
   |]
 
+-- | XXX
+addAsphyxiateBot :: Has (State GameState) sig m => TimeSpec -> Cosmic Location -> m ()
+addAsphyxiateBot ts loc =
+  zoomRobots . addTRobot (initMachine asphyxiateProg) $
+    mkRobot
+      Nothing
+      "life support monitor"
+      (Markdown.fromText $ T.unwords ["A life support monitor."])
+      (Just loc)
+      zero
+      (defaultEntityDisplay ' ' & invisible .~ True)
+      Nothing
+      []
+      []
+      True
+      False
+      emptyExceptions
+      ts
+
+asphyxiateProg :: TSyntax
+asphyxiateProg =
+  [tmQ|
+    def countdown : Int -> Cmd Unit = \n.
+      if (n == 0)
+        {destroy base}
+        { wait 1;
+          life <- as base {equipped "life support system"};
+          if life {selfdestruct} {countdown (n-1)}
+        }
+    end;
+
+    countdown 256
+  |]
+
 ------------------------------------------------------------
 -- Some utility functions
 ------------------------------------------------------------

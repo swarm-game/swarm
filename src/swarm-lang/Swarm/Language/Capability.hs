@@ -137,6 +137,7 @@ constCaps = \case
   RobotNamed -> Just CGod
   RobotNumbered -> Just CGod
   Surveil -> Just CGod
+  Destroy -> Just CGod
   -- ----------------------------------------------------------------
   -- type-level arithmetic
   Inl -> Just CSum

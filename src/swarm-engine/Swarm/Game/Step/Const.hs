@@ -109,7 +109,7 @@ import Prelude hiding (lookup)
 
 -- | How to handle failure, for example when moving into liquid or
 --   attempting to move to a blocked location
-data RobotFailure = ThrowExn | Destroy | IgnoreFail
+data RobotFailure = ThrowExn | Destruct | IgnoreFail
 
 -- | How to handle different types of failure when moving/teleporting
 --   to a location.
@@ -158,6 +158,17 @@ execConst runChildProg c vs s k = do
       destroyIfNotBase $ \case False -> Just AttemptSelfDestructBase; _ -> Nothing
       flagRedraw
       return $ mkReturn ()
+    Destroy -> case vs of
+      [VRobot rid] -> do
+        myID <- use robotID
+        if (myID == rid)
+          then destroyIfNotBase $ \case False -> Just AttemptSelfDestructBase; _ -> Nothing
+          else do
+            zoomRobots $ deleteRobot rid
+            when (rid == 0) $ grantAchievement DestroyedBase
+        flagRedraw
+        return $ mkReturn ()
+      _ -> badConst
     Move -> do
       orientation <- use robotOrientation
       moveInDirection $ orientation ? zero
@@ -264,7 +275,7 @@ execConst runChildProg c vs s k = do
 
         applyMoveFailureEffect maybeFirstFailure $ \case
           PathBlockedBy _ -> ThrowExn
-          PathLiquid _ -> Destroy
+          PathLiquid _ -> Destruct
 
         let maybeLastLoc = do
               guard $ null maybeFirstFailure
@@ -410,6 +421,10 @@ execConst runChildProg c vs s k = do
           equippedDevices %= insert item
           robotInventory %= delete item
 
+          -- Log a special message if re-equipping life support system
+          when (itemName == "life support system") $
+            void $ traceLog Logged Warning "Life support system back online! Life failure averted!"
+
           -- Check whether we should bestow the 'EquippedAllDevices' achievement
           curScenario <- use currentScenarioPath
           when (curScenario == Just "classic.yaml") $ do
@@ -432,12 +447,18 @@ execConst runChildProg c vs s k = do
         equippedDevices %= delete item
         robotInventory %= insert item
 
+        -- If the base unequips the life support system, show a
+        -- warning and start a countdown.
         when (myID == 0 && itemName == "life support system") $ do
-          -- If the base unequips the life support system, you die!
-          -- This is one of only two (known) ways to get the
-          -- `DestroyedBase` achievement.
-          selfDestruct .= True
-          when (myID == 0) $ grantAchievementForRobot DestroyedBase
+          let warnMsg = T.concat
+                [ "WARNING: life support system unequipped! "
+                , "Life failure imminent! "
+                , "Please re-equip!"
+                ]
+          void $ traceLog Logged Warning warnMsg
+          createdAt <- getNow
+          loc <- use robotLocation
+          addAsphyxiateBot createdAt loc
 
         -- Now check whether being on the current cell would still be
         -- allowed.
@@ -1298,8 +1319,8 @@ execConst runChildProg c vs s k = do
 
     onTarget rid $ do
       checkMoveAhead nextLoc $ \case
-        PathBlockedBy _ -> Destroy
-        PathLiquid _ -> Destroy
+        PathBlockedBy _ -> Destruct
+        PathLiquid _ -> Destruct
       updateRobotLocation oldLoc nextLoc
 
     -- Privileged robots can teleport without causing any
@@ -1679,7 +1700,7 @@ execConst runChildProg c vs s k = do
     let nextLoc = loc `offsetBy` orientation
     checkMoveAhead nextLoc $ \case
       PathBlockedBy _ -> ThrowExn
-      PathLiquid _ -> Destroy
+      PathLiquid _ -> Destruct
     updateRobotLocation loc nextLoc
     return $ mkReturn ()
 
@@ -1693,7 +1714,7 @@ execConst runChildProg c vs s k = do
   applyMoveFailureEffect maybeFailure failureHandler =
     forM_ maybeFailure $ \failureMode -> case failureHandler failureMode of
       IgnoreFail -> return ()
-      Destroy -> destroyIfNotBase $ \b -> case (b, failureMode) of
+      Destruct -> destroyIfNotBase $ \b -> case (b, failureMode) of
         (True, PathLiquid _) -> Just RobotIntoWater -- achievement for drowning
         (False, _) -> Just AttemptSelfDestructBase
         _ -> Nothing
