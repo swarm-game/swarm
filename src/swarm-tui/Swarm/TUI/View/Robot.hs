@@ -69,24 +69,29 @@ NEW GRID LIST
 
 -- | The columns in the Robot modal grid.
 data RobotColumn
-  = -- | The name of the robot.
+  = -- | An image of the robot (including its current direction, if
+    --   its display changes with direction), along with its name.
     ColName
   | -- | The age of the robot, measured in seconds.
     ColAge
   | -- | The position (coordinates) of the robot, along with a visual
-    --   indication of what the robot looks like.
+    --   indication of what the robot's current cell looks like.
     ColPos
   | -- | The number of items in the robot's inventory (not counting equipped devices).
     ColItems
-  | -- | The robot's status (busy, waiting, or idle)
+  | -- | The robot's status: busy (actively executing commands),
+    --   waiting (executing a `wait`), or idle
     ColStatus
-  | -- | The total count of tangible commands invoked so far.
+  | -- | The total count of tangible commands executed so far.  See the
+    --   documentation of
+    --   'Swarm.Language.Syntax.Constants.Tangibility'.
     ColActns
-  | -- | The total count of all commands invoked so far.
+  | -- | The total count of all commands executed so far.
     ColCmds
   | -- | The number of CESK machine steps executed so far.
     ColCycles
-  | -- | Percentage of ticks in a sliding window during which the robot was busy.
+  | -- | Percentage of the most recent 64 ticks during which the robot
+    --   was busy.
     ColActivity
   | -- | Whether the robot has generated any additional log entries.
     ColLog
