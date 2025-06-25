@@ -432,6 +432,13 @@ execConst runChildProg c vs s k = do
         equippedDevices %= delete item
         robotInventory %= insert item
 
+        when (myID == 0 && itemName == "life support system") $ do
+          -- If the base unequips the life support system, you die!
+          -- This is one of only two (known) ways to get the
+          -- `DestroyedBase` achievement.
+          selfDestruct .= True
+          when (myID == 0) $ grantAchievementForRobot DestroyedBase
+
         -- Now check whether being on the current cell would still be
         -- allowed.
         loc <- use robotLocation
@@ -448,7 +455,7 @@ execConst runChildProg c vs s k = do
           PathLiquid _ -> do
             -- Unequipping a device that gives the Float capability in
             -- the middle of liquid results in drowning, EVEN for
-            -- base!  This is currently the only (known) way to get
+            -- base!  This is currently the other known way to get
             -- the `DestroyedBase` achievement.
             selfDestruct .= True
             when (myID == 0) $ grantAchievementForRobot DestroyedBase
