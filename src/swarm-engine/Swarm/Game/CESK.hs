@@ -367,7 +367,7 @@ prepareTerm e t = case whnfType (e ^. envTydefs) (ptBody (t ^. sType)) of
   TyCmd _ -> t'
   _ -> TApp (TConst Pure) t'
  where
-  t' = eraseS t
+  t' = erase t ^. sTerm
 
 -- | Cancel the currently running computation.
 cancel :: CESK -> CESK
