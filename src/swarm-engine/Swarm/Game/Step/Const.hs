@@ -423,7 +423,8 @@ execConst runChildProg c vs s k = do
 
           -- Log a special message if re-equipping life support system
           when (itemName == "life support system") $
-            void $ traceLog Logged Warning "Life support system back online! Life failure averted!"
+            void $
+              traceLog Logged Warning "Life support system back online! Life failure averted!"
 
           -- Check whether we should bestow the 'EquippedAllDevices' achievement
           curScenario <- use currentScenarioPath
@@ -450,11 +451,12 @@ execConst runChildProg c vs s k = do
         -- If the base unequips the life support system, show a
         -- warning and start a countdown.
         when (myID == 0 && itemName == "life support system") $ do
-          let warnMsg = T.concat
-                [ "WARNING: life support system unequipped! "
-                , "Life failure imminent! "
-                , "Please re-equip!"
-                ]
+          let warnMsg =
+                T.concat
+                  [ "WARNING: life support system unequipped! "
+                  , "Life failure imminent! "
+                  , "Please re-equip!"
+                  ]
           void $ traceLog Logged Warning warnMsg
           createdAt <- getNow
           loc <- use robotLocation
