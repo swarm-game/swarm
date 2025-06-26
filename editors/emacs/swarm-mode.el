@@ -127,6 +127,7 @@
       "robotnamed"
       "robotnumbered"
       "knows"
+      "destroy"
       "east"
       "north"
       "west"
