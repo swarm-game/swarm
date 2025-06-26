@@ -6,28 +6,37 @@
 --
 -- Helper functions for working with @Terms@ and @Syntax@
 module Swarm.Language.Syntax.Util (
+  -- * Utility AST construction/destruction
   mkOp,
   mkOp',
   unfoldApps,
   mkTuple,
   unTuple,
+  locVarToSyntax,
 
-  -- * Erasure
+  -- * Traversals
+  -- ** Term + type traversal
+
+  termSyntax,
+  traverseTypes,
+
+  -- ** Erasure
   erase,
-  eraseS,
 
-  -- * Term traversal
+  -- ** Free variable traversal
   freeVarsS,
   freeVarsT,
   freeVarsV,
   mapFreeS,
-  locVarToSyntax,
+
+  -- ** Miscellaneous traversals
   asTree,
   measureAstSize,
 ) where
 
 import Control.Lens (Traversal', para, universe, (%~), (^.), pattern Empty)
 import Data.Data (Data, Typeable)
+import Data.Functor.Identity (runIdentity)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set qualified as S
@@ -93,23 +102,79 @@ unTuple = \case
   Syntax _ (SPair s1 s2) _ _ -> s1 : unTuple s2
   s -> [s]
 
+locVarToSyntax :: LocVar -> SwarmType phase -> Syntax phase
+locVarToSyntax (LV s v) = Syntax s (TVar v) Empty
+
+------------------------------------------------------------
+-- Term + type traversal
+------------------------------------------------------------
+
+-- | Traversal to pick out all Syntax nodes and types inside a Term.
+--   Generic over the phase so we can use it to change phase.
+--
+--   This is in fact a 'Bitraversal' (if there were such a thing
+--   defined in the lens package).
+termSyntax ::
+  Applicative f =>
+  (SwarmType a -> f (SwarmType b)) ->
+  (Syntax a -> f (Syntax b)) ->
+  Term a -> f (Term b)
+termSyntax fty fsyn = \case
+  TUnit -> pure TUnit
+  TConst c -> pure $ TConst c
+  TDir d -> pure $ TDir d
+  TInt i -> pure $ TInt i
+  TAntiInt t -> pure $ TAntiInt t
+  TText t -> pure $ TText t
+  TAntiText t -> pure $ TAntiText t
+  TBool b -> pure $ TBool b
+  TAntiSyn t -> pure $ TAntiSyn t
+  TRobot r -> pure $ TRobot r
+  TRef x -> pure $ TRef x
+  TRequire d -> pure $ TRequire d
+  TStock n d -> pure $ TStock n d
+  SRequirements t s -> SRequirements t <$> fsyn s
+  TVar x -> pure $ TVar x
+  SPair s1 s2 -> SPair <$> fsyn s1 <*> fsyn s2
+  SLam x ty s -> SLam x ty <$> fsyn s
+  SApp s1 s2 -> SApp <$> fsyn s1 <*> fsyn s2
+  SLet ls r x rty ty req s1 s2 -> SLet ls r x rty ty req <$> fsyn s1 <*> fsyn s2
+  STydef x ty info s -> STydef x ty info <$> fsyn s
+  SBind x t1 t2 req s1 s2 -> SBind x <$> traverse fty t1 <*> pure t2 <*> pure req <*> fsyn s1 <*> fsyn s2
+  SDelay s -> SDelay <$> fsyn s
+  SRcd m -> SRcd <$> (traverse . traverse) fsyn m
+  SProj s x -> SProj <$> fsyn s <*> pure x
+  SAnnotate s pty -> SAnnotate <$> fsyn s <*> pure pty
+  SSuspend s -> SSuspend <$> fsyn s
+  SParens s -> SParens <$> fsyn s
+  TType ty -> pure $ TType ty
+  SImportIn loc s -> SImportIn loc <$> fsyn s
+
+-- | Given a (possibly effectful) way to turn types from one phase
+--   into types at another phase, map over all types in a syntax tree,
+--   effectfully changing the phase of the syntax tree as a whole.
+--
+--   We could make this a @Traversal (Syntax a) (Syntax b) (SwarmType
+--   a) (SwarmType b)@ but we just keep an explicit type like this for
+--   simplicity.
+traverseTypes :: Applicative f => (SwarmType a -> f (SwarmType b)) -> Syntax a -> f (Syntax b)
+traverseTypes f (Syntax loc t com ty) =
+  Syntax loc <$> termSyntax f (traverseTypes f) t <*> pure com <*> f ty
+
 ------------------------------------------------------------
 -- Type erasure
 ------------------------------------------------------------
 
+-- | Erase something from any phase back to the initial 'Raw' phase.
+--   In particular this will erase type annotations.
 class Erasable t where
   erase :: t a -> t Raw
 
 instance Erasable Syntax where
-  erase = undefined
+  erase = runIdentity . traverseTypes (const (pure ()))
 
 instance Erasable Term where
-  erase = undefined
-
--- | Erase all annotations from a 'Syntax node, turning it into a
---   bare 'Term'.
-eraseS :: Syntax phase -> Term Raw
-eraseS (Syntax _ t _ _) = erase t
+  erase = runIdentity . termSyntax (const (pure ())) (pure . erase)
 
 ------------------------------------------------------------
 -- Free variable traversals
@@ -183,6 +248,11 @@ freeVarsV = freeVarsT . (\f -> \case TVar x -> TVar <$> f x; t -> pure t)
 mapFreeS :: Var -> (Syntax phase -> Syntax phase) -> Syntax phase -> Syntax phase
 mapFreeS x f = freeVarsS %~ (\t -> case t ^. sTerm of TVar y | y == x -> f t; _ -> t)
 
+
+------------------------------------------------------------
+-- Other traversals
+------------------------------------------------------------
+
 -- | Transform the AST into a Tree datatype.  Useful for
 --   pretty-printing (e.g. via "Data.Tree.drawTree").
 asTree :: (Typeable phase, Data (SwarmType phase)) => Syntax phase -> Tree (Syntax phase)
@@ -199,6 +269,3 @@ isNoop :: Syntax a -> Bool
 isNoop = \case
   Syntax _ (TConst Noop) _ _ -> True
   _ -> False
-
-locVarToSyntax :: LocVar -> SwarmType phase -> Syntax phase
-locVarToSyntax (LV s v) = Syntax s (TVar v) Empty
