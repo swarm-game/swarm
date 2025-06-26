@@ -478,8 +478,8 @@ execConst runChildProg c vs s k = do
           PathLiquid _ -> do
             -- Unequipping a device that gives the Float capability in
             -- the middle of liquid results in drowning, EVEN for
-            -- base!  This is currently the other known way to get
-            -- the `DestroyedBase` achievement.
+            -- base!  This gives the `DestroyedBase` achievement,
+            -- the other way is unequipping life support.
             selfDestruct .= True
             when (myID == 0) $ grantAchievementForRobot DestroyedBase
 
