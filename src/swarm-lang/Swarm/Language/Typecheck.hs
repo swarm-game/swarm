@@ -194,9 +194,7 @@ fromInferredSyntax ::
   ) =>
   Syntax Inferred ->
   m (Syntax Typed)
-fromInferredSyntax = undefined
-  -- mapM (checkPredicative <=< (fmap fromU . generalize))
-  -- XXX
+fromInferredSyntax = traverseTypes (checkPredicative <=< (fmap fromU . generalize))
 
 finalizeInferredSyntax ::
   ( Has Unification sig m
