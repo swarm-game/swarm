@@ -143,6 +143,7 @@ data Term phase
     --   for annotating the type of a bind after typechecking; there
     --   is no surface syntax that allows directly annotating a bind
     --   with either one.
+    -- XXX can we just keep (Maybe (SwarmType phase)) and get rid of (Maybe Polytype)??
     SBind (Maybe LocVar) (Maybe (SwarmType phase)) (Maybe Polytype) (Maybe Requirements) (Syntax phase) (Syntax phase)
   | -- | Delay evaluation of a term, written @{...}@.  Swarm is an
     --   eager language, but in some cases (e.g. for @if@ statements
