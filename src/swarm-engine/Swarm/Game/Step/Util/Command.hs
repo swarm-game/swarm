@@ -562,7 +562,8 @@ seedProgram minTime randTime seedlingCount seedlingRadius thing =
     selfdestruct
   |]
 
--- | XXX
+-- | Create an "asphyxiation robot" to monitor time with "life support
+--   system" unequipped.
 addAsphyxiateBot :: Has (State GameState) sig m => TimeSpec -> Cosmic Location -> m ()
 addAsphyxiateBot ts loc =
   zoomRobots . addTRobot (initMachine asphyxiateProg) $
@@ -581,6 +582,10 @@ addAsphyxiateBot ts loc =
       emptyExceptions
       ts
 
+-- | Count down from 256 ticks.  If at any point during the countdown
+--   we detect that the base has the life support system re-equipped,
+--   stop the countdown and self-destruct.  Otherwise, at the end of
+--   the countdown, destroy the base.
 asphyxiateProg :: TSyntax
 asphyxiateProg =
   [tmQ|
