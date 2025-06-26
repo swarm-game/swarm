@@ -86,19 +86,27 @@ module Swarm.Language.Syntax (
   unfoldApps,
   mkTuple,
   unTuple,
+  locVarToSyntax,
 
-  -- * Erasure
+  -- * Traversals
+  -- ** Term + type traversal
+
+  termSyntax,
+  traverseTypes,
+
+  -- ** Erasure
   erase,
-  eraseS,
 
-  -- * Term traversal
+  -- ** Free variable traversal
   freeVarsS,
   freeVarsT,
   freeVarsV,
   mapFreeS,
-  locVarToSyntax,
+
+  -- ** Miscellaneous traversals
   asTree,
   measureAstSize,
+
 ) where
 
 import Swarm.Language.Phase
