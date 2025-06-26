@@ -161,7 +161,7 @@ execConst runChildProg c vs s k = do
     Destroy -> case vs of
       [VRobot rid] -> do
         myID <- use robotID
-        if (myID == rid)
+        if myID == rid
           then destroyIfNotBase $ \case False -> Just AttemptSelfDestructBase; _ -> Nothing
           else do
             zoomRobots $ deleteRobot rid
