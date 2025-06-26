@@ -26,7 +26,6 @@ import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade (EntityFacade)
 import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (
-  Parentage (Root),
   WaypointName,
  )
 import Swarm.Game.Scenario.Topography.Palette (
@@ -126,7 +125,7 @@ instance FromJSONE WorldParseDependencies WorldDescription where
         -- because all the structure definitions we need are at this
         -- point already stored inside the "Structure" object.
         either (fail . T.unpack) return $
-          Assembly.mergeStructures mempty Root unflattenedStructure
+          Assembly.assembleStructure unflattenedStructure
 
       worldName <- v .:? "name" .!= DefaultRootSubworld
       ul <- v .:? "upperleft" .!= origin
