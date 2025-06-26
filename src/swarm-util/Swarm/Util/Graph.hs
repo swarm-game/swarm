@@ -47,19 +47,19 @@ appendPath (DFSPath s p) v = DFSPath (IS.insert v s) (v : p)
 -- | Find a cycle in a directed graph (if any exist) via DFS.
 --
 -- >>> findCycle [("a", 0, [0])]
--- Just ["a"]
+-- Just ["a","a"]
 -- >>> findCycle [("a", 0, [1]), ("b", 1, [])]
 -- Nothing
 -- >>> findCycle [("a", 0, [1]), ("b", 1, [0])]
--- Just ["a","b"]
+-- Just ["a","b","a"]
 -- >>> findCycle [("a", 0, [1]), ("b", 1, [2]), ("c", 2, [1])]
--- Just ["b","c"]
+-- Just ["b","c","b"]
 -- >>> findCycle [("a",3,[1]), ("b",1,[0,3]), ("c",2,[1]), ("d",0,[])]
--- Just ["b","a"]
+-- Just ["b","a","b"]
 -- >>> findCycle [("a",3,[]), ("b",1,[0,3]), ("c",2,[1]), ("d",0,[])]
 -- Nothing
 -- >>> findCycle [("a",3,[1]), ("b",1,[0,3]), ("c",2,[1]), ("d",0,[2])]
--- Just ["d","c","b"]
+-- Just ["d","c","b","d"]
 findCycle :: Ord key => [(a, key, [key])] -> Maybe [a]
 findCycle es = runST $ do
   visited <- newArray (0, n - 1) False
@@ -79,7 +79,7 @@ findCycle es = runST $ do
 
   dfs :: STUArray s Vertex Bool -> DFSPath -> Vertex -> ST s (Maybe [Vertex])
   dfs visited p@(DFSPath pathMembers path) v
-    | v `IS.member` pathMembers = pure . Just . (v :) . reverse $ takeWhile (/= v) path
+    | v `IS.member` pathMembers = pure . Just . (v :) . reverse . (v :) $ takeWhile (/= v) path
     | otherwise = do
         vis <- readArray visited v
         case vis of
