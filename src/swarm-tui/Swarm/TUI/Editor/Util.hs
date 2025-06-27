@@ -30,7 +30,7 @@ getEntitiesForList em =
  where
   entities = M.elems $ entitiesByName em
 
-getEditingBounds :: WorldDescription -> (Bool, Cosmic BoundsRectangle)
+getEditingBounds :: WorldDescription phase -> (Bool, Cosmic BoundsRectangle)
 getEditingBounds myWorld =
   (EA.isEmpty a, newBounds)
  where
@@ -107,7 +107,7 @@ getEditedMapRectangle ::
   WorldOverdraw ->
   Maybe (Cosmic BoundsRectangle) ->
   W.MultiWorld Int Entity ->
-  Grid CellPaintDisplay
+  Grid (CellPaintDisplay phase)
 getEditedMapRectangle _ _ Nothing _ = EmptyGrid
 getEditedMapRectangle tm worldEditor (Just (Cosmic subworldName coords)) w =
   getMapRectangle toFacade getContent coords

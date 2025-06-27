@@ -22,6 +22,7 @@ import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.WinCheck
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.TUI.Model.Name
 import Swarm.Util (applyWhen)
 
@@ -49,11 +50,11 @@ data GoalStatus
     Failed
   deriving (Show, Eq, Ord, Bounded, Enum, Generic, ToJSON, ToJSONKey)
 
-type CategorizedGoals = Map GoalStatus (NonEmpty Objective)
+type CategorizedGoals = Map GoalStatus (NonEmpty (Objective Typed))
 
 data GoalEntry
   = Header GoalStatus
-  | Goal GoalStatus Objective
+  | Goal GoalStatus (Objective Typed)
   | Spacer
 
 shouldSkipSelection :: GoalEntry -> Bool
@@ -102,7 +103,7 @@ hasMultipleGoals gt =
  where
   goalCount = sum . M.elems . M.map NE.length . goals $ gt
 
-constructGoalMap :: Bool -> ObjectiveCompletion -> CategorizedGoals
+constructGoalMap :: Bool -> ObjectiveCompletion Typed -> CategorizedGoals
 constructGoalMap showHidden oc =
   M.fromList $
     mapMaybe (traverse nonEmpty) categoryList

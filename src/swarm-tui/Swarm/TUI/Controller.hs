@@ -87,6 +87,7 @@ import Swarm.Language.Typecheck (
  )
 import Swarm.Language.Value (Value (VKey), emptyEnv, envTypes)
 import Swarm.Log
+import Swarm.Pretty (prettyString)
 import Swarm.ResourceLoading (getSwarmHistoryPath)
 import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Controller.EventHandlers.Robot (showEntityDescription)
@@ -656,7 +657,7 @@ runBaseWebCode uinput ureply = do
       gameState . gameControls . replListener .= ureply . Complete . T.unpack
       runBaseCode uinput
         >>= liftIO . ureply . \case
-          Left err -> Rejected . ParseError $ T.unpack err
+          Left err -> Rejected . ParseError $ prettyString err
           Right () -> InProgress
 
 -- | Handle a user input event for the REPL.
@@ -889,10 +890,12 @@ validateREPLForm s =
           let env = fromMaybe emptyEnv $ s ^? gameState . baseEnv
               (theType, errSrcLoc) = case readTerm' defaultParserConfig uinput of
                 Left err ->
-                  let ((_y1, x1), (_y2, x2), _msg) = showErrorPos err
+                  let (((_y1, x1), (_y2, x2)), _msg) = showErrorPos err
                    in (Nothing, Left (SrcLoc x1 x2))
                 Right Nothing -> (Nothing, Right ())
-                Right (Just theTerm) -> case processParsedTerm' env theTerm of
+                -- XXX need to process this *without* loading imports??
+                --  how should import behave at the REPL?
+                Right (Just theTerm) -> case processParsedTerm' env (uinput, theTerm) of
                   Right t -> (Just (t ^. sType), Right ())
                   Left err -> (Nothing, Left (cteSrcLoc err))
            in s
