@@ -74,6 +74,7 @@ import Swarm.Game.Robot.Concrete
 import Swarm.Game.State.Config
 import Swarm.Game.Tick
 import Swarm.Game.Universe as U
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.ResourceLoading (NameGenerator)
 import Swarm.Util ((<+=), (<<.=))
 import Swarm.Util.Lens (makeLensesExcluding)
@@ -104,7 +105,7 @@ nameGenerator = to _nameGenerator
 gensym :: Lens' RobotNaming Int
 
 data Robots = Robots
-  { _robotMap :: IntMap Robot
+  { _robotMap :: IntMap (Robot Instantiated)
   , -- A set of robots to consider for the next game tick. It is guaranteed to
     -- be a subset of the keys of 'robotMap'. It may contain waiting or idle
     -- robots. But robots that are present in 'robotMap' and not in 'activeRobots'
@@ -142,7 +143,7 @@ makeLensesFor
 makeLensesExcluding ['_viewCenter, '_viewCenterRule, '_focusedRobotID, '_activeRobots, '_waitingRobots] ''Robots
 
 -- | All the robots that currently exist in the game, indexed by ID.
-robotMap :: Lens' Robots (IntMap Robot)
+robotMap :: Lens' Robots (IntMap (Robot Instantiated))
 
 -- | The names of the robots that are currently not sleeping.
 activeRobots :: Getter Robots IntSet
@@ -239,11 +240,11 @@ viewCenterRule = lens getter setter
 --   First, generate a unique ID number for it.  Then, add it to the
 --   main robot map, the active robot set, and to to the index of
 --   robots by location.
-addTRobot :: (Has (State Robots) sig m) => CESK -> TRobot -> m ()
+addTRobot :: (Has (State Robots) sig m) => CESK -> Robot Typed -> m ()
 addTRobot m r = void $ addTRobot' m r
 
 -- | Like addTRobot, but return the newly instantiated robot.
-addTRobot' :: (Has (State Robots) sig m) => CESK -> TRobot -> m Robot
+addTRobot' :: (Has (State Robots) sig m) => CESK -> Robot Typed -> m (Robot Instantiated)
 addTRobot' initialMachine r = do
   rid <- robotNaming . gensym <+= 1
   let newRobot = instantiateRobot (Just initialMachine) rid r
@@ -253,7 +254,7 @@ addTRobot' initialMachine r = do
 -- | Add a robot to the game state, adding it to the main robot map,
 --   the active robot set, and to to the index of robots by
 --   location.
-addRobot :: (Has (State Robots) sig m) => Robot -> m ()
+addRobot :: (Has (State Robots) sig m) => Robot Instantiated -> m ()
 addRobot r = do
   robotMap %= IM.insert rid r
   addRobotToLocation rid $ r ^. robotLocation
@@ -333,7 +334,7 @@ wakeWatchingRobots myID currentTick loc = do
   -- states are prepared in 4 steps...
 
   let -- Step 1: Identify the robots that are watching this location.
-      botsWatchingThisLoc :: [Robot]
+      botsWatchingThisLoc :: [Robot Instantiated]
       botsWatchingThisLoc =
         mapMaybe (`IM.lookup` rMap) $
           IS.toList $
@@ -407,12 +408,12 @@ removeRobotFromLocationMap (Cosmic oldSubworld oldPlanar) rid =
   robotsByLocation
     %= MM.adjust (MM.adjust (IS.delete rid) oldPlanar) oldSubworld
 
-setRobotInfo :: RID -> [Robot] -> Robots -> Robots
+setRobotInfo :: RID -> [Robot Instantiated] -> Robots -> Robots
 setRobotInfo baseID robotList rState =
   (setRobotList robotList rState) {_focusedRobotID = baseID}
     & viewCenterRule .~ VCRobot baseID
 
-setRobotList :: [Robot] -> Robots -> Robots
+setRobotList :: [Robot Instantiated] -> Robots -> Robots
 setRobotList robotList rState =
   rState
     & robotMap .~ IM.fromList (map (view robotID &&& id) robotList)
@@ -463,6 +464,6 @@ recalcViewCenter rInfo =
 --   'ViewCenterRule' to derive the location it refers to.  The result
 --   is 'Maybe' because the rule may refer to a robot which does not
 --   exist.
-applyViewCenterRule :: ViewCenterRule -> IntMap Robot -> Maybe (Cosmic Location)
+applyViewCenterRule :: ViewCenterRule -> IntMap (Robot Instantiated) -> Maybe (Cosmic Location)
 applyViewCenterRule (VCLocation l) _ = Just l
 applyViewCenterRule (VCRobot name) m = m ^? at name . _Just . robotLocation
