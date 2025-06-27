@@ -17,7 +17,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
 import Data.Vector qualified as V
 import Swarm.Game.Scenario.Objective
-import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Syntax (Phase (..), Syntax)
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.TUI.Model.Dialog.Goal
@@ -33,7 +33,7 @@ makeListWidget (GoalTracking _announcements categorizedObjs) =
   objList = intercalate [Spacer] $ map f $ M.toList categorizedObjs
   f (h, xs) = Header h : map (Goal h) (NE.toList xs)
 
-renderGoalsDisplay :: GoalDisplay -> Maybe (Document Syntax) -> Widget Name
+renderGoalsDisplay :: GoalDisplay -> Maybe (Document (Syntax phase)) -> Widget Name
 renderGoalsDisplay gd desc =
   vBox
     [ maybe emptyWidget (hCenter . padTop (Pad 1) . withAttr boldAttr . drawMarkdown) desc
@@ -78,7 +78,7 @@ renderGoalsDisplay gd desc =
       . maybe emptyWidget (padAll 1 . padRight (Pad 1) . highlightIfFocused . singleGoalDetails . snd)
       $ BL.listSelectedElement lw
 
-getCompletionIcon :: Objective -> GoalStatus -> Widget Name
+getCompletionIcon :: Objective Typed -> GoalStatus -> Widget Name
 getCompletionIcon obj = \case
   Upcoming -> withAttr yellowAttr $ txt " ○  "
   Active -> withAttr cyanAttr $ txt " ○  "
