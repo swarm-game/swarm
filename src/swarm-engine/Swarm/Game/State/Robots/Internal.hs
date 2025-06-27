@@ -41,7 +41,7 @@ import Swarm.Util.Lens (makeLensesNoSigs)
 
 -- | Robots specific part of the game state.
 data Robots = Robots
-  { _robotMap :: IntMap Robot
+  { _robotMap :: IntMap (Robot Instantiated)
   , _activeRobots :: IntSet
   , _waitingRobots :: MonoidMap TickNumber [RID]
   , _currentTickWakeableBots :: IntSet
@@ -68,7 +68,7 @@ initRobots gsc =
 makeLensesNoSigs ''Robots
 
 -- | All the robots that currently exist in the game, indexed by ID.
-robotMap :: Lens' Robots (IntMap Robot)
+robotMap :: Lens' Robots (IntMap (Robot Instantiated))
 
 -- | The names of the robots that are currently not sleeping.
 --
