@@ -43,20 +43,25 @@ import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Tick
 import Swarm.Game.Universe
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Syntax (Phase (..), Syntax)
 import Swarm.Language.Value as V
 import Swarm.Log
 
-type instance RobotMachine 'ConcreteRobot = C.CESK
-type instance RobotActivity 'ConcreteRobot = ActivityCounts
-type instance RobotLogMember 'ConcreteRobot = Seq LogEntry
-type instance RobotLogUpdatedMember 'ConcreteRobot = Bool
+------------------------------------------------------------
+-- Instances for concrete robots
 
-machine :: Lens' Robot C.CESK
+type instance RobotMachine Instantiated = C.CESK
+type instance RobotActivity Instantiated = ActivityCounts
+type instance RobotLogMember Instantiated = Seq LogEntry
+type instance RobotLogUpdatedMember Instantiated = Bool
+
+------------------------------------------------------------
+
+machine :: Lens' (Robot Instantiated) C.CESK
 machine = lens _machine (\r x -> r {_machine = x})
 
 -- | Diagnostic and operational tracking of CESK steps or other activity
-activityCounts :: Lens' Robot ActivityCounts
+activityCounts :: Lens' (Robot Instantiated) ActivityCounts
 activityCounts = lens _activityCounts (\r x -> r {_activityCounts = x})
 
 -- | The robot's own private message log, most recent message last.
@@ -65,7 +70,7 @@ activityCounts = lens _activityCounts (\r x -> r {_activityCounts = x})
 --   we can efficiently add to the end and also process from beginning
 --   to end.  Note that updating via this lens will also set the
 --   'robotLogUpdated'.
-robotLog :: Lens' Robot (Seq LogEntry)
+robotLog :: Lens' (Robot Instantiated) (Seq LogEntry)
 robotLog = lens _robotLog setLog
  where
   setLog r newLog =
@@ -82,13 +87,13 @@ robotLog = lens _robotLog setLog
 
 -- | Has the 'robotLog' been updated since the last time it was
 --   viewed?
-robotLogUpdated :: Lens' Robot Bool
+robotLogUpdated :: Lens' (Robot Instantiated) Bool
 robotLogUpdated = lens _robotLogUpdated (\r x -> r {_robotLogUpdated = x})
 
-instance ToSample Robot where
+instance ToSample (Robot Instantiated) where
   toSamples _ = SD.singleSample sampleBase
    where
-    sampleBase :: Robot
+    sampleBase :: Robot Instantiated
     sampleBase =
       instantiateRobot (Just $ C.initMachine [tmQ| move |]) 0 $
         mkRobot
@@ -118,7 +123,7 @@ mkMachine (Just t) = C.initMachine t
 --
 -- If a machine is not supplied (i.e. 'Nothing'), will fallback to any
 -- program specified in the template robot.
-instantiateRobot :: Maybe C.CESK -> RID -> TRobot -> Robot
+instantiateRobot :: Maybe C.CESK -> RID -> Robot Typed -> Robot Instantiated
 instantiateRobot maybeMachine i r =
   r
     { _robotID = i
@@ -135,7 +140,7 @@ instantiateRobot maybeMachine i r =
 (.==) :: (Ae.KeyValue e a, Ae.ToJSON v) => Ae.Key -> v -> Maybe a
 (.==) n v = Just $ n Ae..= v
 
-instance Ae.ToJSON Robot where
+instance Ae.ToJSON (Robot Instantiated) where
   toJSON r =
     Ae.object $
       catMaybes
@@ -164,26 +169,26 @@ instance Ae.ToJSON Robot where
     sys = r ^. systemRobot
 
 -- | The time until which the robot is waiting, if any.
-waitingUntil :: Robot -> Maybe TickNumber
+waitingUntil :: Robot Instantiated -> Maybe TickNumber
 waitingUntil robot =
   case _machine robot of
     C.Waiting time _ -> Just time
     _ -> Nothing
 
 -- | Get the result of the robot's computation if it is finished.
-getResult :: Robot -> Maybe Value
+getResult :: Robot Instantiated -> Maybe Value
 {-# INLINE getResult #-}
 getResult = C.finalValue . view machine
 
 -- | Is the robot actively in the middle of a computation?
-isActive :: Robot -> Bool
+isActive :: Robot Instantiated -> Bool
 {-# INLINE isActive #-}
 isActive = isNothing . getResult
 
 -- | "Active" robots include robots that are waiting; 'wantsToStep' is
 --   true if the robot actually wants to take another step right now
 --   (this is a /subset/ of active robots).
-wantsToStep :: TickNumber -> Robot -> Bool
+wantsToStep :: TickNumber -> Robot Instantiated -> Bool
 wantsToStep now robot
   | not (isActive robot) = False
   | otherwise = maybe True (now >=) (waitingUntil robot)
