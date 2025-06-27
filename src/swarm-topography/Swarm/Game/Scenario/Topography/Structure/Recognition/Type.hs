@@ -306,14 +306,15 @@ data StructureIntactnessFailure e = StructureIntactnessFailure
 -- 1. Primarily, larger area.
 -- 2. Secondarily, lower X-Y coords (X is compared first)
 --
--- Since the natural order of coordinates increases as described,
--- we need to invert it with 'Down' so that this ordering is by
--- increasing preference.
-instance (Eq b, Eq a) => Ord (FoundStructure b a) where
-  compare = compare `on` (f1 &&& f2)
-   where
-    f1 = computeArea . getNEGridDimensions . extractedGrid . entityGrid . structureWithGrid
-    f2 = Down . upperLeftCorner
+-- We invert with 'Down' so that this ordering is by increasing preference.
+--
+-- We do NOT make this an actual Ord instance, since that would require
+-- an Eq instance on FoundStructure b a, which is too restrictive.
+compareFoundStructure :: FoundStructure b a -> FoundStructure b a -> Ordering
+compareFoundStructure = compare `on` (Down . (f1 &&& f2))
+ where
+  f1 = computeArea . getNEGridDimensions . extractedGrid . entityGrid . structureWithGrid
+  f2 = Down . upperLeftCorner
 
 -- | Yields coordinates that are occupied by an entity of a placed structure.
 -- Cells within the rectangular bounds of the structure that are unoccupied

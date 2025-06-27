@@ -164,7 +164,8 @@ parseCodeFile ::
   m CodeToRun
 parseCodeFile filepath = do
   contents <- sendIO $ TIO.readFile filepath
-  pt <- either (throwError . CustomFailure) return (processTermEither contents)
+  mpt <- sendIO $ processTermEither contents
+  pt <- either throwError pure mpt
 
   let srcLoc = pt ^. sLoc
       strippedText = stripSrc srcLoc contents
@@ -231,14 +232,14 @@ creativeMode :: Lens' GameState Bool
 temporal :: Lens' GameState TemporalState
 
 -- | How to determine whether the player has won.
-winCondition :: Lens' GameState WinCondition
+winCondition :: Lens' GameState (WinCondition Typed)
 
 -- | How to win (if possible). This is useful for automated testing
 --   and to show help to cheaters (or testers).
 winSolution :: Lens' GameState (Maybe (Syntax Typed))
 
 -- | Get a list of all the robots at a particular location.
-robotsAtLocation :: Cosmic Location -> GameState -> [Robot]
+robotsAtLocation :: Cosmic Location -> GameState -> [Robot Instantiated]
 robotsAtLocation loc gs =
   mapMaybe (`IM.lookup` (gs ^. robotInfo . robotMap))
     . IS.toList
@@ -252,7 +253,7 @@ pathCaching :: Lens' GameState PathCaching
 
 -- | Get all the robots within a given Manhattan distance from a
 --   location.
-robotsInArea :: Cosmic Location -> Int32 -> Robots -> [Robot]
+robotsInArea :: Cosmic Location -> Int32 -> Robots -> [Robot Instantiated]
 robotsInArea (Cosmic subworldName o) d rs = mapMaybe (rm IM.!?) rids
  where
   rm = rs ^. robotMap
@@ -264,7 +265,7 @@ robotsInArea (Cosmic subworldName o) d rs = mapMaybe (rm IM.!?) rids
       $ MM.get subworldName rl
 
 -- | The base robot, if it exists.
-baseRobot :: Traversal' GameState Robot
+baseRobot :: Traversal' GameState (Robot Instantiated)
 baseRobot = robotInfo . robotMap . ix 0
 
 -- | The base robot environment.
@@ -302,7 +303,7 @@ recipesInfo :: Lens' GameState Recipes
 currentScenarioPath :: Lens' GameState (Maybe ScenarioPath)
 
 -- | Info about the lay of the land
-landscape :: Lens' GameState Landscape
+landscape :: Lens' GameState (Landscape Typed)
 
 -- | Info about redrawing the world view
 redraw :: Lens' GameState Redraw
@@ -405,7 +406,7 @@ viewingRegion (Cosmic sw (Location cx cy)) (w, h) =
 
 -- | Find out which robot has been last specified by the
 --   'viewCenterRule', if any.
-focusedRobot :: GameState -> Maybe Robot
+focusedRobot :: GameState -> Maybe (Robot Instantiated)
 focusedRobot g = g ^. robotInfo . RobotsInternal.focusedRobot
 
 -- | Check how far away the focused robot is from the base.  @Nothing@
@@ -455,14 +456,14 @@ focusedRange g = checkRange <$ maybeFocusedRobot
   (minRadius, maxRadius) = getRadioRange maybeBaseRobot maybeFocusedRobot
 
 -- | Get the min/max communication radii given possible augmentations on each end
-getRadioRange :: Maybe Robot -> Maybe Robot -> (Double, Double)
+getRadioRange :: Maybe (Robot Instantiated) -> Maybe (Robot Instantiated) -> (Double, Double)
 getRadioRange maybeBaseRobot maybeTargetRobot =
   (minRadius, maxRadius)
  where
   -- See whether the base or focused robot have antennas installed.
   baseInv, focInv :: Maybe Inventory
-  baseInv = view equippedDevices <$> maybeBaseRobot
-  focInv = view equippedDevices <$> maybeTargetRobot
+  baseInv = view (equippedDevices @Instantiated) <$> maybeBaseRobot
+  focInv = view (equippedDevices @Instantiated) <$> maybeTargetRobot
 
   gain :: Maybe Inventory -> (Double -> Double)
   gain (Just inv)
