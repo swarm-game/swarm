@@ -141,8 +141,6 @@ data Const :: Type -> Type where
   -- elaborating the "over" operation.
   Φ :: Const ((a -> b -> c) -> (d -> a) -> (d -> b) -> (d -> c))
 
-deriving instance Show (Const ty)
-
 class HasConst t where
   embed :: Const a -> t a
 
@@ -229,8 +227,6 @@ data TTerm :: [Type] -> Type -> Type where
   TApp :: TTerm g (a -> b) -> TTerm g a -> TTerm g b
   TConst :: Const a -> TTerm g a
 
-deriving instance Show (TTerm g ty)
-
 instance Applicable (TTerm g) where
   TConst I $$ x = x
   f $$ x = TApp f x
@@ -272,8 +268,6 @@ data CheckErr where
   UnknownImport :: Text -> CheckErr
   NotAThing :: Text -> CellTag -> CheckErr
   NotAnything :: Text -> CheckErr
-
-deriving instance Show CheckErr
 
 instance PrettyPrec CheckErr where
   prettyPrec _ = \case
