@@ -164,7 +164,7 @@ drawType ty = Widget Fixed Fixed $ do
 -- | Draw markdown document with simple code/bold/italic attributes.
 --
 -- TODO: #574 Code blocks should probably be handled separately.
-drawMarkdown :: Markdown.Document Syntax -> Widget Name
+drawMarkdown :: Markdown.Document (Syntax phase) -> Widget Name
 drawMarkdown d = do
   Widget Greedy Fixed $ do
     ctx <- getContext

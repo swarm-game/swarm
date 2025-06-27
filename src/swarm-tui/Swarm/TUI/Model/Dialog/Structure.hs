@@ -14,10 +14,11 @@ import Data.List.Extra (enumerate)
 import Swarm.Game.Entity (Entity)
 import Swarm.Game.Scenario (RecognizableStructureContent)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.TUI.Model.Name
 
 data StructureDisplay = StructureDisplay
-  { _structurePanelListWidget :: BL.List Name (StructureInfo RecognizableStructureContent Entity)
+  { _structurePanelListWidget :: BL.List Name (StructureInfo (RecognizableStructureContent Typed) Entity)
   -- ^ required for maintaining the selection/navigation
   -- state among list items
   , _structurePanelFocus :: FocusRing Name
