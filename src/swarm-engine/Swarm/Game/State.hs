@@ -130,7 +130,7 @@ import Swarm.Game.Universe as U
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Language.Pipeline (processTermEither)
-import Swarm.Language.Syntax (SrcLoc (..), TSyntax, sLoc)
+import Swarm.Language.Syntax (Phase (..), SrcLoc (..), Syntax, sLoc)
 import Swarm.Language.Value (Env)
 import Swarm.Log
 import Swarm.Util (applyWhen, uniq)
@@ -148,7 +148,7 @@ data SolutionSource
 
 data CodeToRun = CodeToRun
   { _toRunSource :: SolutionSource
-  , _toRunSyntax :: TSyntax
+  , _toRunSyntax :: Syntax Typed
   }
 
 makeLenses ''CodeToRun
@@ -202,15 +202,15 @@ parseCodeFile filepath = do
 data GameState = GameState
   { _creativeMode :: Bool
   , _temporal :: TemporalState
-  , _winCondition :: WinCondition
-  , _winSolution :: Maybe TSyntax
+  , _winCondition :: WinCondition Typed
+  , _winSolution :: Maybe (Syntax Typed)
   , _robotInfo :: Robots
   , _pathCaching :: PathCaching
   , _discovery :: Discovery
   , _randomness :: Randomness
   , _recipesInfo :: Recipes
   , _currentScenarioPath :: Maybe ScenarioPath
-  , _landscape :: Landscape
+  , _landscape :: Landscape Typed
   , _redraw :: Redraw
   , _gameControls :: GameControls
   , _messageInfo :: Messages
@@ -235,7 +235,7 @@ winCondition :: Lens' GameState WinCondition
 
 -- | How to win (if possible). This is useful for automated testing
 --   and to show help to cheaters (or testers).
-winSolution :: Lens' GameState (Maybe TSyntax)
+winSolution :: Lens' GameState (Maybe (Syntax Typed))
 
 -- | Get a list of all the robots at a particular location.
 robotsAtLocation :: Cosmic Location -> GameState -> [Robot]
