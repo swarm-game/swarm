@@ -49,6 +49,7 @@ import Swarm.Game.State.Substate
 import Swarm.Game.Tick (addTicks)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI.Gameplay
@@ -146,7 +147,7 @@ getSelectedRID :: BL.GridTabularList Name RID -> Maybe RID
 getSelectedRID gl = snd <$> BL.listSelectedElement gl.list
 
 -- | Get the robot selected in the robot list.
-getSelectedRobot :: GameState -> BL.GridTabularList Name RID -> Maybe Robot
+getSelectedRobot :: GameState -> BL.GridTabularList Name RID -> Maybe (Robot Instantiated)
 getSelectedRobot g gl = do
   rid <- getSelectedRID gl
   g ^. robotInfo . robotMap . at rid
@@ -168,9 +169,9 @@ updateRobotList dOpts g l = l {BL.list = updatedList}
   sel :: Maybe Int
   sel = flip S.elemIndexL rids =<< getSelectedRID l
 
-  robots :: [Robot]
+  robots :: [Robot Instantiated]
   robots = g ^. robotInfo . robotMap . to IM.elems . to filterRobots
-  filterRobots :: [Robot] -> [Robot]
+  filterRobots :: [Robot Instantiated] -> [Robot Instantiated]
   filterRobots = if Set.member ListAllRobots dOpts then id else filter (\r -> isRelevant r && isNear r)
   basePos :: Point V2 Double
   basePos = realToFrac <$> fromMaybe origin (g ^? baseRobot . robotLocation . planar)
@@ -277,20 +278,20 @@ drawRobotGridCell uig g _foc (WdthD widthDef) ctx rid =
 
   showW :: Show a => a -> Widget Name
   showW = str . show
-  highlightSystem :: Robot -> Widget Name -> Widget Name
+  highlightSystem :: Robot Instantiated -> Widget Name -> Widget Name
   highlightSystem r = applyWhen (r ^. systemRobot) $ withAttr highlightAttr
   colGap = padLeft (Pad $ if widthDef > 0 then 0 else 1)
 
   aMap = uig ^. uiAttributeMap
 
-  nameWidget :: Robot -> Widget Name
+  nameWidget :: Robot Instantiated -> Widget Name
   nameWidget r =
     hBox
       [ texelWidget (renderRobot aMap r)
       , highlightSystem r . txt $ " " <> r ^. robotName
       ]
 
-  ageWidget :: Robot -> Widget Name
+  ageWidget :: Robot Instantiated -> Widget Name
   ageWidget r = str ageStr
    where
     TimeSpec createdAtSec _ = r ^. robotCreatedAt
@@ -302,13 +303,13 @@ drawRobotGridCell uig g _foc (WdthD widthDef) ctx rid =
       | age < 3600 * 24 = show (age `div` 3600) <> "hour"
       | otherwise = show (age `div` 3600 * 24) <> "day"
 
-  rInvCount :: Robot -> Widget Name
+  rInvCount :: Robot Instantiated -> Widget Name
   rInvCount r = showW . sum . map fst . E.elems $ r ^. robotEntity . entityInventory
 
-  rLog :: Robot -> Widget Name
+  rLog :: Robot Instantiated -> Widget Name
   rLog r = str $ if r ^. robotLogUpdated then "x" else " "
 
-  posWidget :: Robot -> Widget Name
+  posWidget :: Robot Instantiated -> Widget Name
   posWidget r = hBox [worldCell, str $ " " <> locStr]
    where
     rCoords = fmap locToCoords rLoc
@@ -316,7 +317,7 @@ drawRobotGridCell uig g _foc (WdthD widthDef) ctx rid =
     worldCell = locWidget uig g rCoords
     locStr = renderCoordsString rLoc
 
-  statusWidget :: Robot -> Widget Name
+  statusWidget :: Robot Instantiated -> Widget Name
   statusWidget r = case r ^. machine of
     Waiting {} -> str "waiting"
     _ | isActive r -> withAttr notifAttr $ str "busy"
@@ -333,7 +334,7 @@ drawRobotGridCell uig g _foc (WdthD widthDef) ctx rid =
 -- hence 'WC.getOccupancy' will never be @1@ if we use the current tick directly as
 -- obtained from the 'ticks' function.
 -- So we "rewind" it to the previous tick for the purpose of this display.
-renderDutyCycle :: TemporalState -> Robot -> Widget Name
+renderDutyCycle :: TemporalState -> Robot Instantiated -> Widget Name
 renderDutyCycle temporalState r = withAttr dutyCycleAttr $ str tx
  where
   tx = showFFloat (Just 1) dutyCyclePercentage "%"
