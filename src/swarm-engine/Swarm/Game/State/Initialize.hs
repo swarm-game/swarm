@@ -51,7 +51,7 @@ import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.World (Seed, WorldMetrics, initWorldMetrics)
 import Swarm.Language.Capability (constCaps)
-import Swarm.Language.Syntax (allConst, erase)
+import Swarm.Language.Syntax (allConst)
 import Swarm.Language.Types
 import Swarm.Util (applyWhen, binTuples, (?))
 import System.Clock qualified as Clock
@@ -122,7 +122,7 @@ pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gMetric wMe
     & recipesInfo %~ modifyRecipesInfo
     & landscape .~ mkLandscape sLandscape worldTuples theSeed
     & landscape . worldMetrics .~ wMetric
-    & gameControls . initiallyRunCode .~ (erase <$> initialCodeToRun)
+    & gameControls . initiallyRunCode .~ initialCodeToRun
     & gameControls . replStatus .~ initialReplStatus
     & gameMetrics .~ gMetric
     & temporal . robotStepsPerTick .~ ((scenario ^. scenarioOperation . scenarioStepsPerTick) ? defaultRobotStepsPerTick)
@@ -225,7 +225,7 @@ pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gMetric wMe
 -- Therefore we run this at 'GameState' initialization time, rather than
 -- 'Scenario' parse time.
 initializeRecognition ::
-  (Monad s, Hashable a, Eq b) =>
+  (Monad s, Hashable a) =>
   GenericEntLocator s a ->
   StaticStructureInfo b a ->
   s (RecognitionState b a)

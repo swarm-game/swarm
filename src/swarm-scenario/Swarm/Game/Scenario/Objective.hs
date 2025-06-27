@@ -48,7 +48,7 @@ import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Definitions qualified as AD
 import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.JSON ()
-import Swarm.Language.Syntax (Phase (Raw), SwarmType, Syntax)
+import Swarm.Language.Syntax (Phase (..), SwarmType, Syntax)
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Util.Lens (concatFold, makeLensesExcluding, makeLensesNoSigs)
 
@@ -114,7 +114,7 @@ deriving instance ToJSON (SwarmType phase) => ToJSON (Objective phase)
 deriving instance Show (SwarmType phase) => Show (Objective phase)
 deriving instance Eq (SwarmType phase) => Eq (Objective phase)
 
-instance ToSample (Objective Raw) where
+instance ToSample (Objective phase) where
   toSamples _ = SD.noSamples
 
 -- | An explanation of the goal of the objective, shown to the player
@@ -167,7 +167,8 @@ instance FromJSON (Objective Raw) where
     pure Objective {..}
 
 -- | TODO: #1044 Could also add an "ObjectiveFailed" constructor...
-newtype Announcement = ObjectiveCompleted (Objective Raw)
+newtype Announcement
+  = ObjectiveCompleted (Objective Typed)  -- XXX Typed?
   deriving stock (Show)
   deriving newtype (ToJSON)
 

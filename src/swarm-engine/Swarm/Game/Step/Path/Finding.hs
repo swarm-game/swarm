@@ -68,7 +68,7 @@ pathCommand ::
   PathfindingParameters (Cosmic Location) ->
   m (Maybe (Direction, Int))
 pathCommand parms = do
-  currentWalkabilityContext <- use walkabilityContext
+  currentWalkabilityContext <- use (walkabilityContext @Instantiated)
 
   -- First, check if the pathfinding target has a cached path.
   eitherCachedPath <- retrieveCachedPath currentWalkabilityContext parms
