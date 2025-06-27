@@ -67,7 +67,7 @@ import Swarm.Language.Capability
 import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.TDVar (tdVarName)
-import Swarm.Language.Typed (Typed (..))
+import Swarm.Language.WithType (WithType (..))
 import Swarm.Language.Value
 import Swarm.Log
 import Swarm.Pretty (BulletList (BulletList, bulletListItems), prettyText)
@@ -134,7 +134,7 @@ finishGameTick =
 
 -- | Insert the robot back to robot map.
 -- Will selfdestruct or put the robot to sleep if it has that set.
-insertBackRobot :: Has (State GameState) sig m => RID -> Robot -> m ()
+insertBackRobot :: Has (State GameState) sig m => RID -> Robot Instantiated -> m ()
 insertBackRobot rn rob = do
   time <- use $ temporal . ticks
   zoomRobots $
@@ -173,7 +173,7 @@ runRobotIDs robotNames = do
     mr <- uses (robotInfo . robotMap) (IM.lookup rn)
     forM_ mr (stepOneRobot rn)
  where
-  stepOneRobot :: HasGameStepState sig m => RID -> Robot -> m ()
+  stepOneRobot :: HasGameStepState sig m => RID -> Robot Instantiated -> m ()
   stepOneRobot rn rob = tickRobot rob >>= insertBackRobot rn
 
 -- |
@@ -278,15 +278,15 @@ singleStep ss focRID robotSet = do
  where
   h = hypotheticalRobot (Out VUnit emptyStore []) 0
   debugLog txt = do
-    m <- evalState @Robot h $ createLogEntry RobotError Debug txt
+    m <- evalState @(Robot Instantiated) h $ createLogEntry RobotError Debug txt
     emitMessage m
 
 -- | An accumulator for folding over the incomplete
 -- objectives to evaluate for their completion
 data CompletionsWithExceptions = CompletionsWithExceptions
   { exceptions :: [Text]
-  , completions :: ObjectiveCompletion
-  , completionAnnouncementQueue :: [OB.Objective]
+  , completions :: ObjectiveCompletion Typed
+  , completionAnnouncementQueue :: [OB.Objective Typed]
   -- ^ Upon completion, an objective is enqueued.
   -- It is dequeued when displayed on the UI.
   }
@@ -313,7 +313,7 @@ hypotheticalWinCheck ::
   EntityMap ->
   GameState ->
   WinStatus ->
-  ObjectiveCompletion ->
+  ObjectiveCompletion Typed ->
   m ()
 hypotheticalWinCheck em g ws oc = do
   -- We can fully and accurately evaluate the new state of the objectives DAG
@@ -396,7 +396,7 @@ hypotheticalWinCheck em g ws oc = do
 
   -- Log exceptions in the message queue so we can check for them in tests
   handleException exnText = do
-    m <- evalState @Robot h $ createLogEntry RobotError Critical exnText
+    m <- evalState @(Robot Instantiated) h $ createLogEntry RobotError Critical exnText
     emitMessage m
    where
     h = hypotheticalRobot (Out VUnit emptyStore []) 0
@@ -407,14 +407,14 @@ evalT ::
   , Has (State GameState) sig m
   , Has (Lift IO) sig m
   ) =>
-  TSyntax ->
+  Syntax Typed ->
   m Value
 evalT = evaluateCESK . initMachine
 
 -- | Create a special robot to check some hypothetical, for example the win condition.
 --
 -- Use ID (-1) so it won't conflict with any robots currently in the robot map.
-hypotheticalRobot :: CESK -> TimeSpec -> Robot
+hypotheticalRobot :: CESK -> TimeSpec -> Robot Instantiated
 hypotheticalRobot m =
   instantiateRobot (Just m) (-1)
     . mkRobot
@@ -450,7 +450,7 @@ runCESK ::
   , Has (Lift IO) sig m
   , Has (Throw Exn) sig m
   , Has (State GameState) sig m
-  , Has (State Robot) sig m
+  , Has (State (Robot Instantiated)) sig m
   ) =>
   CESK ->
   m Value
@@ -466,7 +466,7 @@ runCESK cesk = case finalValue cesk of
 -- | Print a showable value via the robot's log.
 --
 -- Useful for debugging.
-traceLogShow :: (Has (State GameState) sig m, Has (State Robot) sig m, Show a) => a -> m ()
+traceLogShow :: (Has (State GameState) sig m, Has (State (Robot Instantiated)) sig m, Show a) => a -> m ()
 traceLogShow = void . traceLog Logged Info . from . show
 
 ------------------------------------------------------------
@@ -476,7 +476,7 @@ traceLogShow = void . traceLog Logged Info . from . show
 -- | Run a robot for one tick, which may consist of up to
 --   'robotStepsPerTick' CESK machine steps and at most one tangible
 --   command execution, whichever comes first.
-tickRobot :: HasGameStepState sig m => Robot -> m Robot
+tickRobot :: HasGameStepState sig m => Robot Instantiated -> m (Robot Instantiated)
 tickRobot r = do
   steps <- use $ temporal . robotStepsPerTick
   tickRobotRec (r & activityCounts . tickStepBudget .~ steps)
@@ -485,7 +485,7 @@ tickRobot r = do
 --   robot is actively running and still has steps left, and if so
 --   runs it for one step, then calls itself recursively to continue
 --   stepping the robot.
-tickRobotRec :: HasGameStepState sig m => Robot -> m Robot
+tickRobotRec :: HasGameStepState sig m => Robot Instantiated -> m (Robot Instantiated)
 tickRobotRec r = do
   time <- use $ temporal . ticks
   case wantsToStep time r && (r ^. runningAtomic || r ^. activityCounts . tickStepBudget > 0) of
@@ -494,7 +494,7 @@ tickRobotRec r = do
 
 -- | Single-step a robot by decrementing its 'tickStepBudget' counter and
 --   running its CESK machine for one step.
-stepRobot :: HasGameStepState sig m => Robot -> m Robot
+stepRobot :: HasGameStepState sig m => Robot Instantiated -> m (Robot Instantiated)
 stepRobot r = do
   (r', cesk') <- runState (r & activityCounts . tickStepBudget -~ 1) (stepCESK (r ^. machine))
   t <- use $ temporal . ticks
@@ -520,7 +520,7 @@ data SKpair = SKpair Store Cont
 --
 -- Compare to "withExceptions".
 processImmediateFrame ::
-  (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) =>
+  (Has (State GameState) sig m, Has (State (Robot Instantiated)) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) =>
   Value ->
   SKpair ->
   -- | the unreliable computation
@@ -534,7 +534,7 @@ processImmediateFrame v (SKpair s k) unreliableComputation = do
 
 -- | The main CESK machine workhorse.  Given a robot, look at its CESK
 --   machine state and figure out a single next step.
-stepCESK :: (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => CESK -> m CESK
+stepCESK :: (Has (State GameState) sig m, Has (State (Robot Instantiated)) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => CESK -> m CESK
 stepCESK cesk = case cesk of
   ------------------------------------------------------------
   -- Evaluation
@@ -606,7 +606,7 @@ stepCESK cesk = case cesk of
   -- execConst.
   In (TApp (TConst c) t2) e s k
     | c `elem` [Atomic, Instant] -> do
-        runningAtomic .= True
+        runningAtomic @Instantiated .= True
         case k of
           -- In the (common) special case that we will immediately
           -- execute the atomic/instant command next, don't bother
@@ -682,7 +682,7 @@ stepCESK cesk = case cesk of
   Out v1 s (FLet x mtr t2 e : k) -> do
     let e' = case mtr of
           Nothing -> addValueBinding x v1 e
-          Just (ty, req) -> addBinding x (Typed v1 ty req) e
+          Just (ty, req) -> addBinding x (WithType v1 ty req) e
     return $ In t2 e' s k
   -- To evaluate a tydef, insert it into the context and proceed to
   -- evaluate the body.
@@ -759,7 +759,7 @@ stepCESK cesk = case cesk of
 
   -- Reset the runningAtomic flag when we encounter an FFinishAtomic frame.
   Out v s (FFinishAtomic : k) -> do
-    runningAtomic .= False
+    runningAtomic @Instantiated .= False
     return $ Out v s k
 
   -- To execute a bind expression, evaluate and execute the first
@@ -769,7 +769,7 @@ stepCESK cesk = case cesk of
   Out v s (FBind (Just x) mtr t2 e : k) -> do
     let e' = case mtr of
           Nothing -> addValueBinding x v e
-          Just (ty, reqs) -> addBinding x (Typed v ty reqs) e
+          Just (ty, reqs) -> addBinding x (WithType v ty reqs) e
     return $ In t2 e' s (FExec : k)
   -- To execute a suspend instruction, evaluate its argument and then
   -- suspend.
@@ -804,7 +804,7 @@ stepCESK cesk = case cesk of
   Suspended v e s (FBind (Just x) mtr t2 _ : k) -> do
     let e' = case mtr of
           Nothing -> addValueBinding x v e
-          Just (ty, reqs) -> addBinding x (Typed v ty reqs) e
+          Just (ty, reqs) -> addBinding x (WithType v ty reqs) e
     return $ In t2 e' s (FExec : k)
   -- Otherwise, if we're suspended with nothing else left to do,
   -- return the machine unchanged (but throw away the rest of the
@@ -828,7 +828,7 @@ stepCESK cesk = case cesk of
   Up exn s (FRestoreEnv e : _) -> handleException exn s (Just e)
   -- If an atomic block threw an exception, we should terminate it.
   Up exn s (FFinishAtomic : k) -> do
-    runningAtomic .= False
+    runningAtomic @Instantiated .= False
     return $ Up exn s k
   -- If we are raising a catchable exception up the continuation
   -- stack and come to a Try frame, force and then execute the associated catch
@@ -883,18 +883,18 @@ stepCESK cesk = case cesk of
 runChildProg ::
   (HasRobotStepState sig m, Has Effect.Time sig m, Has (Lift IO) sig m) =>
   Store ->
-  Robot ->
+  Robot Instantiated ->
   Value ->
   m Value
 runChildProg s r prog = do
   g <- get @GameState
-  evalState @Robot (r & systemRobot .~ True) . evalState @GameState g $
+  evalState @(Robot Instantiated) (r & systemRobot .~ True) . evalState @GameState g $
     runCESK (Out prog s [FApp (VCApp Force []), FExec])
 
 -- | Execute a constant, catching any exception thrown and returning
 --   it via a CESK machine state.
 evalConst ::
-  (Has (State GameState) sig m, Has (State Robot) sig m, Has Effect.Time sig m, Has (Lift IO) sig m) => Const -> [Value] -> Store -> Cont -> m CESK
+  (Has (State GameState) sig m, Has (State (Robot Instantiated)) sig m, Has Effect.Time sig m, Has (Lift IO) sig m) => Const -> [Value] -> Store -> Cont -> m CESK
 evalConst c vs s k = do
   res <- runError $ execConst runChildProg c vs s k
   case res of
