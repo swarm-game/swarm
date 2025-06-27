@@ -119,13 +119,16 @@ type MoveFailureHandler = MoveFailureMode -> RobotFailure
 data GrabRemoval = DeferRemoval | PerformRemoval
   deriving (Eq)
 
+-- XXX make special version of use that fixes Robot Instantiated?
+-- XXX fix most robot lenses to Instantiated if we only use them at that type
+
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
 execConst ::
   (HasRobotStepState sig m, Has Effect.Time sig m, Has (Lift IO) sig m) =>
   -- | Need to pass this function as an argument to avoid module import cycle
   -- The supplied function invokes 'runCESK', which lives in "Swarm.Game.Step".
-  (Store -> Robot -> Value -> m Value) ->
+  (Store -> Robot Instantiated -> Value -> m Value) ->
   Const ->
   [Value] ->
   Store ->
@@ -170,10 +173,10 @@ execConst runChildProg c vs s k = do
         return $ mkReturn ()
       _ -> badConst
     Move -> do
-      orientation <- use robotOrientation
+      orientation <- use (robotOrientation @Instantiated)
       moveInDirection $ orientation ? zero
     Backup -> do
-      orientation <- use robotOrientation
+      orientation <- use (robotOrientation @Instantiated)
       moveInDirection $ applyTurn (DRelative $ DPlanar DBack) $ orientation ? zero
     Volume -> case vs of
       [VInt limit] -> do
@@ -189,7 +192,7 @@ execConst runChildProg c vs s k = do
               )
               Nothing
 
-        robotLoc <- use robotLocation
+        robotLoc <- use (robotLocation @Instantiated)
         maybeResult <- floodFill robotLoc $ fromIntegral limit
         return $ mkReturn maybeResult
       _ -> badConst
@@ -212,14 +215,14 @@ execConst runChildProg c vs s k = do
                   LocationTarget $
                     Location (fromIntegral x) (fromIntegral y)
               _ -> badConst
-        robotLoc <- use robotLocation
+        robotLoc <- use (robotLocation @Instantiated)
         result <- pathCommand $ PathfindingParameters maybeLimit robotLoc goal
         return $ mkReturn result
       _ -> badConst
     Push -> do
       -- Figure out where we're going
-      loc <- use robotLocation
-      orientation <- use robotOrientation
+      loc <- use (robotLocation @Instantiated)
+      orientation <- use (robotOrientation @Instantiated)
       let applyHeading = (`offsetBy` (orientation ? zero))
           nextLoc = applyHeading loc
           placementLoc = applyHeading nextLoc
@@ -259,8 +262,8 @@ execConst runChildProg c vs s k = do
               Nothing
 
         -- Figure out where we're going
-        loc <- use robotLocation
-        orientation <- use robotOrientation
+        loc <- use (robotLocation @Instantiated)
+        orientation <- use (robotOrientation @Instantiated)
         let heading = orientation ? zero
 
         -- Excludes the base location.
@@ -298,7 +301,7 @@ execConst runChildProg c vs s k = do
     Harvest -> mkReturn <$> doGrab Harvest' PerformRemoval
     Sow -> case vs of
       [VText name] -> do
-        loc <- use robotLocation
+        loc <- use (robotLocation @Instantiated)
 
         -- Make sure there's nothing already here
         nothingHere <- isNothing <$> entityAt loc
@@ -311,7 +314,7 @@ execConst runChildProg c vs s k = do
         doPlantSeed terrainHere loc e
 
         -- Remove it from the inventory
-        robotInventory %= delete e
+        robotInventory @Instantiated %= delete e
 
         return $ mkReturn ()
       _ -> badConst
@@ -322,7 +325,7 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Swap -> case vs of
       [VText name] -> do
-        loc <- use robotLocation
+        loc <- use (robotLocation @Instantiated)
         -- Make sure the robot has the thing in its inventory
         e <- hasInInventoryOrFail name
         -- Grab without removing from the world
@@ -330,7 +333,7 @@ execConst runChildProg c vs s k = do
 
         -- Place the entity and remove it from the inventory
         updateEntityAt loc (const (Just e))
-        robotInventory %= delete e
+        robotInventory @Instantiated %= delete e
 
         when (e == newE) $
           grantAchievementForRobot SwapSame
@@ -340,10 +343,10 @@ execConst runChildProg c vs s k = do
     Turn -> case vs of
       [VDir d] -> do
         when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
-        robotOrientation . _Just %= applyTurn d
+        robotOrientation @Instantiated . _Just %= applyTurn d
         use robotLocation >>= markDirty
 
-        inst <- use equippedDevices
+        inst <- use (equippedDevices @Instantiated)
         when (d == DRelative DDown && countByName "compass" inst == 0) $ do
           grantAchievementForRobot GetDisoriented
 
@@ -351,7 +354,7 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Place -> case vs of
       [VText name] -> do
-        loc <- use robotLocation
+        loc <- use (robotLocation @Instantiated)
 
         -- Make sure there's nothing already here
         nothingHere <- isNothing <$> entityAt loc
@@ -363,7 +366,7 @@ execConst runChildProg c vs s k = do
         -- Place the entity (if it is not evanescent) and remove it from the inventory
         unless (Evanescent `S.member` (e ^. entityProperties)) $
           updateEntityAt loc (const (Just e))
-        robotInventory %= delete e
+        robotInventory @Instantiated %= delete e
 
         return $ mkReturn ()
       _ -> badConst
@@ -373,14 +376,14 @@ execConst runChildProg c vs s k = do
         selfRobot <- get
         return $ mkReturn $ displacementVector selfRobot maybeOtherRobot
        where
-        displacementVector :: Robot -> Maybe Robot -> Maybe (V2 Int32)
+        displacementVector :: Robot Instantiated -> Maybe (Robot Instantiated) -> Maybe (V2 Int32)
         displacementVector selfRobot maybeOtherRobot = do
           otherRobot <- maybeOtherRobot
-          let dist = (cosmoMeasure euclidean `on` view robotLocation) selfRobot otherRobot
+          let dist = (cosmoMeasure euclidean `on` view (robotLocation @Instantiated)) selfRobot otherRobot
               (_minRange, maxRange) = getRadioRange (Just selfRobot) (Just otherRobot)
           d <- getFiniteDistance dist
           guard $ d <= maxRange
-          orientationBasedRelativePosition selfRobot $ view robotLocation otherRobot
+          orientationBasedRelativePosition selfRobot $ view (robotLocation @Instantiated) otherRobot
       _ -> badConst
     Give -> case vs of
       [VRobot otherID, VText itemName] -> do
@@ -403,8 +406,8 @@ execConst runChildProg c vs s k = do
             let knew = maybe True (contains0plus item) (inv :: Maybe Inventory)
 
             -- Make the exchange
-            robotInfo . robotMap . at otherID . _Just . robotInventory %= insert item
-            robotInventory %= delete item
+            robotInfo . robotMap . at otherID . _Just . robotInventory @Instantiated %= insert item
+            robotInventory @Instantiated %= delete item
 
             -- If the receiving robot is being viewed and just learned
             -- about the item for the first time, redraw the whole
@@ -419,10 +422,10 @@ execConst runChildProg c vs s k = do
       [VText itemName] -> do
         item <- ensureItem itemName "equip"
         -- Don't do anything if the robot already has the device.
-        already <- use (equippedDevices . to (`E.contains` item))
+        already <- use (equippedDevices @Instantiated . to (`E.contains` item))
         unless already $ do
-          equippedDevices %= insert item
-          robotInventory %= delete item
+          equippedDevices @Instantiated %= insert item
+          robotInventory @Instantiated %= delete item
 
           -- Log a special message if re-equipping life support system
           when (itemName == "life support system") $
@@ -432,7 +435,7 @@ execConst runChildProg c vs s k = do
           -- Check whether we should bestow the 'EquippedAllDevices' achievement
           curScenario <- use currentScenarioPath
           when (curScenario == Just "classic.yaml") $ do
-            equipped <- S.fromList . map (view entityName) . nonzeroEntities <$> use equippedDevices
+            equipped <- S.fromList . map (view entityName) . nonzeroEntities <$> use (equippedDevices @Instantiated)
             equippable <- use $ discovery . craftableDevices
             when (equippable `S.isSubsetOf` equipped) $ grantAchievementForRobot EquippedAllDevices
 
@@ -444,8 +447,8 @@ execConst runChildProg c vs s k = do
         myID <- use robotID
 
         -- Speculatively unequip the item
-        equippedDevices %= delete item
-        robotInventory %= insert item
+        equippedDevices @Instantiated %= delete item
+        robotInventory @Instantiated %= insert item
 
         -- If the base unequips the life support system, show a
         -- warning and start a countdown.
@@ -466,15 +469,15 @@ execConst runChildProg c vs s k = do
 
         -- Now check whether being on the current cell would still be
         -- allowed.
-        loc <- use robotLocation
+        loc <- use (robotLocation @Instantiated)
         mfail <- checkMoveFailure loc
         forM_ mfail \case
           PathBlockedBy _ -> do
             -- If unequipping the device would somehow result in the
             -- path being blocked, don't allow it; re-equip the device
             -- and throw an exception.
-            robotInventory %= delete item
-            equippedDevices %= insert item
+            robotInventory @Instantiated %= delete item
+            equippedDevices @Instantiated %= insert item
             throwError . cmdExn Unequip $
               ["You can't unequip the", item ^. entityName, "right now!"]
           PathLiquid _ -> do
@@ -482,15 +485,15 @@ execConst runChildProg c vs s k = do
             -- the middle of liquid results in drowning, EVEN for
             -- base!  This gives the `DestroyedBase` achievement,
             -- the other way is unequipping life support.
-            selfDestruct .= True
+            selfDestruct @Instantiated .= True
             when (myID == 0) $ grantAchievementForRobot DestroyedBase
 
         return $ mkReturn ()
       _ -> badConst
     Make -> case vs of
       [VText name] -> do
-        inv <- use robotInventory
-        ins <- use equippedDevices
+        inv <- use (robotInventory @Instantiated)
+        ins <- use (equippedDevices @Instantiated)
         em <- use $ landscape . terrainAndEntities . entityMap
         e <-
           lookupEntityName name em
@@ -530,7 +533,7 @@ execConst runChildProg c vs s k = do
               ]
 
         -- take recipe inputs from inventory and add outputs after recipeTime
-        robotInventory .= invTaken
+        robotInventory @Instantiated .= invTaken
         traverse_ (updateDiscoveredEntities . snd) (recipe ^. recipeOutputs)
         -- Grant CraftedBitcoin achievement
         when (name == "bitcoin") $
@@ -540,23 +543,23 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Has -> case vs of
       [VText name] -> do
-        inv <- use robotInventory
+        inv <- use (robotInventory @Instantiated)
         return . mkReturn . (> 0) $ countByName name inv
       _ -> badConst
     Equipped -> case vs of
       [VText name] -> do
-        inv <- use equippedDevices
+        inv <- use (equippedDevices @Instantiated)
         return . mkReturn . (> 0) $ countByName name inv
       _ -> badConst
     Count -> case vs of
       [VText name] -> do
-        inv <- use robotInventory
+        inv <- use (robotInventory @Instantiated)
         return . mkReturn $ countByName name inv
       _ -> badConst
     Scout -> case vs of
       [VDir d] -> do
         rMap <- use $ robotInfo . robotMap
-        myLoc <- use robotLocation
+        myLoc <- use (robotLocation @Instantiated)
         heading <- deriveHeading d
         botsByLocs <- use $ robotInfo . robotsByLocation
         selfRid <- use robotID
@@ -599,15 +602,15 @@ execConst runChildProg c vs s k = do
         return $ mkReturn foundBot
       _ -> badConst
     Whereami -> do
-      loc <- use robotLocation
+      loc <- use (robotLocation @Instantiated)
       return $ mkReturn $ loc ^. planar
     LocateMe -> do
-      loc <- use robotLocation
+      loc <- use (robotLocation @Instantiated)
       return $ mkReturn (loc ^. subworld, loc ^. planar)
     Waypoints -> case vs of
       [VText name] -> do
         lm <- use $ landscape . worldNavigation
-        Cosmic swName _ <- use robotLocation
+        Cosmic swName _ <- use (robotLocation @Instantiated)
         let mwps = M.lookup (WaypointName name) $ M.findWithDefault mempty swName $ waypoints lm
         return $ mkReturn $ maybe [] NE.toList mwps
       _ -> badConst
@@ -615,7 +618,7 @@ execConst runChildProg c vs s k = do
       [VText name] -> do
         registry <- use $ discovery . structureRecognition . foundStructures
         let maybeFoundStructures = M.lookup (StructureName name) $ foundByName registry
-            structures :: [((Cosmic Location, AbsoluteDir), StructureWithGrid RecognizableStructureContent Entity)]
+            structures :: [((Cosmic Location, AbsoluteDir), StructureWithGrid (RecognizableStructureContent Typed) Entity)]
             structures = maybe [] (NE.toList . NEM.toList) maybeFoundStructures
 
             bottomLeftCorner ((pos, _), struc) = topLeftCorner .+^ offsetHeight
@@ -651,7 +654,7 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Detect -> case vs of
       [VText name, VRect x1 y1 x2 y2] -> do
-        loc <- use robotLocation
+        loc <- use (robotLocation @Instantiated)
         let locs = rectCells x1 y1 x2 y2
         -- sort offsets by (Manhattan) distance so that we return the closest occurrence
         let sortedOffsets = sortOn (\(V2 x y) -> abs x + abs y) locs
@@ -678,7 +681,7 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Surveil -> case vs of
       [VPair (VInt x) (VInt y)] -> do
-        Cosmic swName _ <- use robotLocation
+        Cosmic swName _ <- use (robotLocation @Instantiated)
         let loc = Cosmic swName $ Location (fromIntegral x) (fromIntegral y)
         addWatchedLocation loc
         return $ mkReturn ()
@@ -686,8 +689,8 @@ execConst runChildProg c vs s k = do
     Chirp -> case vs of
       [VText name] -> do
         firstFound <- findNearest name
-        mh <- use robotOrientation
-        inst <- use equippedDevices
+        mh <- use (robotOrientation @Instantiated)
+        inst <- use (equippedDevices @Instantiated)
         let processDirection entityDir =
               if countByName "compass" inst >= 1
                 then Just $ DAbsolute entityDir
@@ -702,7 +705,7 @@ execConst runChildProg c vs s k = do
         return $ mkReturn d
       _ -> badConst
     Heading -> do
-      mh <- use robotOrientation
+      mh <- use (robotOrientation @Instantiated)
       -- In general, (1) entities might not have an orientation, and
       -- (2) even if they do, orientation is a general vector, which
       -- might not correspond to a cardinal direction.  We could make
@@ -720,14 +723,14 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Use -> case vs of
       [VText deviceName, VDir d] -> do
-        ins <- use equippedDevices
+        ins <- use (equippedDevices @Instantiated)
         equippedEntity <- ensureEquipped deviceName
         let verbPhrase = T.unwords ["use", deviceName, "on"]
         applyDevice ins verbPhrase d equippedEntity
       _ -> badConst
     Blocked -> do
-      loc <- use robotLocation
-      orientation <- use robotOrientation
+      loc <- use (robotLocation @Instantiated)
+      orientation <- use (robotOrientation @Instantiated)
       let nextLoc = loc `offsetBy` (orientation ? zero)
       me <- entityAt nextLoc
       return $ mkReturn $ maybe False (`hasProperty` Unwalkable) me
@@ -735,7 +738,7 @@ execConst runChildProg c vs s k = do
       [VDir d] -> do
         (_loc, me) <- lookInDirection d
         for_ me $ \e -> do
-          robotInventory %= insertCount 0 e
+          robotInventory @Instantiated %= insertCount 0 e
           updateDiscoveredEntities e
           -- Flag the world for a complete redraw since scanning
           -- something may change the way it is drawn (if the
@@ -745,8 +748,8 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Knows -> case vs of
       [VText name] -> do
-        inv <- use robotInventory
-        ins <- use equippedDevices
+        inv <- use (robotInventory @Instantiated)
+        ins <- use (equippedDevices @Instantiated)
         let allKnown = inv `E.union` ins
         let knows = case E.lookupByName name allKnown of
               [] -> False
@@ -759,9 +762,9 @@ execConst runChildProg c vs s k = do
         _other <- getRobotWithinTouch otherID
 
         -- Upload knowledge of everything in our inventory
-        inv <- use robotInventory
+        inv <- use (robotInventory @Instantiated)
         forM_ (elems inv) $ \(_, e) ->
-          robotInfo . robotMap . at otherID . _Just . robotInventory %= insertCount 0 e
+          robotInfo . robotMap . at otherID . _Just . robotInventory @Instantiated %= insertCount 0 e
 
         -- Upload our log
         rlog <- use robotLog
@@ -804,11 +807,11 @@ execConst runChildProg c vs s k = do
     Say -> case vs of
       [VText msg] -> do
         isPrivileged <- isPrivilegedBot
-        loc <- use robotLocation
+        loc <- use (robotLocation @Instantiated)
         -- current robot will be inserted into the robot set, so it needs the log
         m <- traceLog Said Info msg
         emitMessage m
-        let addToRobotLog :: (Has (State GameState) sgn m) => Robot -> m ()
+        let addToRobotLog :: (Has (State GameState) sgn m) => Robot Instantiated -> m ()
             addToRobotLog r = evalState r $ do
               hasLog <- hasCapability $ CExecute Log
               hasListen <- hasCapability $ CExecute Listen
@@ -825,7 +828,7 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Listen -> do
       gs <- get @GameState
-      loc <- use robotLocation
+      loc <- use (robotLocation @Instantiated)
       rid <- use robotID
       isPrivileged <- isPrivilegedBot
       mq <- use $ messageInfo . messageQueue
@@ -886,13 +889,13 @@ execConst runChildProg c vs s k = do
           [] -> do
             robotDisplay . invisible .= True
           [dc] -> do
-            robotDisplay . invisible .= False
-            robotDisplay . defaultChar .= dc
-            robotDisplay . orientationMap .= M.empty
+            robotDisplay @Instantiated . invisible .= False
+            robotDisplay @Instantiated . defaultChar .= dc
+            robotDisplay @Instantiated . orientationMap .= M.empty
           [dc, nc, ec, sc, wc] -> do
-            robotDisplay . invisible .= False
-            robotDisplay . defaultChar .= dc
-            robotDisplay
+            robotDisplay @Instantiated . invisible .= False
+            robotDisplay @Instantiated . defaultChar .= dc
+            robotDisplay @Instantiated
               . orientationMap
               .= M.fromList
                 [ (DNorth, nc)
@@ -910,7 +913,7 @@ execConst runChildProg c vs s k = do
 
         -- Possibly set the display attribute
         case (hasAttr, mattr) of
-          (True, VText attr) -> robotDisplay . displayAttr .= readAttribute attr
+          (True, VText attr) -> robotDisplay @Instantiated . displayAttr .= readAttribute attr
           _ -> return ()
 
         use robotLocation >>= markDirty
@@ -923,7 +926,7 @@ execConst runChildProg c vs s k = do
           lookupEntityName name em
             `isJustOrFail` ["I've never heard of", indefiniteQ name <> "."]
 
-        robotInventory %= insert e
+        robotInventory @Instantiated %= insert e
         updateDiscoveredEntities e
 
         return $ mkReturn ()
@@ -956,25 +959,25 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Ishere -> case vs of
       [VText name] -> do
-        loc <- use robotLocation
+        loc <- use (robotLocation @Instantiated)
         me <- entityAt loc
         let here = maybe False (isEntityNamed name) me
         return $ mkReturn here
       _ -> badConst
     Isempty -> do
-      loc <- use robotLocation
+      loc <- use (robotLocation @Instantiated)
       me <- entityAt loc
       return $ mkReturn $ isNothing me
     Self -> do
       rid <- use robotID
       return $ Out (VRobot rid) s k
     Parent -> do
-      mp <- use robotParentID
+      mp <- use (robotParentID @Instantiated)
       rid <- use robotID
       return $ Out (VRobot (fromMaybe rid mp)) s k
     Base -> return $ Out (VRobot 0) s k
     Meet -> do
-      loc <- use robotLocation
+      loc <- use (robotLocation @Instantiated)
       rid <- use robotID
       g <- get @GameState
       let neighbor =
@@ -985,19 +988,19 @@ execConst runChildProg c vs s k = do
               $ g ^. robotInfo -- all robots within Manhattan distance 1
       return $ mkReturn neighbor
     MeetAll -> do
-      loc <- use robotLocation
+      loc <- use (robotLocation @Instantiated)
       rid <- use robotID
       g <- get @GameState
       let neighborIDs = filter ((/= rid) . (^. robotID)) . filter isInteractive . robotsInArea loc 1 $ g ^. robotInfo
       return $ mkReturn neighborIDs
     Whoami -> case vs of
       [] -> do
-        name <- use robotName
+        name <- use (robotName @Instantiated)
         return $ mkReturn name
       _ -> badConst
     Setname -> case vs of
       [VText name] -> do
-        robotName .= name
+        robotName @Instantiated .= name
         return $ mkReturn ()
       _ -> badConst
     Force -> case vs of
@@ -1038,7 +1041,7 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Reprogram -> case vs of
       [VRobot childRobotID, VDelay cmd env] -> do
-        r <- get
+        r <- get @(Robot Instantiated)
         isPrivileged <- isPrivilegedBot
 
         -- check if robot exists
@@ -1059,7 +1062,7 @@ execConst runChildProg c vs s k = do
         -- check if childRobot is at the correct distance
         -- a robot can program adjacent robots
         -- privileged bots ignore distance checks
-        loc <- use robotLocation
+        loc <- use (robotLocation @Instantiated)
 
         isNearbyOrExempt isPrivileged loc (childRobot ^. robotLocation)
           `holdsOrFail` ["You can only reprogram an adjacent robot."]
@@ -1114,7 +1117,7 @@ execConst runChildProg c vs s k = do
       -- would return the capabilities needed to *execute* them),
       -- hopefully without duplicating too much code.
       [VDelay cmd e] -> do
-        r <- get @Robot
+        r <- get @(Robot Instantiated)
         pid <- use robotID
 
         (toEquip, toGive) <-
@@ -1123,7 +1126,7 @@ execConst runChildProg c vs s k = do
         -- Pick a random display name.
         displayName <- randomName
         createdAt <- getNow
-        isSystemRobot <- use systemRobot
+        isSystemRobot <- use (systemRobot @Instantiated)
 
         -- Construct the new robot and add it to the world.
         let newDisplay = case r ^. robotDisplay . childInheritance of
@@ -1158,7 +1161,7 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Salvage -> case vs of
       [] -> do
-        loc <- use robotLocation
+        loc <- use (robotLocation @Instantiated)
         let okToSalvage r = (r ^. robotID /= 0) && (not . isActive $ r)
         mtarget <- gets (find okToSalvage . robotsAtLocation loc)
         case mtarget of
@@ -1167,13 +1170,13 @@ execConst runChildProg c vs s k = do
             -- Copy the salvaged robot's equipped devices into its inventory, in preparation
             -- for transferring it.
             let salvageInventory = E.union (target ^. robotInventory) (target ^. equippedDevices)
-            robotInfo . robotMap . at (target ^. robotID) . traverse . robotInventory .= salvageInventory
+            robotInfo . robotMap . at (target ^. robotID) . traverse . robotInventory @Instantiated .= salvageInventory
 
             let salvageItems = concatMap (\(n, e) -> replicate n (e ^. entityName)) (E.elems salvageInventory)
                 numItems = length salvageItems
 
             -- Copy over the salvaged robot's log, if we have one
-            inst <- use equippedDevices
+            inst <- use (equippedDevices @Instantiated)
             em <- use $ landscape . terrainAndEntities . entityMap
             isPrivileged <- isPrivilegedBot
             logger <-
@@ -1184,7 +1187,7 @@ execConst runChildProg c vs s k = do
             -- Immediately copy over any items the robot knows about
             -- but has 0 of
             let knownItems = map snd . filter ((== 0) . fst) . elems $ salvageInventory
-            robotInventory %= \i -> foldr (insertCount 0) i knownItems
+            robotInventory @Instantiated %= \i -> foldr (insertCount 0) i knownItems
 
             -- If we are the focused robot, we might have learned
             -- about some new entities, so flag the world to be
@@ -1219,29 +1222,31 @@ execConst runChildProg c vs s k = do
             time <- use $ temporal . ticks
             return $ Waiting (addTicks (numItems + 1) time) (mkReturn ())
       _ -> badConst
+
+    -- XXX DELETE ME
     -- run can take both types of text inputs
     -- with and without file extension as in
     -- "./path/to/file.sw" and "./path/to/file"
-    Run -> case vs of
-      [VText fileName] -> do
-        let filePath = into @String fileName
-        sData <- throwToMaybe @SystemFailure $ getDataFileNameSafe Script filePath
-        sDataSW <- throwToMaybe @SystemFailure $ getDataFileNameSafe Script (filePath <> ".sw")
-        mf <- sendIO $ mapM readFileMay $ [filePath, filePath <> ".sw"] <> catMaybes [sData, sDataSW]
+    -- Run -> case vs of
+    --   [VText fileName] -> do
+    --     let filePath = into @String fileName
+    --     sData <- throwToMaybe @SystemFailure $ getDataFileNameSafe Script filePath
+    --     sDataSW <- throwToMaybe @SystemFailure $ getDataFileNameSafe Script (filePath <> ".sw")
+    --     mf <- sendIO $ mapM readFileMay $ [filePath, filePath <> ".sw"] <> catMaybes [sData, sDataSW]
 
-        f <- msum mf `isJustOrFail` ["File not found:", fileName]
+    --     f <- msum mf `isJustOrFail` ["File not found:", fileName]
 
-        mt <-
-          processTerm (into @Text f) `isRightOr` \err ->
-            cmdExn Run ["Error in", fileName, "\n", err]
+    --     mt <-
+    --       processTerm (into @Text f) `isRightOr` \err ->
+    --         cmdExn Run ["Error in", fileName, "\n", err]
 
-        case mt of
-          Nothing -> return $ mkReturn ()
-          Just t -> do
-            void $ traceLog CmdStatus Info "run: OK."
-            cesk <- use machine
-            return $ continue t cesk
-      _ -> badConst
+    --     case mt of
+    --       Nothing -> return $ mkReturn ()
+    --       Just t -> do
+    --         void $ traceLog CmdStatus Info "run: OK."
+    --         cesk <- use machine
+    --         return $ continue t cesk
+    --   _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k
       _ -> badConst
@@ -1279,8 +1284,8 @@ execConst runChildProg c vs s k = do
         (printable `hasProperty` Printable)
           `holdsOrFail` ["You cannot print on", indefinite printableName <> "!"]
         let newEntityName = printableName <> ": " <> txt
-        robotInventory %= delete printable
-        robotInventory %= insert (printable & entityName .~ newEntityName)
+        robotInventory @Instantiated %= delete printable
+        robotInventory @Instantiated %= insert (printable & entityName .~ newEntityName)
         return $ mkReturn newEntityName
       _ -> badConst
     Erase -> case vs of
@@ -1294,8 +1299,8 @@ execConst runChildProg c vs s k = do
         (erased `hasProperty` Printable)
           `holdsOrFail` ["You cannot erase", indefinite baseName <> "!"]
 
-        robotInventory %= delete toErase
-        robotInventory %= insert erased
+        robotInventory @Instantiated %= delete toErase
+        robotInventory @Instantiated %= insert erased
         return $ mkReturn baseName
       _ -> badConst
     Chars -> case vs of
@@ -1358,7 +1363,7 @@ execConst runChildProg c vs s k = do
     return $ mkReturn ()
 
   doDrill d = do
-    ins <- use equippedDevices
+    ins <- use (equippedDevices @Instantiated)
 
     let equippedDrills = extantElemsWithCapability (CExecute Drill) ins
         -- Heuristic: choose the drill with the more elaborate name.
@@ -1381,7 +1386,7 @@ execConst runChildProg c vs s k = do
                     , indefinite (nextE ^. entityName) <> "."
                     ]
 
-    inv <- use robotInventory
+    inv <- use (robotInventory @Instantiated)
 
     -- add the targeted entity so it can be consumed by the recipe
     let makeRecipe r = (,r) <$> make' (insert nextE inv, ins) r
@@ -1409,13 +1414,13 @@ execConst runChildProg c vs s k = do
             }
 
     -- take recipe inputs from inventory and add outputs after recipeTime
-    robotInventory .= invTaken
+    robotInventory @Instantiated .= invTaken
 
     let cmdOutput = asValue $ snd <$> listToMaybe out
     finishCookingRecipe recipe cmdOutput [changeWorld] (learn <> gain)
 
   getDeviceTarget verb d = do
-    rname <- use robotName
+    rname <- use (robotName @Instantiated)
 
     (nextLoc, nextME) <- lookInDirection d
     nextE <-
@@ -1435,7 +1440,7 @@ execConst runChildProg c vs s k = do
     -- push an FFinishAtomic frame so that we unset the flag when done, and
     -- proceed to execute the argument.
     [VDelay cmd e] -> do
-      runningAtomic .= True
+      runningAtomic @Instantiated .= True
       return $ In cmd e s (FExec : FFinishAtomic : k)
     _ -> badConst
 
@@ -1462,7 +1467,7 @@ execConst runChildProg c vs s k = do
     Integer ->
     m CESK
   doResonate p x1 y1 x2 y2 = do
-    loc <- use robotLocation
+    loc <- use (robotLocation @Instantiated)
     let offsets = rectCells x1 y1 x2 y2
     hits <- mapM (fmap (fromEnum . p) . entityAt . offsetBy loc) offsets
     return $ Out (VInt $ fromIntegral $ sum hits) s k
@@ -1486,7 +1491,7 @@ execConst runChildProg c vs s k = do
     Text ->
     m (Maybe (Int32, V2 Int32))
   findNearest name = do
-    loc <- use robotLocation
+    loc <- use (robotLocation @Instantiated)
     let f = fmap (maybe False $ isEntityNamed name) . entityAt . offsetBy loc . snd
     findM f sortedOffsets
    where
@@ -1522,15 +1527,15 @@ execConst runChildProg c vs s k = do
 
   ensureEquipped :: HasRobotStepState sig m => Text -> m Entity
   ensureEquipped itemName = do
-    inst <- use equippedDevices
+    inst <- use (equippedDevices @Instantiated)
     listToMaybe (lookupByName itemName inst)
       `isJustOrFail` ["You don't have", indefinite itemName, "equipped."]
 
   ensureItem :: HasRobotStepState sig m => Text -> Text -> m Entity
   ensureItem itemName action = do
     -- First, make sure we know about the entity.
-    inv <- use robotInventory
-    inst <- use equippedDevices
+    inv <- use (robotInventory @Instantiated)
+    inst <- use (equippedDevices @Instantiated)
     item <-
       asum (map (listToMaybe . lookupByName itemName) [inv, inst])
         `isJustOrFail` ["What is", indefinite itemName <> "?"]
@@ -1565,7 +1570,7 @@ execConst runChildProg c vs s k = do
     Inventory ->
     Inventory ->
     Inventory ->
-    Term ->
+    Term Raw ->
     Text ->
     IncapableFix ->
     m (Set Entity, Inventory)
@@ -1704,7 +1709,7 @@ execConst runChildProg c vs s k = do
       ["You consider destroying your base, but decide not to do it after all."]
       (mAch False)
 
-    selfDestruct .= True
+    selfDestruct @Instantiated .= True
     forM_ (mAch True) grantAchievementForRobot
 
   -- Try to move the current robot once cell in a specific direction,
@@ -1713,7 +1718,7 @@ execConst runChildProg c vs s k = do
   moveInDirection :: (HasRobotStepState sig m, Has (Lift IO) sig m) => Heading -> m CESK
   moveInDirection orientation = do
     -- Figure out where we're going
-    loc <- use robotLocation
+    loc <- use (robotLocation @Instantiated)
     let nextLoc = loc `offsetBy` orientation
     checkMoveAhead nextLoc $ \case
       PathBlockedBy _ -> ThrowExn
@@ -1753,18 +1758,18 @@ execConst runChildProg c vs s k = do
     maybeFailure <- checkMoveFailure nextLoc
     applyMoveFailureEffect maybeFailure failureHandler
 
-  getRobotWithinTouch :: HasRobotStepState sig m => RID -> m Robot
+  getRobotWithinTouch :: HasRobotStepState sig m => RID -> m (Robot Instantiated)
   getRobotWithinTouch rid = do
     cid <- use robotID
     if cid == rid
-      then get @Robot
+      then get @(Robot Instantiated)
       else do
         mother <- robotWithID rid
         other <- mother `isJustOrFail` ["There is no robot with ID", from (show rid) <> "."]
 
         let otherLoc = other ^. robotLocation
         privileged <- isPrivilegedBot
-        myLoc <- use robotLocation
+        myLoc <- use (robotLocation @Instantiated)
 
         -- Make sure it is either in the same location or we do not care
         isNearbyOrExempt privileged myLoc otherLoc
@@ -1792,7 +1797,7 @@ execConst runChildProg c vs s k = do
   -- Make sure the robot has the thing in its inventory
   hasInInventoryOrFail :: HasRobotStepState sig m => Text -> m Entity
   hasInInventoryOrFail eName = do
-    inv <- use robotInventory
+    inv <- use (robotInventory @Instantiated)
     e <-
       listToMaybe (lookupByName eName inv)
         `isJustOrFail` ["What is", indefinite eName <> "?"]
@@ -1849,7 +1854,7 @@ execConst runChildProg c vs s k = do
         verbed = verbedGrabbingCmd cmd
 
     -- Ensure there is an entity here.
-    loc <- use robotLocation
+    loc <- use (robotLocation @Instantiated)
     (terrainHere, maybeEntityHere) <- contentAt loc
     e <- maybeEntityHere `isJustOrFail` ["There is nothing here to", verb <> "."]
 
@@ -1882,7 +1887,7 @@ execConst runChildProg c vs s k = do
     knew <- use $ robotInventory . to (contains0plus e')
 
     -- Add the item to the inventory and update discovery tracking.
-    robotInventory %= insert e'
+    robotInventory @Instantiated %= insert e'
     updateDiscoveredEntities e'
 
     -- If the robot is currently being viewed and didn't know about

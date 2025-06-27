@@ -92,27 +92,27 @@ data GrabbingCmd
 -- robot's inventory, we must be careful that it is executed exactly
 -- once per command.
 ensureCanExecute ::
-  ( Has (State Robot) sig m
+  ( Has (State (Robot Instantiated)) sig m
   , Has (State GameState) sig m
   , Has (Throw Exn) sig m
   ) =>
   Const ->
   m ()
 ensureCanExecute c =
-  gets @Robot (constCapsFor c) >>= mapM_ \cap -> do
+  gets @(Robot Instantiated) (constCapsFor c) >>= mapM_ \cap -> do
     isPrivileged <- isPrivilegedBot
     -- Privileged robots can execute commands regardless
     -- of equipped devices, and without expending
     -- a capability's exercise cost.
     unless isPrivileged $ do
-      robotCaps <- use robotCapabilities
+      robotCaps <- use (robotCapabilities @Instantiated)
       let capProviders = M.lookup cap $ getMap robotCaps
       case capProviders of
         Nothing -> throwError $ Incapable FixByEquip (R.singletonCap cap) (TConst c)
         Just rawCosts -> payExerciseCost c rawCosts
 
 payExerciseCost ::
-  ( Has (State Robot) sig m
+  ( Has (State (Robot Instantiated)) sig m
   , Has (State GameState) sig m
   , Has (Throw Exn) sig m
   ) =>
@@ -127,7 +127,7 @@ payExerciseCost c rawCosts = do
     -- so we should never encounter this error.
     Left e -> throwError $ Fatal e
     Right cs -> return cs
-  inv <- use robotInventory
+  inv <- use (robotInventory @Instantiated)
   let getMissingIngredients = findLacking inv . ingredients . useCost
       maybeFeasibleRecipe = find (null . getMissingIngredients) $ NE.sort costs
   case maybeFeasibleRecipe of
@@ -137,7 +137,7 @@ payExerciseCost c rawCosts = do
     -- Consume the inventory
     Just feasibleRecipe ->
       forM_ (ingredients . useCost $ feasibleRecipe) $ \(cnt, e) ->
-        robotInventory %= deleteCount cnt e
+        robotInventory @Instantiated %= deleteCount cnt e
  where
   expenseToRequirement :: DeviceUseCost Entity Entity -> R.Requirements
   expenseToRequirement (DeviceUseCost d (ExerciseCost ingdts)) =
@@ -150,7 +150,7 @@ purgeFarAwayWatches ::
   HasRobotStepState sig m => m ()
 purgeFarAwayWatches = do
   privileged <- isPrivilegedBot
-  myLoc <- use robotLocation
+  myLoc <- use (robotLocation @Instantiated)
   rid <- use robotID
 
   let isNearby = isNearbyOrExempt privileged myLoc
@@ -172,7 +172,7 @@ verbedGrabbingCmd = \case
 --   location.  This should be the /only/ way to update the location
 --   of a robot.
 -- Also implements teleportation by portals.
-updateRobotLocation ::
+updateRobotLocation :: forall sig m.
   (HasRobotStepState sig m) =>
   Cosmic Location ->
   Cosmic Location ->
@@ -193,13 +193,14 @@ updateRobotLocation oldLoc newLoc
       markDirty oldLoc
       markDirty newLoc
  where
+  applyPortal :: Cosmic Location -> m (Cosmic Location)
   applyPortal loc = do
     lms <- use $ landscape . worldNavigation
     let maybePortalInfo = M.lookup loc $ portals lms
         updatedLoc = maybe loc destination maybePortalInfo
         maybeTurn = reorientation <$> maybePortalInfo
     forM_ maybeTurn $ \d ->
-      robotOrientation . _Just %= applyTurn d
+      robotOrientation @Instantiated . _Just %= applyTurn d
     return updatedLoc
 
 -- | Execute a stateful action on a target robot --- whether the
@@ -216,7 +217,7 @@ onTarget rid act = do
     False -> do
       mtgt <- use (robotInfo . robotMap . at rid)
       forM_ mtgt $ \tgt -> do
-        tgt' <- execState @Robot tgt act
+        tgt' <- execState @(Robot Instantiated) tgt act
         if tgt' ^. selfDestruct
           then deleteRobotAndFlag rid
           else zoomRobots $ robotMap . ix rid .= tgt'
@@ -228,7 +229,7 @@ grantAchievementForRobot ::
   GameplayAchievement ->
   m ()
 grantAchievementForRobot a = do
-  sys <- use systemRobot
+  sys <- use (systemRobot @Instantiated)
   let isValidRobotType = not sys || robotTypeRequired == ValidForSystemRobot
   when isValidRobotType $
     grantAchievement a
@@ -267,7 +268,7 @@ grantAchievement a = do
 --   constant.  Right now, the only difference is whether the robot is
 --   heavy or not when executing the 'Swarm.Language.Syntax.Move' command, but there might
 --   be other exceptions added in the future.
-constCapsFor :: Const -> Robot -> Maybe Capability
+constCapsFor :: Const -> Robot Instantiated -> Maybe Capability
 constCapsFor Move r
   | r ^. robotHeavy = Just CMoveHeavy
 constCapsFor Backup r
@@ -362,12 +363,12 @@ provisionChild childID toEquip toGive = do
   -- Equip and give devices to child
   zoomRobots $ do
     robotMap . ix childID . equippedDevices %= E.union toEquip
-    robotMap . ix childID . robotInventory %= E.union toGive
+    robotMap . ix childID . robotInventory @Instantiated %= E.union toGive
 
   -- Delete all items from parent in classic mode
   creative <- use creativeMode
   unless creative $
-    robotInventory %= (`E.difference` (toEquip `E.union` toGive))
+    robotInventory @Instantiated %= (`E.difference` (toEquip `E.union` toGive))
 
 ------------------------------------------------------------
 -- Exceptions and validation
@@ -392,7 +393,7 @@ withExceptions s k m = do
     Right a -> return a
 
 -- | Print some text via the robot's log.
-traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => RobotLogSource -> Severity -> Text -> m LogEntry
+traceLog :: (Has (State GameState) sig m, Has (State (Robot Instantiated)) sig m) => RobotLogSource -> Severity -> Text -> m LogEntry
 traceLog source sev msg = do
   m <- createLogEntry source sev msg
   robotLog %= (Seq.|> m)
@@ -423,16 +424,16 @@ formatDevices = T.intercalate " or " . map (^. entityName) . S.toList
 --   This is the more generic version used both for (recorded) said
 --   messages and normal logs.
 createLogEntry ::
-  (Has (State GameState) sig m, Has (State Robot) sig m) =>
+  (Has (State GameState) sig m, Has (State (Robot Instantiated)) sig m) =>
   RobotLogSource ->
   Severity ->
   Text ->
   m LogEntry
 createLogEntry source sev msg = do
   rid <- use robotID
-  rn <- use robotName
+  rn <- use (robotName @Instantiated)
   time <- use $ temporal . ticks
-  loc <- use robotLocation
+  loc <- use (robotLocation @Instantiated)
   pure $ LogEntry time (RobotLog source rid loc) sev rn msg
 
 -- | replace some entity in the world with another entity
@@ -451,13 +452,13 @@ updateWorld c (ReplaceEntity loc eThen down) = do
     else updateEntityAt loc $ const down
 
 applyRobotUpdates ::
-  (Has (State GameState) sig m, Has (State Robot) sig m) =>
+  (Has (State GameState) sig m, Has (State (Robot Instantiated)) sig m) =>
   [RobotUpdate] ->
   m ()
 applyRobotUpdates =
   mapM_ \case
-    AddEntity c e -> robotInventory %= E.insertCount c e
-    LearnEntity e -> robotInventory %= E.insertCount 0 e
+    AddEntity c e -> robotInventory @Instantiated %= E.insertCount c e
+    LearnEntity e -> robotInventory @Instantiated %= E.insertCount 0 e
 
 -- | Construct a "seed robot" from entity, time range and position,
 --   and add it to the world.  It has low priority and will be covered
@@ -517,7 +518,7 @@ seedProgram ::
   Integer ->
   -- | entity to place
   EntityName ->
-  TSyntax
+  Syntax Typed
 seedProgram minTime randTime seedlingCount seedlingRadius thing =
   [tmQ|
     def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
