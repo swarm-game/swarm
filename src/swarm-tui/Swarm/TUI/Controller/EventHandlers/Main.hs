@@ -29,6 +29,7 @@ import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
 import Swarm.Game.Step (finishGameTick)
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.TUI.Controller.EventHandlers.Frame (runGameTickUI)
 import Swarm.TUI.Controller.UpdateUI (updateUI)
 import Swarm.TUI.Controller.Util
@@ -117,7 +118,7 @@ toggleGameModal m l = do
 
 toggleStructuresModal ::
   Foldable t =>
-  Lens' Landscape (t a) ->
+  Lens' (Landscape Typed) (t a) ->
   EventM Name ScenarioState ()
 toggleStructuresModal l = void $ toggleGameModal StructuresModal (landscape . l)
 

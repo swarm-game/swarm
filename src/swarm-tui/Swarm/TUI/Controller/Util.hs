@@ -9,6 +9,7 @@ module Swarm.TUI.Controller.Util where
 import Brick hiding (Direction)
 import Brick.Focus
 import Brick.Keybindings
+import Control.Carrier.Error.Either qualified as Fused
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens as Lens
@@ -23,6 +24,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Graphics.Vty qualified as V
 import Swarm.Effect (TimeIOC, runTimeIO)
+import Swarm.Failure (SystemFailure)
 import Swarm.Game.CESK (continue)
 import Swarm.Game.Device
 import Swarm.Game.Robot (robotCapabilities)
@@ -55,6 +57,7 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl (REPLEntryType (..), REPLHistItem (..), REPLHistItemType (..), REPLPrompt (..), REPLState, addREPLItem, replHasExecutedManualInput, replHistory, replPromptText, replPromptType)
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Util (ScenarioSeriesContext (..), curMenuName, generateModal, generateScenarioEndModal)
+import Swarm.Pretty
 import System.Clock (Clock (..), getTime)
 
 -- | Pattern synonyms to simplify brick event handler
@@ -260,7 +263,7 @@ allHandlers eEmbed f = map handleEvent1 enumerate
  where
   handleEvent1 e1 = let (n, a) = f e1 in onEvent (eEmbed e1) n a
 
-runBaseTerm :: (MonadState ScenarioState m) => Maybe TSyntax -> m ()
+runBaseTerm :: (MonadState ScenarioState m) => Maybe (Syntax Typed) -> m ()
 runBaseTerm = mapM_ startBaseProgram
  where
   -- The player typed something at the REPL and hit Enter; this
@@ -290,16 +293,22 @@ addREPLHistItem itemType msg = do
   let item = REPLHistItem itemType msg t
   uiGameplay . uiREPL . replHistory %= addREPLItem item
 
-runBaseCode :: (MonadState ScenarioState m) => T.Text -> m (Either Text ())
+runBaseCode :: (MonadState ScenarioState m, MonadIO m) => T.Text -> m (Either SystemFailure ())
 runBaseCode uinput = do
   addREPLHistItem (REPLEntry Submitted) uinput
   resetREPL T.empty (CmdPrompt [])
   env <- fromMaybe emptyEnv <$> preuse (gameState . baseEnv)
-  case processTerm' env uinput of
+
+  res <- liftIO $ Fused.runM . Fused.runError @SystemFailure $ processTerm' env uinput
+-- processTerm' ::
+--  (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
+--  Env -> Text -> m (Maybe (Syntax Typed))
+
+  case res of
     Right mt -> do
       uiGameplay . uiREPL . replHistory . replHasExecutedManualInput .= True
       runBaseTerm mt
       return (Right ())
     Left err -> do
-      addREPLHistItem REPLError err
+      addREPLHistItem REPLError (prettyText err)
       return (Left err)

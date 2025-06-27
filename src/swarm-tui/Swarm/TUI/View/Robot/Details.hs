@@ -8,7 +8,6 @@ import Brick
 import Brick.Widgets.Border
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
-
 import Brick.Focus
 import Control.Lens hiding (from, (<.>))
 import Data.Map.Strict qualified as M
@@ -16,6 +15,7 @@ import Prettyprinter (pretty)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity (commandsHistogram)
 import Swarm.Game.Robot.Concrete
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.Log
 import Swarm.Pretty (prettyText)
 import Swarm.TUI.Model.Name
@@ -23,7 +23,7 @@ import Swarm.TUI.View.Attribute.Attr (boldAttr, cyanAttr)
 import Swarm.TUI.View.Robot.Type
 import Swarm.Util (applyWhen)
 
-renderRobotDetails :: Robot -> RobotDetailsPaneState -> Widget Name
+renderRobotDetails :: Robot Instantiated -> RobotDetailsPaneState -> Widget Name
 renderRobotDetails r paneState =
   vBox
     [ str $
