@@ -13,6 +13,7 @@ module Swarm.Game.Robot (
   -- * Robots data
   _robotID,
   _robotLocation,
+  RobotMachine,
   _machine,
   RobotActivity,
   _activityCounts,
@@ -80,7 +81,7 @@ import Swarm.Game.Location (Heading, Location, toHeading)
 import Swarm.Game.Robot.Walk
 import Swarm.Game.Universe
 import Swarm.Language.JSON ()
-import Swarm.Language.Syntax (Phase (..), SwarmType, Syntax)
+import Swarm.Language.Syntax (Phase (..), Syntax)
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Util.Lens (makeLensesExcluding)
 import Swarm.Util.Yaml
@@ -119,6 +120,11 @@ type instance RobotLogUpdatedMember Raw = ()
 type instance RobotLogUpdatedMember Inferred = ()
 type instance RobotLogUpdatedMember Typed = ()
 
+type family RobotMachine (phase :: Phase) :: Data.Kind.Type
+type instance RobotMachine Raw = Maybe (Syntax Raw)
+type instance RobotMachine Inferred = Maybe (Syntax Inferred)
+type instance RobotMachine Typed = Maybe (Syntax Typed)
+
 -- | A value of type 'Robot' is a record representing the state of a
 --   single robot.
 data Robot (phase :: Phase) = Robot
@@ -133,7 +139,7 @@ data Robot (phase :: Phase) = Robot
   , _robotID :: RobotID phase
   , _robotParentID :: Maybe RID
   , _robotHeavy :: Bool
-  , _machine :: Maybe (Syntax phase)
+  , _machine :: RobotMachine phase
   , _systemRobot :: Bool
   , _selfDestruct :: Bool
   , _activityCounts :: RobotActivity phase
@@ -142,9 +148,6 @@ data Robot (phase :: Phase) = Robot
   , _robotCreatedAt :: TimeSpec
   }
   deriving (Generic)
-
-deriving instance (Show (SwarmType phase), Show (RobotLocation phase), Show (RobotID phase), Show (RobotActivity phase), Show (RobotLogMember phase), Show (RobotLogUpdatedMember phase)) => Show (Robot phase)
-deriving instance (Eq (SwarmType phase), Eq (RobotLocation phase), Eq (RobotID phase), Eq (RobotActivity phase), Eq (RobotLogMember phase), Eq (RobotLogUpdatedMember phase)) => Eq (Robot phase)
 
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
@@ -278,6 +281,7 @@ mkRobot ::
   , RobotLocation phase ~ Maybe (Cosmic Location)
   , RobotLogMember phase ~ ()
   , RobotLogUpdatedMember phase ~ ()
+  , RobotMachine phase ~ Maybe (Syntax phase)
   )
   =>
   Maybe Int ->

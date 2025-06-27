@@ -55,7 +55,6 @@ prettyRawCellItem (Nothing, t) = pretty t
 prettyRawCellItem (Just tag, t) = pretty (T.toLower . T.drop 4 . showT $ tag) <> ":" <> pretty t
 
 data CellVal = CellVal TerrainType (Erasable (Last Entity)) [Robot Typed]
-  deriving (Eq, Show)
 
 instance PrettyPrec CellVal where
   prettyPrec _ (CellVal terr ent rs) =
