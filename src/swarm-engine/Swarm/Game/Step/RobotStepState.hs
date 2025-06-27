@@ -17,6 +17,7 @@ import Swarm.Effect qualified as Effect
 import Swarm.Game.Exception
 import Swarm.Game.Robot
 import Swarm.Game.State
+import Swarm.Language.Syntax (Phase (Instantiated))
 
 -- | All functions that are used for robot step can access 'GameState' and the current 'Robot'.
 --
@@ -24,7 +25,7 @@ import Swarm.Game.State
 -- Because of that the constraint is only 'Throw', but not 'Catch'/'Error'.
 type HasRobotStepState sig m =
   ( Has (State GameState) sig m
-  , Has (State Robot) sig m
+  , Has (State (Robot Instantiated)) sig m
   , Has (Throw Exn) sig m
   , Has Effect.Metric sig m
   , Has Effect.Time sig m

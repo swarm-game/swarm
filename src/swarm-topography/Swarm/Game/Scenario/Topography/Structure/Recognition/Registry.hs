@@ -22,14 +22,13 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (
 where
 
 import Control.Arrow ((&&&))
-import Data.List (partition, sortOn)
+import Data.List (partition, sortBy)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Map.NonEmpty (NEMap)
 import Data.Map.NonEmpty qualified as NEM
 import Data.Maybe (listToMaybe, maybeToList)
-import Data.Ord (Down (Down))
 import Data.Set qualified as Set
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Structure.Named (StructureName, name)
@@ -124,7 +123,7 @@ populateStaticFoundStructures allFound =
   resolvePreplacementCollisions foundList =
     nonOverlappingFound <> maybeToList (listToMaybe overlapsByDecreasingPreference)
    where
-    overlapsByDecreasingPreference = sortOn Down overlappingFound
+    overlapsByDecreasingPreference = sortBy compareFoundStructure overlappingFound
 
     (overlappingFound, nonOverlappingFound) =
       partition ((`Set.member` overlappingPlacements) . fmap distillLabel) foundList
