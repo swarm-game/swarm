@@ -52,6 +52,7 @@ import Swarm.Game.Step.Path.Walkability (checkUnwalkable)
 import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util.Inspect (robotWithID)
 import Swarm.Game.Universe (Cosmic (..), SubworldName)
+import Swarm.Language.Syntax (Phase (Instantiated))
 import Swarm.Util (prependList, tails1)
 import Swarm.Util.RingBuffer qualified as RB
 
@@ -225,7 +226,7 @@ revalidatePathCache entityLoc entityModification (rid, pc) = do
     Nothing -> Left NonexistentRobot
     Just bot ->
       perhapsInvalidateForRobot
-        (view walkabilityContext bot)
+        (view (walkabilityContext @Instantiated) bot)
         entityLoc
         entityModification
         pc

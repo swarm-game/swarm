@@ -27,10 +27,9 @@ import Data.Hashable (Hashable)
 import Data.IntSet qualified as IS
 import Data.IntSet.NonEmpty (NEIntSet)
 import Data.IntSet.NonEmpty qualified as NEIS
-import Data.List (sortOn)
+import Data.List (sortBy, sortOn)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Ord (Down (..))
 import Data.Semigroup (Max (..), Min (..))
 import Data.Tuple (swap)
 import Linear (V2 (..))
@@ -61,7 +60,7 @@ data RecognitionActiveStatus
 -- | A hook called from the centralized entity update function,
 -- 'Swarm.Game.Step.Util.updateEntityAt'.
 entityModified ::
-  (Monad s, Hashable a, Eq b) =>
+  (Monad s, Hashable a) =>
   GenericEntLocator s a ->
   CellModification a ->
   Cosmic Location ->
@@ -80,7 +79,7 @@ entityModified entLoader modification cLoc autoRecognizer oldRecognitionState = 
 -- and structure de-registration upon removal of an entity.
 -- Also handles atomic entity swaps.
 entityModifiedLoggable ::
-  (Monoid (f (SearchLog a)), Monad m, Hashable a, Eq b, Applicative f) =>
+  (Monoid (f (SearchLog a)), Monad m, Hashable a, Applicative f) =>
   RecognitionActiveStatus ->
   (Cosmic Location -> m (AtomicKeySymbol a)) ->
   CellModification a ->
@@ -155,7 +154,7 @@ getWorldRow entLoader registry cLoc (InspectionOffsets (Min offsetLeft) (Max off
 
 -- | This runs once per non-overlapping subset of found chunks
 checkChunksCombination ::
-  (Monoid (f (SearchLog a)), Applicative f, Monad m, Hashable a, Eq b) =>
+  (Monoid (f (SearchLog a)), Applicative f, Monad m, Hashable a) =>
   Cosmic Location ->
   InspectionOffsets ->
   NE.NonEmpty (RowChunkMatchingReference b a) ->
@@ -255,7 +254,7 @@ checkCandidateAgainstObservedChunks horizontalOffsets foundRowChunksLookup (RowC
 -- | Search for any structure row that happens to
 -- contain the placed entity.
 registerRowMatches ::
-  (Monoid (f (SearchLog a)), Applicative f, Monad s, Hashable a, Eq b) =>
+  (Monoid (f (SearchLog a)), Applicative f, Monad s, Hashable a) =>
   GenericEntLocator s a ->
   Cosmic Location ->
   AutomatonInfo b a ->
@@ -286,7 +285,7 @@ registerRowMatches entLoader cLoc (AutomatonInfo horizontalOffsets pwMatcher) re
   -- The largest structure (by area) shall win.
   -- Sort by decreasing order of preference
   -- (see the Ord instance of 'FoundStructure').
-  let rankedCandidates = sortOn Down unrankedCandidateStructures
+  let rankedCandidates = sortBy compareFoundStructure unrankedCandidateStructures
   tell . pure . FoundCompleteStructureCandidates $
     map getStructInfo rankedCandidates
 
