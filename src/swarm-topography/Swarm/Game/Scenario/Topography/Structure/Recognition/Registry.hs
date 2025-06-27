@@ -104,7 +104,6 @@ addFound fs@(PositionedStructure loc swg) (FoundRegistry byName byLoc) =
 -- So we just use the same sorting criteria as the one used to resolve recognition
 -- conflicts at entity placement time (see [STRUCTURE RECOGNIZER CONFLICT RESOLUTION]).
 populateStaticFoundStructures ::
-  (Eq a, Eq b) =>
   [FoundStructure b a] ->
   FoundRegistry b a
 populateStaticFoundStructures allFound =
