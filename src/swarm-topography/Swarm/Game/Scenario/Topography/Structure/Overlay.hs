@@ -28,7 +28,7 @@ data PositionedGrid a = PositionedGrid
   -- ^ location of the upper-left cell
   , gridContent :: Grid a
   }
-  deriving (Eq)
+  deriving (Eq, Functor, Foldable, Traversable)
 
 instance HasLocation (PositionedGrid a) where
   modifyLoc f (PositionedGrid originalLoc g) =
