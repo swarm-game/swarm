@@ -50,8 +50,8 @@ renderRedundancy = \case
 --    Warn if two opposite orientations were supplied.
 checkSymmetry ::
   Eq a =>
-  ExtractedArea b a ->
-  Either RedundantOrientations (SymmetryAnnotatedGrid (ExtractedArea b a))
+  ExtractedArea a b ->
+  Either RedundantOrientations (SymmetryAnnotatedGrid (ExtractedArea a b))
 checkSymmetry x@(ExtractedArea origObject originalRows) = do
   case symmetryType of
     FourFold ->

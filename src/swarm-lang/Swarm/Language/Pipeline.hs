@@ -23,6 +23,9 @@ module Swarm.Language.Pipeline (
   extractTCtx,
   extractReqCtx,
   typeErrToSystemFailure,
+
+  -- * Generic processing
+  Processable (..),
 ) where
 
 import Control.Algebra (Has, run)
@@ -147,3 +150,17 @@ extractReqCtx (Syntax _ t _ _) = extractReqCtxTerm t
         (extractReqCtx c1 <> extractReqCtx c2)
     SAnnotate t1 _ -> extractReqCtx t1
     _ -> mempty
+
+------------------------------------------------------------
+-- Generic processing of things that contain terms
+------------------------------------------------------------
+
+class Processable t where
+  process :: (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) => t Raw -> m (t Typed)
+  -- XXX should m include effects to save resulting SrcMap ??
+
+instance Processable Syntax where
+  process = undefined  -- XXX
+
+instance Processable Term where
+  process = undefined  -- XXX

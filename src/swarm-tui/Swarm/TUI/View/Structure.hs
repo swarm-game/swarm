@@ -41,7 +41,7 @@ import Swarm.Util (commaList)
 
 -- | Render a two-pane widget with structure selection on the left
 -- and single-structure details on the right.
-structureWidget :: AttributeMap -> GameState -> StructureInfo b Entity -> Widget n
+structureWidget :: AttributeMap -> GameState -> StructureInfo Entity b -> Widget n
 structureWidget aMap gs s =
   vBox
     [ hBox

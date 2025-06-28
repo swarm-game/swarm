@@ -81,6 +81,7 @@ import Swarm.Game.Location (Heading, Location, toHeading)
 import Swarm.Game.Robot.Walk
 import Swarm.Game.Universe
 import Swarm.Language.JSON ()
+import Swarm.Language.Pipeline (Processable (..))
 import Swarm.Language.Syntax (Phase (..), Syntax)
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Util.Lens (makeLensesExcluding)
@@ -148,6 +149,23 @@ data Robot (phase :: Phase) = Robot
   , _robotCreatedAt :: TimeSpec
   }
   deriving (Generic)
+
+instance Processable Robot where
+  process (Robot e d c l upd loc i p h m s sd a ra u ca) =
+    Robot e d c
+      <$> pure l
+      <*> pure upd
+      <*> pure loc
+      <*> pure i
+      <*> pure p
+      <*> pure h
+      <*> traverse process m
+      <*> pure s
+      <*> pure sd
+      <*> pure a
+      <*> pure ra
+      <*> pure u
+      <*> pure ca
 
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.

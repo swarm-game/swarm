@@ -18,7 +18,7 @@ import Swarm.Language.Syntax (Phase (..))
 import Swarm.TUI.Model.Name
 
 data StructureDisplay = StructureDisplay
-  { _structurePanelListWidget :: BL.List Name (StructureInfo (RecognizableStructureContent Typed) Entity)
+  { _structurePanelListWidget :: BL.List Name (StructureInfo Entity (RecognizableStructureContent Typed))
   -- ^ required for maintaining the selection/navigation
   -- state among list items
   , _structurePanelFocus :: FocusRing Name
