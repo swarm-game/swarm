@@ -35,7 +35,9 @@ import Brick.Widgets.Edit (Editor, applyEdit, editContentsL, handleEditorEvent)
 import Brick.Widgets.List (handleListEvent, listElements)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.TabularList.Grid qualified as BG
+import Control.Algebra (run)
 import Control.Applicative ((<|>))
+import Control.Carrier.Error.Either (runError)
 import Control.Category ((>>>))
 import Control.Lens as Lens
 import Control.Monad (forM_, unless, void, when)
@@ -56,6 +58,7 @@ import Data.Text.Zipper qualified as TZ
 import Data.Text.Zipper.Generic.Words qualified as TZ
 import Data.Vector qualified as V
 import Graphics.Vty qualified as V
+import Swarm.Failure (SystemFailure (..))
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec, FSuspend))
 import Swarm.Game.Entity hiding (empty)
@@ -80,11 +83,9 @@ import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Parser.Lex (reservedWords)
 import Swarm.Language.Parser.Util (showErrorPos)
-import Swarm.Language.Pipeline (processParsedTerm')
+import Swarm.Language.Pipeline (processParsedTermWithSrcMap)
 import Swarm.Language.Syntax hiding (Key)
-import Swarm.Language.Typecheck (
-  ContextualTypeErr (..),
- )
+import Swarm.Language.Types (Polytype)
 import Swarm.Language.Value (Value (VKey), emptyEnv, envTypes)
 import Swarm.Log
 import Swarm.Pretty (prettyString)
@@ -888,16 +889,17 @@ validateREPLForm s =
     CmdPrompt _
       | otherwise ->
           let env = fromMaybe emptyEnv $ s ^? gameState . baseEnv
+              theType :: Maybe Polytype
               (theType, errSrcLoc) = case readTerm' defaultParserConfig uinput of
                 Left err ->
                   let (((_y1, x1), (_y2, x2)), _msg) = showErrorPos err
                    in (Nothing, Left (SrcLoc x1 x2))
                 Right Nothing -> (Nothing, Right ())
-                -- XXX need to process this *without* loading imports??
-                --  how should import behave at the REPL?
-                Right (Just theTerm) -> case processParsedTerm' env (uinput, theTerm) of
-                  Right t -> (Just (t ^. sType), Right ())
-                  Left err -> (Nothing, Left (cteSrcLoc err))
+                Right (Just theTerm) ->
+                  case run . runError @SystemFailure $ processParsedTermWithSrcMap mempty env (uinput, theTerm) of
+                    Right t -> (Just (t ^. sType), Right ())
+                    Left (DoesNotTypecheck loc _) -> (Nothing, Left loc)
+                    _ -> (Nothing, Right ())
            in s
                 & uiGameplay . uiREPL . replValid .~ errSrcLoc
                 & uiGameplay . uiREPL . replType .~ theType
