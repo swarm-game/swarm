@@ -206,8 +206,8 @@ pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gMetric gsc
 initializeRecognition ::
   (Monad s, Hashable a) =>
   GenericEntLocator s a ->
-  StaticStructureInfo b a ->
-  s (RecognitionState b a)
+  StaticStructureInfo a b ->
+  s (RecognitionState a b)
 initializeRecognition entLoader structInfo = do
   foundIntact <- mapM checkIntactness allPlaced
 

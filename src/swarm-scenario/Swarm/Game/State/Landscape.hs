@@ -66,7 +66,7 @@ data Landscape phase = Landscape
   { _worldNavigation :: Navigation (M.Map SubworldName) Location
   , _multiWorld :: MultiWorld Int Entity
   , _terrainAndEntities :: TerrainEntityMaps
-  , _recognizerAutomatons :: RecognizerAutomatons (RecognizableStructureContent phase) Entity
+  , _recognizerAutomatons :: RecognizerAutomatons Entity (RecognizableStructureContent phase)
   , _worldScrollable :: Bool
   }
 
@@ -86,7 +86,7 @@ multiWorld :: Lens' (Landscape phase) (MultiWorld Int Entity)
 terrainAndEntities :: Lens' (Landscape phase) TerrainEntityMaps
 
 -- | Recognition engine for predefined structures
-recognizerAutomatons :: Lens' (Landscape phase) (RecognizerAutomatons (RecognizableStructureContent phase) Entity)
+recognizerAutomatons :: Lens' (Landscape phase) (RecognizerAutomatons Entity (RecognizableStructureContent phase))
 
 -- | Whether the world map is supposed to be scrollable or not.
 worldScrollable :: Lens' (Landscape phase) Bool

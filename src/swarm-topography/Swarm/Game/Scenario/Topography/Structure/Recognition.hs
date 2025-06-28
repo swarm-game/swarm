@@ -17,8 +17,8 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 -- |
 -- The type parameters, `b`, and `a`, correspond
 -- to 'Cell' and 'Entity', respectively.
-data RecognitionState b a = RecognitionState
-  { _foundStructures :: FoundRegistry b a
+data RecognitionState a b = RecognitionState
+  { _foundStructures :: FoundRegistry a b
   -- ^ Records the top-left corner of the found structure
   , _recognitionLog :: [SearchLog a]
   }
