@@ -64,9 +64,9 @@ entityModified ::
   GenericEntLocator s a ->
   CellModification a ->
   Cosmic Location ->
-  RecognizerAutomatons b a ->
-  RecognitionState b a ->
-  s (RecognitionState b a)
+  RecognizerAutomatons a b ->
+  RecognitionState a b ->
+  s (RecognitionState a b)
 entityModified entLoader modification cLoc autoRecognizer oldRecognitionState = do
   (val, accumulatedLogs) <-
     runWriterT $
@@ -84,9 +84,9 @@ entityModifiedLoggable ::
   (Cosmic Location -> m (AtomicKeySymbol a)) ->
   CellModification a ->
   Cosmic Location ->
-  RecognizerAutomatons b a ->
-  RecognitionState b a ->
-  WriterT (f (SearchLog a)) m (RecognitionState b a)
+  RecognizerAutomatons a b ->
+  RecognitionState a b ->
+  WriterT (f (SearchLog a)) m (RecognitionState a b)
 entityModifiedLoggable activeStatus entLoader modification cLoc autoRecognizer oldRecognitionState = do
   case modification of
     Add newEntity -> doAddition newEntity oldRecognitionState
@@ -129,7 +129,7 @@ entityModifiedLoggable activeStatus entLoader modification cLoc autoRecognizer o
 candidateEntityAt ::
   (Monad s, Hashable a) =>
   GenericEntLocator s a ->
-  FoundRegistry b a ->
+  FoundRegistry a b ->
   Cosmic Location ->
   s (AtomicKeySymbol a)
 candidateEntityAt entLoader registry cLoc = runMaybeT $ do
@@ -141,7 +141,7 @@ candidateEntityAt entLoader registry cLoc = runMaybeT $ do
 getWorldRow ::
   (Monad s, Hashable a) =>
   GenericEntLocator s a ->
-  FoundRegistry b a ->
+  FoundRegistry a b ->
   Cosmic Location ->
   InspectionOffsets ->
   s [AtomicKeySymbol a]
@@ -157,9 +157,9 @@ checkChunksCombination ::
   (Monoid (f (SearchLog a)), Applicative f, Monad m, Hashable a) =>
   Cosmic Location ->
   InspectionOffsets ->
-  NE.NonEmpty (RowChunkMatchingReference b a) ->
+  NE.NonEmpty (RowChunkMatchingReference a b) ->
   [Position (NE.NonEmpty a)] ->
-  WriterT (f (SearchLog a)) m [FoundStructure b a]
+  WriterT (f (SearchLog a)) m [FoundStructure a b]
 checkChunksCombination
   cLoc
   horizontalOffsets
@@ -205,8 +205,8 @@ checkCandidateAgainstObservedChunks ::
   Hashable e =>
   InspectionOffsets ->
   HM.HashMap (NE.NonEmpty e) NEIntSet ->
-  RowChunkMatchingReference b e ->
-  Either (ChunkMatchFailureReason e) (NE.NonEmpty (ChunkedRowMatch (ConsolidatedRowReferences b e) e))
+  RowChunkMatchingReference e b ->
+  Either (ChunkMatchFailureReason e) (NE.NonEmpty (ChunkedRowMatch (ConsolidatedRowReferences e b) e))
 checkCandidateAgainstObservedChunks horizontalOffsets foundRowChunksLookup (RowChunkMatchingReference r chunkPositionMap) =
   left (ChunkMatchFailureReason $ renderSharedNames r) $ do
     unless isKeysSubset . Left $
@@ -257,9 +257,9 @@ registerRowMatches ::
   (Monoid (f (SearchLog a)), Applicative f, Monad s, Hashable a) =>
   GenericEntLocator s a ->
   Cosmic Location ->
-  AutomatonInfo b a ->
-  FoundRegistry b a ->
-  WriterT (f (SearchLog a)) s (FoundRegistry b a)
+  AutomatonInfo a b ->
+  FoundRegistry a b ->
+  WriterT (f (SearchLog a)) s (FoundRegistry a b)
 registerRowMatches entLoader cLoc (AutomatonInfo horizontalOffsets pwMatcher) registry = do
   tell $ pure $ StartSearchAt cLoc horizontalOffsets
 

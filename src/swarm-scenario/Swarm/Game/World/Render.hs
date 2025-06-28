@@ -16,9 +16,9 @@ module Swarm.Game.World.Render (
 
 import Codec.Picture
 import Control.Applicative ((<|>))
-import Control.Carrier.Throw.Either (runThrow)
+import Control.Carrier.Error.Either (runError)
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Throw
+import Control.Effect.Error
 import Control.Lens (view, (^.))
 import Control.Monad.Extra (guarded)
 import Control.Monad.Logger
@@ -153,7 +153,7 @@ getDisplayGrid vc sLandscape ls maybeSize =
   firstScenarioWorld = NE.head $ view scenarioWorlds sLandscape
 
 getRenderableGridFromPath ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  (Has (Error SystemFailure) sig m, Has (Lift IO) sig m) =>
   RenderOpts ->
   FilePath ->
   m (ThumbnailRenderContext Typed)
@@ -225,7 +225,7 @@ renderImageHandleFailure opts result =
 
 renderScenarioPng :: RenderOpts -> FilePath -> IO ()
 renderScenarioPng opts fp = do
-  result <- runThrow $ getRenderableGridFromPath opts fp
+  result <- runError $ getRenderableGridFromPath opts fp
   img <- runStderrLoggingT $ renderImageHandleFailure opts result
   writePng (outputFilepath opts) img
 

@@ -27,7 +27,7 @@ module Swarm.App (
 import Brick
 import Brick.BChan
 import Control.Carrier.Lift (runM)
-import Control.Carrier.Throw.Either (runThrow)
+import Control.Carrier.Error.Either (runError)
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Exception (bracket, try)
 import Control.Lens (Setter', view, (%~), (?~), (^.))
@@ -93,7 +93,7 @@ appMain :: AppOpts -> IO ()
 appMain AppOpts {version = True} = showVersion
 appMain opts = do
   chan <- createChannel
-  res <- runM . runThrow $ initAppState opts (Just chan)
+  res <- runM . runError $ initAppState opts (Just chan)
   case res of
     Left err -> do
       T.hPutStrLn stderr (prettyText @SystemFailure err)
@@ -138,7 +138,7 @@ demoWeb = do
   let demoPort = 8080
   chan <- createChannel
   res <-
-    runM . runThrow $ initAppState (defaultAppOpts {userScenario = demoScenario}) (Just chan)
+    runM . runError $ initAppState (defaultAppOpts {userScenario = demoScenario}) (Just chan)
   case res of
     Left err -> T.putStrLn (prettyText @SystemFailure err)
     Right s -> do
