@@ -18,7 +18,7 @@ module Swarm.Failure (
   OrderFileWarning (..),
 ) where
 
-import Control.Carrier.Throw.Either (ThrowC (..), runThrow)
+import Control.Carrier.Error.Either (ErrorC (..), runError)
 import Control.Monad ((<=<))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -89,8 +89,8 @@ data SystemFailure
 ------------------------------------------------------------
 -- Basic error handling
 
-simpleErrorHandle :: ThrowC SystemFailure IO a -> IO a
-simpleErrorHandle = either (fail . prettyString) pure <=< runThrow
+simpleErrorHandle :: ErrorC SystemFailure IO a -> IO a
+simpleErrorHandle = either (fail . prettyString) pure <=< runError
 
 ------------------------------------------------------------
 -- Pretty-printing
