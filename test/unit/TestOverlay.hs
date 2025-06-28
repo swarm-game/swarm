@@ -165,11 +165,7 @@ mkOverlaySequenceTest f testLabel overlays expectedBaseLoc =
 
   eitherResultGrid = getGridFromMergedStructure <$> eitherResult
   eitherResult =
-    foldLayer
-      mempty
-      baseArea
-      overlays
-      []
+    foldLayer baseArea overlays
 
 getGridFromMergedStructure :: MergedStructure c -> PositionedGrid c
 getGridFromMergedStructure (MergedStructure g _ _) = g
