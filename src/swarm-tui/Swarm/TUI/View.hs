@@ -116,6 +116,7 @@ import Swarm.Game.World (Seed)
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Syntax
+import Swarm.Language.Text.Markdown (Document)
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Log
 import Swarm.Pretty (prettyText, prettyTextLine, prettyTextWidth)
@@ -272,7 +273,7 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
   drawDescription (SICollection _ _) = txtWrap " "
   drawDescription (SISingle (ScenarioWith s (ScenarioPath sPath))) =
     vBox
-      [ drawMarkdown (nonBlank (s ^. scenarioOperation . scenarioDescription))
+      [ drawMarkdown (s ^. scenarioOperation . scenarioDescription)
       , cached (ScenarioPreview sPath) $
           hCenter . padTop (Pad 1) . vLimit 6 $
             hLimitPercent 60 worldPeek
@@ -330,9 +331,6 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
         . BT.alignLeft 1
         . BT.table
         $ tableRows
-
-  nonBlank "" = " "
-  nonBlank t = t
 
 pairToList :: (a, a) -> [a]
 pairToList (x, y) = [x, y]
@@ -725,7 +723,7 @@ helpWidget (ToplevelConfigurationHelp mport keyConf) theSeed =
     vBox
       [ heading boldAttr "Colorization legend"
       , drawMarkdown
-          "In text, snippets of code like `3 + 4` or `scan down` will be colorized. Types like `Cmd Text`{=type} have a dedicated color. The names of an `entity`{=entity}, a `structure`{=structure}, and a `tag`{=tag} also each have their own color."
+          ("In text, snippets of code like `3 + 4` or `scan down` will be colorized. Types like `Cmd Text`{=type} have a dedicated color. The names of an `entity`{=entity}, a `structure`{=structure}, and a `tag`{=tag} also each have their own color." :: Document (Syntax Raw))
       ]
   helpKeys =
     vBox

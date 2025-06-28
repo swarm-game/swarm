@@ -188,7 +188,7 @@ data CompletionBuckets phase = CompletionBuckets
 
 deriving instance Show (SwarmType phase) => Show (CompletionBuckets phase)
 deriving instance FromJSON (CompletionBuckets Raw)
-deriving instance ToJSON (CompletionBuckets Raw)
+deriving instance ToJSON (SwarmType phase) => ToJSON (CompletionBuckets phase)
 
 -- Note we derive these lenses for `CompletionBuckets` but we do NOT
 -- export them; they are used only internally to this module.  In
@@ -228,7 +228,7 @@ makeLensesExcluding ['_completedIDs] ''ObjectiveCompletion
 
 deriving instance Show (SwarmType phase) => Show (ObjectiveCompletion phase)
 deriving instance FromJSON (ObjectiveCompletion Raw)
-deriving instance ToJSON (ObjectiveCompletion Raw)
+deriving instance ToJSON (SwarmType phase) => ToJSON (ObjectiveCompletion phase)
 
 -- | Initialize an objective completion tracking record from a list of
 --   (initially incomplete) objectives.
