@@ -346,7 +346,7 @@ data Discovery = Discovery
   , _knownEntities :: S.Set EntityName
   , _craftableDevices :: S.Set EntityName
   , _gameAchievements :: Map GameplayAchievement Attainment
-  , _structureRecognition :: RecognitionState (RecognizableStructureContent Typed) Entity
+  , _structureRecognition :: RecognitionState Entity (RecognizableStructureContent Typed)
   , _tagMembers :: Map Text (NonEmpty EntityName)
   }
 
@@ -373,7 +373,7 @@ craftableDevices :: Lens' Discovery (S.Set EntityName)
 gameAchievements :: Lens' Discovery (Map GameplayAchievement Attainment)
 
 -- | Recognizer for robot-constructed structures
-structureRecognition :: Lens' Discovery (RecognitionState (RecognizableStructureContent Typed) Entity)
+structureRecognition :: Lens' Discovery (RecognitionState Entity (RecognizableStructureContent Typed))
 
 -- | Map from tags to entities that possess that tag
 tagMembers :: Lens' Discovery (Map Text (NonEmpty EntityName))

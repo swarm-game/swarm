@@ -48,6 +48,7 @@ import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Definitions qualified as AD
 import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.JSON ()
+import Swarm.Language.Pipeline (Processable (..))
 import Swarm.Language.Syntax (Phase (..), SwarmType, Syntax)
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Util.Lens (concatFold, makeLensesExcluding, makeLensesNoSigs)
@@ -116,6 +117,18 @@ deriving instance Eq (SwarmType phase) => Eq (Objective phase)
 
 instance ToSample (Objective phase) where
   toSamples _ = SD.noSamples
+
+instance Processable Objective where
+  process (Objective g t c i o p h a) =
+    Objective
+      <$> traverse process g
+      <*> pure t
+      <*> process c
+      <*> pure i
+      <*> pure o
+      <*> pure p
+      <*> pure h
+      <*> pure a
 
 -- | An explanation of the goal of the objective, shown to the player
 --   during play.  It is represented as a list of paragraphs.

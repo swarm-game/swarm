@@ -28,6 +28,7 @@ import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.ProtoCell hiding (name)
 import Swarm.Game.Terrain
+import Swarm.Language.Pipeline (Processable (..))
 import Swarm.Language.Syntax (Phase (..))
 import Swarm.Util (quote, showT)
 import Swarm.Util.Erasable (Erasable (..), erasableToMaybe)
@@ -46,6 +47,9 @@ data PCell e phase = Cell
   , cellEntity :: Erasable e
   , cellRobots :: [IndexedRobot phase]
   }
+
+instance Processable (PCell e) where
+  process (Cell t e r) = Cell t e <$> (traverse . traverse) process r
 
 -- | A single cell in a world map, which contains a terrain value,
 --   and optionally an entity and robot.

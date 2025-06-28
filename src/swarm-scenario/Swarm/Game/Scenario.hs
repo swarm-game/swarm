@@ -62,7 +62,7 @@ import Control.Applicative ((<|>))
 import Control.Arrow ((&&&))
 import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Throw
+import Control.Effect.Error
 import Control.Lens hiding (from, (.=), (<.>))
 import Control.Monad (filterM, forM_, unless, (<=<))
 import Data.Aeson
@@ -103,6 +103,7 @@ import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Terrain
 import Swarm.Game.Universe
 import Swarm.Game.World.DSL (Seed, WorldMap, loadWorlds)
+import Swarm.Language.Pipeline (Processable (..))
 import Swarm.Language.Syntax (Phase (..), SwarmType, Syntax)
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Pretty (prettyText)
@@ -161,6 +162,15 @@ data ScenarioOperation (phase :: Phase) = ScenarioOperation
 
 deriving instance Show (SwarmType phase) => Show (ScenarioOperation phase)
 
+instance Processable ScenarioOperation where
+  process (ScenarioOperation c d o s r st) =
+    ScenarioOperation c
+      <$> traverse process d
+      <*> traverse process o
+      <*> traverse process s
+      <*> pure r
+      <*> pure st
+
 makeLensesNoSigs ''ScenarioOperation
 
 -- | A high-level description of the scenario, shown /e.g./ in the
@@ -196,9 +206,17 @@ data ScenarioLandscape (phase :: Phase) = ScenarioLandscape
   , _scenarioKnown :: Set EntityName
   , _scenarioWorlds :: NonEmpty (WorldDescription phase)
   , _scenarioNavigation :: Navigation (M.Map SubworldName) Location
-  , _scenarioStructures :: StaticStructureInfo (RecognizableStructureContent phase) Entity
+  , _scenarioStructures :: StaticStructureInfo Entity (RecognizableStructureContent phase)
   , _scenarioRobots :: [Robot phase]
   }
+
+instance Processable ScenarioLandscape where
+  process (ScenarioLandscape s a t c k w n st r) =
+    ScenarioLandscape s a t c k
+      <$> traverse process w
+      <*> pure n
+      <*> (traverse . traverse . traverse) process st
+      <*> traverse process r
 
 makeLensesNoSigs ''ScenarioLandscape
 
@@ -225,7 +243,7 @@ scenarioKnown :: Lens' (ScenarioLandscape phase) (Set EntityName)
 scenarioWorlds :: Lens' (ScenarioLandscape phase) (NonEmpty (WorldDescription phase))
 
 -- | Information required for structure recognition
-scenarioStructures :: Lens' (ScenarioLandscape phase) (StaticStructureInfo (RecognizableStructureContent phase) Entity)
+scenarioStructures :: Lens' (ScenarioLandscape phase) (StaticStructureInfo Entity (RecognizableStructureContent phase))
 
 -- | Waypoints and inter-world portals
 scenarioNavigation :: Lens' (ScenarioLandscape phase) (Navigation (M.Map SubworldName) Location)
@@ -392,6 +410,11 @@ instance FromJSONE ScenarioInputs (Scenario Raw) where
       Right x -> return x
       Left x -> failT [prettyText @LoadingFailure x]
 
+-- * Typechecking
+
+instance Processable Scenario where
+  process (Scenario m o l) = Scenario m <$> process o <*> process l
+
 -- * Loading scenarios
 
 getScenarioPath ::
@@ -408,7 +431,7 @@ getScenarioPath scenario = do
 --   to use.  This function is used if a specific scenario is
 --   requested on the command line.
 loadScenario ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  (Has (Error SystemFailure) sig m, Has (Lift IO) sig m) =>
   FilePath ->
   ScenarioInputs ->
   m (Scenario Typed, FilePath)
@@ -419,20 +442,16 @@ loadScenario scenario scenarioInputs = do
 
 -- | Load a scenario from a file.
 loadScenarioFile ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  (Has (Error SystemFailure) sig m, Has (Lift IO) sig m) =>
   ScenarioInputs ->
   FilePath ->
   m (Scenario Typed)
 loadScenarioFile scenarioInputs fileName = do
   raw <- withThrow adaptError . (liftEither <=< sendIO) $
     decodeFileEitherE scenarioInputs fileName
-  flerb raw
+  process raw
  where
   adaptError = AssetNotLoaded (Data Scenarios) fileName . CanNotParseYaml
-
--- XXX
-flerb :: Scenario Raw -> m (Scenario Typed)
-flerb = undefined
 
 -- | Load a single scenario from disk, first loading needed entity +
 --   recipe data.  This function should only be called in the case of
@@ -440,7 +459,7 @@ flerb = undefined
 --   documentation generation, scenario world rendering, etc.), not as
 --   part of the normal game code path.
 loadStandaloneScenario ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  (Has (Error SystemFailure) sig m, Has (Lift IO) sig m) =>
   FilePath ->
   m (Scenario Typed, GameStateInputs)
 loadStandaloneScenario fp = do
