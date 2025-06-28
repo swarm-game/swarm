@@ -168,7 +168,9 @@ updateUI = do
 
   -- If the game state indicates a redraw is needed, invalidate the
   -- world cache so it will be redrawn.
-  when (g ^. needsRedraw) $ invalidateCacheEntry WorldCache
+  --
+  -- XXX update this to redraw individual cells from 'dirtyCells'
+  when (g ^. needsRedraw || not (S.null $ g ^. dirtyCells)) $ invalidateCacheEntry WorldCache
 
   let fr = g ^. to focusedRobot
   inventoryUpdated <- Brick.zoom (playState . scenarioState) $ checkInventoryUpdated fr
