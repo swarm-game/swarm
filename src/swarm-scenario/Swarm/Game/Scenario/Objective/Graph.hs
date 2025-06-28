@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -25,7 +26,7 @@ import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Logic as L
-import Swarm.Language.Phase (Phase (Raw))
+import Swarm.Language.Syntax (SwarmType)
 import Swarm.Util.Graph (isAcyclicGraph)
 
 -- | This is only needed for constructing a Graph,
@@ -36,21 +37,23 @@ data ObjectiveId
     Ordinal Int
   deriving (Eq, Ord, Show, Generic, ToJSON)
 
-data GraphInfo = GraphInfo
+data GraphInfo phase = GraphInfo
   { actualGraph :: Graph
   , isAcyclic :: Bool
-  , sccInfo :: [SCC (Objective Raw)]
+  , sccInfo :: [SCC (Objective phase)]
   , nodeIDs :: [ObjectiveId]
   }
-  deriving (Show, Generic, ToJSON)
+  deriving (Generic)
 
-instance ToJSON (SCC (Objective Raw)) where
+deriving instance Show (SwarmType phase) => ToJSON (GraphInfo phase)
+
+instance Show (SwarmType phase) => ToJSON (SCC (Objective phase)) where
   toJSON = String . T.pack . show
 
 instance ToJSON Graph where
   toJSON = String . T.pack . show
 
-instance ToSample GraphInfo where
+instance ToSample (GraphInfo phase) where
   toSamples _ = SD.noSamples
 
 deriving instance Generic (BE.Signed ObjectiveLabel)
@@ -63,7 +66,7 @@ getDistinctConstants = Set.fromList . BE.constants . toBoolExpr
 -- This is necessary for enumerating all of the distinct
 -- nodes when constructing a Graph, as we treat a constant
 -- and its negation as distinct nodes.
-getNegatedIds :: [Objective Raw] -> Map ObjectiveLabel (Objective Raw)
+getNegatedIds :: [Objective phase] -> Map ObjectiveLabel (Objective phase)
 getNegatedIds objs =
   M.fromList $ mapMaybe f allConstants
  where
@@ -83,7 +86,7 @@ getNegatedIds objs =
     BE.Negative x -> Just x
     _ -> Nothing
 
-getObjectivesById :: [Objective Raw] -> Map ObjectiveLabel (Objective Raw)
+getObjectivesById :: [Objective phase] -> Map ObjectiveLabel (Objective phase)
 getObjectivesById objs =
   M.fromList $
     map swap $
@@ -94,7 +97,7 @@ getObjectivesById objs =
 -- the remaining.
 --
 -- Only necessary for constructing a "Graph".
-assignIds :: [Objective Raw] -> Map ObjectiveId (Objective Raw)
+assignIds :: [Objective phase] -> Map ObjectiveId (Objective phase)
 assignIds objs =
   unlabeledObjsMap <> labeledObjsMap
  where
@@ -105,7 +108,7 @@ assignIds objs =
   unlabeledObjs = filter (null . view objectiveId) objs
   unlabeledObjsMap = M.fromList $ zipWith (\x y -> (Ordinal x, y)) [0 ..] unlabeledObjs
 
-type Edges = [(Objective Raw, ObjectiveId, [ObjectiveId])]
+type Edges phase = [(Objective phase, ObjectiveId, [ObjectiveId])]
 
 -- | NOTE: Based strictly on the goal labels, the graph could
 -- potentially contain a cycle, if there exist
@@ -119,13 +122,13 @@ type Edges = [(Objective Raw, ObjectiveId, [ObjectiveId])]
 --
 -- To avoid a "cycle" in this circumstance, "A" needs to exist as a distinct node
 -- from "NOT A" in the graph.
-makeGraph :: Edges -> Graph
+makeGraph :: Edges phase -> Graph
 makeGraph edges =
   myGraph
  where
   (myGraph, _, _) = graphFromEdges edges
 
-makeGraphEdges :: [Objective Raw] -> Edges
+makeGraphEdges :: [Objective phase] -> Edges phase
 makeGraphEdges objectives =
   rootTuples <> negatedTuples
  where
@@ -136,7 +139,7 @@ makeGraphEdges objectives =
   f (k, v) = (v, k, maybe [] (map Label . g) $ v ^. objectivePrerequisite)
   g = Set.toList . getDistinctConstants . logic
 
-makeGraphInfo :: ObjectiveCompletion Raw -> GraphInfo
+makeGraphInfo :: ObjectiveCompletion phase -> GraphInfo phase
 makeGraphInfo oc =
   GraphInfo
     (makeGraph edges)
