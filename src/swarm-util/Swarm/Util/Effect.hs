@@ -45,12 +45,12 @@ throwToWarning m = do
 ignoreWarnings :: forall e m a. (Monoid e, Functor m) => AccumC e m a -> m a
 ignoreWarnings = evalAccum mempty
 
--- | Convert a fused-effects style computation using a @Throw e@
+-- | Convert a fused-effects style computation using an @Error e@
 --   constraint into an @ExceptT@ computation.  This is mostly a stub
 --   to convert from one style to the other while we are in the middle
 --   of incrementally converting.  Eventually this should not be needed.
-asExceptT :: ThrowC e m a -> ExceptT e m a
-asExceptT (ThrowC (ErrorC m)) = m
+asExceptT :: ErrorC e m a -> ExceptT e m a
+asExceptT (ErrorC m) = m
 
 -- | Log a single failure as a warning.
 warn :: Has (Accum (Seq w)) sig m => w -> m ()

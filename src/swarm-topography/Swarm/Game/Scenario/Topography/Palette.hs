@@ -36,7 +36,7 @@ data StructurePalette e = StructurePalette
   --   definitions (as opposed to just being part of paletteChars)
   , unPalette :: Map Char (SignpostableCell e)
   }
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show, Generic, Functor, Foldable, Traversable)
   deriving (Semigroup, Monoid) via Generically (StructurePalette e)
 
 instance (FromJSONE e a) => FromJSONE e (StructurePalette a) where

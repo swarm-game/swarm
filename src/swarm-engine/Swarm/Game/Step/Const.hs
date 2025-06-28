@@ -618,7 +618,7 @@ execConst runChildProg c vs s k = do
       [VText name] -> do
         registry <- use $ discovery . structureRecognition . foundStructures
         let maybeFoundStructures = M.lookup (StructureName name) $ foundByName registry
-            structures :: [((Cosmic Location, AbsoluteDir), StructureWithGrid (RecognizableStructureContent Typed) Entity)]
+            structures :: [((Cosmic Location, AbsoluteDir), StructureWithGrid Entity (RecognizableStructureContent Typed))]
             structures = maybe [] (NE.toList . NEM.toList) maybeFoundStructures
 
             bottomLeftCorner ((pos, _), struc) = topLeftCorner .+^ offsetHeight
