@@ -1145,6 +1145,7 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   RobotNamed -> [tyQ| Text -> Cmd Actor |]
   RobotNumbered -> [tyQ| Int -> Cmd Actor |]
   Knows -> [tyQ| Text -> Cmd Bool |]
+  Destroy -> [tyQ| Actor -> Cmd Unit |]
  where
   cmpBinT = [tyQ| a -> a -> Bool |]
   arithBinT = [tyQ| Int -> Int -> Int |]

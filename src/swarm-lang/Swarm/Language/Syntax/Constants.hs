@@ -321,6 +321,8 @@ data Const
     RobotNumbered
   | -- | Check if an entity is known.
     Knows
+  | -- | Destroy another robot.
+    Destroy
   deriving (Eq, Ord, Enum, Bounded, Data, Show, Generic, Hashable, FromJSON, ToJSON, FromJSONKey, ToJSONKey)
 
 instance PrettyPrec Const where
@@ -882,6 +884,7 @@ constInfo c = case c of
   RobotNamed -> command 1 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Find an actor by name."
   RobotNumbered -> command 1 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Find an actor by number."
   Knows -> command 1 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Check if the robot knows about an entity."
+  Destroy -> command 1 short $ shortDoc (Set.singleton $ Mutation $ RobotChange ExistenceChange) "Destroy another robot."
  where
   doc e b ls = ConstDoc e b (T.unlines ls)
   shortDoc e b = ConstDoc e b ""
