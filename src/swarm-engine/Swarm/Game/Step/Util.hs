@@ -71,7 +71,8 @@ adaptGameState f = do
   put newGS
   return newRecognizer
 
--- | Modify the entity (if any) at a given location.
+-- | Modify the entity (if any) at a given location, and mark the cell
+--   dirty (i.e. needing to be redrawn) if anything changes.
 updateEntityAt ::
   (Has (State Robot) sig m, Has (State GameState) sig m) =>
   Cosmic Location ->
@@ -94,6 +95,8 @@ updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
 
     pcr <- use $ pathCaching . pathCachingRobots
     mapM_ (revalidatePathCache cLoc modType) $ IM.toList pcr
+
+    flagRedraw cLoc
 
 -- * Capabilities
 
@@ -130,12 +133,6 @@ isJustOrFail' c a ts = a `isJustOr` cmdExn c ts
 -- | Create an exception about a command failing.
 cmdExn :: Const -> [Text] -> Exn
 cmdExn c parts = CmdFailed c (T.unwords parts) Nothing
-
--- * Some utility functions
-
--- | Set a flag telling the UI that the world needs to be redrawn.
-flagRedraw :: (Has (State GameState) sig m) => m ()
-flagRedraw = needsRedraw .= True
 
 -- * Randomness
 

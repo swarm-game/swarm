@@ -45,10 +45,12 @@ oneSecond = 1_000_000_000 -- one second = 10^9 nanoseconds
 
 runFramePlayState :: EventM Name PlayState ()
 runFramePlayState = Brick.zoom scenarioState $ do
-  -- Reset the needsRedraw flag.  While processing the frame and stepping the robots,
-  -- the flag will get set to true if anything changes that requires redrawing the
-  -- world (e.g. a robot moving or disappearing).
+  -- Reset the needsRedraw flag and the dirty cells.  While processing
+  -- the frame and stepping the robots, the flag will get set to true
+  -- if anything changes that requires redrawing the world (e.g. a
+  -- robot moving or disappearing). XXX
   gameState . needsRedraw .= False
+  gameState . dirtyCells .= mempty
 
   -- The logic here is taken from https://gafferongames.com/post/fix_your_timestep/ .
 

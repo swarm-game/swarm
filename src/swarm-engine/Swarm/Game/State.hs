@@ -50,7 +50,11 @@ module Swarm.Game.State (
   baseStore,
   messageNotifications,
   currentScenarioPath,
+  dirtyCells,
+  flagRedraw,
+  deleteRobotAndFlag,
   needsRedraw,
+  flagCompleteRedraw,
   replWorking,
   recalcViewCenterAndRedraw,
   viewingRegion,
@@ -83,7 +87,7 @@ import Control.Effect.Lift
 import Control.Effect.State (State)
 import Control.Effect.Throw
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
-import Control.Monad (forM, join)
+import Control.Monad (forM, forM_, join)
 import Control.Monad.Trans.State.Strict qualified as TS
 import Data.Aeson (ToJSON)
 import Data.Digest.Pure.SHA (sha1, showDigest)
@@ -97,6 +101,8 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.MonoidMap qualified as MM
 import Data.Sequence (Seq ((:<|)))
 import Data.Sequence qualified as Seq
+import Data.Set (Set)
+import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T (drop, take)
 import Data.Text.IO qualified as TIO
@@ -206,6 +212,7 @@ data GameState = GameState
   , _recipesInfo :: Recipes
   , _currentScenarioPath :: Maybe ScenarioPath
   , _landscape :: Landscape
+  , _dirtyCells :: Set (Cosmic Location)
   , _needsRedraw :: Bool
   , _gameControls :: GameControls
   , _messageInfo :: Messages
@@ -302,7 +309,10 @@ landscape :: Lens' GameState Landscape
 -- | Info about robots
 robotInfo :: Lens' GameState Robots
 
--- | Whether the world view needs to be redrawn.
+-- | Specific world cells that need to be redrawn.
+dirtyCells :: Lens' GameState (Set (Cosmic Location))
+
+-- | Whether the world view needs to be completely redrawn.
 needsRedraw :: Lens' GameState Bool
 
 -- | Controls, including REPL and key mapping
@@ -328,6 +338,19 @@ gameMetrics :: Lens' GameState (Maybe GameMetrics)
 ------------------------------------------------------------
 -- Utilities
 ------------------------------------------------------------
+
+-- | Set a flag telling the UI that a certain cell needs to be redrawn.
+flagRedraw :: (Has (State GameState) sig m) => Cosmic Location -> m ()
+flagRedraw c = dirtyCells %= S.insert c
+
+-- | Set a flag telling the UI that the world needs to be completely redrawn.
+flagCompleteRedraw :: (Has (State GameState) sig m) => m ()
+flagCompleteRedraw = needsRedraw .= True
+
+deleteRobotAndFlag :: Has (State GameState) sig m => RID -> m ()
+deleteRobotAndFlag rid = do
+  mloc <- zoomRobots $ deleteRobot rid
+  forM_ mloc flagRedraw
 
 -- | Get the notification list of messages from the point of view of focused robot.
 messageNotifications :: Getter GameState (Notifications LogEntry)
@@ -523,6 +546,7 @@ initGameState gsc =
     , _recipesInfo = initRecipeMaps gsc
     , _currentScenarioPath = Nothing
     , _landscape = initLandscape gsc
+    , _dirtyCells = S.empty
     , _needsRedraw = False
     , _gameControls = initGameControls
     , _messageInfo = initMessages
