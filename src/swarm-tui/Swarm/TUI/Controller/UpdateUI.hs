@@ -170,7 +170,8 @@ updateUI = do
   -- world cache so it will be redrawn.
   --
   -- XXX update this to redraw individual cells from 'dirtyCells'
-  when (g ^. needsRedraw || not (S.null $ g ^. dirtyCells)) $ invalidateCacheEntry WorldCache
+  let worldNeedsRedraw = g ^. needsRedraw || not (S.null $ g ^. dirtyCells)
+  when worldNeedsRedraw $ invalidateCacheEntry WorldCache
 
   let fr = g ^. to focusedRobot
   inventoryUpdated <- Brick.zoom (playState . scenarioState) $ checkInventoryUpdated fr
@@ -203,7 +204,7 @@ updateUI = do
       doRobotListUpdate dOps g
 
   let redraw =
-        g ^. needsRedraw
+        worldNeedsRedraw
           || inventoryUpdated
           || replUpdated
           || logUpdated
