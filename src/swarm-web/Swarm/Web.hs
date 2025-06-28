@@ -86,8 +86,9 @@ import Swarm.Game.State.Substate
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Universe (SubworldName)
 import Swarm.Language.Pipeline (processTermEither)
+import Swarm.Language.Syntax (Phase (Instantiated, Typed))
 import Swarm.Log (LogEntry)
-import Swarm.Pretty (prettyTextLine)
+import Swarm.Pretty (prettyTextLine, prettyText)
 import Swarm.TUI.Model hiding (SwarmKeyDispatchers (..))
 import Swarm.TUI.Model.Dialog.Goal
 import Swarm.TUI.Model.Repl (REPLHistItem, getSessionREPLHistoryItems, replHistory, replSeq)
@@ -108,15 +109,15 @@ import Witch (into)
 newtype RobotID = RobotID Int
 
 type SwarmAPI =
-  "robots" :> Get '[JSON] [Robot]
-    :<|> "robot" :> Capture "id" RobotID :> Get '[JSON] (Maybe Robot)
+  "robots" :> Get '[JSON] [Robot Instantiated]
+    :<|> "robot" :> Capture "id" RobotID :> Get '[JSON] (Maybe (Robot Instantiated))
     :<|> "robot" :> Capture "id" RobotID :> "log" :> StreamGet NewlineFraming JSON (SourceIO LogEntry)
     :<|> "goals" :> "prereqs" :> Get '[JSON] [PrereqSatisfaction]
-    :<|> "goals" :> "active" :> Get '[JSON] [Objective]
-    :<|> "goals" :> "graph" :> Get '[JSON] (Maybe GraphInfo)
+    :<|> "goals" :> "active" :> Get '[JSON] [Objective Typed]
+    :<|> "goals" :> "graph" :> Get '[JSON] (Maybe (GraphInfo Typed))
     :<|> "goals" :> "render" :> Get '[PlainText] T.Text
     :<|> "goals" :> "uigoal" :> Get '[JSON] GoalTracking
-    :<|> "goals" :> Get '[JSON] WinCondition
+    :<|> "goals" :> Get '[JSON] (WinCondition Typed)
     :<|> "navigation" :> Get '[JSON] (Navigation (M.Map SubworldName) Location)
     :<|> "recognize" :> "log" :> Get '[JSON] [SearchLog EntityName]
     :<|> "recognize" :> "found" :> Get '[JSON] [StructureLocation]
@@ -189,12 +190,12 @@ mkApp state events =
     :<|> mapViewHandler state
     :<|> runtimeLogHandler state
 
-robotsHandler :: IO AppState -> Handler [Robot]
+robotsHandler :: IO AppState -> Handler [Robot Instantiated]
 robotsHandler appStateRef = do
   appState <- liftIO appStateRef
   pure $ IM.elems $ appState ^. playState . scenarioState . gameState . robotInfo . robotMap
 
-robotHandler :: IO AppState -> RobotID -> Handler (Maybe Robot)
+robotHandler :: IO AppState -> RobotID -> Handler (Maybe (Robot Instantiated))
 robotHandler appStateRef (RobotID rid) = do
   appState <- liftIO appStateRef
   pure $ IM.lookup rid (appState ^. playState . scenarioState . gameState . robotInfo . robotMap)
@@ -206,14 +207,14 @@ prereqsHandler appStateRef = do
     WinConditions _winState oc -> return $ getSatisfaction oc
     _ -> return []
 
-activeGoalsHandler :: IO AppState -> Handler [Objective]
+activeGoalsHandler :: IO AppState -> Handler [Objective Typed]
 activeGoalsHandler appStateRef = do
   appState <- liftIO appStateRef
   case appState ^. playState . scenarioState . gameState . winCondition of
     WinConditions _winState oc -> return $ getActiveObjectives oc
     _ -> return []
 
-goalsGraphHandler :: IO AppState -> Handler (Maybe GraphInfo)
+goalsGraphHandler :: IO AppState -> Handler (Maybe (GraphInfo Typed))
 goalsGraphHandler appStateRef = do
   appState <- liftIO appStateRef
   return $ case appState ^. playState . scenarioState . gameState . winCondition of
@@ -232,7 +233,7 @@ uiGoalHandler appStateRef = do
   appState <- liftIO appStateRef
   return $ appState ^. playState . scenarioState . uiGameplay . uiDialogs . uiGoal . goalsContent
 
-goalsHandler :: IO AppState -> Handler WinCondition
+goalsHandler :: IO AppState -> Handler (WinCondition Typed)
 goalsHandler appStateRef = do
   appState <- liftIO appStateRef
   return $ appState ^. playState . scenarioState . gameState . winCondition
@@ -267,10 +268,11 @@ recogFoundHandler appStateRef = do
 
 codeRenderHandler :: Text -> Handler Text
 codeRenderHandler contents = do
-  return $ case processTermEither contents of
+  res <- liftIO $ processTermEither contents
+  pure $ case res of
     Right t ->
       into @Text . drawTree . fmap (T.unpack . prettyTextLine) . para Node $ t
-    Left x -> x
+    Left x -> prettyText x
 
 {- Note [How to stream back responses as we get results]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -304,7 +306,7 @@ runtimeLogHandler appStateRef = logHandler $ runtimeLogsGetter <$> appStateRef
 robotLogHandler :: IO AppState -> RobotID -> Handler (S.SourceT IO LogEntry)
 robotLogHandler appStateRef (RobotID rid) = logHandler $ getRobotLogs <$> appStateRef
  where
-  robotMapGetter :: Getter AppState (IM.IntMap Robot)
+  robotMapGetter :: Getter AppState (IM.IntMap (Robot Instantiated))
   robotMapGetter = playState . scenarioState . gameState . robotInfo . robotMap
   getRobotLogs :: AppState -> Maybe (Seq LogEntry)
   getRobotLogs = preview $ robotMapGetter . at rid . _Just . robotLog
