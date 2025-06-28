@@ -46,6 +46,7 @@ import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.Universe (SubworldName (DefaultRootSubworld))
 import Swarm.Game.World.DSL
+import Swarm.Language.Pipeline (Processable (..))
 import Swarm.Language.Syntax (Phase (Raw), Syntax)
 import Swarm.Language.Text.Markdown (Document, fromText)
 import Swarm.Pretty (prettyString)
@@ -70,6 +71,16 @@ data PWorldDescription e phase = WorldDescription
   , worldName :: SubworldName
   , worldProg :: Maybe (TTerm '[] (World CellVal))
   }
+
+instance Processable (PWorldDescription e) where
+  process (WorldDescription s p a n pl wn wp) =
+    WorldDescription s
+      <$> traverse process p
+      <*> (traverse . traverse) process a
+      <*> pure n
+      <*> pure pl
+      <*> pure wn
+      <*> pure wp
 
 type WorldDescription = PWorldDescription Entity
 
