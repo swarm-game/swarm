@@ -1,6 +1,7 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -17,7 +18,18 @@
 -- This could be avoided by using a hypothetical @import@ command instead and parsing
 -- the required files at the time of declaration.
 -- See <https://github.com/swarm-game/swarm/issues/495>.
-module Swarm.Game.Step where
+module Swarm.Game.Step (
+  HasGameStepState,
+
+  -- * Step functions
+  gameTick,
+  finishGameTick,
+
+  -- ** Helper functions for unit tests
+  hypotheticalRobot,
+  runCESK,
+  stepCESK,
+) where
 
 import Control.Carrier.Error.Either (ErrorC, runError)
 import Control.Carrier.State.Lazy
@@ -41,7 +53,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Linear (zero)
 import Prettyprinter (pretty)
-import Swarm.Effect as Effect (Time, getNow)
+import Swarm.Effect as Effect (Time, getNow, measureCpuTimeInSec)
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
 import Swarm.Game.Cosmetic.Display
@@ -74,53 +86,69 @@ import Swarm.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Util hiding (both)
 import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec)
+import System.Metrics.Counter qualified as Counter
+import System.Metrics.Distribution qualified as Distribution
 import Witch (From (from))
 import Prelude hiding (lookup)
+
+-- | GameState with support for IO and Time effect
+type HasGameStepState sig m = (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m)
 
 -- | The main function to do one game tick.
 --
 --   Note that the game may be in 'RobotStep' mode and not finish
 --   the tick. Use the return value to check whether a full tick happened.
-gameTick :: HasGameStepState sig m => m Bool
-gameTick = do
-  time <- use $ temporal . ticks
-  zoomRobots $ wakeUpRobotsDoneSleeping time
-  active <- use $ robotInfo . activeRobots
-  focusedRob <- use $ robotInfo . focusedRobotID
+gameTick :: forall m sig. HasGameStepState sig m => m Bool
+gameTick = measureCpuTimeInSec runTick >>= updateMetrics
+ where
+  updateMetrics :: (Double, b) -> m b
+  updateMetrics (t, res) =
+    use gameMetrics >>= \case
+      Just metrics -> do
+        sendIO $ Counter.inc metrics.tickCounter
+        sendIO $ Distribution.add metrics.tickDistribution t
+        pure res
+      Nothing -> pure res
+  runTick :: m Bool
+  runTick = do
+    time <- use $ temporal . ticks
+    zoomRobots $ wakeUpRobotsDoneSleeping time
+    active <- use $ robotInfo . activeRobots
+    focusedRob <- use $ robotInfo . focusedRobotID
 
-  ticked <-
-    use (temporal . gameStep) >>= \case
-      WorldTick -> do
-        runRobotIDs active
-        temporal . ticks %= addTicks 1
-        pure True
-      RobotStep ss -> singleStep ss focusedRob active
+    ticked <-
+      use (temporal . gameStep) >>= \case
+        WorldTick -> do
+          runRobotIDs active
+          temporal . ticks %= addTicks 1
+          pure True
+        RobotStep ss -> singleStep ss focusedRob active
 
-  -- See if the base is finished with a computation, and if so, record
-  -- the result in the game state so it can be displayed by the REPL;
-  -- also save the current store into the robotContext so we can
-  -- restore it the next time we start a computation.
-  mr <- use (robotInfo . robotMap . at 0)
-  forM_ mr $ \r -> do
-    res <- use $ gameControls . replStatus
-    case res of
-      REPLWorking ty Nothing -> forM_ (getResult r) $ \v ->
-        gameControls . replStatus .= REPLWorking ty (Just v)
-      _otherREPLStatus -> pure ()
+    -- See if the base is finished with a computation, and if so, record
+    -- the result in the game state so it can be displayed by the REPL;
+    -- also save the current store into the robotContext so we can
+    -- restore it the next time we start a computation.
+    mr <- use (robotInfo . robotMap . at 0)
+    forM_ mr $ \r -> do
+      res <- use $ gameControls . replStatus
+      case res of
+        REPLWorking ty Nothing -> forM_ (getResult r) $ \v ->
+          gameControls . replStatus .= REPLWorking ty (Just v)
+        _otherREPLStatus -> pure ()
 
-  -- Possibly update the view center.
-  modify recalcViewCenterAndRedraw
+    -- Possibly update the view center.
+    modify recalcViewCenterAndRedraw
 
-  when ticked $ do
-    -- On new tick see if the winning condition for the current objective is met.
-    wc <- use winCondition
-    case wc of
-      WinConditions winState oc -> do
-        g <- get @GameState
-        em <- use $ landscape . terrainAndEntities . entityMap
-        hypotheticalWinCheck em g winState oc
-      _ -> pure ()
-  return ticked
+    when ticked $ do
+      -- On new tick see if the winning condition for the current objective is met.
+      wc <- use winCondition
+      case wc of
+        WinConditions winState oc -> do
+          g <- get @GameState
+          em <- use $ landscape . terrainAndEntities . entityMap
+          hypotheticalWinCheck em g winState oc
+        _ -> pure ()
+    return ticked
 
 -- | Finish a game tick in progress and set the game to 'WorldTick' mode afterwards.
 --
@@ -149,9 +177,6 @@ insertBackRobot rn rob = do
             | otherwise -> sleepUntil rn wakeUpTime
           Nothing ->
             unless (isActive rob) (sleepForever rn)
-
--- | GameState with support for IO and Time effect
-type HasGameStepState sig m = (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m)
 
 -- | Run a set of robots - this is used to run robots before/after the focused one.
 --

@@ -388,7 +388,8 @@ scenarioToAppState ::
   m ()
 scenarioToAppState siPair@(ScenarioWith scene p) lp = do
   rs <- use runtimeState
-  gs <- liftIO $ scenarioToGameState (ScenarioWith scene $ Just p) lp $ rs ^. stdGameConfigInputs
+  prevMetric <- use $ playState . scenarioState . gameState . gameMetrics
+  gs <- liftIO $ scenarioToGameState (ScenarioWith scene $ Just p) lp prevMetric rs
   playState . scenarioState . gameState .= gs
 
   curTime <- liftIO $ getTime Monotonic

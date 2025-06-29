@@ -142,7 +142,6 @@ runFrameTicks dt = do
 runGameTickUI :: EventM Name AppState ()
 runGameTickUI = do
   Brick.zoom playState runGameTick
-  -- TODO: add to tick millisecond distribution
   void updateUI
 
 updateAchievements :: EventM Name PlayState ()

@@ -32,6 +32,7 @@ module Swarm.Game.State (
   landscape,
   robotInfo,
   pathCaching,
+  gameMetrics,
 
   -- ** GameState initialization
   initGameState,
@@ -71,6 +72,9 @@ module Swarm.Game.State (
   contentAt,
   zoomWorld,
   zoomRobots,
+
+  -- * Re-exports
+  module GameMetrics,
 ) where
 
 import Control.Carrier.State.Lazy qualified as Fused
@@ -109,6 +113,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Scenario.Status
 import Swarm.Game.State.Config
+import Swarm.Game.State.GameMetrics as GameMetrics
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
@@ -204,6 +209,7 @@ data GameState = GameState
   , _gameControls :: GameControls
   , _messageInfo :: Messages
   , _completionStatsSaved :: Bool
+  , _gameMetrics :: Maybe GameMetrics
   }
 
 makeLensesNoSigs ''GameState
@@ -314,6 +320,9 @@ messageInfo :: Lens' GameState Messages
 --   after completing it (or even if the user stays in the completion
 --   menu for a while before quitting; see #1932).
 completionStatsSaved :: Lens' GameState Bool
+
+-- | Metrics tracked for the Swarm Engine. See 'RuntimeState' metrics store.
+gameMetrics :: Lens' GameState (Maybe GameMetrics)
 
 ------------------------------------------------------------
 -- Utilities
@@ -517,6 +526,7 @@ initGameState gsc =
     , _gameControls = initGameControls
     , _messageInfo = initMessages
     , _completionStatsSaved = False
+    , _gameMetrics = Nothing
     }
 
 -- | Provide an entity accessor via the MTL transformer State API.
