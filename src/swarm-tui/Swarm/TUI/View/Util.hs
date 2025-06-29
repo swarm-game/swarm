@@ -193,7 +193,7 @@ drawLabeledTerrainSwatch aMap tm a =
  where
   tile =
     padRight (Pad 1)
-      . renderTexel
+      . texelWidget
       . maybe mempty (terrainTexel aMap)
       $ M.lookup a (terrainByName tm)
 
@@ -275,7 +275,7 @@ maybeScroll vpName contents =
 drawLabelledEntityName :: AttributeMap -> Entity -> Widget n
 drawLabelledEntityName aMap e =
   hBox
-    [ padRight (Pad 2) (renderTexel (E.renderEntity aMap (const False) True e))
+    [ padRight (Pad 2) (texelWidget (E.renderEntity aMap (const False) True e))
     , txt (e ^. entityName)
     ]
 

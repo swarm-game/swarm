@@ -64,6 +64,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
+import Graphics.Vty qualified as V
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Constant
 import Swarm.Game.Cosmetic.Color (AttributeMap)
@@ -299,7 +300,7 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
     aMap = s ^. scenarioLandscape . scenarioCosmetics
     ri = RenderingInput theWorlds entIsKnown tm aMap
 
-    renderCoord = renderTexel . renderBaseLoc (WorldOverdraw False mempty) ri
+    renderCoord = texelImage V.defaultStyleMask . renderBaseLoc (WorldOverdraw False mempty) ri
     worldPeek = worldWidget renderCoord vc
 
     firstRow =
@@ -545,16 +546,16 @@ drawGameUI s =
 drawWorldCursorInfo :: WorldOverdraw -> GameState -> AttributeMap -> Cosmic Coords -> Widget Name
 drawWorldCursorInfo worldEditor g aMap cCoords =
   case getStatic g coords of
-    Just s -> renderTexel $ renderStatic s
+    Just s -> texelWidget $ renderStatic s
     Nothing -> hBox $ tileMemberWidgets ++ [coordsWidget]
  where
   Cosmic _ coords = cCoords
   coordsWidget = str $ renderCoordsString $ fmap coordsToLoc cCoords
 
   nonEmptyTexel t = if texelIsEmpty t then Nothing else Just t
-  mEntity = renderTexel <$> nonEmptyTexel (renderEntityCell worldEditor ri cCoords)
-  mRobot = renderTexel <$> nonEmptyTexel (renderRobotCell aMap g cCoords)
-  terrain = renderTexel $ renderTerrainCell worldEditor ri cCoords
+  mEntity = texelWidget <$> nonEmptyTexel (renderEntityCell worldEditor ri cCoords)
+  mRobot = texelWidget <$> nonEmptyTexel (renderRobotCell aMap g cCoords)
+  terrain = texelWidget $ renderTerrainCell worldEditor ri cCoords
 
   tileMemberWidgets = map (padRight $ Pad 1) . (++ [terrain, txt "at"]) $
     case (mRobot, mEntity) of
@@ -1063,7 +1064,7 @@ drawKeyCmd keycmd =
 
 -- | Compare to: 'Swarm.Util.Content.getMapRectangle'
 worldWidget ::
-  (Cosmic Coords -> Widget n) ->
+  (Cosmic Coords -> V.Image) ->
   -- | view center
   Cosmic Location ->
   Widget n
@@ -1074,7 +1075,7 @@ worldWidget renderCoord gameViewCenter = Widget Fixed Fixed $
         h = ctx ^. availHeightL
         vr = viewingRegion gameViewCenter (fromIntegral w, fromIntegral h)
         ixs = range $ vr ^. planar
-    render . vBox . map hBox . chunksOf w . map (renderCoord . Cosmic (vr ^. subworld)) $ ixs
+    render . raw . V.vertCat . map V.horizCat . chunksOf w . map (renderCoord . Cosmic (vr ^. subworld)) $ ixs
 
 -- | Draw the current world view.
 drawWorldPane :: UIGameplay -> GameState -> Widget Name
@@ -1084,9 +1085,7 @@ drawWorldPane ui g =
     . reportExtent WorldExtent
     -- Set the clickable request after the extent to play nice with the cache
     . clickable (FocusablePanel WorldPanel)
-    $ worldWidget renderCoord (g ^. robotInfo . viewCenter)
- where
-  renderCoord = drawLoc ui g
+    $ worldWidget (locImage ui g) (g ^. robotInfo . viewCenter)
 
 ------------------------------------------------------------
 -- Robot inventory panel
@@ -1107,7 +1106,7 @@ drawRobotPanel s
           details =
             [ txt (r ^. robotName)
             , padLeft (Pad 2) . str . renderCoordsString $ r ^. robotLocation
-            , padLeft (Pad 2) $ renderTexel (renderRobot aMap r)
+            , padLeft (Pad 2) $ texelWidget (renderRobot aMap r)
             ]
        in padBottom Max $
             vBox

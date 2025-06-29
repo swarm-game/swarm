@@ -260,7 +260,7 @@ drawRobotGridCell uig g _foc (WdthD widthDef) ctx rid =
       Just r -> case col of
         ColName -> padRight Max $ nameWidget r
         ColAge -> hCenter $ ageWidget r
-        ColPos -> hCenter $ locWidget r
+        ColPos -> hCenter $ posWidget r
         ColItems -> padLeft Max $ rInvCount r
         ColStatus -> hCenter $ statusWidget r
         ColActns -> padLeft Max . showW $ r ^. activityCounts . tangibleCommandCount
@@ -287,7 +287,7 @@ drawRobotGridCell uig g _foc (WdthD widthDef) ctx rid =
   nameWidget :: Robot -> Widget Name
   nameWidget r =
     hBox
-      [ renderTexel (renderRobot aMap r)
+      [ texelWidget (renderRobot aMap r)
       , highlightSystem r . txt $ " " <> r ^. robotName
       ]
 
@@ -309,12 +309,12 @@ drawRobotGridCell uig g _foc (WdthD widthDef) ctx rid =
   rLog :: Robot -> Widget Name
   rLog r = str $ if r ^. robotLogUpdated then "x" else " "
 
-  locWidget :: Robot -> Widget Name
-  locWidget r = hBox [worldCell, str $ " " <> locStr]
+  posWidget :: Robot -> Widget Name
+  posWidget r = hBox [worldCell, str $ " " <> locStr]
    where
     rCoords = fmap locToCoords rLoc
     rLoc = r ^. robotLocation
-    worldCell = drawLoc uig g rCoords
+    worldCell = locWidget uig g rCoords
     locStr = renderCoordsString rLoc
 
   statusWidget :: Robot -> Widget Name

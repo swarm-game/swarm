@@ -35,38 +35,55 @@ import Swarm.Language.Syntax.Direction (AbsoluteDir (..))
 import Swarm.TUI.Editor.Masking
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Util qualified as EU
-import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.Static
-import Swarm.Util (applyWhen)
 import Swarm.Util.Content (getContentAt)
 
--- | Render a texel as a UI widget.
-renderTexel :: Texel TrueColor -> Widget n
-renderTexel t =
+-- | Render a texel as a Vty Image.
+texelImage :: V.Style -> Texel TrueColor -> V.Image
+texelImage sty t =
+  let (mfg, mbg) = getTexelData t
+      displayChar = maybe ' ' fst mfg
+      fga = maybe V.Default (V.SetTo . mkBrickColor . snd) mfg
+      bga = maybe V.Default (V.SetTo . mkBrickColor) mbg
+      attr = V.Attr V.Default fga bga V.Default
+   in V.char (V.withStyle attr sty) displayChar
+
+-- | Render a texel as a brick Widget.
+--
+--   Note this is not the same as 'raw . texelImage' because that
+--   would render it with absolute FG and BG colors, without taking
+--   into account the current default brick attribute.  Doing it this
+--   way allows e.g. a background color to show through when the texel
+--   widget is the currently selected item in a list.
+texelWidget :: Texel TrueColor -> Widget n
+texelWidget t =
   let (mfg, mbg) = getTexelData t
       displayChar = maybe ' ' fst mfg
       setFG = maybe id (\(_, c) -> modifyDefAttr (`V.withForeColor` mkBrickColor c)) mfg
       setBG = maybe id (\c -> modifyDefAttr (`V.withBackColor` mkBrickColor c)) mbg
    in setBG . setFG $ str [displayChar]
 
--- | Render a single cell in the world.
-drawLoc :: UIGameplay -> GameState -> Cosmic Coords -> Widget Name
-drawLoc ui g cCoords@(Cosmic _ coords) =
+-- | Render a single cell in the world as a Vty Image.
+locImage :: UIGameplay -> GameState -> Cosmic Coords -> V.Image
+locImage ui g cCoords@(Cosmic _ coords) =
   if shouldHideWorldCell ui coords
-    then str " "
-    else boldStructure drawnCell
+    then texelImage V.defaultStyleMask mempty
+    else texelImage structureStyle $ renderLoc showRobots we g aMap cCoords
  where
   showRobots = ui ^. uiShowRobots
   we = ui ^. uiWorldEditor . worldOverdraw
   aMap = ui ^. uiAttributeMap
-  drawnCell = renderTexel $ renderLoc showRobots we g aMap cCoords
 
-  boldStructure = applyWhen isStructure $ modifyDefAttr (`V.withStyle` V.bold)
+  structureStyle = if isStructure then V.bold else V.defaultStyleMask
    where
     sMap = foundByLocation $ g ^. discovery . structureRecognition . foundStructures
     isStructure = M.member (coordsToLoc <$> cCoords) sMap
+
+-- | Render a single cell in the world as a brick Widget.
+locWidget :: UIGameplay -> GameState -> Cosmic Coords -> Widget n
+locWidget ui g coords = raw (locImage ui g coords)
 
 -- | Subset of the game state needed to render the world
 data RenderingInput = RenderingInput
