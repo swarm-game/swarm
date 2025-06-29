@@ -31,6 +31,7 @@ import Control.Lens (Setter', view, (%~), (?~), (^.))
 import Control.Monad (forever, void, when)
 import Control.Monad.IO.Class (liftIO)
 import Data.IORef (IORef, modifyIORef, newIORef, readIORef, writeIORef)
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import GitHash (GitInfo)
@@ -134,7 +135,7 @@ defaultMetrics = 6543
 startMetricsThread :: Maybe Int -> Store -> IO (Either String Int)
 startMetricsThread (Just 0) _ = pure $ Left "Metrics API disabled."
 startMetricsThread mPort store = do
-  let p = maybe 6543 id mPort
+  let p = fromMaybe 6543 mPort
   _ <- WaiMetrics.forkServerWith store "localhost" p
   pure $ Right p
 
