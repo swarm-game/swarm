@@ -740,6 +740,7 @@ library swarm-engine
     Swarm.Game.Scenario.Topography.Navigation.Util
     Swarm.Game.ScenarioInfo
     Swarm.Game.State
+    Swarm.Game.State.GameMetrics
     Swarm.Game.State.Initialize
     Swarm.Game.State.Robot
     Swarm.Game.State.Runtime

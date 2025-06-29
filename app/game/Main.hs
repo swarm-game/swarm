@@ -72,6 +72,7 @@ cliParser =
     cheatMode <- cheat
     colorMode <- color
     userWebPort <- webPort
+    userMetricsPort <- metricsPort
     -- ApplicativeDo does not give Monad powers, so cheat is added here
     return $ addToDebug cheatMode $ AppOpts {..}
 
@@ -119,6 +120,17 @@ cliParser =
             <> metavar "PORT"
             <> help ("Set the web service port (or disable it with 0). Default to " <> show defaultPort <> ".")
         )
+
+  metricsPort :: Parser (Maybe Int)
+  metricsPort =
+    optional $
+      option
+        auto
+        ( long "metrics"
+            <> metavar "PORT"
+            <> help ("Set the metrics port (or disable it with 0). Default to " <> show defaultPort <> ".")
+        )
+
   scenario :: Parser (Maybe String)
   scenario = optional $ strOption (long "scenario" <> short 'i' <> metavar "FILE" <> help "Name of an input scenario to load")
   run :: Parser (Maybe RunOpts)
