@@ -56,6 +56,7 @@ import Swarm.Game.State.Robot (
 import Swarm.Game.State.Runtime (
   RuntimeState,
   eventLog,
+  metrics,
   stdGameConfigInputs,
  )
 import Swarm.Game.State.Substate (
@@ -86,6 +87,7 @@ import Swarm.Util (applyWhen, findAllWithExt)
 import Swarm.Util.RingBuffer qualified as RB
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.FilePath (splitDirectories)
+import System.Metrics qualified as Metrics (Store, newStore)
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.ExpectedFailure (expectFailBecause)
@@ -539,7 +541,13 @@ testScenarioSolutions ps =
     (GameState -> Assertion) ->
     TestTree
   testSolution' s p shouldCheckBadErrors verify = testCase p $ do
-    out <- runM . runThrow @SystemFailure $ constructAppState ps (defaultAppOpts {userScenario = Just p}) Nothing
+    cleanStore <- Metrics.newStore
+    out <-
+      runM . runThrow @SystemFailure $
+        constructAppState
+          (resetMetrics cleanStore ps)
+          (defaultAppOpts {userScenario = Just p})
+          Nothing
     case out of
       Left err -> assertFailure $ prettyString err
       Right appState -> case appState ^. playState . scenarioState . gameState . winSolution of
@@ -567,6 +575,11 @@ testScenarioSolutions ps =
 
   testTutorialSolution t f = testSolution' t f CheckForBadErrors tutorialHasLog
   testTutorialSolution' t f s v = testSolution' t f s $ \g -> tutorialHasLog g >> v g
+
+resetMetrics :: Metrics.Store -> PersistentState -> PersistentState
+resetMetrics s (PersistentState r u k p) =
+  let newMetrics = metrics .~ s
+   in PersistentState (newMetrics r) u k p
 
 noBadErrors :: GameState -> Either T.Text ()
 noBadErrors g =

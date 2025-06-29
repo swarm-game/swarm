@@ -30,7 +30,7 @@ import Swarm.Game.Scenario.Scoring.CodeSize (codeMetricsFromSyntax)
 import Swarm.Game.Scenario.Status (ScenarioWith (..), emptyLaunchParams)
 import Swarm.Game.State
 import Swarm.Game.State.Initialize (scenarioToGameState)
-import Swarm.Game.State.Runtime (RuntimeOptions (..), initGameStateConfig, initScenarioInputs, pauseOnObjectiveCompletion)
+import Swarm.Game.State.Runtime (RuntimeOptions (..), initRuntimeState, initScenarioInputs, pauseOnObjectiveCompletion, stdGameConfigInputs)
 import Swarm.Game.State.Substate (initState, seed)
 import Swarm.Game.Step.Validate (playUntilWin)
 import Swarm.Language.Pipeline
@@ -179,21 +179,21 @@ gamestateFromScenarioText ::
   LBS.ByteString ->
   ExceptT ScenarioInstantiationFailure IO (GameState, Scenario)
 gamestateFromScenarioText content = do
-  gsc <-
+  rs <-
     withExceptT (ScenarioEnvironmentFailure . ContextInitializationFailure)
       . ExceptT
       . runThrow
       . evalAccum (mempty :: Seq SystemFailure)
-      . initGameStateConfig
+      . initRuntimeState
       $ RuntimeOptions
         { startPaused = False
         , pauseOnObjectiveCompletion = False
         , loadTestScenarios = False
         }
 
-  let scenarioInputs = gsiScenarioInputs $ initState gsc
+  let scenarioInputs = gsiScenarioInputs . initState $ rs ^. stdGameConfigInputs
   scenarioObject <- initScenarioObject scenarioInputs content
-  gs <- liftIO $ scenarioToGameState (ScenarioWith scenarioObject Nothing) emptyLaunchParams gsc
+  gs <- liftIO $ scenarioToGameState (ScenarioWith scenarioObject Nothing) emptyLaunchParams Nothing rs
   return (gs, scenarioObject)
 
 verifySolution ::
