@@ -1304,6 +1304,7 @@ test-suite swarm-integration
     stan-config, common, ghc2021-extensions,
     base,
     containers,
+    ekg-core,
     filepath,
     fused-effects,
     lens,
