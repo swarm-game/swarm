@@ -29,6 +29,9 @@ module Swarm.Game.Step (
   hypotheticalRobot,
   runCESK,
   stepCESK,
+
+  -- ** Debugging
+  traceLogShow,
 ) where
 
 import Control.Carrier.Error.Either (ErrorC, runError)
