@@ -15,6 +15,9 @@ module Swarm.App (
   appMain,
   EventHandler,
 
+  -- * Metrics
+  defaultMetrics,
+
   -- * Demo web
   demoWeb,
 ) where
@@ -124,6 +127,9 @@ demoWeb = do
         (writeBChan chan)
  where
   demoScenario = Just "./data/scenarios/Testing/475-wait-one.yaml"
+
+defaultMetrics :: Int
+defaultMetrics = 6543
 
 startMetricsThread :: Maybe Int -> Store -> IO (Either String Int)
 startMetricsThread (Just 0) _ = pure $ Left "Metrics API disabled."

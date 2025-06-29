@@ -16,7 +16,7 @@ import Data.Text.IO qualified as T
 import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Options.Applicative.Help hiding (color, fullDesc)
-import Swarm.App (appMain)
+import Swarm.App (appMain, defaultMetrics)
 import Swarm.Language.Format
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Parser.Core (LanguageVersion (..))
@@ -128,7 +128,7 @@ cliParser =
         auto
         ( long "metrics"
             <> metavar "PORT"
-            <> help ("Set the metrics port (or disable it with 0). Default to " <> show defaultPort <> ".")
+            <> help ("Set the metrics port (or disable it with 0). Default to " <> show defaultMetrics <> ".")
         )
 
   scenario :: Parser (Maybe String)
