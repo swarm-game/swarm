@@ -9,29 +9,31 @@
 --
 -- Loading Swarm modules from disk or network, recursively loading
 -- any imports.
-module Swarm.Language.Load (
-  dirToFilePath,
-  locToFilePath,
-  resolveImportLoc,
-  Module (..),
-  SourceMap,
-  buildSourceMap,
-  load,
-  loadWith,
-) where
+module Swarm.Language.Load where
+-- (
+--   dirToFilePath,
+--   locToFilePath,
+--   resolveImportLoc,
+--   Module (..),
+--   SourceMap,
+--   buildSourceMap,
+--   load,
+--   loadWith,
+-- ) where
 
 import Control.Algebra (Has)
-import Control.Carrier.State.Strict (execState)
+import Control.Carrier.Accum.Strict (runAccum)
+import Control.Effect.Accum (Accum)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.State (State, get, modify)
 import Control.Effect.Throw (Throw, throwError)
-import Control.Lens (universe, view)
 import Control.Monad (forM_)
 import Data.Data (Data, Typeable)
 import Data.Function ((&))
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (mapMaybe)
+import Data.Set (Set)
+import Data.Set qualified as S
 import GHC.Generics (Generic)
 import Swarm.Failure (Asset (..), AssetData (..), Entry (..), LoadingFailure (..), SystemFailure (..))
 import Swarm.Language.Context (Ctx)
@@ -41,7 +43,7 @@ import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Syntax (Phase (..))
 import Swarm.Language.Syntax.AST (Syntax, SwarmType)
 import Swarm.Language.Syntax.Import (Anchor (..), ImportDir, ImportLoc (..), currentDir, importAnchor, withImportDir)
-import Swarm.Language.Syntax.Pattern (sTerm, pattern TImportIn)
+import Swarm.Language.Syntax.Util (traverseSyntax)
 import Swarm.Language.Types (Poly, ImplicitQuantification (Quantified))
 import Swarm.Language.Var (Var)
 import Swarm.Util (readFileMayT)
@@ -71,7 +73,7 @@ dirToFilePath = withImportDir $ \a p -> do
   pure $ af </> joinPath (map (into @FilePath) p)
 
 -- | Turn an 'ImportLoc' into a concrete 'FilePath' (or URL).
-locToFilePath :: (Has (Lift IO) sig m) => ImportLoc -> m FilePath
+locToFilePath :: (Has (Lift IO) sig m) => ImportLoc phase -> m FilePath
 locToFilePath (ImportLoc d f) = do
   df <- dirToFilePath d
   pure $ df </> into @FilePath f
@@ -82,7 +84,7 @@ locToFilePath (ImportLoc d f) = do
 --   the sake of efficiency, this simply assumes that any 'Web'
 --   resource exists without checking; all other locations will
 --   actually be checked.
-doesLocationExist :: (Has (Lift IO) sig m) => ImportLoc -> m Bool
+doesLocationExist :: (Has (Lift IO) sig m) => ImportLoc phase -> m Bool
 doesLocationExist loc = do
   fp <- locToFilePath loc
   case importAnchor loc of
@@ -98,8 +100,8 @@ doesLocationExist loc = do
 resolveImportLoc ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   ImportDir ->
-  ImportLoc ->
-  m ImportLoc
+  ImportLoc Raw ->
+  m (ImportLoc Resolved)
 resolveImportLoc parent (ImportLoc d f) = do
   e1 <- doesLocationExist loc'
   e2 <- doesLocationExist loc'sw
@@ -117,9 +119,15 @@ resolveImportLoc parent (ImportLoc d f) = do
 --   any definitions contained in it, and a list of transitive,
 --   canonicalized imports.
 data Module phase = Module
-  { moduleTerm :: Maybe (Syntax phase)
+  { -- | The contents of the module.
+    moduleTerm :: Maybe (Syntax phase)
+
+    -- | The context of names defined in this module and their types.
   , moduleCtx :: Ctx Var (Poly Quantified (SwarmType phase))
-  , moduleImports :: [ImportLoc phase]  -- XXX what do we use this for?  Add some documentation.
+    -- XXX moduleCtx should depend on phase with type family?
+
+    -- | The moduleImports are mostly for convenience, e.g. for checking modules for cycles.
+  , moduleImports :: Set (ImportLoc phase)
   }
   deriving (Generic)
 
@@ -128,46 +136,46 @@ deriving instance (Typeable phase, Data (SwarmType phase)) => Data (Module phase
 -- | A SourceMap associates canonical 'ImportLocation's to modules.
 type SourceMap phase = Map (ImportLoc phase) (Module phase)
 
--- | XXX
-buildSourceMap ::
-  (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) =>
-  Syntax Raw -> m (Syntax Resolved, SourceMap Resolved)
-buildSourceMap = load . enumerateImports
+-- -- | XXX
+-- buildSourceMap ::
+--   (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) =>
+--   Syntax Raw -> m (Syntax Resolved, SourceMap Resolved)
+-- buildSourceMap = load . enumerateImports
 
--- | Load and parse Swarm source code from a list of given import
---   locations, recursively loading and parsing any imports,
---   ultimately returning a 'SourceMap' from locations to parsed ASTs.
-load ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  [ImportLoc] ->
-  m (SourceMap Raw)
-load = loadWith M.empty
+-- -- | Load and parse Swarm source code from a list of given import
+-- --   locations, recursively loading and parsing any imports,
+-- --   ultimately returning a 'SourceMap' from locations to parsed ASTs.
+-- load ::
+--   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+--   [ImportLoc] ->
+--   m (SourceMap Raw)
+-- load = loadWith M.empty
 
--- | Like 'load', but use an existing 'SourceMap' as a starting point.
---   Returns an updated 'SourceMap' which extends the existing one,
---   and is guaranteed to include the specified imports as well as
---   anything they import, recursively.
---
---   Any import locations which are already present in the 'SourceMap'
---   will /not/ be reloaded from the disk/network; only newly
---   encountered import locations will be loaded.  If you wish to
---   reload things from disk/network in case they have changed, use
---   'load' instead.
-loadWith ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  SourceMap Raw ->
-  [ImportLoc] ->
-  m (SourceMap Raw)
-loadWith srcMap locs = do
-  resMap <- execState srcMap . mapM_ (loadRec currentDir) $ locs
-  checkImportCycles resMap
-  pure resMap
+-- -- | Like 'load', but use an existing 'SourceMap' as a starting point.
+-- --   Returns an updated 'SourceMap' which extends the existing one,
+-- --   and is guaranteed to include the specified imports as well as
+-- --   anything they import, recursively.
+-- --
+-- --   Any import locations which are already present in the 'SourceMap'
+-- --   will /not/ be reloaded from the disk/network; only newly
+-- --   encountered import locations will be loaded.  If you wish to
+-- --   reload things from disk/network in case they have changed, use
+-- --   'load' instead.
+-- loadWith ::
+--   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+--   SourceMap Raw ->
+--   [ImportLoc] ->
+--   m (SourceMap Raw)
+-- loadWith srcMap locs = do
+--   resMap <- execState srcMap . mapM_ (loadRec currentDir) $ locs
+--   checkImportCycles resMap
+--   pure resMap
 
 -- | Convert a 'SourceMap' into a suitable form for 'findCycle'.
-toImportGraph :: SourceMap Raw -> [(ImportLoc, ImportLoc, [ImportLoc])]
+toImportGraph :: SourceMap phase -> [(ImportLoc phase, ImportLoc phase, [ImportLoc phase])]
 toImportGraph = map processNode . M.assocs
  where
-  processNode (imp, Module _ _ imps) = (imp, imp, imps)
+  processNode (imp, Module _ _ imps) = (imp, imp, S.toList imps)
 
 -- | Check a 'SourceMap' to ensure that it contains no import cycles.
 checkImportCycles ::
@@ -179,52 +187,59 @@ checkImportCycles srcMap = do
     importPaths <- mapM locToFilePath importCycle
     throwError $ ImportCycle importPaths
 
+-- | XXX
+resolveImports ::
+  ( Has (Throw SystemFailure) sig m
+  , Has (State (SourceMap Resolved)) sig m
+  , Has (Lift IO) sig m
+  ) =>
+  ImportDir ->
+  Syntax Raw ->
+  m (Set (ImportLoc Resolved), Syntax Resolved)
+resolveImports parent = runAccum S.empty . traverseSyntax pure (resolveImport parent)
+
 -- | Given a parent directory relative to which any local imports
 --   should be interpreted, load an import and all its imports,
 --   transitively.  Also return a canonicalized version of the import
 --   location.
-loadRec ::
-  (Has (Throw SystemFailure) sig m, Has (State (SourceMap Raw)) sig m, Has (Lift IO) sig m) =>
+resolveImport ::
+  ( Has (Throw SystemFailure) sig m
+  , Has (State (SourceMap Resolved)) sig m
+  , Has (Accum (Set (ImportLoc Resolved))) sig m
+  , Has (Lift IO) sig m
+  ) =>
   ImportDir ->
-  ImportLoc ->
-  m ImportLoc
-loadRec parent loc = do
-  canonicalLoc <- resolveImportLoc parent loc
-  srcMap <- get @(SourceMap Raw)
-  case M.lookup canonicalLoc srcMap of
-    Just _ -> pure () -- Already loaded - do nothing
-    Nothing -> do
-      -- Record this import loc in the source map using a temporary, empty module,
-      -- to prevent it from attempting to load itself recursively
-      modify @(SourceMap Raw) (M.insert canonicalLoc $ Module Nothing Ctx.empty [])
-      mt <- readLoc canonicalLoc -- read it from network/disk
-      -- Recursively load anything it imports
-      let recImports = maybe [] enumerateImports mt
-      canonicalImports <- mapM (loadRec (importDir canonicalLoc)) recImports
-      -- Finally, record the loaded module in the SourceMap
-      modify @(SourceMap Raw) (M.insert canonicalLoc $ Module mt Ctx.empty canonicalImports)
+  ImportLoc Raw ->
+  m (ImportLoc Resolved)
+resolveImport parent loc = do
+   canonicalLoc <- resolveImportLoc parent loc
+   srcMap <- get @(SourceMap Resolved)
+   case M.lookup canonicalLoc srcMap of
+     Just _ -> pure () -- Already loaded - do nothing
+     Nothing -> do
+       -- Record this import loc in the source map using a temporary, empty module,
+       -- to prevent it from attempting to load itself recursively
+       modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module Nothing Ctx.empty mempty)
 
-  pure canonicalLoc
+       -- Read it from network/disk
+       mt <- readLoc canonicalLoc
 
-resolveImports ::
-  (Has (Throw SystemFailure) sig m, Has (State (SourceMap Resolved)) sig m, Has (Lift IO) sig m) =>
-  ImportDir ->
-  Syntax Raw ->
-  m (Syntax Resolved)
-resolveImports parent s = traverseSyntax _ _ s
+       -- XXX deal with Maybe...
 
--- -- | Enumerate all the @import@ expressions in an AST.
--- enumerateImports :: Syntax Raw -> [ImportLoc]
--- enumerateImports = mapMaybe getImportLoc . universe . view sTerm
---  where
---   getImportLoc (TImportIn loc _) = Just loc
---   getImportLoc _ = Nothing
+       -- Recursively resolve any imports it contains
+       res <- traverse (resolveImports (importDir canonicalLoc)) mt
+       let (imps, t') = sequence res
+
+       -- Finally, record the loaded module in the SourceMap
+       modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module t' Ctx.empty imps)
+
+   pure canonicalLoc
 
 -- | Try to read and parse a term from a specific import location,
 --   either over the network or on disk.
 readLoc ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  ImportLoc ->
+  ImportLoc Resolved ->
   m (Maybe (Syntax Raw))
 readLoc loc = do
   path <- locToFilePath loc
