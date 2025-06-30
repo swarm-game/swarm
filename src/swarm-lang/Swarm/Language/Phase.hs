@@ -12,6 +12,8 @@ module Swarm.Language.Phase (
 type data Phase where
   -- | Raw, parsed terms that have not yet been type checked.
   Raw :: Phase
+  -- | Imports have been resolved to canonical locations.
+  Resolved :: Phase
   -- | Terms have inferred types.  XXX unification variables
   Inferred :: Phase
   -- | Terms have been typechecked, but robot records

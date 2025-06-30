@@ -131,7 +131,7 @@ type SourceMap phase = Map ImportLoc (Module phase)
 -- | XXX
 buildSourceMap ::
   (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) =>
-  Syntax Raw -> m (SourceMap Raw)
+  Syntax Raw -> m (Syntax Resolved, SourceMap Resolved)
 buildSourceMap = load . enumerateImports
 
 -- | Load and parse Swarm source code from a list of given import
