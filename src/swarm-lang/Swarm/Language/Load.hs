@@ -194,11 +194,14 @@ loadRec parent loc = do
   case M.lookup canonicalLoc srcMap of
     Just _ -> pure () -- Already loaded - do nothing
     Nothing -> do
+      -- Record this import loc in the source map using a temporary, empty module,
+      -- to prevent it from attempting to load itself recursively
+      modify @(SourceMap Raw) (M.insert canonicalLoc $ Module Nothing Ctx.empty [])
       mt <- readLoc canonicalLoc -- read it from network/disk
       -- Recursively load anything it imports
       let recImports = maybe [] enumerateImports mt
       canonicalImports <- mapM (loadRec (importDir canonicalLoc)) recImports
-      -- Finally, record it in the SourceMap
+      -- Finally, record the loaded module in the SourceMap
       modify @(SourceMap Raw) (M.insert canonicalLoc $ Module mt Ctx.empty canonicalImports)
 
   pure canonicalLoc
