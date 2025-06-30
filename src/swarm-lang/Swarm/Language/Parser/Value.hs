@@ -45,10 +45,12 @@ readValue ty txt = do
         Just (':', t) -> t
         _ -> txt
   s <- eitherToMaybe $ readNonemptyTerm txt'
-  _ <- eitherToMaybe . runError @ContextualTypeErr $ checkTop Ctx.empty Ctx.empty emptyTDCtx M.empty s ty
+  -- XXX have to explicitly account for the fact that we don't resolve imports here!
+  let sResolved = undefined
+  _ <- eitherToMaybe . runError @ContextualTypeErr $ checkTop Ctx.empty Ctx.empty emptyTDCtx M.empty sResolved ty
   toValue $ s ^. sTerm
 
-toValue :: Term Raw -> Maybe Value
+toValue :: (SwarmType phase ~ ()) => Term phase -> Maybe Value
 toValue = \case
   TUnit -> Just VUnit
   TDir d -> Just $ VDir d

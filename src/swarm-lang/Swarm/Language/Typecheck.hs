@@ -98,10 +98,10 @@ data TCFrame where
   TCLet :: Var -> TCFrame
   -- | Inferring the LHS of an application.  Stored Syntax is the term
   --   on the RHS.
-  TCAppL :: Syntax Raw -> TCFrame
+  TCAppL :: Syntax Resolved -> TCFrame
   -- | Checking the RHS of an application.  Stored Syntax is the term
   -- on the LHS.
-  TCAppR :: Syntax Raw -> TCFrame
+  TCAppR :: Syntax Resolved -> TCFrame
   -- | Recursively checking an import.
   TCImport :: ImportLoc -> TCFrame
   deriving (Show)
@@ -211,8 +211,8 @@ runTC ::
   ReqCtx ->
   TDCtx ->
   TVCtx ->
-  SourceMap Raw ->
-  ReaderC UCtx (ReaderC TCStack (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx (ReaderC (SourceMap Raw) (StateC (SourceMap Inferred) m))))))) (Syntax Inferred) ->
+  SourceMap Resolved ->
+  ReaderC UCtx (ReaderC TCStack (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx (ReaderC (SourceMap Resolved) (StateC (SourceMap Inferred) m))))))) (Syntax Inferred) ->
   m (Syntax Typed)
 runTC ctx reqCtx tdctx tvCtx srcMap =
   (>>= finalizeInferredSyntax)
@@ -344,7 +344,7 @@ unify ::
   , Has (Throw ContextualTypeErr) sig m
   , Has (Reader TCStack) sig m
   ) =>
-  Maybe (Syntax Raw) ->
+  Maybe (Syntax Resolved) ->
   TypeJoin ->
   m UType
 unify ms j = do
@@ -458,10 +458,10 @@ data TypeErr
   | -- | Type mismatch caught by 'unify'.  The given term was
     --   expected to have a certain type, but has a different type
     --   instead.
-    Mismatch (Maybe (Syntax Raw)) TypeJoin
+    Mismatch (Maybe (Syntax Resolved)) TypeJoin
   | -- | Record type mismatch.  The given term was expected to have a
     --   record type, but has a different type instead.
-    MismatchRcd (Maybe (Syntax Raw)) UType
+    MismatchRcd (Maybe (Syntax Resolved)) UType
   | -- | Lambda argument type mismatch.
     LambdaArgMismatch TypeJoin
   | -- | Record field mismatch, i.e. based on the expected type we
@@ -469,23 +469,23 @@ data TypeErr
     --   a different field set.
     FieldsMismatch (Join (Set Var))
   | -- | A definition was encountered not at the top level.
-    DefNotTopLevel (Term Raw)
+    DefNotTopLevel (Term Resolved)
   | -- | A term was encountered which we cannot infer the type of.
     --   This should never happen.
-    CantInfer (Term Raw)
+    CantInfer (Term Resolved)
   | -- | We can't infer the type of a record projection @r.x@ if we
     --   don't concretely know the type of the record @r@.
-    CantInferProj (Term Raw)
+    CantInferProj (Term Resolved)
   | -- | An attempt to project out a nonexistent field
-    UnknownProj Var (Term Raw)
+    UnknownProj Var (Term Resolved)
   | -- | An invalid argument was provided to @atomic@.
-    InvalidAtomic InvalidAtomicReason (Term Raw)
+    InvalidAtomic InvalidAtomicReason (Term Resolved)
   | -- | Some unification variables ended up in a type, probably due to
     --   impredicativity.  See https://github.com/swarm-game/swarm/issues/351 .
     Impredicative
   | -- | Read must be given a literal type as an argument.  See
     --   https://github.com/swarm-game/swarm/pull/2461#discussion_r2124125021
-    ReadNonLiteralTypeArg (Term Raw)
+    ReadNonLiteralTypeArg (Term Resolved)
   | -- | An import encountered during typechecking was not found in
     --   the import source map.  This should never happen and indicates
     --   a bug.
@@ -727,7 +727,7 @@ decomposeTyConApp1 ::
   , Has (Reader TCStack) sig m
   ) =>
   TyCon ->
-  Syntax Raw ->
+  Syntax Resolved ->
   Sourced UType ->
   m UType
 decomposeTyConApp1 c t (src, UTyConApp (TCUser u) as) = do
@@ -747,7 +747,7 @@ decomposeCmdTy
     , Has (Reader TDCtx) sig m
     , Has (Reader TCStack) sig m
     ) =>
-    Syntax Raw ->
+    Syntax Resolved ->
     Sourced UType ->
     m UType
 decomposeCmdTy = decomposeTyConApp1 TCCmd
@@ -771,7 +771,7 @@ decomposeRcdTy ::
   , Has (Reader TCStack) sig m
   , Has (Throw ContextualTypeErr) sig m
   ) =>
-  Maybe (Syntax Raw) ->
+  Maybe (Syntax Resolved) ->
   UType ->
   m (Maybe (Map Var UType))
 decomposeRcdTy ms = \case
@@ -799,7 +799,7 @@ decomposeTyConApp2 ::
   , Has (Reader TCStack) sig m
   ) =>
   TyCon ->
-  Syntax Raw ->
+  Syntax Resolved ->
   Sourced UType ->
   m (UType, UType)
 decomposeTyConApp2 c t (src, UTyConApp (TCUser u) as) = do
@@ -820,7 +820,7 @@ decomposeFunTy
     , Has (Reader TDCtx) sig m
     , Has (Reader TCStack) sig m
     ) =>
-    Syntax Raw ->
+    Syntax Resolved ->
     Sourced UType ->
     m (UType, UType)
 decomposeFunTy = decomposeTyConApp2 TCFun
@@ -834,13 +834,13 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 --   fully type-annotated version of the term.
 inferTop ::
   Has (Error ContextualTypeErr) sig m =>
-  TCtx -> ReqCtx -> TDCtx -> SourceMap Raw -> Syntax Raw -> m (Syntax Typed)
+  TCtx -> ReqCtx -> TDCtx -> SourceMap Resolved -> Syntax Resolved -> m (Syntax Typed)
 inferTop ctx reqCtx tdCtx srcMap = runTC ctx reqCtx tdCtx Ctx.empty srcMap . infer
 
 -- | Top level type checking function.
 checkTop ::
   Has (Error ContextualTypeErr) sig m =>
-  TCtx -> ReqCtx -> TDCtx -> SourceMap Raw -> Syntax Raw -> Type -> m (Syntax Typed)
+  TCtx -> ReqCtx -> TDCtx -> SourceMap Resolved -> Syntax Resolved -> Type -> m (Syntax Typed)
 checkTop ctx reqCtx tdCtx srcMap t ty = runTC ctx reqCtx tdCtx Ctx.empty srcMap $ check t (toU ty)
 
 -- | Infer the type of a term, returning a type-annotated term.
@@ -866,13 +866,13 @@ infer ::
   , Has (Reader ReqCtx) sig m
   , Has (Reader TDCtx) sig m
   , Has (Reader TVCtx) sig m
-  , Has (Reader (SourceMap Raw)) sig m
+  , Has (Reader (SourceMap Resolved)) sig m
   , Has (State (SourceMap Inferred)) sig m
   , Has (Reader TCStack) sig m
   , Has Unification sig m
   , Has (Error ContextualTypeErr) sig m
   ) =>
-  Syntax Raw ->
+  Syntax Resolved ->
   m (Syntax Inferred)
 infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- Primitives, i.e. things for which we immediately know the only
@@ -1051,7 +1051,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
       Just umod -> pure umod
       -- We haven't: go typecheck it and add it to the USourceMap before proceeding.
       Nothing -> do
-        srcMap <- ask @(SourceMap Raw)
+        srcMap <- ask @(SourceMap Resolved)
         case M.lookup loc srcMap of
           -- The lookup should always succeed, since the SourceMap was
           -- computed by transitively following all imports.
@@ -1090,13 +1090,13 @@ inferModule ::
   , Has (Reader ReqCtx) sig m
   , Has (Reader TDCtx) sig m
   , Has (Reader TVCtx) sig m
-  , Has (Reader (SourceMap Raw)) sig m
+  , Has (Reader (SourceMap Resolved)) sig m
   , Has (State (SourceMap Inferred)) sig m
   , Has (Reader TCStack) sig m
   , Has Unification sig m
   , Has (Error ContextualTypeErr) sig m
   ) =>
-  Module Raw -> m (Module Inferred)
+  Module Resolved -> m (Module Inferred)
 inferModule (Module ms _ imps) = do
   -- Infer the type of the term
   mt <- mapM infer ms
@@ -1235,13 +1235,13 @@ check ::
   , Has (Reader ReqCtx) sig m
   , Has (Reader TDCtx) sig m
   , Has (Reader TVCtx) sig m
-  , Has (Reader (SourceMap Raw)) sig m
+  , Has (Reader (SourceMap Resolved)) sig m
   , Has (State (SourceMap Inferred)) sig m
   , Has (Reader TCStack) sig m
   , Has Unification sig m
   , Has (Error ContextualTypeErr) sig m
   ) =>
-  Syntax Raw ->
+  Syntax Resolved ->
   UType ->
   m (Syntax Inferred)
 check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
@@ -1476,7 +1476,7 @@ validAtomic ::
   , Has Unification sig m
   , Has (Throw ContextualTypeErr) sig m
   ) =>
-  Syntax Raw ->
+  Syntax Resolved ->
   m ()
 validAtomic s@(RSyntax l t) = do
   n <- analyzeAtomic S.empty s
@@ -1492,9 +1492,9 @@ analyzeAtomic ::
   , Has (Throw ContextualTypeErr) sig m
   ) =>
   Set Var ->
-  Syntax Raw ->
+  Syntax Resolved ->
   m Int
-analyzeAtomic locals (RSyntax l t) = case t of
+analyzeAtomic locals (Syntax l t _ _) = case t of
   -- Literals, primitives, etc. that are fine and don't require a tick
   -- to evaluate
   TUnit {} -> return 0
@@ -1542,9 +1542,9 @@ analyzeAtomic locals (RSyntax l t) = case t of
       , Has Unification sig m
       , Has (Throw ContextualTypeErr) sig m
       ) =>
-      (LocVar, Maybe (Syntax Raw)) ->
+      (LocVar, Maybe (Syntax Resolved)) ->
       m Int
-    analyzeField (Loc _ x, Nothing) = analyzeAtomic locals (RTerm (TVar x))
+    analyzeField (Loc _ x, Nothing) = analyzeAtomic locals (Syntax NoLoc (TVar x) mempty ())
     analyzeField (_, Just s) = analyzeAtomic locals s
   SProj {} -> return 0
   -- Variables are allowed if bound locally, or if they have a simple type.
