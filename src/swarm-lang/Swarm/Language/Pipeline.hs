@@ -102,7 +102,7 @@ processParsedTerm' e (s,t) = do
 --   any imports have already been loaded.
 processParsedTermWithSrcMap ::
   (Has (Error SystemFailure) sig m) =>
-  SourceMap Raw -> Env -> (Text, Syntax Raw) -> m (Syntax Typed)
+  SourceMap Resolved -> Env -> (Text, Syntax Resolved) -> m (Syntax Typed)
 processParsedTermWithSrcMap srcMap e (s,t) = do
   tt <- withError (typeErrToSystemFailure s) $
     inferTop (e ^. envTypes) (e ^. envReqs) (e ^. envTydefs) srcMap t
@@ -156,7 +156,7 @@ extractReqCtx (Syntax _ t _ _) = extractReqCtxTerm t
 ------------------------------------------------------------
 
 class Processable t where
-  process :: (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) => t Raw -> m (t Typed)
+  process :: (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) => t Resolved -> m (t Typed)
   -- XXX should m include effects to save resulting SrcMap ??
 
 instance Processable Syntax where

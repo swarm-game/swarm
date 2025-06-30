@@ -47,7 +47,7 @@ import Swarm.Util (applyWhen)
 --
 --   This is all a bit of a hack at the moment, to be honest; see #231
 --   for a description of a more correct approach.
-requirements :: TDCtx -> ReqCtx -> Term Raw -> Requirements
+requirements :: TDCtx -> ReqCtx -> Term Resolved -> Requirements
 requirements tdCtx ctx =
   run . execAccum mempty . runReader tdCtx . runReader ctx . (add (singletonCap CPower) *>) . go
  where
@@ -56,7 +56,7 @@ requirements tdCtx ctx =
     , Has (Reader ReqCtx) sig m
     , Has (Reader TDCtx) sig m
     ) =>
-    Term Raw ->
+    Term Resolved ->
     m ()
   go = \case
     -- Some primitive literals that don't require any special
