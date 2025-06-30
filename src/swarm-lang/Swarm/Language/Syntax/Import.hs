@@ -24,6 +24,8 @@ module Swarm.Language.Syntax.Import (
   ImportLoc (..),
   importAnchor,
   uncanonicalize,
+  inferImportLoc,
+  generalizeImportLoc,
 ) where
 
 import Data.Aeson (FromJSON, ToJSON)
@@ -148,6 +150,14 @@ importAnchor = withImportDir const . importDir
 -- | Forget the fact that an import location has been canonicalized.
 uncanonicalize :: ImportLoc phase -> ImportLoc Raw
 uncanonicalize (ImportLoc d f) = ImportLoc d f
+
+-- | XXX
+inferImportLoc :: ImportLoc Resolved -> ImportLoc Inferred
+inferImportLoc (ImportLoc d f) = ImportLoc d f
+
+-- | XXX
+generalizeImportLoc :: ImportLoc Inferred -> ImportLoc Typed
+generalizeImportLoc (ImportLoc d f) = ImportLoc d f
 
 ------------------------------------------------------------
 -- Canonicalization
