@@ -41,6 +41,7 @@ import Swarm.Util.SrcLoc
 
 type family SwarmType (phase :: Phase) where
   SwarmType Raw = ()
+  SwarmType Resolved = ()
   SwarmType Inferred = UType
   SwarmType Typed = Polytype
   SwarmType Instantiated = Polytype
