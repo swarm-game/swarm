@@ -174,7 +174,7 @@ data Term phase
     TType Type
   | -- | Import a term containing definitions, which will be in scope
     --   in the following term.
-    SImportIn ImportLoc (Syntax phase)
+    SImportIn (ImportLoc phase) (Syntax phase)
   deriving ( Generic )
 
 deriving instance Eq (SwarmType phase) => Eq (Term phase)

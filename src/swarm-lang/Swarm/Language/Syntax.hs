@@ -92,7 +92,7 @@ module Swarm.Language.Syntax (
   -- ** Term + type traversal
 
   termSyntax,
-  traverseTypes,
+  traverseSyntax,
 
   -- ** Erasure
   erase,
