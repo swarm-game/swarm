@@ -23,6 +23,7 @@ module Swarm.Language.Load where
 
 import Control.Algebra (Has)
 import Control.Carrier.Accum.Strict (runAccum)
+import Control.Carrier.State.Strict (runState)
 import Control.Effect.Accum (Accum)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.State (State, get, modify)
@@ -136,40 +137,14 @@ deriving instance (Typeable phase, Data (SwarmType phase)) => Data (Module phase
 -- | A SourceMap associates canonical 'ImportLocation's to modules.
 type SourceMap phase = Map (ImportLoc phase) (Module phase)
 
--- -- | XXX
--- buildSourceMap ::
---   (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) =>
---   Syntax Raw -> m (Syntax Resolved, SourceMap Resolved)
--- buildSourceMap = load . enumerateImports
-
--- -- | Load and parse Swarm source code from a list of given import
--- --   locations, recursively loading and parsing any imports,
--- --   ultimately returning a 'SourceMap' from locations to parsed ASTs.
--- load ::
---   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
---   [ImportLoc] ->
---   m (SourceMap Raw)
--- load = loadWith M.empty
-
--- -- | Like 'load', but use an existing 'SourceMap' as a starting point.
--- --   Returns an updated 'SourceMap' which extends the existing one,
--- --   and is guaranteed to include the specified imports as well as
--- --   anything they import, recursively.
--- --
--- --   Any import locations which are already present in the 'SourceMap'
--- --   will /not/ be reloaded from the disk/network; only newly
--- --   encountered import locations will be loaded.  If you wish to
--- --   reload things from disk/network in case they have changed, use
--- --   'load' instead.
--- loadWith ::
---   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
---   SourceMap Raw ->
---   [ImportLoc] ->
---   m (SourceMap Raw)
--- loadWith srcMap locs = do
---   resMap <- execState srcMap . mapM_ (loadRec currentDir) $ locs
---   checkImportCycles resMap
---   pure resMap
+-- | XXX
+buildSourceMap ::
+  (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) =>
+  Syntax Raw -> m (Syntax Resolved, SourceMap Resolved)
+buildSourceMap s = do
+  (resMap, (_, s')) <- runState mempty . resolveImports currentDir $ s
+  checkImportCycles resMap
+  pure (s', resMap)
 
 -- | Convert a 'SourceMap' into a suitable form for 'findCycle'.
 toImportGraph :: SourceMap phase -> [(ImportLoc phase, ImportLoc phase, [ImportLoc phase])]
@@ -180,14 +155,19 @@ toImportGraph = map processNode . M.assocs
 -- | Check a 'SourceMap' to ensure that it contains no import cycles.
 checkImportCycles ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  SourceMap Raw ->
+  SourceMap Resolved ->
   m ()
 checkImportCycles srcMap = do
   forM_ (findCycle (toImportGraph srcMap)) $ \importCycle -> do
     importPaths <- mapM locToFilePath importCycle
     throwError $ ImportCycle importPaths
 
--- | XXX
+-- | Given a parent directory relative to which any local imports
+--   should be interpreted, traverse some raw syntax, recursively
+--   resolving and loading any imports it contains.  Returns the set
+--   of canonicalized imports this term contains, along with a version
+--   of the syntax where all imports have been resolved to their
+--   canonicalized locations.
 resolveImports ::
   ( Has (Throw SystemFailure) sig m
   , Has (State (SourceMap Resolved)) sig m
@@ -224,14 +204,13 @@ resolveImport parent loc = do
        -- Read it from network/disk
        mt <- readLoc canonicalLoc
 
-       -- XXX deal with Maybe...
-
        -- Recursively resolve any imports it contains
-       res <- traverse (resolveImports (importDir canonicalLoc)) mt
-       let (imps, t') = sequence res
+       mres <- traverse (resolveImports (importDir canonicalLoc)) mt
+       -- sequence :: Maybe (Set a, b) -> (Set a, Maybe b)
+       let (imps, mt') = sequence mres
 
-       -- Finally, record the loaded module in the SourceMap
-       modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module t' Ctx.empty imps)
+       -- Finally, record the loaded module in the SourceMap.
+       modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module mt' Ctx.empty imps)
 
    pure canonicalLoc
 
