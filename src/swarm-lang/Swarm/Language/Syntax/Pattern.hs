@@ -135,7 +135,7 @@ pattern TSuspend :: (SwarmType phase ~ ()) => Term phase -> Term phase
 pattern TSuspend t = SSuspend (RTerm t)
 
 -- | Match a TImportIn without annotations.
-pattern TImportIn :: (SwarmType phase ~ ()) => ImportLoc -> Term phase -> Term phase
+pattern TImportIn :: (SwarmType phase ~ ()) => ImportLoc phase -> Term phase -> Term phase
 pattern TImportIn loc t = SImportIn loc (RTerm t)
 
 -- | Match a TParens without annotations.

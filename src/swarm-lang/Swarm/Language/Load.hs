@@ -38,7 +38,7 @@ import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
-import Swarm.Language.Syntax (Phase (Raw))
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.Language.Syntax.AST (Syntax, SwarmType)
 import Swarm.Language.Syntax.Import (Anchor (..), ImportDir, ImportLoc (..), currentDir, importAnchor, withImportDir)
 import Swarm.Language.Syntax.Pattern (sTerm, pattern TImportIn)
@@ -119,14 +119,14 @@ resolveImportLoc parent (ImportLoc d f) = do
 data Module phase = Module
   { moduleTerm :: Maybe (Syntax phase)
   , moduleCtx :: Ctx Var (Poly Quantified (SwarmType phase))
-  , moduleImports :: [ImportLoc]
+  , moduleImports :: [ImportLoc phase]  -- XXX what do we use this for?  Add some documentation.
   }
   deriving (Generic)
 
 deriving instance (Typeable phase, Data (SwarmType phase)) => Data (Module phase)
 
 -- | A SourceMap associates canonical 'ImportLocation's to modules.
-type SourceMap phase = Map ImportLoc (Module phase)
+type SourceMap phase = Map (ImportLoc phase) (Module phase)
 
 -- | XXX
 buildSourceMap ::
@@ -206,12 +206,19 @@ loadRec parent loc = do
 
   pure canonicalLoc
 
--- | Enumerate all the @import@ expressions in an AST.
-enumerateImports :: Syntax Raw -> [ImportLoc]
-enumerateImports = mapMaybe getImportLoc . universe . view sTerm
- where
-  getImportLoc (TImportIn loc _) = Just loc
-  getImportLoc _ = Nothing
+resolveImports ::
+  (Has (Throw SystemFailure) sig m, Has (State (SourceMap Resolved)) sig m, Has (Lift IO) sig m) =>
+  ImportDir ->
+  Syntax Raw ->
+  m (Syntax Resolved)
+resolveImports parent s = traverseSyntax _ _ s
+
+-- -- | Enumerate all the @import@ expressions in an AST.
+-- enumerateImports :: Syntax Raw -> [ImportLoc]
+-- enumerateImports = mapMaybe getImportLoc . universe . view sTerm
+--  where
+--   getImportLoc (TImportIn loc _) = Just loc
+--   getImportLoc _ = Nothing
 
 -- | Try to read and parse a term from a specific import location,
 --   either over the network or on disk.

@@ -18,7 +18,7 @@ module Swarm.Language.Syntax.Util (
 
   -- ** Term + type traversal
   termSyntax,
-  traverseTypes,
+  traverseSyntax,
 
   -- ** Erasure
   erase,
@@ -44,6 +44,7 @@ import Data.Tree
 import Swarm.Language.Phase
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Constants
+import Swarm.Language.Syntax.Import
 import Swarm.Language.Syntax.Pattern
 import Swarm.Language.Var (LocVar, Var)
 import Swarm.Util.SrcLoc
@@ -112,15 +113,16 @@ locVarToSyntax (Loc s v) = Syntax s (TVar v) Empty
 -- | Traversal to pick out all Syntax nodes and types inside a Term.
 --   Generic over the phase so we can use it to change phase.
 --
---   This is in fact a 'Bitraversal' (if there were such a thing
---   defined in the lens package).
+--   This would in fact be some kind of 'Tritraversal' (if there were
+--   such a thing defined in the lens package).
 termSyntax ::
   Applicative f =>
   (SwarmType a -> f (SwarmType b)) ->
+  (ImportLoc a -> f (ImportLoc b)) ->
   (Syntax a -> f (Syntax b)) ->
   Term a ->
   f (Term b)
-termSyntax fty fsyn = \case
+termSyntax fty floc fsyn = \case
   TUnit -> pure TUnit
   TConst c -> pure $ TConst c
   TDir d -> pure $ TDir d
@@ -149,18 +151,24 @@ termSyntax fty fsyn = \case
   SSuspend s -> SSuspend <$> fsyn s
   SParens s -> SParens <$> fsyn s
   TType ty -> pure $ TType ty
-  SImportIn loc s -> SImportIn loc <$> fsyn s
+  SImportIn loc s -> SImportIn <$> floc loc <*> fsyn s
 
 -- | Given a (possibly effectful) way to turn types from one phase
---   into types at another phase, map over all types in a syntax tree,
---   effectfully changing the phase of the syntax tree as a whole.
+--   into types at another phase, and likewise a way to transform
+--   imports, map over all types in a syntax tree, effectfully
+--   changing the phase of the syntax tree as a whole.
 --
 --   We could make this a @Traversal (Syntax a) (Syntax b) (SwarmType
 --   a) (SwarmType b)@ but we just keep an explicit type like this for
 --   simplicity.
-traverseTypes :: Applicative f => (SwarmType a -> f (SwarmType b)) -> Syntax a -> f (Syntax b)
-traverseTypes f (Syntax loc t com ty) =
-  Syntax loc <$> termSyntax f (traverseTypes f) t <*> pure com <*> f ty
+traverseSyntax ::
+  Applicative f =>
+  (SwarmType a -> f (SwarmType b)) ->
+  (ImportLoc a -> f (ImportLoc b)) ->
+  Syntax a ->
+  f (Syntax b)
+traverseSyntax f g (Syntax loc t com ty) =
+  Syntax loc <$> termSyntax f g (traverseSyntax f g) t <*> pure com <*> f ty
 
 ------------------------------------------------------------
 -- Type erasure
@@ -172,10 +180,10 @@ class Erasable t where
   erase :: t a -> t Raw
 
 instance Erasable Syntax where
-  erase = runIdentity . traverseTypes (const (pure ()))
+  erase = runIdentity . traverseSyntax (const (pure ())) (pure . uncanonicalize)
 
 instance Erasable Term where
-  erase = runIdentity . termSyntax (const (pure ())) (pure . erase)
+  erase = runIdentity . termSyntax (const (pure ())) (pure . uncanonicalize) (pure . erase)
 
 ------------------------------------------------------------
 -- Free variable traversals

@@ -124,7 +124,7 @@ parseStock =
     <*> (textLiteral <?> "entity name in double quotes")
 
 -- XXX move this to a dedicated module??
-parseImportLocation :: Parser ImportLoc
+parseImportLocation :: Parser (ImportLoc Raw)
 parseImportLocation =
   lexeme . between (char '"') (char '"') $ do
     anchor <- parseAnchor
