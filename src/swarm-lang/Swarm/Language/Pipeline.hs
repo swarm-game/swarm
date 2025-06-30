@@ -44,7 +44,7 @@ import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Requirements.Type (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
-import Swarm.Language.Types (TCtx)
+import Swarm.Language.Types (TCtx, emptyTDCtx)
 import Swarm.Language.Value (Env, emptyEnv, envReqs, envTydefs, envTypes)
 import Swarm.Util.Effect (withError, withThrow)
 
@@ -76,7 +76,9 @@ processParsedTerm = runError . processParsedTerm' emptyEnv
 -- | Like 'processParsedTerm', but don't allow any imports (and hence
 --   don't require IO).
 processParsedTermNoImports :: (Text, Syntax Raw) -> Either SystemFailure (Syntax Typed)
-processParsedTermNoImports = run . runError . processParsedTermWithSrcMap mempty emptyEnv
+processParsedTermNoImports = undefined
+  -- XXX how to enforce no imports + get to Resolved phase?
+  -- run . runError . processParsedTermWithSrcMap mempty emptyEnv
 
 -- | Like 'processTerm', but use explicit starting contexts.
 processTerm' ::
@@ -93,8 +95,8 @@ processParsedTerm' ::
   (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
   Env -> (Text, Syntax Raw) -> m (Syntax Typed)
 processParsedTerm' e (s,t) = do
-  srcMap <- buildSourceMap t
-  processParsedTermWithSrcMap srcMap e (s,t)
+  (t', srcMap) <- buildSourceMap t
+  processParsedTermWithSrcMap srcMap e (s,t')
 
 -- | Process an already-parsed term with an explicit SourceMap.
 --
@@ -156,11 +158,13 @@ extractReqCtx (Syntax _ t _ _) = extractReqCtxTerm t
 ------------------------------------------------------------
 
 class Processable t where
-  process :: (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) => t Resolved -> m (t Typed)
+  process :: (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) => t Raw -> m (t Typed)
   -- XXX should m include effects to save resulting SrcMap ??
 
 instance Processable Syntax where
-  process = withError (typeErrToSystemFailure "") . inferTop mempty mempty undefined mempty  -- XXX ?
+  process s = do
+    (s', srcMap) <- buildSourceMap s
+    withError (typeErrToSystemFailure "") . inferTop mempty mempty emptyTDCtx srcMap $ s'
 
 instance Processable Term where
   process = undefined  -- XXX
