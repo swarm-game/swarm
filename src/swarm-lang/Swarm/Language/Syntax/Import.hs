@@ -23,7 +23,6 @@ module Swarm.Language.Syntax.Import (
   -- * ImportLoc
   ImportLoc (..),
   importAnchor,
-  uncanonicalize,
   inferImportLoc,
   generalizeImportLoc,
 ) where
@@ -146,10 +145,6 @@ instance PrettyPrec (ImportLoc phase) where
 -- | Get the 'Anchor' for an 'ImportLoc'.
 importAnchor :: ImportLoc phase -> Anchor
 importAnchor = withImportDir const . importDir
-
--- | Forget the fact that an import location has been canonicalized.
-uncanonicalize :: ImportLoc phase -> ImportLoc Raw
-uncanonicalize (ImportLoc d f) = ImportLoc d f
 
 -- | XXX
 inferImportLoc :: ImportLoc Resolved -> ImportLoc Inferred
