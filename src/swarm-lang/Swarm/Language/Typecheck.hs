@@ -83,6 +83,7 @@ import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Requirements.Analysis (requirements)
 import Swarm.Language.Requirements.Type (ReqCtx)
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.Import (generalizeImportLoc, inferImportLoc)
 import Swarm.Language.TDVar (TDVar, tdVarName)
 import Swarm.Language.Types
 import Swarm.Pretty
@@ -103,7 +104,7 @@ data TCFrame where
   -- on the LHS.
   TCAppR :: Syntax Resolved -> TCFrame
   -- | Recursively checking an import.
-  TCImport :: ImportLoc -> TCFrame
+  TCImport :: ImportLoc Resolved -> TCFrame
   deriving (Show)
 
 instance PrettyPrec TCFrame where
@@ -192,7 +193,7 @@ fromInferredSyntax ::
   ) =>
   Syntax Inferred ->
   m (Syntax Typed)
-fromInferredSyntax = traverseTypes (checkPredicative <=< (fmap fromU . generalize))
+fromInferredSyntax = traverseSyntax (checkPredicative <=< (fmap fromU . generalize)) (pure . generalizeImportLoc)
 
 finalizeInferredSyntax ::
   ( Has Unification sig m
@@ -489,7 +490,7 @@ data TypeErr
   | -- | An import encountered during typechecking was not found in
     --   the import source map.  This should never happen and indicates
     --   a bug.
-    UnknownImport ImportLoc
+    UnknownImport (ImportLoc Resolved)
   deriving (Show)
 
 instance PrettyPrec TypeErr where
@@ -1046,7 +1047,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   SImportIn loc t1 -> do
     -- See whether we have already processed this import before
     usrcMap <- get @(SourceMap Inferred)
-    umod <- case M.lookup loc usrcMap of
+    umod <- case M.lookup (inferImportLoc loc) usrcMap of
       -- We have: just use its already-typechecked version
       Just umod -> pure umod
       -- We haven't: go typecheck it and add it to the USourceMap before proceeding.
@@ -1058,12 +1059,12 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
           Nothing -> throwTypeErr l $ UnknownImport loc
           Just smod -> do
             umod <- withFrame l (TCImport loc) $ inferModule smod
-            modify @(SourceMap Inferred) $ M.insert loc umod
+            modify @(SourceMap Inferred) $ M.insert (inferImportLoc loc) umod
             pure umod
 
     -- Now infer t1 with the import's exports added to the context.
     t1' <- withBindings (moduleCtx umod) $ infer t1
-    return $ Syntax l (SImportIn loc t1') cs (t1' ^. sType)
+    return $ Syntax l (SImportIn (inferImportLoc loc) t1') cs (t1' ^. sType)
   TType ty -> pure $ Syntax l (TType ty) cs UTyType
   -- Fallback: to infer the type of anything else, make up a fresh unification
   -- variable for its type and check against it.
@@ -1104,7 +1105,9 @@ inferModule (Module ms _ imps) = do
   -- Now, if the term has top-level definitions, collect up their
   -- types and put them in the context.
   ctx <- maybe (pure Ctx.empty) collectDefs mt
-  pure $ Module mt ctx imps
+  pure $ Module mt ctx mempty
+
+-- XXX mempty, since we don't care about list of imports any more?  Use phase?
 
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype
