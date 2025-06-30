@@ -1175,7 +1175,6 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Whoami -> [tyQ| Cmd Text |]
   Setname -> [tyQ| Text -> Cmd Unit |]
   Random -> [tyQ| Int -> Cmd Int |]
-  Run -> [tyQ| Text -> Cmd Unit |]
   If -> [tyQ| Bool -> {a} -> {a} -> a |]
   Inl -> [tyQ| a -> a + b |]
   Inr -> [tyQ| b -> a + b |]
