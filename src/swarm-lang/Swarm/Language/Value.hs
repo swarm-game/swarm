@@ -72,7 +72,7 @@ data Value where
   -- | A /closure/, representing a lambda term along with an
   --   environment containing bindings for any free variables in the
   --   body of the lambda.
-  VClo :: Var -> Term Raw -> Env -> Value
+  VClo :: Var -> Term Resolved -> Env -> Value
   -- | An application of a constant to some value arguments,
   --   potentially waiting for more arguments.  If a constant
   --   application is fully saturated (as defined by its 'arity'),
@@ -85,14 +85,14 @@ data Value where
   -- | An unevaluated bind expression, waiting to be executed, of the
   --   form /i.e./ @c1 ; c2@ or @x <- c1; c2@.  We also store an 'Env'
   --   in which to interpret the commands.
-  VBind :: Maybe Var -> Maybe Polytype -> Maybe Requirements -> Term Raw -> Term Raw -> Env -> Value
+  VBind :: Maybe Var -> Maybe Polytype -> Maybe Requirements -> Term Resolved -> Term Resolved -> Env -> Value
   -- | A (non-recursive) delayed term, along with its environment. If
   --   a term would otherwise be evaluated but we don't want it to be
   --   (/e.g./ as in the case of arguments to an 'if', or a recursive
   --   binding), we can stick a 'TDelay' on it, which turns it into a
   --   value.  Delayed terms won't be evaluated until 'Force' is
   --   applied to them.
-  VDelay :: Term Raw -> Env -> Value
+  VDelay :: Term Resolved -> Env -> Value
   -- | A reference to a memory cell in the store.
   VRef :: Int -> Value
   -- | An indirection to a value stored in a memory cell.  The
@@ -107,9 +107,9 @@ data Value where
   -- | A keyboard input.
   VKey :: KeyCombo -> Value
   -- | A 'requirements' command awaiting execution.
-  VRequirements :: Text -> Term Raw -> Env -> Value
+  VRequirements :: Text -> Term Resolved -> Env -> Value
   -- | A 'suspend' command awaiting execution.
-  VSuspend :: Term Raw -> Env -> Value
+  VSuspend :: Term Resolved -> Env -> Value
   -- | A special value representing a program that terminated with
   --   an exception.
   VExc :: Value
@@ -229,7 +229,7 @@ prettyValue :: Value -> Text
 prettyValue = prettyText . valueToTerm
 
 -- | Inject a value back into a term.
-valueToTerm :: Value -> Term Raw
+valueToTerm :: Value -> Term Resolved
 valueToTerm = \case
   VUnit -> TUnit
   VInt n -> TInt n
