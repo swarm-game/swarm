@@ -95,6 +95,7 @@ type RID = Int
 --   concrete robot we must have a location.
 type family RobotLocation (phase :: Phase) :: Data.Kind.Type where
   RobotLocation Raw = Maybe (Cosmic Location)
+  RobotLocation Resolved = Maybe (Cosmic Location)
   RobotLocation Inferred = Maybe (Cosmic Location)
   RobotLocation Typed = Maybe (Cosmic Location)
   RobotLocation Instantiated = Cosmic Location
@@ -102,27 +103,32 @@ type family RobotLocation (phase :: Phase) :: Data.Kind.Type where
 -- | Robot templates have no ID; concrete robots definitely do.
 type family RobotID (phase :: Phase) :: Data.Kind.Type where
   RobotID Raw = ()
+  RobotID Resolved = ()
   RobotID Inferred = ()
   RobotID Typed = ()
   RobotID Instantiated = RID
 
 type family RobotActivity (phase :: Phase) :: Data.Kind.Type
 type instance RobotActivity Raw = ()
+type instance RobotActivity Resolved = ()
 type instance RobotActivity Inferred = ()
 type instance RobotActivity Typed = ()
 
 type family RobotLogMember (phase :: Phase) :: Data.Kind.Type
 type instance RobotLogMember Raw = ()
+type instance RobotLogMember Resolved = ()
 type instance RobotLogMember Inferred = ()
 type instance RobotLogMember Typed = ()
 
 type family RobotLogUpdatedMember (phase :: Phase) :: Data.Kind.Type
 type instance RobotLogUpdatedMember Raw = ()
+type instance RobotLogUpdatedMember Resolved = ()
 type instance RobotLogUpdatedMember Inferred = ()
 type instance RobotLogUpdatedMember Typed = ()
 
 type family RobotMachine (phase :: Phase) :: Data.Kind.Type
 type instance RobotMachine Raw = Maybe (Syntax Raw)
+type instance RobotMachine Resolved = Maybe (Syntax Resolved)
 type instance RobotMachine Inferred = Maybe (Syntax Inferred)
 type instance RobotMachine Typed = Maybe (Syntax Typed)
 
