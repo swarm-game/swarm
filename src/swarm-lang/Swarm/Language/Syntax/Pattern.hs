@@ -48,7 +48,7 @@ import Swarm.Util.SrcLoc
 makeLenses 'Syntax
 
 -- | Raw parsed syntax, without comments or type annotations.
-pattern RSyntax :: SrcLoc -> Term Raw -> Syntax Raw
+pattern RSyntax :: (SwarmType phase ~ ()) => SrcLoc -> Term phase -> Syntax phase
 pattern RSyntax l t <- Syntax l t _ ()
   where
     RSyntax l t = Syntax l t Empty ()
@@ -56,89 +56,89 @@ pattern RSyntax l t <- Syntax l t _ ()
 {-# COMPLETE RSyntax #-}
 
 -- | Untyped syntax with assocated comments.
-pattern CSyntax :: SrcLoc -> Term Raw -> Comments -> Syntax Raw
+pattern CSyntax :: (SwarmType phase ~ ()) => SrcLoc -> Term phase -> Comments -> Syntax phase
 pattern CSyntax l t cs = Syntax l t cs ()
 
 {-# COMPLETE CSyntax #-}
 
-noLoc :: Term Raw -> Syntax Raw
+noLoc :: (SwarmType phase ~ ()) => Term phase -> Syntax phase
 noLoc = RSyntax mempty
 
 -- | Match an untyped term without annotations.
-pattern RTerm :: Term Raw -> Syntax Raw
+pattern RTerm :: (SwarmType phase ~ ()) => Term phase -> Syntax phase
 pattern RTerm t <-
   CSyntax _ t _
   where
     RTerm t = RSyntax mempty t
 
-pattern TRequirements :: Text -> Term Raw -> Term Raw
+pattern TRequirements :: (SwarmType phase ~ ()) => Text -> Term phase -> Term phase
 pattern TRequirements x t = SRequirements x (RTerm t)
 
 -- | Match a TPair without annotations.
-pattern TPair :: Term Raw -> Term Raw -> Term Raw
+pattern TPair :: (SwarmType phase ~ ()) => Term phase -> Term phase -> Term phase
 pattern TPair t1 t2 = SPair (RTerm t1) (RTerm t2)
 
 -- | Match a TLam without annotations.
-pattern TLam :: Var -> Maybe Type -> Term Raw -> Term Raw
+pattern TLam :: (SwarmType phase ~ ()) => Var -> Maybe Type -> Term phase -> Term phase
 pattern TLam v ty t <- SLam (lvVar -> v) ty (RTerm t)
   where
     TLam v ty t = SLam (LV NoLoc v) ty (RTerm t)
 
 -- | Match a TApp without annotations.
-pattern TApp :: Term Raw -> Term Raw -> Term Raw
+pattern TApp :: (SwarmType phase ~ ()) => Term phase -> Term phase -> Term phase
 pattern TApp t1 t2 = SApp (RTerm t1) (RTerm t2)
 
 infixl 0 :$:
 
 -- | Convenient infix pattern synonym for application.
-pattern (:$:) :: Term Raw -> Syntax Raw -> Term Raw
+pattern (:$:) :: (SwarmType phase ~ ()) => Term phase -> Syntax phase -> Term phase
 pattern (:$:) t1 s2 = SApp (RTerm t1) s2
 
 -- | Match a TLet without annotations.
-pattern TLet :: LetSyntax -> Bool -> Var -> Maybe RawPolytype -> Maybe Polytype -> Maybe Requirements -> Term Raw -> Term Raw -> Term Raw
+pattern TLet :: (SwarmType phase ~ ()) => LetSyntax -> Bool -> Var -> Maybe RawPolytype -> Maybe Polytype -> Maybe Requirements -> Term phase -> Term phase -> Term phase
 pattern TLet ls r v mty mpty mreq t1 t2 <- SLet ls r (lvVar -> v) mty mpty mreq (RTerm t1) (RTerm t2)
   where
     TLet ls r v mty mpty mreq t1 t2 = SLet ls r (LV NoLoc v) mty mpty mreq (RTerm t1) (RTerm t2)
 
 -- | Match a STydef without annotations.
-pattern TTydef :: TDVar -> Polytype -> Maybe TydefInfo -> Term Raw -> Term Raw
+pattern TTydef :: (SwarmType phase ~ ()) => TDVar -> Polytype -> Maybe TydefInfo -> Term phase -> Term phase
 pattern TTydef v ty mtd t1 <- STydef (lvVar -> v) ty mtd (RTerm t1)
   where
     TTydef v ty mtd t1 = STydef (LV NoLoc v) ty mtd (RTerm t1)
 
 -- | Match a TBind without annotations.
-pattern TBind :: Maybe Var -> Maybe Polytype -> Maybe Requirements -> Term Raw -> Term Raw -> Term Raw
+pattern TBind :: (SwarmType phase ~ ()) => Maybe Var -> Maybe Polytype -> Maybe Requirements -> Term phase -> Term phase -> Term phase
 pattern TBind mv mty mreq t1 t2 <- SBind (fmap lvVar -> mv) _ mty mreq (RTerm t1) (RTerm t2)
   where
     TBind mv mty mreq t1 t2 = SBind (LV NoLoc <$> mv) Nothing mty mreq (RTerm t1) (RTerm t2)
 
 -- | Match a TDelay without annotations.
-pattern TDelay :: Term Raw -> Term Raw
+pattern TDelay :: (SwarmType phase ~ ()) => Term phase -> Term phase
 pattern TDelay t = SDelay (RTerm t)
 
 -- | Match a TRcd without annotations.
-pattern TRcd :: Map Var (Maybe (Term Raw)) -> Term Raw
+pattern TRcd :: (SwarmType phase ~ ()) => Map Var (Maybe (Term phase)) -> Term phase
 pattern TRcd m <- SRcd ((fmap . fmap) _sTerm -> m)
   where
     TRcd m = SRcd ((fmap . fmap) RTerm m)
 
-pattern TProj :: Term Raw -> Var -> Term Raw
+pattern TProj :: (SwarmType phase ~ ()) => Term phase -> Var -> Term phase
 pattern TProj t x = SProj (RTerm t) x
 
 -- | Match a TAnnotate without annotations.
-pattern TAnnotate :: Term Raw -> RawPolytype -> Term Raw
+pattern TAnnotate :: (SwarmType phase ~ ()) => Term phase -> RawPolytype -> Term phase
 pattern TAnnotate t pt = SAnnotate (RTerm t) pt
 
 -- | Match a TSuspend without annotations.
-pattern TSuspend :: Term Raw -> Term Raw
+pattern TSuspend :: (SwarmType phase ~ ()) => Term phase -> Term phase
 pattern TSuspend t = SSuspend (RTerm t)
 
 -- | Match a TImportIn without annotations.
-pattern TImportIn :: ImportLoc -> Term Raw -> Term Raw
+pattern TImportIn :: (SwarmType phase ~ ()) => ImportLoc -> Term phase -> Term phase
 pattern TImportIn loc t = SImportIn loc (RTerm t)
 
 -- | Match a TParens without annotations.
-pattern TParens :: Term Raw -> Term Raw
+pattern TParens :: (SwarmType phase ~ ()) => Term phase -> Term phase
 pattern TParens t = SParens (RTerm t)
 
 -- COMPLETE pragma tells GHC using this set of patterns is complete for Term Raw
