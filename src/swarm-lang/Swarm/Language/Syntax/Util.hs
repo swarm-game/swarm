@@ -172,16 +172,20 @@ traverseSyntax f g (Syntax loc t com ty) =
 -- Type erasure
 ------------------------------------------------------------
 
--- | Erase something from any phase back to the initial 'Raw' phase.
---   In particular this will erase type annotations.
+-- | Erase type annotations.
+--
+--   XXX technically, unsafe since we could use this to go from Raw -> Resolved???
 class Erasable t where
-  erase :: t a -> t Raw
+  erase :: t phase -> t Resolved
+
+instance Erasable ImportLoc where
+  erase (ImportLoc f d) = ImportLoc f d
 
 instance Erasable Syntax where
-  erase = runIdentity . traverseSyntax (const (pure ())) (pure . uncanonicalize)
+  erase = runIdentity . traverseSyntax (const (pure ())) (pure . erase)
 
 instance Erasable Term where
-  erase = runIdentity . termSyntax (const (pure ())) (pure . uncanonicalize) (pure . erase)
+  erase = runIdentity . termSyntax (const (pure ())) (pure . erase) (pure . erase)
 
 ------------------------------------------------------------
 -- Free variable traversals
