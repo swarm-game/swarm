@@ -23,6 +23,7 @@ module Swarm.Language.Syntax.Import (
   -- * ImportLoc
   ImportLoc (..),
   importAnchor,
+  uncanonicalize,
 ) where
 
 import Data.Aeson (FromJSON, ToJSON)
@@ -31,6 +32,7 @@ import Data.Hashable (Hashable)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter (hcat, pretty, punctuate, slash)
+import Swarm.Language.Phase
 import Swarm.Pretty
 
 ------------------------------------------------------------
@@ -130,15 +132,22 @@ instance Monoid ImportDir where
 
 -- | A location from which to import a file containing Swarm code,
 --   consisting of a directory paired with a filename.
-data ImportLoc = ImportLoc {importDir :: ImportDir, importFile :: Text}
+--
+--   Parameterized by the phase so we can be sure to canonicalize +
+--   process imports in a typesafe way.
+data ImportLoc (phase :: Phase) = ImportLoc {importDir :: ImportDir, importFile :: Text}
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON, Hashable)
 
-instance PrettyPrec ImportLoc where
+instance PrettyPrec (ImportLoc phase) where
   prettyPrec _ (ImportLoc d f) = ppr d <> "/" <> pretty f
 
 -- | Get the 'Anchor' for an 'ImportLoc'.
-importAnchor :: ImportLoc -> Anchor
+importAnchor :: ImportLoc phase -> Anchor
 importAnchor = withImportDir const . importDir
+
+-- | Forget the fact that an import location has been canonicalized.
+uncanonicalize :: ImportLoc phase -> ImportLoc Raw
+uncanonicalize (ImportLoc d f) = ImportLoc d f
 
 ------------------------------------------------------------
 -- Canonicalization
