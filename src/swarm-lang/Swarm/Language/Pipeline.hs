@@ -160,7 +160,7 @@ class Processable t where
   -- XXX should m include effects to save resulting SrcMap ??
 
 instance Processable Syntax where
-  process = undefined  -- XXX
+  process = withError (typeErrToSystemFailure "") . inferTop mempty mempty undefined mempty  -- XXX ?
 
 instance Processable Term where
   process = undefined  -- XXX
