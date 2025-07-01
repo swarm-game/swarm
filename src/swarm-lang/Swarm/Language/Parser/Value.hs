@@ -45,7 +45,7 @@ readValue ty txt = do
         _ -> txt
   s <- eitherToMaybe $ readNonemptyTerm txt'
   -- XXX have to explicitly account for the fact that we don't resolve imports here!
-  let sResolved = undefined
+  let sResolved = error "readValue unimplemented"
   _ <- eitherToMaybe . runError @ContextualTypeErr $ checkTop Ctx.empty Ctx.empty emptyTDCtx M.empty sResolved ty
   toValue $ s ^. sTerm
 
