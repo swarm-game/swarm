@@ -99,14 +99,6 @@ validateSwarmCode doc version content = do
         Left (DoesNotTypecheck l t) -> ([(srcLocToPos l content, t)], [])
         Left err -> ([(((0, 0), (0, 0)), prettyText err)], [])
 
-  -- err <- liftIO . runM . runError @SystemFailure $ processParsedTerm' emptyEnv (content, undefined)
-  -- let processErrors = case err of
-  --       Right _ -> []
-  --       Left (DoesNotTypecheck l t) -> [(srcLocToPos l, t)]
-  --       Left err -> [(_, prettyText err)]
-
-  -- debug $ "-> " <> from (show err)
-
   publishDiags $
     map makeUnusedVarDiagnostic warnings
 

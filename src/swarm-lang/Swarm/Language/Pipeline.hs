@@ -76,7 +76,7 @@ processParsedTerm = runError . processParsedTerm' emptyEnv
 -- | Like 'processParsedTerm', but don't allow any imports (and hence
 --   don't require IO).
 processParsedTermNoImports :: (Text, Syntax Raw) -> Either SystemFailure (Syntax Typed)
-processParsedTermNoImports = undefined
+processParsedTermNoImports = error "processParsedTermNoImports undefined"
   -- XXX how to enforce no imports + get to Resolved phase?
   -- run . runError . processParsedTermWithSrcMap mempty emptyEnv
 
@@ -167,4 +167,4 @@ instance Processable Syntax where
     withError (typeErrToSystemFailure "") . inferTop mempty mempty emptyTDCtx srcMap $ s'
 
 instance Processable Term where
-  process = undefined  -- XXX
+  process = error "process Term undefined"
