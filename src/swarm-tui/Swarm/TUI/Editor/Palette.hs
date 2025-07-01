@@ -32,7 +32,7 @@ import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainMap, TerrainType, getTerrainDefaultPaletteChar, terrainByName)
 import Swarm.Game.Universe
-import Swarm.Language.Syntax (erase)
+import Swarm.Language.Syntax (eraseRaw)
 import Swarm.Language.Text.Markdown (fromText)
 import Swarm.TUI.Editor.Json (SkeletonScenario (SkeletonScenario))
 import Swarm.Util (binTuples, histogram)
@@ -124,7 +124,7 @@ constructScenario maybeOriginalScenario cellGrid =
   SkeletonScenario
     (maybe 1 (^. scenarioMetadata . scenarioVersion) maybeOriginalScenario)
     (maybe "My Scenario" (^. scenarioMetadata . scenarioName) maybeOriginalScenario)
-    (maybe (fromText "The scenario description...") (fmap erase . (^. scenarioOperation . scenarioDescription)) maybeOriginalScenario)
+    (maybe (fromText "The scenario description...") (fmap eraseRaw . (^. scenarioOperation . scenarioDescription)) maybeOriginalScenario)
     -- (maybe True (^. scenarioCreative) maybeOriginalScenario)
     True
     (M.elems $ entitiesByName customEntities)

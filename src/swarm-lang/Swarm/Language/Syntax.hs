@@ -51,6 +51,8 @@ module Swarm.Language.Syntax (
   -- * Syntax
   ImportDir,
   ImportLoc (..),
+  ResolvedDir,
+  ResolvedFile,
   Syntax (..),
   sLoc,
   sTerm,
@@ -96,6 +98,7 @@ module Swarm.Language.Syntax (
 
   -- ** Erasure
   erase,
+  eraseRaw,
 
   -- ** Free variable traversal
   freeVarsS,

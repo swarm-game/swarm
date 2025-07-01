@@ -896,6 +896,8 @@ validateREPLForm s =
                    in (Nothing, Left (SrcLoc x1 x2))
                 Right Nothing -> (Nothing, Right ())
                 Right (Just theTerm) ->
+                  -- XXX how to deal with validation?  Do we need to add IO here?
+                  --   Cache SrcMap somehow?
                   case run . runError @SystemFailure $ processParsedTermWithSrcMap mempty env (uinput, theTerm) of
                     Right t -> (Just (t ^. sType), Right ())
                     Left (DoesNotTypecheck loc _) -> (Nothing, Left loc)

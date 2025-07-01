@@ -36,7 +36,6 @@ module Swarm.Language.Syntax.Pattern (
 import Control.Lens (makeLenses, pattern Empty)
 import Data.Map.Strict (Map)
 import Data.Text (Text)
-import Swarm.Language.Phase
 import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
