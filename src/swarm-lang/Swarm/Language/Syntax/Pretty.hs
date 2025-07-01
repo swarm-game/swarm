@@ -32,7 +32,7 @@ import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Pattern (sComments, pattern RTerm)
-import Swarm.Language.Syntax.Util (erase, unTuple)
+import Swarm.Language.Syntax.Util (eraseRaw, unTuple)
 import Swarm.Language.TDVar (TDVar)
 import Swarm.Language.Types
 import Swarm.Pretty (PrettyPrec (..), encloseWithIndent, pparens, ppr, prettyEquality)
@@ -171,12 +171,12 @@ prettyPrecApp p t1 t2 =
     prettyPrec 10 t1 <+> prettyPrec 11 t2
 
 prettyTuple :: Term phase -> Doc a
-prettyTuple = tupled . map ppr . unTuple . RTerm . erase
+prettyTuple = tupled . map ppr . unTuple . RTerm . eraseRaw
 
 prettyLambdas :: Term phase -> Doc a
 prettyLambdas t = hsep (prettyLambda <$> lms) <> softline <> ppr rest
  where
-  (rest, lms) = unchainLambdas (RTerm (erase t))
+  (rest, lms) = unchainLambdas (RTerm (eraseRaw t))
 
 unchainLambdas :: Syntax phase -> (Syntax phase, [(Var, Maybe Type)])
 unchainLambdas = \case

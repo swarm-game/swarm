@@ -113,7 +113,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (emptyFound
 import Swarm.Game.State.Config
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World.Gen (Seed)
-import Swarm.Language.Syntax (Const, Phase (..), SwarmType, Syntax)
+import Swarm.Language.Syntax (Const, ResolvedDir, ResolvedFile, Phase (..), SwarmType, Syntax)
 import Swarm.Language.Types (Polytype)
 import Swarm.Language.Value (Value)
 import Swarm.Log
@@ -159,7 +159,7 @@ data WinCondition phase
   deriving (Generic)
 
 deriving instance FromJSON (WinCondition Raw)
-deriving instance ToJSON (SwarmType phase) => ToJSON (WinCondition phase)
+deriving instance (ToJSON (SwarmType phase), ToJSON (ResolvedDir phase), ToJSON (ResolvedFile phase)) => ToJSON (WinCondition phase)
 
 makePrisms ''WinCondition
 

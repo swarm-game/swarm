@@ -25,7 +25,7 @@ import Swarm.Language.LSP.Hover qualified as H
 import Swarm.Language.LSP.VarUsage qualified as VU
 import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Pipeline (processTerm)
-import Swarm.Language.Syntax (SrcLoc (..), erase)
+import Swarm.Language.Syntax (SrcLoc (..), eraseRaw)
 import Swarm.Pretty (prettyText)
 import System.IO (stderr)
 import Witch
@@ -85,7 +85,7 @@ validateSwarmCode doc version content = do
         Right Nothing -> ([], [])
         Right (Just term) -> ([], unusedWarnings)
          where
-          VU.Usage _ problems = VU.getUsage mempty (erase term)
+          VU.Usage _ problems = VU.getUsage mempty (eraseRaw term)
           unusedWarnings = mapMaybe (VU.toErrPos content) problems
         Left (DoesNotTypecheck l t) -> ([(srcLocToPos l content, t)], [])
         Left err -> ([(((0,0), (0,0)), prettyText err)], [])
