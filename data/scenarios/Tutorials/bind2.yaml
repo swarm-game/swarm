@@ -93,6 +93,7 @@ robots:
       - [1, treads]
       - [1, grabber]
       - [1, compass]
+known: [Hastur, pedestal]
 world:
   palette:
     'Ω': [stone, null, base]
