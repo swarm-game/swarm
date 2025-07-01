@@ -129,7 +129,7 @@ parseImportLocation =
   lexeme . between (char '"') (char '"') $ do
     anchor <- parseAnchor
     cs <- importComponent `sepBy1` separator
-    pure $ ImportLoc (mkImportDir anchor (NE.init cs)) (NE.last cs)
+    pure $ ImportLoc (mkImportDir anchor (NE.init cs)) (NE.last cs) () ()
  where
   importComponent :: Parser Text
   importComponent = into @Text <$> someTill L.charLiteral (lookAhead (oneOf ("\"/\\" :: [Char])))

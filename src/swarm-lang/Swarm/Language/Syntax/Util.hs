@@ -22,6 +22,7 @@ module Swarm.Language.Syntax.Util (
 
   -- ** Erasure
   erase,
+  eraseRaw,
 
   -- ** Free variable traversal
   freeVarsS,
@@ -175,19 +176,21 @@ traverseSyntax f g (Syntax loc t com ty) =
 ------------------------------------------------------------
 
 -- | Erase type annotations.
---
---   XXX technically, unsafe since we could use this to go from Raw -> Resolved???
 class Erasable t where
-  erase :: t phase -> t Resolved
+  erase :: t Typed -> t Resolved
+  eraseRaw :: t phase -> t Raw
 
 instance Erasable ImportLoc where
-  erase (ImportLoc f d) = ImportLoc f d
+  erase (ImportLoc f d ff dd) = ImportLoc f d ff dd
+  eraseRaw (ImportLoc f d _ _) = ImportLoc f d () ()
 
 instance Erasable Syntax where
   erase = runIdentity . traverseSyntax (const (pure ())) (pure . erase)
+  eraseRaw = runIdentity . traverseSyntax (const (pure ())) (pure . eraseRaw)
 
 instance Erasable Term where
   erase = runIdentity . termSyntax (const (pure ())) (pure . erase) (pure . erase)
+  eraseRaw = runIdentity . termSyntax (const (pure ())) (pure . eraseRaw) (pure . eraseRaw)
 
 ------------------------------------------------------------
 -- Free variable traversals
@@ -267,12 +270,12 @@ mapFreeS x f = freeVarsS %~ (\t -> case t ^. sTerm of TVar y | y == x -> f t; _ 
 
 -- | Transform the AST into a Tree datatype.  Useful for
 --   pretty-printing (e.g. via "Data.Tree.drawTree").
-asTree :: (Typeable phase, Data (SwarmType phase)) => Syntax phase -> Tree (Syntax phase)
+asTree :: (Typeable phase, Data (SwarmType phase), Data (ResolvedDir phase), Data (ResolvedFile phase)) => Syntax phase -> Tree (Syntax phase)
 asTree = para Node
 
 -- | Each constructor is a assigned a value of 1, plus
 --   any recursive syntax it entails.
-measureAstSize :: (Typeable phase, Data (SwarmType phase)) => Syntax phase -> Int
+measureAstSize :: (Typeable phase, Data (SwarmType phase), Data (ResolvedDir phase), Data (ResolvedFile phase)) => Syntax phase -> Int
 measureAstSize = length . filter (not . isNoop) . universe
 
 -- | Don't count "noop" nodes towards the code size.  They are usually

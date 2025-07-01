@@ -13,6 +13,7 @@ module Swarm.Language.JSON where
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON, withText)
 import Swarm.Language.Parser (readNonemptyTerm)
 import Swarm.Language.Syntax (SwarmType, Syntax, Term, Phase (Raw))
+import Swarm.Language.Syntax.Import (ResolvedDir, ResolvedFile)
 import Swarm.Language.Value (Env, Value (..))
 import Swarm.Util.JSON (optionsMinimize)
 import Witch (into)
@@ -23,10 +24,10 @@ import Witch (into)
 instance FromJSON (Syntax Raw) where
   parseJSON = withText "Term" $ either (fail . into @String) pure . readNonemptyTerm
 
-instance ToJSON (SwarmType phase) => ToJSON (Term phase) where
+instance (ToJSON (SwarmType phase), ToJSON (ResolvedDir phase), ToJSON (ResolvedFile phase)) => ToJSON (Term phase) where
   toJSON = genericToJSON optionsMinimize
 
-instance ToJSON (SwarmType phase) => ToJSON (Syntax phase) where
+instance (ToJSON (SwarmType phase), ToJSON (ResolvedDir phase), ToJSON (ResolvedFile phase)) => ToJSON (Syntax phase) where
   toJSON = genericToJSON optionsMinimize
 
 instance ToJSON Value where

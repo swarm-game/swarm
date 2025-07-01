@@ -55,11 +55,11 @@ data Syntax phase = Syntax
   }
   deriving (Generic)
 
-deriving instance Eq (SwarmType phase) => Eq (Syntax phase)
-deriving instance Show (SwarmType phase) => Show (Syntax phase)
-deriving instance (Data (SwarmType phase), Typeable phase) => Data (Syntax phase)
-deriving instance Hashable (SwarmType phase) => Hashable (Syntax phase)
-instance (Data (SwarmType phase), Typeable phase) => Plated (Syntax phase) where
+deriving instance (Eq (SwarmType phase), Eq (ResolvedDir phase), Eq (ResolvedFile phase)) => Eq (Syntax phase)
+deriving instance (Show (SwarmType phase), Show (ResolvedDir phase), Show (ResolvedFile phase)) => Show (Syntax phase)
+deriving instance (Data (SwarmType phase), Typeable phase, Data (ResolvedDir phase), Data (ResolvedFile phase)) => Data (Syntax phase)
+deriving instance (Hashable (SwarmType phase), Hashable (ResolvedDir phase), Hashable (ResolvedFile phase)) => Hashable (Syntax phase)
+instance (Data (SwarmType phase), Typeable phase, Data (ResolvedDir phase), Data (ResolvedFile phase)) => Plated (Syntax phase) where
   plate = uniplate
 
 -- | A @let@ expression can be written either as @let x = e1 in e2@ or
@@ -176,10 +176,10 @@ data Term phase
     SImportIn (ImportLoc phase) (Syntax phase)
   deriving ( Generic )
 
-deriving instance Eq (SwarmType phase) => Eq (Term phase)
-deriving instance Show (SwarmType phase) => Show (Term phase)
-deriving instance (Data (SwarmType phase), Typeable phase) => Data (Term phase)
-deriving instance Hashable (SwarmType phase) => Hashable (Term phase)
+deriving instance (Eq (SwarmType phase), Eq (ResolvedDir phase), Eq (ResolvedFile phase)) => Eq (Term phase)
+deriving instance (Show (SwarmType phase), Show (ResolvedDir phase), Show (ResolvedFile phase)) => Show (Term phase)
+deriving instance (Data (SwarmType phase), Typeable phase, Data (ResolvedDir phase), Data (ResolvedFile phase)) => Data (Term phase)
+deriving instance (Hashable (SwarmType phase), Hashable (ResolvedDir phase), Hashable (ResolvedFile phase)) => Hashable (Term phase)
 
     -- XXX
     -- , -- | The Traversable instance for Term (and for Syntax) is used during
@@ -193,5 +193,5 @@ deriving instance Hashable (SwarmType phase) => Hashable (Term phase)
     --   Traversable
 
 
-instance (Data (SwarmType phase), Typeable phase) => Plated (Term phase) where
+instance (Data (SwarmType phase), Typeable phase, Data (ResolvedDir phase), Data (ResolvedFile phase)) => Plated (Term phase) where
   plate = uniplate

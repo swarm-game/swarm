@@ -1569,7 +1569,7 @@ execConst runChildProg c vs s k = do
     Inventory ->
     Inventory ->
     Inventory ->
-    Term Raw ->
+    Term Resolved ->
     Text ->
     IncapableFix ->
     m (Set Entity, Inventory)

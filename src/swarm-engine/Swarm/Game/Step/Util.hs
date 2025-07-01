@@ -105,7 +105,7 @@ hasCapability cap = do
 -- | Ensure that either a robot has a given capability, OR we are in creative
 --   mode.
 hasCapabilityFor ::
-  (Has (State (Robot Instantiated)) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) => Capability -> Term Raw -> m ()
+  (Has (State (Robot Instantiated)) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) => Capability -> Term Resolved -> m ()
 hasCapabilityFor cap term = do
   h <- hasCapability cap
   h `holdsOr` Incapable FixByEquip (R.singletonCap cap) term

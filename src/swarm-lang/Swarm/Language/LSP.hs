@@ -31,7 +31,7 @@ import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Parser.Util (getLocRange, showErrorPos)
 import Swarm.Language.Pipeline (processTerm)
-import Swarm.Language.Syntax (erase)
+import Swarm.Language.Syntax (erase, eraseRaw)
 import Swarm.Language.Syntax.Loc (SrcLoc (NoLoc, SrcLoc))
 import Swarm.Language.Typecheck (ContextualTypeErr (..))
 import Swarm.Language.Value (emptyEnv)
@@ -94,7 +94,7 @@ validateSwarmCode doc version content = do
         Right Nothing -> ([], [])
         Right (Just term) -> ([], unusedWarnings)
          where
-          VU.Usage _ problems = VU.getUsage mempty (erase term)
+          VU.Usage _ problems = VU.getUsage mempty (eraseRaw term)
           unusedWarnings = mapMaybe (VU.toErrPos content) problems
         Left (DoesNotTypecheck l t) -> ([(srcLocToPos l content, t)], [])
         Left err -> ([(((0, 0), (0, 0)), prettyText err)], [])
