@@ -28,6 +28,7 @@ module Swarm.Language.Syntax.Import (
   ResolvedFile,
   importAnchorRaw,
   importAnchorResolved,
+  unsafeResolveImport,
   inferImportLoc,
   generalizeImportLoc,
 ) where
@@ -174,6 +175,10 @@ importAnchorRaw = withImportDir const . importDirRaw
 -- | Get the resolved 'Anchor' for an 'ImportLoc'.
 importAnchorResolved :: ImportLoc Resolved -> Anchor
 importAnchorResolved = withImportDir const . importDirRes
+
+-- | XXX
+unsafeResolveImport :: ImportLoc Raw -> ImportLoc Resolved
+unsafeResolveImport (ImportLoc d f _ _) = ImportLoc d f d f
 
 -- | XXX
 inferImportLoc :: ImportLoc Resolved -> ImportLoc Inferred

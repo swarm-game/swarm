@@ -34,6 +34,8 @@ import Control.Effect.Error (Error)
 import Control.Effect.Throw (liftEither)
 import Control.Carrier.Error.Either (runError)
 import Control.Lens ((^.))
+import Data.Bifunctor (second)
+import Data.Functor.Identity
 import Data.Text (Text)
 import Swarm.Failure (SystemFailure (..))
 import Swarm.Language.Context qualified as Ctx
@@ -43,6 +45,7 @@ import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Requirements.Type (ReqCtx)
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.Import (unsafeResolveImport)
 import Swarm.Language.Typecheck
 import Swarm.Language.Types (TCtx, emptyTDCtx)
 import Swarm.Language.Value (Env, emptyEnv, envReqs, envTydefs, envTypes)
@@ -74,11 +77,12 @@ processParsedTerm :: (Text, Syntax Raw) -> IO (Either SystemFailure (Syntax Type
 processParsedTerm = runError . processParsedTerm' emptyEnv
 
 -- | Like 'processParsedTerm', but don't allow any imports (and hence
---   don't require IO).
+--   don't require IO).  XXX this currently does actually allow imports.
+--   Do we want imports to be an error, or just ignored/not properly resolved?
 processParsedTermNoImports :: (Text, Syntax Raw) -> Either SystemFailure (Syntax Typed)
-processParsedTermNoImports = error "processParsedTermNoImports undefined"
-  -- XXX how to enforce no imports + get to Resolved phase?
-  -- run . runError . processParsedTermWithSrcMap mempty emptyEnv
+processParsedTermNoImports =
+  run . runError . processParsedTermWithSrcMap mempty emptyEnv .
+  second (runIdentity . traverseSyntax pure (pure . unsafeResolveImport))
 
 -- | Like 'processTerm', but use explicit starting contexts.
 processTerm' ::
