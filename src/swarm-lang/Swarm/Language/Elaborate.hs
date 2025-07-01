@@ -65,7 +65,7 @@ elaborate = transform rewrite
 
 -- | Insert a special 'suspend' primitive at the very end of an erased
 --   term which must have a command type.
-insertSuspend :: Term Raw -> Term Raw
+insertSuspend :: Term Resolved -> Term Resolved
 insertSuspend t = case t of
   -- Primitive things which have type Cmd Unit: p => (p ; suspend ())
   TRequire {} -> thenSuspend
