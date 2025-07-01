@@ -226,7 +226,7 @@ readLoc loc = do
 
   -- Try to read the file from network/disk
   src <- case importAnchorResolved loc of
-    Web {} -> undefined -- XXX load URL with some kind of HTTP library
+    Web {} -> error "readLoc Web unimplemented" -- XXX load URL with some kind of HTTP library
     _ -> sendIO (readFileMayT path) >>= maybe (badImport (DoesNotExist File)) pure
 
   -- Try to parse the contents

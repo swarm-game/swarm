@@ -128,7 +128,7 @@ constructScenario maybeOriginalScenario cellGrid =
     -- (maybe True (^. scenarioCreative) maybeOriginalScenario)
     True
     (M.elems $ entitiesByName customEntities)
-    undefined -- XXX (_ wd)
+    (error "constructScenario unimplemented") -- XXX (_ wd)
     [] -- robots
  where
   tem = maybe mempty (^. scenarioLandscape . scenarioTerrainAndEntities) maybeOriginalScenario
