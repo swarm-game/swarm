@@ -50,6 +50,7 @@ import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.JSON ()
 import Swarm.Language.Pipeline (Processable (..))
 import Swarm.Language.Syntax (Phase (..), SwarmType, Syntax)
+import Swarm.Language.Syntax.Import (ResolvedDir, ResolvedFile)
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Util.Lens (concatFold, makeLensesExcluding, makeLensesNoSigs)
 
@@ -111,9 +112,9 @@ data Objective phase = Objective
 
 makeLensesNoSigs ''Objective
 
-deriving instance ToJSON (SwarmType phase) => ToJSON (Objective phase)
-deriving instance Show (SwarmType phase) => Show (Objective phase)
-deriving instance Eq (SwarmType phase) => Eq (Objective phase)
+deriving instance (Show (SwarmType phase), Show (ResolvedDir phase), Show (ResolvedFile phase)) => Show (Objective phase)
+deriving instance (ToJSON (SwarmType phase), ToJSON (ResolvedDir phase), ToJSON (ResolvedFile phase)) => ToJSON (Objective phase)
+deriving instance (Eq (SwarmType phase), Eq (ResolvedDir phase), Eq (ResolvedFile phase)) => Eq (Objective phase)
 
 instance ToSample (Objective phase) where
   toSamples _ = SD.noSamples
@@ -198,9 +199,9 @@ data CompletionBuckets phase = CompletionBuckets
   }
   deriving (Generic)
 
-deriving instance Show (SwarmType phase) => Show (CompletionBuckets phase)
+deriving instance (Show (SwarmType phase), Show (ResolvedDir phase), Show (ResolvedFile phase)) => Show (CompletionBuckets phase)
 deriving instance FromJSON (CompletionBuckets Raw)
-deriving instance ToJSON (SwarmType phase) => ToJSON (CompletionBuckets phase)
+deriving instance (ToJSON (SwarmType phase), ToJSON (ResolvedDir phase), ToJSON (ResolvedFile phase)) => ToJSON (CompletionBuckets phase)
 
 -- Note we derive these lenses for `CompletionBuckets` but we do NOT
 -- export them; they are used only internally to this module.  In
@@ -238,9 +239,9 @@ data ObjectiveCompletion phase = ObjectiveCompletion
 makeLensesFor [("_completedIDs", "internalCompletedIDs")] ''ObjectiveCompletion
 makeLensesExcluding ['_completedIDs] ''ObjectiveCompletion
 
-deriving instance Show (SwarmType phase) => Show (ObjectiveCompletion phase)
+deriving instance (Show (SwarmType phase), Show (ResolvedDir phase), Show (ResolvedFile phase)) => Show (ObjectiveCompletion phase)
 deriving instance FromJSON (ObjectiveCompletion Raw)
-deriving instance ToJSON (SwarmType phase) => ToJSON (ObjectiveCompletion phase)
+deriving instance (ToJSON (SwarmType phase), ToJSON (ResolvedDir phase), ToJSON (ResolvedFile phase)) => ToJSON (ObjectiveCompletion phase)
 
 -- | Initialize an objective completion tracking record from a list of
 --   (initially incomplete) objectives.

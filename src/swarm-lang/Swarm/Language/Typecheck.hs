@@ -1101,7 +1101,7 @@ inferModule ::
   , Has (Error ContextualTypeErr) sig m
   ) =>
   Module Resolved -> m (Module Inferred)
-inferModule (Module ms _ imps) = do
+inferModule (Module ms _ _imps) = do
   -- Infer the type of the term
   mt <- mapM infer ms
 

@@ -82,7 +82,7 @@ data Exn
     --   @try@ block.  Also contains the missing requirements, the
     --   term that caused the problem, and a suggestion for how to fix
     --   things.
-    Incapable IncapableFix Requirements (Term Raw)
+    Incapable IncapableFix Requirements (Term Resolved)
   | -- | A command failed in some "normal" way (/e.g./ a 'Swarm.Language.Syntax.Move'
     --   command could not move, or a 'Swarm.Language.Syntax.Grab' command found nothing to
     --   grab, /etc./).  Can be caught by a @try@ block.

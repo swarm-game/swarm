@@ -43,7 +43,7 @@ import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Syntax (Phase (..))
 import Swarm.Language.Syntax.AST (Syntax, SwarmType)
-import Swarm.Language.Syntax.Import (Anchor (..), ImportDir, ImportLoc (..), currentDir, importAnchor, withImportDir)
+import Swarm.Language.Syntax.Import
 import Swarm.Language.Syntax.Util (traverseSyntax)
 import Swarm.Language.Types (Poly, ImplicitQuantification (Quantified))
 import Swarm.Language.Var (Var)
@@ -75,7 +75,7 @@ dirToFilePath = withImportDir $ \a p -> do
 
 -- | Turn an 'ImportLoc' into a concrete 'FilePath' (or URL).
 locToFilePath :: (Has (Lift IO) sig m) => ImportLoc phase -> m FilePath
-locToFilePath (ImportLoc d f) = do
+locToFilePath (ImportLoc d f _ _) = do
   df <- dirToFilePath d
   pure $ df </> into @FilePath f
 
@@ -85,10 +85,10 @@ locToFilePath (ImportLoc d f) = do
 --   the sake of efficiency, this simply assumes that any 'Web'
 --   resource exists without checking; all other locations will
 --   actually be checked.
-doesLocationExist :: (Has (Lift IO) sig m) => ImportLoc phase -> m Bool
+doesLocationExist :: (Has (Lift IO) sig m) => ImportLoc Resolved -> m Bool
 doesLocationExist loc = do
   fp <- locToFilePath loc
-  case importAnchor loc of
+  case importAnchorResolved loc of
     Web {} -> pure True
     _ -> sendIO $ doesFileExist fp
 
@@ -103,7 +103,7 @@ resolveImportLoc ::
   ImportDir ->
   ImportLoc Raw ->
   m (ImportLoc Resolved)
-resolveImportLoc parent (ImportLoc d f) = do
+resolveImportLoc parent (ImportLoc d f _ _) = do
   e1 <- doesLocationExist loc'
   e2 <- doesLocationExist loc'sw
   case (e1, e2) of
@@ -113,8 +113,8 @@ resolveImportLoc parent (ImportLoc d f) = do
     _ -> pure loc'
  where
   d' = parent <> d
-  loc' = ImportLoc d' f
-  loc'sw = ImportLoc d' (f <> ".sw")
+  loc' = ImportLoc d' f d f
+  loc'sw = ImportLoc d' (f <> ".sw") d f
 
 -- | A 'Module' is a (possibly empty) AST, along with a context for
 --   any definitions contained in it, and a list of transitive,
@@ -132,7 +132,7 @@ data Module phase = Module
   }
   deriving (Generic)
 
-deriving instance (Typeable phase, Data (SwarmType phase)) => Data (Module phase)
+deriving instance (Typeable phase, Data (SwarmType phase), Data (ResolvedDir phase), Data (ResolvedFile phase), Ord (ResolvedDir phase), Ord (ResolvedFile phase)) => Data (Module phase)
 
 -- | A SourceMap associates canonical 'ImportLocation's to modules.
 type SourceMap phase = Map (ImportLoc phase) (Module phase)
@@ -205,7 +205,7 @@ resolveImport parent loc = do
        mt <- readLoc canonicalLoc
 
        -- Recursively resolve any imports it contains
-       mres <- traverse (resolveImports (importDir canonicalLoc)) mt
+       mres <- traverse (resolveImports (importDirRes canonicalLoc)) mt
        -- sequence :: Maybe (Set a, b) -> (Set a, Maybe b)
        let (imps, mt') = sequence mres
 
@@ -225,7 +225,7 @@ readLoc loc = do
   let badImport = throwError . AssetNotLoaded (Data Script) path
 
   -- Try to read the file from network/disk
-  src <- case importAnchor loc of
+  src <- case importAnchorResolved loc of
     Web {} -> undefined -- XXX load URL with some kind of HTTP library
     _ -> sendIO (readFileMayT path) >>= maybe (badImport (DoesNotExist File)) pure
 
