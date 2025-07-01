@@ -24,7 +24,7 @@ data ScenarioCodeMetrics = ScenarioCodeMetrics
   deriving (Eq, Ord, Show, Read, Generic, ToJSON, FromJSON)
 
 codeMetricsFromSyntax ::
-  (Data (SwarmType phase), Typeable phase) =>
+  (Data (SwarmType phase), Typeable phase, Data (ResolvedDir phase), Data (ResolvedFile phase)) =>
   Syntax phase ->
   ScenarioCodeMetrics
 codeMetricsFromSyntax s@(Syntax srcLoc _ _ _) =

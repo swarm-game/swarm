@@ -2,6 +2,8 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -22,13 +24,16 @@ module Swarm.Language.Syntax.Import (
 
   -- * ImportLoc
   ImportLoc (..),
-  importAnchor,
+  ResolvedDir,
+  ResolvedFile,
+  importAnchorRaw,
+  importAnchorResolved,
   inferImportLoc,
   generalizeImportLoc,
 ) where
 
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Data (Data)
+import Data.Data (Data, Typeable)
 import Data.Hashable (Hashable)
 import Data.Text (Text)
 import GHC.Generics (Generic)
@@ -136,23 +141,47 @@ instance Monoid ImportDir where
 --
 --   Parameterized by the phase so we can be sure to canonicalize +
 --   process imports in a typesafe way.
-data ImportLoc (phase :: Phase) = ImportLoc {importDir :: ImportDir, importFile :: Text}
-  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON, Hashable)
+data ImportLoc (phase :: Phase) = ImportLoc
+  { importDirRaw :: ImportDir
+  , importFileRaw :: Text
+  , importDirRes :: ResolvedDir phase      -- Maybe ImportDir
+  , importFileRes :: ResolvedFile phase    -- Maybe Text
+  }
+  deriving (Generic)
+
+type family ResolvedDir (phase :: Phase) where
+  ResolvedDir Raw = ()
+  ResolvedDir _ = ImportDir
+
+type family ResolvedFile (phase :: Phase) where
+  ResolvedFile Raw = ()
+  ResolvedFile _ = Text
+
+deriving instance (Eq (ResolvedDir phase), Eq (ResolvedFile phase)) => Eq (ImportLoc phase)
+deriving instance (Ord (ResolvedDir phase), Ord (ResolvedFile phase)) => Ord (ImportLoc phase)
+deriving instance (Show (ResolvedDir phase), Show (ResolvedFile phase)) => Show (ImportLoc phase)
+deriving instance (Hashable (ResolvedDir phase), Hashable (ResolvedFile phase)) => Hashable (ImportLoc phase)
+deriving instance (ToJSON (ResolvedDir phase), ToJSON (ResolvedFile phase)) => ToJSON (ImportLoc phase)
+deriving instance (Typeable phase, Data (ResolvedDir phase), Data (ResolvedFile phase)) => Data (ImportLoc phase)
 
 instance PrettyPrec (ImportLoc phase) where
-  prettyPrec _ (ImportLoc d f) = ppr d <> "/" <> pretty f
+  prettyPrec _ (ImportLoc d f _ _) = ppr d <> "/" <> pretty f
 
--- | Get the 'Anchor' for an 'ImportLoc'.
-importAnchor :: ImportLoc phase -> Anchor
-importAnchor = withImportDir const . importDir
+-- | Get the raw 'Anchor' for an 'ImportLoc'.
+importAnchorRaw :: ImportLoc Raw -> Anchor
+importAnchorRaw = withImportDir const . importDirRaw
+
+-- | Get the resolved 'Anchor' for an 'ImportLoc'.
+importAnchorResolved :: ImportLoc Resolved -> Anchor
+importAnchorResolved = withImportDir const . importDirRes
 
 -- | XXX
 inferImportLoc :: ImportLoc Resolved -> ImportLoc Inferred
-inferImportLoc (ImportLoc d f) = ImportLoc d f
+inferImportLoc (ImportLoc d f rd rf) = ImportLoc d f rd rf
 
 -- | XXX
 generalizeImportLoc :: ImportLoc Inferred -> ImportLoc Typed
-generalizeImportLoc (ImportLoc d f) = ImportLoc d f
+generalizeImportLoc (ImportLoc d f rd rf) = ImportLoc d f rd rf
 
 ------------------------------------------------------------
 -- Canonicalization
