@@ -10,6 +10,7 @@ import Control.Carrier.Error.Either (ErrorC (..), runError)
 import Control.Carrier.Throw.Either (ThrowC (..), runThrow)
 import Control.Effect.Error
 import Control.Monad ((>=>))
+import Control.Monad.State (MonadState, get, put)
 import Control.Monad.Trans.Except (ExceptT)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Sequence (Seq)
@@ -79,3 +80,6 @@ forMW ::
   (a -> m (Either w b)) ->
   m (t b)
 forMW = flip traverseW
+
+modifyM :: MonadState s m => (s -> m s) -> m ()
+modifyM f = get >>= (f >=> put)
