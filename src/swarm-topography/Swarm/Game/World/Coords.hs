@@ -9,6 +9,7 @@ module Swarm.Game.World.Coords (
   locToCoords,
   coordsToLoc,
   addTuple,
+  mapCoords,
   BoundsRectangle,
 )
 where
@@ -31,7 +32,7 @@ import Swarm.Game.Location (Location, pattern Location)
 --   and forth between this type and t'Location', which is used when
 --   presenting coordinates externally to the player.
 newtype Coords = Coords {unCoords :: (Int32, Int32)}
-  deriving (Eq, Ord, Show, Ix, Generic)
+  deriving (Eq, Ord, Show, Read, Ix, Generic)
 
 instance Rewrapped Coords t
 instance Wrapped Coords
@@ -46,6 +47,9 @@ coordsToLoc (Coords (r, c)) = Location c (-r)
 
 addTuple :: Coords -> (Int32, Int32) -> Coords
 addTuple (Coords (r, c)) (addR, addC) = Coords (r + addR, c + addC)
+
+mapCoords :: (Int32 -> Int32) -> Coords -> Coords
+mapCoords f (Coords (r,c)) = Coords (f r, f c)
 
 -- | Represents the top-left and bottom-right coordinates
 -- of a bounding rectangle of cells in the world map
