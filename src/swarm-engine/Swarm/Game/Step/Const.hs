@@ -159,12 +159,14 @@ execConst runChildProg c vs s k = do
     Destroy -> case vs of
       [VRobot rid] -> do
         myID <- use robotID
+        rm <- use (robotInfo . robotMap)
+        let loc = rm ^? ix rid . robotLocation
         if myID == rid
           then destroyIfNotBase $ \case False -> Just AttemptSelfDestructBase; _ -> Nothing
           else do
-            zoomRobots $ deleteRobot rid
+            _ <- zoomRobots $ deleteRobot rid
             when (rid == 0) $ grantAchievement DestroyedBase
-        flagRedraw
+        maybe (pure ()) flagRedraw loc
         return $ mkReturn ()
       _ -> badConst
     Move -> do

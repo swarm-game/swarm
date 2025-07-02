@@ -136,6 +136,7 @@ import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
+import Swarm.TUI.Model.ViewChunk
 import Swarm.TUI.Panel
 import Swarm.TUI.View.Achievement
 import Swarm.TUI.View.Attribute.Attr
@@ -1073,8 +1074,24 @@ worldWidget renderCoord gameViewCenter = Widget Fixed Fixed $
     let w = ctx ^. availWidthL
         h = ctx ^. availHeightL
         vr = viewingRegion gameViewCenter (fromIntegral w, fromIntegral h)
-        ixs = range $ vr ^. planar
-    render . raw . V.vertCat . map V.horizCat . chunksOf w . map (renderCoord . Cosmic (vr ^. subworld)) $ ixs
+        chunks@((topLeft:_):_) = viewChunkCover vr
+        (vrRow, vrCol) = unCoords $ fst (vr ^. planar)
+        (vcRow, vcCol) = unCoords $ fst (viewChunkBounds topLeft ^. planar)
+        topCrop = fromIntegral $ vrRow - vcRow
+        leftCrop = fromIntegral $ vrCol - vcCol
+    render . cropTopBy topCrop . cropLeftBy leftCrop . vBox . map hBox . (map . map) (viewChunkWidget renderCoord) $ chunks
+
+viewChunkWidget :: (Cosmic Coords -> V.Image) -> ViewChunk -> Widget n
+viewChunkWidget renderCoord vc =
+  raw
+  . V.vertCat
+  . map V.horizCat
+  . chunksOf (fromIntegral viewChunkSize)
+  . map (renderCoord . (<$ bounds))
+  $ ixs
+  where
+    bounds = viewChunkBounds vc
+    ixs = range $ bounds ^. planar
 
 -- | Draw the current world view.
 drawWorldPane :: UIGameplay -> GameState -> Widget Name

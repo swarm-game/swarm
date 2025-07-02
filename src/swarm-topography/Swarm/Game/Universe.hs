@@ -24,7 +24,7 @@ import Swarm.Util (quote)
 -- * Referring to subworlds
 
 data SubworldName = DefaultRootSubworld | SubworldName Text
-  deriving (Show, Eq, Ord, Generic, ToJSON, ToJSONKey)
+  deriving (Show, Read, Eq, Ord, Generic, ToJSON, ToJSONKey)
 
 instance FromJSON SubworldName where
   parseJSON = withText "subworld name" $ return . SubworldName
@@ -49,7 +49,7 @@ data Cosmic a = Cosmic
   { _subworld :: SubworldName
   , _planar :: a
   }
-  deriving (Show, Eq, Ord, Functor, Generic, ToJSON, ToJSONKey)
+  deriving (Show, Read, Eq, Ord, Functor, Foldable, Traversable, Generic, ToJSON, ToJSONKey)
 
 makeLenses ''Cosmic
 

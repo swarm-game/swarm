@@ -69,7 +69,7 @@ import Swarm.Util qualified as Util
 --   conversions between 'Location' and 'Swarm.Game.World.Coords'.
 type Location = Point V2 Int32
 
--- | A convenient way to pattern-match on t'Location' values.
+-- | A convenient way to pattern-match on 'Location' values.
 pattern Location :: Int32 -> Int32 -> Location
 pattern Location x y = P (V2 x y)
 

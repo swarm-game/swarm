@@ -1093,6 +1093,7 @@ library swarm-tui
     Swarm.TUI.Model.StateUpdate
     Swarm.TUI.Model.UI
     Swarm.TUI.Model.UI.Gameplay
+    Swarm.TUI.Model.ViewChunk
     Swarm.TUI.Model.WebCommand
     Swarm.TUI.Panel
     Swarm.TUI.View
