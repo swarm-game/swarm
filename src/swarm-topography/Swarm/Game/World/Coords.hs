@@ -9,6 +9,7 @@ module Swarm.Game.World.Coords (
   locToCoords,
   coordsToLoc,
   addTuple,
+  diffCoords,
   mapCoords,
   BoundsRectangle,
 )
@@ -47,6 +48,12 @@ coordsToLoc (Coords (r, c)) = Location c (-r)
 
 addTuple :: Coords -> (Int32, Int32) -> Coords
 addTuple (Coords (r, c)) (addR, addC) = Coords (r + addR, c + addC)
+
+-- | Subtract two coordinates, producing the number of rows and
+--   columns needed to add to the first in order to reach the second.
+--   That is, @addTuple a (diffCoords a b) = b@.
+diffCoords :: Coords -> Coords -> (Int32, Int32)
+diffCoords (Coords (r1, c1)) (Coords (r2, c2)) = (r2 - r1, c2 - c1)
 
 mapCoords :: (Int32 -> Int32) -> Coords -> Coords
 mapCoords f (Coords (r,c)) = Coords (f r, f c)
