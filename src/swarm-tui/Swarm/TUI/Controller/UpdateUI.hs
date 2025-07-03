@@ -51,6 +51,7 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
+import Swarm.TUI.Model.ViewChunk
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Robot.Type
@@ -166,12 +167,20 @@ updateUI = do
 
   Brick.zoom (playState . scenarioState . gameState) loadVisibleRegion
 
-  -- If the game state indicates a redraw is needed, invalidate the
-  -- world cache so it will be redrawn.
-  --
-  -- XXX update this to redraw individual cells from 'dirtyCells'
-  let worldNeedsRedraw = g ^. needsRedraw || not (S.null $ g ^. dirtyCells)
-  when worldNeedsRedraw $ invalidateCacheEntry WorldCache
+  -- Some part of the world needs a redraw if either needsRedraw is
+  -- set (meaning the world must be completely redrawn), or there are
+  -- some cells marked as dirty
+  let worldNeededRedraw = g ^. needsRedraw || not (S.null $ g ^. dirtyCells)
+
+  -- XXX invalidate all view chunk cache entries (for the current subworld)
+  --   if (g ^. needsRedraw) is true
+  -- Need to keep track of which entries are currently in the cache.
+  if (g ^. needsRedraw)
+    then invalidateCache  -- XXX for now, invalidate entire cache
+    else
+      -- Invalidate cache entries for view chunks containing cells that were updated,
+      -- so they will be redrawn.
+      forM_ (g ^. dirtyCells) $ invalidateCacheEntry . ViewChunkCache . viewChunkFor
 
   let fr = g ^. to focusedRobot
   inventoryUpdated <- Brick.zoom (playState . scenarioState) $ checkInventoryUpdated fr
@@ -204,7 +213,7 @@ updateUI = do
       doRobotListUpdate dOps g
 
   let redraw =
-        worldNeedsRedraw
+        worldNeededRedraw
           || inventoryUpdated
           || replUpdated
           || logUpdated
