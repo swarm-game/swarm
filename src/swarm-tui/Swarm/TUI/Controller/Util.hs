@@ -177,11 +177,6 @@ toggleEndScenarioModal mt m = do
 setFocus :: FocusablePanel -> EventM Name ScenarioState ()
 setFocus name = uiGameplay . uiFocusRing %= focusSetCurrent (FocusablePanel name)
 
-immediatelyRedrawWorld :: EventM Name GameState ()
-immediatelyRedrawWorld = do
-  invalidateCacheEntry WorldCache
-  loadVisibleRegion
-
 -- | Make sure all tiles covering the visible part of the world are
 --   loaded.
 loadVisibleRegion :: EventM Name GameState ()

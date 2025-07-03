@@ -8,10 +8,11 @@ module Swarm.TUI.Model.ViewChunk where
 import Control.Lens
 import Data.Bits (shiftL, shiftR)
 import Data.Int (Int32)
-import Data.Ix (range)
-import Data.List.Split (chunksOf)
+import Data.List.NonEmpty (NonEmpty)
+import Swarm.Game.Location (Location)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
+import Swarm.Util (chunksOfNE, rangeNE)
 
 newtype ViewChunk = ViewChunk { unViewChunk :: Cosmic Coords }
   deriving (Eq, Ord, Show, Read)
@@ -26,6 +27,9 @@ viewChunkSize = 1 `shiftL` viewChunkBits
 viewChunk :: Cosmic Coords -> ViewChunk
 viewChunk c = ViewChunk (over (_Wrapped . both) (`shiftR` viewChunkBits) (c ^. planar) <$ c)
 
+viewChunkFor :: Cosmic Location -> ViewChunk
+viewChunkFor = viewChunk . fmap locToCoords
+
 viewChunkBounds :: ViewChunk -> Cosmic BoundsRectangle
 viewChunkBounds (ViewChunk cc) = (,lr) <$> ul
   where
@@ -39,12 +43,12 @@ viewChunkBounds (ViewChunk cc) = (,lr) <$> ul
 -- entirely cover the given BoundsRectangle.  Returned in row-major
 -- (i.e. top-to-bottom, left-to-right) order.  i.e. a list of rows
 -- XXX change to use NonEmpty
-viewChunkCover :: Cosmic BoundsRectangle -> [[ViewChunk]]
-viewChunkCover c@(Cosmic _ (ul, lr)) = chunksOf (fromIntegral cols) (map ViewChunk vcCoords)
+viewChunkCover :: Cosmic BoundsRectangle -> NonEmpty (NonEmpty ViewChunk)
+viewChunkCover c@(Cosmic _ (tl, br)) = chunksOfNE (fromIntegral cols) (fmap ViewChunk vcCoords)
   where
-    ulvc = viewChunk (ul <$ c)
-    lrvc = viewChunk (lr <$ c)
+    tlvc = viewChunk (tl <$ c)
+    brvc = viewChunk (br <$ c)
     getCol = snd . unCoords . view planar . unViewChunk
-    cols = getCol lrvc - getCol ulvc + 1
-    vcCoords :: [Cosmic Coords]
-    vcCoords = traverse (curry range (unViewChunk ulvc ^. planar)) (unViewChunk lrvc)
+    cols = getCol brvc - getCol tlvc + 1
+    vcCoords :: NonEmpty (Cosmic Coords)
+    vcCoords = traverse (curry rangeNE (unViewChunk tlvc ^. planar)) (unViewChunk brvc)

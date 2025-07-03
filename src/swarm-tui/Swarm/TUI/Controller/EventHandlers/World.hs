@@ -38,10 +38,5 @@ worldScrollDist = 8
 
 -- | Manually scroll the world view.
 scrollView :: (Location -> Location) -> EventM Name AppState ()
-scrollView update = do
-  -- Manually invalidate the 'WorldCache' instead of just setting
-  -- 'needsRedraw'.  I don't quite understand why the latter doesn't
-  -- always work, but there seems to be some sort of race condition
-  -- where 'needsRedraw' gets reset before the UI drawing code runs.
-  invalidateCacheEntry WorldCache
+scrollView update =
   playState . scenarioState . gameState . robotInfo %= modifyViewCenter (fmap update)

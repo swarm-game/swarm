@@ -44,6 +44,7 @@
       , TestLanguagePipeline
       ]
     }
+  - {name: Data.List.NonEmpty.fromList, within: [Swarm.Util.chunksOfNE, Swarm.Util.rangeNE]}
 
 # Add custom hints for this project
 #

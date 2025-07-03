@@ -152,7 +152,9 @@ hideRobots = do
     -- hide for two seconds
     False -> do
       uiHideRobotsUntil .= t + TimeSpec 2 0
-      invalidateCacheEntry WorldCache
+      -- XXX need to mark world for complete redraw.  How to do that?
+      -- needsRedraw is in GameState, which we don't have here.
+      -- Actually maybe we can widen its scope a bit...
 
 showCESKDebug :: EventM Name AppState ()
 showCESKDebug = do
@@ -184,14 +186,10 @@ toggleWorldEditor = do
   setFocus WorldEditorPanel
 
 toggleREPLVisibility :: EventM Name ScenarioState ()
-toggleREPLVisibility = do
-  invalidateCacheEntry WorldCache
-  uiGameplay . uiShowREPL %= not
+toggleREPLVisibility = uiGameplay . uiShowREPL %= not
 
 viewBase :: EventM Name ScenarioState ()
-viewBase = do
-  invalidateCacheEntry WorldCache
-  gameState . robotInfo . viewCenterRule .= VCRobot 0
+viewBase = gameState . robotInfo . viewCenterRule .= VCRobot 0
 
 toggleFPS :: EventM Name ScenarioState ()
 toggleFPS = uiGameplay . uiTiming . uiShowFPS %= not

@@ -85,8 +85,6 @@ data Name
     REPLInput
   | -- | The REPL history cache.
     REPLHistoryCache
-  | -- | Cache for the entire world view.  XXX remove me.
-    WorldCache
   | -- | Caches for rendered chunks of the world view.
     ViewChunkCache ViewChunk
   | -- | The cached extent for the world view.

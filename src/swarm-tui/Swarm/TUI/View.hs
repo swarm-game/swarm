@@ -29,8 +29,6 @@ module Swarm.TUI.View (
   drawREPL,
 ) where
 
-import Debug.Trace
-
 import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Forms
@@ -41,7 +39,7 @@ import Brick.Widgets.Border (
   joinableBorder,
   vBorder,
  )
-import Brick.Widgets.Center (center, centerLayer, hCenter)
+import Brick.Widgets.Center (centerLayer, hCenter)
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (getEditContents, renderEditor)
 import Brick.Widgets.List qualified as BL
@@ -1065,40 +1063,81 @@ drawKeyCmd keycmd =
 -- World panel
 ------------------------------------------------------------
 
--- | Compare to: 'Swarm.Util.Content.getMapRectangle'
-worldWidget ::
-  (Cosmic Coords -> V.Image) ->
-  -- | view center
-  Cosmic Location ->
-  Widget n
-worldWidget renderCoord gameViewCenter = Widget Greedy Greedy $
-  do
-    ctx <- getContext
-    let w = ctx ^. availWidthL
-        h = ctx ^. availHeightL
-        vr = viewingRegion gameViewCenter (fromIntegral w, fromIntegral h)
-        chunks = viewChunkCover vr
-        tlvcBox = viewChunkBounds (head (head chunks)) ^. planar
-        brvcBox = viewChunkBounds (last (last chunks)) ^. planar
-        vrBox = vr ^. planar
-        (tlRowOff, tlColOff) = diffCoords (fst tlvcBox) (fst vrBox)
-        (brRowOff, brColOff) = diffCoords (snd vrBox) (snd brvcBox)
-    -- XXX COMMENT ME
-    -- XXX IMPROVE ME
-    withReaderT ((availWidthL .~ (w + fromIntegral tlColOff + fromIntegral brColOff)) . (availHeightL .~ (h + fromIntegral tlRowOff + fromIntegral brRowOff))) $
-      render
-        . cropTopBy (fromIntegral tlRowOff)
-        . cropLeftBy (fromIntegral tlColOff)
-        . cropBottomBy (fromIntegral brRowOff)
-        . cropRightBy (fromIntegral brColOff)
-        . vBox
-        . map hBox
-        . (map . map) (viewChunkWidget renderCoord)
-        $ chunks
+-- | Draw the current world view.
+drawWorldPane :: UIGameplay -> GameState -> Widget Name
+drawWorldPane ui g =
+  reportExtent WorldExtent
+    -- Set the clickable request after the extent to play nice with the cache
+    . clickable (FocusablePanel WorldPanel)
+    $ worldWidget (locImage ui g) (g ^. robotInfo . viewCenter)
 
-viewChunkWidget :: (Cosmic Coords -> V.Image) -> ViewChunk -> Widget n
+-- | Render a widget containing an appropriate view of the world,
+--   given a way to render individual cells and a specific location
+--   which should be at the center.
+--
+--   The world is rendered out of a grid of "view chunks", where each
+--   chunk is a specific 2^k x 2^k grid (where k = 'viewChunkBits').
+--   Each view chunk is individually cached.  This way we can get the
+--   benefit of not having to re-render view chunks that have not
+--   changed, but make the chunks large enough to avoid too much
+--   overhead from composing them all into a grid.
+worldWidget ::
+  -- | How to render each cell
+  (Cosmic Coords -> V.Image) ->
+  -- | View center
+  Cosmic Location ->
+  Widget Name
+worldWidget renderCoord gameViewCenter = Widget Greedy Greedy $ do
+  -- Get the width and height available to this widget
+  ctx <- getContext
+  let w = ctx ^. availWidthL
+      h = ctx ^. availHeightL
+
+      -- Compute the appropriate viewing region, given the requested
+      -- view center and the available space.
+      vr = viewingRegion gameViewCenter (fromIntegral w, fromIntegral h)
+      (vrTopLeft, vrBottomRight) = vr ^. planar
+
+      -- Generate a cover of the viewing region by 'ViewChunk's.
+      chunks = viewChunkCover vr
+
+      -- Compute the width and height of the view chunk cover.
+      vcWidth = fromIntegral viewChunkSize * NE.length (NE.head chunks)
+      vcHeight = fromIntegral viewChunkSize * NE.length chunks
+
+      -- Get the top-left-most and bottom-right-most coordinates
+      -- from the generated view chunk cover
+      vcTopLeft, vcBottomRight :: Coords
+      vcTopLeft = fst $ viewChunkBounds (NE.head (NE.head chunks)) ^. planar
+      vcBottomRight = snd $ viewChunkBounds (NE.last (NE.last chunks)) ^. planar
+
+      -- Compute how much we need to crop the view chunks to get the
+      -- desired viewing region
+      (tlRowOff, tlColOff) = diffCoords vcTopLeft vrTopLeft
+      (brRowOff, brColOff) = diffCoords vrBottomRight vcBottomRight
+
+  -- It's important that we render all the view chunks in a context
+  -- with enough available width + height to accommodate all of
+  -- them, and then crop to the desired final size.
+  withReaderT ((availWidthL .~ vcWidth) . (availHeightL .~ vcHeight)) $
+    render
+      . cropTopBy (fromIntegral tlRowOff)
+      . cropLeftBy (fromIntegral tlColOff)
+      . cropBottomBy (fromIntegral brRowOff)
+      . cropRightBy (fromIntegral brColOff)
+      . vBox
+      . NE.toList
+      . fmap (hBox . NE.toList)
+      . (fmap . fmap) (viewChunkWidget renderCoord)
+      $ chunks
+
+-- | Render a single 2^k x 2^k view chunk, by rendering all the
+--   individual cells into a Vty Image, then turning them into a
+--   widget via 'raw'.
+viewChunkWidget :: (Cosmic Coords -> V.Image) -> ViewChunk -> Widget Name
 viewChunkWidget renderCoord vc =
-  raw
+  cached (ViewChunkCache vc)
+  . raw
   . V.vertCat
   . map V.horizCat
   . chunksOf (fromIntegral viewChunkSize)
@@ -1107,15 +1146,6 @@ viewChunkWidget renderCoord vc =
   where
     bounds = viewChunkBounds vc
     ixs = range $ bounds ^. planar
-
--- | Draw the current world view.
-drawWorldPane :: UIGameplay -> GameState -> Widget Name
-drawWorldPane ui g =
-    cached WorldCache
-    . reportExtent WorldExtent
-    -- Set the clickable request after the extent to play nice with the cache
-    . clickable (FocusablePanel WorldPanel)
-    $ worldWidget (locImage ui g) (g ^. robotInfo . viewCenter)
 
 ------------------------------------------------------------
 -- Robot inventory panel
