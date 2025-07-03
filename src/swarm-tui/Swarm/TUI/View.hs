@@ -29,6 +29,8 @@ module Swarm.TUI.View (
   drawREPL,
 ) where
 
+import Debug.Trace
+
 import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Forms
@@ -46,6 +48,7 @@ import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
 import Control.Lens as Lens hiding (Const, from)
 import Control.Monad (guard)
+import Control.Monad.Trans.Reader (withReaderT)
 import Data.Array (range)
 import Data.Foldable (toList)
 import Data.Foldable qualified as F
@@ -1068,18 +1071,30 @@ worldWidget ::
   -- | view center
   Cosmic Location ->
   Widget n
-worldWidget renderCoord gameViewCenter = Widget Fixed Fixed $
+worldWidget renderCoord gameViewCenter = Widget Greedy Greedy $
   do
     ctx <- getContext
     let w = ctx ^. availWidthL
         h = ctx ^. availHeightL
         vr = viewingRegion gameViewCenter (fromIntegral w, fromIntegral h)
-        chunks@((topLeft:_):_) = viewChunkCover vr
-        (vrRow, vrCol) = unCoords $ fst (vr ^. planar)
-        (vcRow, vcCol) = unCoords $ fst (viewChunkBounds topLeft ^. planar)
-        topCrop = fromIntegral $ vrRow - vcRow
-        leftCrop = fromIntegral $ vrCol - vcCol
-    render . cropTopBy topCrop . cropLeftBy leftCrop . vBox . map hBox . (map . map) (viewChunkWidget renderCoord) $ chunks
+        chunks = viewChunkCover vr
+        tlvcBox = viewChunkBounds (head (head chunks)) ^. planar
+        brvcBox = viewChunkBounds (last (last chunks)) ^. planar
+        vrBox = vr ^. planar
+        (tlRowOff, tlColOff) = diffCoords (fst tlvcBox) (fst vrBox)
+        (brRowOff, brColOff) = diffCoords (snd vrBox) (snd brvcBox)
+    -- XXX COMMENT ME
+    -- XXX IMPROVE ME
+    withReaderT ((availWidthL .~ (w + fromIntegral tlColOff + fromIntegral brColOff)) . (availHeightL .~ (h + fromIntegral tlRowOff + fromIntegral brRowOff))) $
+      render
+        . cropTopBy (fromIntegral tlRowOff)
+        . cropLeftBy (fromIntegral tlColOff)
+        . cropBottomBy (fromIntegral brRowOff)
+        . cropRightBy (fromIntegral brColOff)
+        . vBox
+        . map hBox
+        . (map . map) (viewChunkWidget renderCoord)
+        $ chunks
 
 viewChunkWidget :: (Cosmic Coords -> V.Image) -> ViewChunk -> Widget n
 viewChunkWidget renderCoord vc =
@@ -1096,8 +1111,7 @@ viewChunkWidget renderCoord vc =
 -- | Draw the current world view.
 drawWorldPane :: UIGameplay -> GameState -> Widget Name
 drawWorldPane ui g =
-  center
-    . cached WorldCache
+    cached WorldCache
     . reportExtent WorldExtent
     -- Set the clickable request after the extent to play nice with the cache
     . clickable (FocusablePanel WorldPanel)
