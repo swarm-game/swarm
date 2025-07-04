@@ -398,9 +398,21 @@ execConst runChildProg c vs s k = do
         myID <- use robotID
         if otherID /= myID
           then do
+            -- Check whether the receiving robot knew about this item before
+            inv <- gets (preview (robotInfo . robotMap . at otherID . _Just . robotInventory))
+            -- No idea why 'preuse' doesn't typecheck above, but (gets . preview) works
+            let knew = maybe True (contains0plus item) (inv :: Maybe Inventory)
+
             -- Make the exchange
             robotInfo . robotMap . at otherID . _Just . robotInventory %= insert item
             robotInventory %= delete item
+
+            -- If the receiving robot is being viewed and just learned
+            -- about the item for the first time, redraw the whole
+            -- world, since question marks may change to something else.
+            focus <- use (robotInfo . focusedRobotID)
+            when (focus == otherID && not knew) flagCompleteRedraw
+
           else grantAchievementForRobot GaveToSelf
 
         return $ mkReturn ()
@@ -839,7 +851,7 @@ execConst runChildProg c vs s k = do
         -- Only the base can actually change the view in the UI.  Other robots can
         -- execute this command but it does nothing (at least for now).
         rn <- use robotID
-        when (rn == 0) $
+        when (rn == 0) $ do
           robotWithID rid >>= \case
             -- If the robot does not exist...
             Nothing -> do
@@ -858,6 +870,11 @@ execConst runChildProg c vs s k = do
 
             -- If it does exist, set it as the view center.
             Just _ -> robotInfo . viewCenterRule .= VCRobot rid
+
+          -- In either case, redraw the entire world view since the
+          -- previously and newly viewed robots may know about
+          -- different entities.
+          flagCompleteRedraw
 
         return $ mkReturn ()
       _ -> badConst
@@ -1850,8 +1867,18 @@ execConst runChildProg c vs s k = do
         -- (see summary of #1777).
         fromMaybe e <$> uses (landscape . terrainAndEntities . entityMap) (lookupEntityName yielded)
 
+    -- See if the robot previously knew about this entity.
+    knew <- use $ robotInventory . to (contains0plus e')
+
+    -- Add the item to the inventory and update discovery tracking.
     robotInventory %= insert e'
     updateDiscoveredEntities e'
+
+    -- If the robot is currently being viewed and didn't know about
+    -- the entity before, flag the world for a complete redraw.
+    focus <- use $ robotInfo . focusedRobotID
+    myID <- use robotID
+    when (not knew && focus == myID) flagCompleteRedraw
 
     -- Return the item obtained.
     return e'

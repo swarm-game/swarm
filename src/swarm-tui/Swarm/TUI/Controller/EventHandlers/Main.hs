@@ -152,9 +152,8 @@ hideRobots = do
     -- hide for two seconds
     False -> do
       uiHideRobotsUntil .= t + TimeSpec 2 0
-      -- XXX need to mark world for complete redraw.  How to do that?
-      -- needsRedraw is in GameState, which we don't have here.
-      -- Actually maybe we can widen its scope a bit...
+      invalidateCache
+      -- XXX need to redraw world again after 2 seconds... schedule an event?
 
 showCESKDebug :: EventM Name AppState ()
 showCESKDebug = do

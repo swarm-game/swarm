@@ -124,7 +124,7 @@ gameTick = measureCpuTimeInSec runTick >>= updateMetrics
     ticked <- runActiveRobots
     updateBaseReplState
     -- Possibly update the view center.
-    modify recalcViewCenterAndRedraw
+    modify (robotInfo %~ recalcViewCenter)
     -- On new tick see if the winning condition for the current objective is met
     when ticked hypotheticalWinCheck'
     return ticked
