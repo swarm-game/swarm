@@ -108,8 +108,12 @@ gameTick = measureCpuTimeInSec runTick >>= updateMetrics
   updateMetrics (t, res) =
     use gameMetrics >>= \case
       Just metrics -> do
-        sendIO $ Counter.inc metrics.tickCounter
-        sendIO $ Distribution.add metrics.tickDistribution t
+        (fTotal, fActive) <- countRobots
+        sendIO $ do
+          Counter.inc metrics.tickCounter
+          Distribution.add metrics.tickDistribution t
+          Gauge.set metrics.robotsGauge $ fromIntegral fTotal
+          Gauge.set metrics.activeRobotsGauge $ fromIntegral fActive
         pure res
       Nothing -> pure res
   runTick :: m Bool
@@ -152,6 +156,12 @@ gameTick = measureCpuTimeInSec runTick >>= updateMetrics
           hypotheticalWinCheck em g winState oc
         _ -> pure ()
     return ticked
+
+  countRobots :: m (Int, Int)
+  countRobots = do
+    total <- use $ robotInfo . robotMap . to IM.size
+    active <- use $ robotInfo . activeRobots . to IS.size
+    pure (total, active)
 
 -- | Finish a game tick in progress and set the game to 'WorldTick' mode afterwards.
 --
