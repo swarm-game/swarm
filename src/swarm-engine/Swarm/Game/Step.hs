@@ -91,6 +91,7 @@ import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec)
 import System.Metrics.Counter qualified as Counter
 import System.Metrics.Distribution qualified as Distribution
+import System.Metrics.Gauge qualified as Gauge
 import Witch (From (from))
 import Prelude hiding (lookup)
 
@@ -120,21 +121,31 @@ gameTick = measureCpuTimeInSec runTick >>= updateMetrics
   runTick = do
     time <- use $ temporal . ticks
     zoomRobots $ wakeUpRobotsDoneSleeping time
+    ticked <- runActiveRobots
+    updateBaseReplState
+    -- Possibly update the view center.
+    modify recalcViewCenterAndRedraw
+    -- On new tick see if the winning condition for the current objective is met.
+    when ticked checkWinCondition
+    return ticked
+  runActiveRobots :: m Bool
+  runActiveRobots = do
     active <- use $ robotInfo . activeRobots
-    focusedRob <- use $ robotInfo . focusedRobotID
-
-    ticked <-
-      use (temporal . gameStep) >>= \case
-        WorldTick -> do
-          runRobotIDs active
-          temporal . ticks %= addTicks 1
-          pure True
-        RobotStep ss -> singleStep ss focusedRob active
-
-    -- See if the base is finished with a computation, and if so, record
-    -- the result in the game state so it can be displayed by the REPL;
-    -- also save the current store into the robotContext so we can
-    -- restore it the next time we start a computation.
+    gStep <- use $ temporal . gameStep
+    case gStep of
+      WorldTick -> do
+        runRobotIDs active
+        temporal . ticks %= addTicks 1
+        pure True
+      RobotStep ss -> do
+        focusedRob <- use $ robotInfo . focusedRobotID
+        singleStep ss focusedRob active
+  -- | See if the base is finished with a computation, and if so, record
+  -- the result in the game state so it can be displayed by the REPL;
+  -- also save the current store into the robotContext so we can
+  -- restore it the next time we start a computation.
+  updateBaseReplState :: m ()
+  updateBaseReplState = do
     mr <- use (robotInfo . robotMap . at 0)
     forM_ mr $ \r -> do
       res <- use $ gameControls . replStatus
@@ -142,20 +153,15 @@ gameTick = measureCpuTimeInSec runTick >>= updateMetrics
         REPLWorking ty Nothing -> forM_ (getResult r) $ \v ->
           gameControls . replStatus .= REPLWorking ty (Just v)
         _otherREPLStatus -> pure ()
-
-    -- Possibly update the view center.
-    modify recalcViewCenterAndRedraw
-
-    when ticked $ do
-      -- On new tick see if the winning condition for the current objective is met.
-      wc <- use winCondition
-      case wc of
-        WinConditions winState oc -> do
-          g <- get @GameState
-          em <- use $ landscape . terrainAndEntities . entityMap
-          hypotheticalWinCheck em g winState oc
-        _ -> pure ()
-    return ticked
+  checkWinCondition :: m ()
+  checkWinCondition = do
+    wc <- use winCondition
+    case wc of
+      WinConditions winState oc -> do
+        g <- get @GameState
+        em <- use $ landscape . terrainAndEntities . entityMap
+        hypotheticalWinCheck em g winState oc
+      _ -> pure ()
 
   countRobots :: m (Int, Int)
   countRobots = do
