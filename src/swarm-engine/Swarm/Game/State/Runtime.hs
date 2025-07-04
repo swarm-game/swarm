@@ -143,4 +143,9 @@ stdGameConfigInputs :: Lens' RuntimeState GameStateConfig
 -- | Free-form data loaded from the @data@ directory, for things like
 --   the logo, about page, tutorial story, etc.
 appData :: Lens' RuntimeState (Map Text Text)
+
+-- | The EKG store of metrics for Swarm. Individual components can
+-- register counters, gauges and distributions to this store. Then they
+-- will be published together with GHC metrics by the Wai server taking
+-- a reference to this store.
 metrics :: Lens' RuntimeState Metrics.Store
