@@ -146,12 +146,11 @@ gameTick = measureCpuTimeInSec runTick >>= updateMetrics
   -- restore it the next time we start a computation.
   updateBaseReplState :: m ()
   updateBaseReplState = do
-    mr <- use (robotInfo . robotMap . at 0)
-    forM_ mr $ \r -> do
+    baseValue <- use . pre $ robotInfo . robotMap . ix 0 . folding getResult
+    forM_ baseValue $ \v -> do
       res <- use $ gameControls . replStatus
       case res of
-        REPLWorking ty Nothing -> forM_ (getResult r) $ \v ->
-          gameControls . replStatus .= REPLWorking ty (Just v)
+        REPLWorking ty Nothing -> gameControls . replStatus .= REPLWorking ty (Just v)
         _otherREPLStatus -> pure ()
   checkWinCondition :: m ()
   checkWinCondition = do
