@@ -2,7 +2,6 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A "view chunk" is the smallest rectangular unit by which the game caches XXX world view
---
 module Swarm.TUI.Model.ViewChunk where
 
 import Control.Lens
@@ -14,7 +13,7 @@ import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.Util (chunksOfNE, rangeNE)
 
-newtype ViewChunk = ViewChunk { unViewChunk :: Cosmic Coords }
+newtype ViewChunk = ViewChunk {unViewChunk :: Cosmic Coords}
   deriving (Eq, Ord, Show, Read)
 
 -- | XXX
@@ -32,9 +31,9 @@ viewChunkFor = viewChunk . fmap locToCoords
 
 viewChunkBounds :: ViewChunk -> Cosmic BoundsRectangle
 viewChunkBounds (ViewChunk cc) = (,lr) <$> ul
-  where
-    ul = mapCoords (`shiftL` viewChunkBits) <$> cc
-    lr = addTuple (ul ^. planar) (viewChunkSize - 1, viewChunkSize - 1)
+ where
+  ul = mapCoords (`shiftL` viewChunkBits) <$> cc
+  lr = addTuple (ul ^. planar) (viewChunkSize - 1, viewChunkSize - 1)
 
 -- XXX property-based test that viewChunkBounds always produces rectangle which is viewChunkSize^2
 -- XXX add a property-based test that c is always within viewChunkBounds (viewChunk c)
@@ -45,10 +44,10 @@ viewChunkBounds (ViewChunk cc) = (,lr) <$> ul
 -- XXX change to use NonEmpty
 viewChunkCover :: Cosmic BoundsRectangle -> NonEmpty (NonEmpty ViewChunk)
 viewChunkCover c@(Cosmic _ (tl, br)) = chunksOfNE (fromIntegral cols) (fmap ViewChunk vcCoords)
-  where
-    tlvc = viewChunk (tl <$ c)
-    brvc = viewChunk (br <$ c)
-    getCol = snd . unCoords . view planar . unViewChunk
-    cols = getCol brvc - getCol tlvc + 1
-    vcCoords :: NonEmpty (Cosmic Coords)
-    vcCoords = traverse (curry rangeNE (unViewChunk tlvc ^. planar)) (unViewChunk brvc)
+ where
+  tlvc = viewChunk (tl <$ c)
+  brvc = viewChunk (br <$ c)
+  getCol = snd . unCoords . view planar . unViewChunk
+  cols = getCol brvc - getCol tlvc + 1
+  vcCoords :: NonEmpty (Cosmic Coords)
+  vcCoords = traverse (curry rangeNE (unViewChunk tlvc ^. planar)) (unViewChunk brvc)

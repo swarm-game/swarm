@@ -176,7 +176,7 @@ updateUI = do
   --   if (g ^. needsRedraw) is true
   -- Need to keep track of which entries are currently in the cache.
   if (g ^. needsRedraw)
-    then invalidateCache  -- XXX for now, invalidate entire cache
+    then invalidateCache -- XXX for now, invalidate entire cache
     else
       -- Invalidate cache entries for view chunks containing cells that were updated,
       -- so they will be redrawn.
