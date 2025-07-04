@@ -31,7 +31,7 @@ newtype ViewChunk = ViewChunk { unViewChunk :: Cosmic Coords }
 -- | If viewChunkBits = k then each view chunk will be 2^k x 2^k
 --   cells.
 viewChunkBits :: Int
-viewChunkBits = 4
+viewChunkBits = 3
 
 -- | The number of cells on one side of a view chunk.
 viewChunkSize :: Int32
