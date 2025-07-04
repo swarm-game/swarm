@@ -156,17 +156,18 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Selfdestruct -> do
       destroyIfNotBase $ \case False -> Just AttemptSelfDestructBase; _ -> Nothing
-      flagRedraw
       return $ mkReturn ()
     Destroy -> case vs of
       [VRobot rid] -> do
         myID <- use robotID
+        rm <- use (robotInfo . robotMap)
+        let loc = rm ^? ix rid . robotLocation
         if myID == rid
           then destroyIfNotBase $ \case False -> Just AttemptSelfDestructBase; _ -> Nothing
           else do
-            zoomRobots $ deleteRobot rid
+            _ <- zoomRobots $ deleteRobot rid
             when (rid == 0) $ grantAchievement DestroyedBase
-        flagRedraw
+        maybe (pure ()) flagRedraw loc
         return $ mkReturn ()
       _ -> badConst
     Move -> do
@@ -341,7 +342,7 @@ execConst runChildProg c vs s k = do
       [VDir d] -> do
         when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
         robotOrientation . _Just %= applyTurn d
-        flagRedraw
+        use robotLocation >>= flagRedraw
 
         inst <- use equippedDevices
         when (d == DRelative DDown && countByName "compass" inst == 0) $ do
@@ -365,7 +366,6 @@ execConst runChildProg c vs s k = do
           updateEntityAt loc (const (Just e))
         robotInventory %= delete e
 
-        flagRedraw
         return $ mkReturn ()
       _ -> badConst
     Ping -> case vs of
@@ -397,15 +397,11 @@ execConst runChildProg c vs s k = do
         -- robotMap, overwriting any changes to this robot made
         -- directly in the robotMap during the tick.
         myID <- use robotID
-        focusedID <- use $ robotInfo . focusedRobotID
         if otherID /= myID
           then do
             -- Make the exchange
             robotInfo . robotMap . at otherID . _Just . robotInventory %= insert item
             robotInventory %= delete item
-
-            -- Flag the UI for a redraw if we are currently showing either robot's inventory
-            when (focusedID == myID || focusedID == otherID) flagRedraw
           else grantAchievementForRobot GaveToSelf
 
         return $ mkReturn ()
@@ -413,8 +409,6 @@ execConst runChildProg c vs s k = do
     Equip -> case vs of
       [VText itemName] -> do
         item <- ensureItem itemName "equip"
-        myID <- use robotID
-        focusedID <- use $ robotInfo . focusedRobotID
         -- Don't do anything if the robot already has the device.
         already <- use (equippedDevices . to (`E.contains` item))
         unless already $ do
@@ -433,9 +427,6 @@ execConst runChildProg c vs s k = do
             equippable <- use $ discovery . craftableDevices
             when (equippable `S.isSubsetOf` equipped) $ grantAchievementForRobot EquippedAllDevices
 
-          -- Flag the UI for a redraw if we are currently showing our inventory
-          when (focusedID == myID) flagRedraw
-
         return $ mkReturn ()
       _ -> badConst
     Unequip -> case vs of
@@ -444,7 +435,6 @@ execConst runChildProg c vs s k = do
         myID <- use robotID
 
         -- Speculatively unequip the item
-        focusedID <- use $ robotInfo . focusedRobotID
         equippedDevices %= delete item
         robotInventory %= insert item
 
@@ -483,8 +473,6 @@ execConst runChildProg c vs s k = do
             selfDestruct .= True
             when (myID == 0) $ grantAchievementForRobot DestroyedBase
 
-        -- Flag the UI for a redraw if we are currently showing our inventory
-        when (focusedID == myID) flagRedraw
         return $ mkReturn ()
       _ -> badConst
     Make -> case vs of
@@ -737,10 +725,10 @@ execConst runChildProg c vs s k = do
         for_ me $ \e -> do
           robotInventory %= insertCount 0 e
           updateDiscoveredEntities e
-          -- Flag the world for a redraw since scanning something may
-          -- change the way it is drawn (if the base is doing the
-          -- scanning)
-          flagRedraw
+          -- Flag the world for a complete redraw since scanning
+          -- something may change the way it is drawn (if the
+          -- currently viewed robot is doing the scanning)
+          flagCompleteRedraw
         return $ mkReturn me
       _ -> badConst
     Knows -> case vs of
@@ -767,10 +755,10 @@ execConst runChildProg c vs s k = do
         rlog <- use robotLog
         robotInfo . robotMap . at otherID . _Just . robotLog <>= rlog
 
-        -- Flag the world for redraw since uploading may change the
-        -- base's knowledge and hence how entities are drawn (if they
-        -- go from unknown to known).
-        flagRedraw
+        -- Flag the world for a complete redraw since uploading may
+        -- change the base's knowledge and hence how entities are
+        -- drawn (if they go from unknown to known).
+        flagCompleteRedraw
 
         return $ mkReturn ()
       _ -> badConst
@@ -904,7 +892,7 @@ execConst runChildProg c vs s k = do
           (True, VText attr) -> robotDisplay . displayAttr .= readAttribute attr
           _ -> return ()
 
-        flagRedraw
+        use robotLocation >>= flagRedraw
         return $ mkReturn ()
       _ -> badConst
     Create -> case vs of
@@ -1143,8 +1131,8 @@ execConst runChildProg c vs s k = do
         -- Provision the new robot with the necessary devices and inventory.
         provisionChild (newRobot ^. robotID) (fromList . S.toList $ toEquip) toGive
 
-        -- Flag the world for a redraw and return the ID of the newly constructed robot.
-        flagRedraw
+        -- Flag the location for a redraw and return the ID of the newly constructed robot.
+        flagRedraw (newRobot ^. robotLocation)
         return $ mkReturn newRobot
       _ -> badConst
     Salvage -> case vs of
@@ -1847,7 +1835,6 @@ execConst runChildProg c vs s k = do
     unless (removalDeferral == DeferRemoval || e `hasProperty` Infinite) $ do
       -- Remove the entity from the world.
       updateEntityAt loc (const Nothing)
-      flagRedraw
 
     -- Possibly regrow the entity, if it is growable and the 'harvest'
     -- command was used.

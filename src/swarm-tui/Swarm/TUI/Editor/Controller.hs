@@ -67,7 +67,9 @@ handleCtrlLeftClick mouseLoc = do
     Brick.zoom (uiGameplay . uiWorldEditor) $ do
       worldOverdraw . paintedTerrain %= M.insert (mouseCoords ^. planar) (terrain, maybeToErasable maybeEntityPaint)
       lastWorldEditorMessage .= Nothing
-  Brick.zoom gameState immediatelyRedrawWorld
+  -- XXX mark a view chunk as dirty here?
+  -- Brick.zoom gameState immediatelyRedrawWorld
+  pure ()
 
 handleRightClick :: B.Location -> EventM Name ScenarioState ()
 handleRightClick mouseLoc = do
@@ -76,7 +78,9 @@ handleRightClick mouseLoc = do
     guard $ worldEditor ^. worldOverdraw . isWorldEditorEnabled
     mouseCoords <- MaybeT $ Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
     uiGameplay . uiWorldEditor . worldOverdraw . paintedTerrain %= M.delete (mouseCoords ^. planar)
-  Brick.zoom gameState immediatelyRedrawWorld
+  -- XXX mark view chunk as dirty?
+  -- Brick.zoom gameState immediatelyRedrawWorld
+  pure ()
 
 -- | "Eye Dropper" tool:
 handleMiddleClick :: B.Location -> EventM Name ScenarioState ()

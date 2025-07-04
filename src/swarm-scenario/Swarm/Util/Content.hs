@@ -29,8 +29,6 @@ getContentAt tm w coords = (underlyingCellTerrain, underlyingCellEntity)
 -- * Rendering
 
 -- | Get a rectangle of cells for rendering.
---
--- Compare to: 'Swarm.TUI.View.worldWidget'
 getMapRectangle ::
   (d -> e) ->
   (Coords -> (TerrainType, Maybe d)) ->

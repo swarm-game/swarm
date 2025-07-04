@@ -61,7 +61,6 @@ igniteCommand c d = do
 
   -- Remove the entity from the world.
   updateEntityAt loc (const Nothing)
-  flagRedraw
 
   -- Start burning process
   let selfCombustibility = (e ^. entityCombustion) ? defaultCombustibility
