@@ -207,8 +207,8 @@ data UIGameplay = UIGameplay
   { _uiFocusRing :: FocusRing Name
   , _uiWorldCursor :: Maybe (Cosmic Coords)
   , _uiWorldEditor :: WorldEditor Name
---  , _uiWorldView :: XXX   -- LRU cache of ViewChunk s? see https://hackage.haskell.org/package/lrucaching.
-  , _uiREPL :: REPLState
+  , --  , _uiWorldView :: XXX   -- LRU cache of ViewChunk s? see https://hackage.haskell.org/package/lrucaching.
+    _uiREPL :: REPLState
   , _uiREPLReplay :: [REPLHistItem]
   , _uiInventory :: UIInventory
   , _uiScrollToEnd :: Bool
