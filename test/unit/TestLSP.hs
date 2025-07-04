@@ -7,6 +7,7 @@
 -- LSP unit tests
 module TestLSP (testLSP) where
 
+import Control.Monad (unless)
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Swarm.Language.LSP.Hover (narrowToPosition)
@@ -15,6 +16,7 @@ import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ
 import Swarm.Language.Syntax (Syntax' (Syntax'))
 import Swarm.Language.Syntax qualified as S
+import Swarm.Pretty (prettyString)
 import System.FilePath ((</>))
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -171,4 +173,11 @@ testLSP =
 
   -- When comparing Syntax elements we aren't interested in the SrcLoc or the comments so just compare the terms.
   -- This is because depending on the operating system the loc could be different due to line endings.
-  assertEqualTerms (Syntax' _ t1 _ _) (Syntax' _ t2 _ _) = assertEqual "" t1 t2
+  assertEqualTerms (Syntax' _ expected _ _) (Syntax' _ actual _ _) =
+    unless (actual == expected) $
+      assertFailure
+        ( "expected: "
+            ++ prettyString expected
+            ++ "\n but got: "
+            ++ prettyString actual
+        )

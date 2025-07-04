@@ -69,16 +69,32 @@ NEW GRID LIST
 
 -- | The columns in the Robot modal grid.
 data RobotColumn
-  = ColName
-  | ColAge
-  | ColPos
-  | ColItems
-  | ColStatus
-  | ColActns
-  | ColCmds
-  | ColCycles
-  | ColActivity
-  | ColLog
+  = -- | An image of the robot (including its current direction, if
+    --   its display changes with direction), along with its name.
+    ColName
+  | -- | The age of the robot, measured in seconds.
+    ColAge
+  | -- | The position (coordinates) of the robot, along with a visual
+    --   indication of what the robot's current cell looks like.
+    ColPos
+  | -- | The number of items in the robot's inventory (not counting equipped devices).
+    ColItems
+  | -- | The robot's status: busy (actively executing commands),
+    --   waiting (executing a `wait`), or idle
+    ColStatus
+  | -- | The total count of tangible commands executed so far.  See the
+    --   documentation of
+    --   'Swarm.Language.Syntax.Constants.Tangibility'.
+    ColActns
+  | -- | The total count of all commands executed so far.
+    ColCmds
+  | -- | The number of CESK machine steps executed so far.
+    ColCycles
+  | -- | Percentage of the most recent 64 ticks during which the robot
+    --   was busy.
+    ColActivity
+  | -- | Whether the robot has generated any additional log entries.
+    ColLog
   | -- | The ID is the only optional field.
     --   It is shown last to make indexing code easier.
     ColID
@@ -244,7 +260,7 @@ drawRobotGridCell uig g _foc (WdthD widthDef) ctx rid =
       Just r -> case col of
         ColName -> padRight Max $ nameWidget r
         ColAge -> hCenter $ ageWidget r
-        ColPos -> hCenter $ locWidget r
+        ColPos -> hCenter $ posWidget r
         ColItems -> padLeft Max $ rInvCount r
         ColStatus -> hCenter $ statusWidget r
         ColActns -> padLeft Max . showW $ r ^. activityCounts . tangibleCommandCount
@@ -271,7 +287,7 @@ drawRobotGridCell uig g _foc (WdthD widthDef) ctx rid =
   nameWidget :: Robot -> Widget Name
   nameWidget r =
     hBox
-      [ renderTexel (renderRobot aMap r)
+      [ texelWidget (renderRobot aMap r)
       , highlightSystem r . txt $ " " <> r ^. robotName
       ]
 
@@ -293,12 +309,12 @@ drawRobotGridCell uig g _foc (WdthD widthDef) ctx rid =
   rLog :: Robot -> Widget Name
   rLog r = str $ if r ^. robotLogUpdated then "x" else " "
 
-  locWidget :: Robot -> Widget Name
-  locWidget r = hBox [worldCell, str $ " " <> locStr]
+  posWidget :: Robot -> Widget Name
+  posWidget r = hBox [worldCell, str $ " " <> locStr]
    where
     rCoords = fmap locToCoords rLoc
     rLoc = r ^. robotLocation
-    worldCell = drawLoc uig g rCoords
+    worldCell = locWidget uig g rCoords
     locStr = renderCoordsString rLoc
 
   statusWidget :: Robot -> Widget Name

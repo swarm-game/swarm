@@ -25,7 +25,7 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.Panel
 import Swarm.TUI.View.Attribute.Attr
-import Swarm.TUI.View.CellDisplay (renderTexel)
+import Swarm.TUI.View.CellDisplay (texelWidget)
 import Swarm.TUI.View.Util qualified as VU
 import Swarm.Util (applyWhen)
 
@@ -148,7 +148,7 @@ drawLabeledEntitySwatch :: AttributeMap -> EntityFacade -> Widget Name
 drawLabeledEntitySwatch aMap (EntityFacade eName eDisp eHdg) =
   tile <+> txt eName
  where
-  tile = padRight (Pad 1) $ renderTexel (renderDisplay aMap eHdg (const False) True eDisp)
+  tile = padRight (Pad 1) $ texelWidget (renderDisplay aMap eHdg (const False) True eDisp)
 
 drawTerrainSelector :: UIGameplay -> Widget Name
 drawTerrainSelector uig =
