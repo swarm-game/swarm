@@ -15,11 +15,14 @@ module Swarm.Game.State.GameMetrics (
 import System.Metrics
 import System.Metrics.Counter (Counter)
 import System.Metrics.Distribution (Distribution)
+import System.Metrics.Gauge (Gauge)
 
 -- | Metrics tracked in Swarm game engine.
 data GameMetrics = GameMetrics
   { tickCounter :: Counter
   , tickDistribution :: Distribution
+  , robotsGauge :: Gauge
+  , activeRobotsGauge :: Gauge
   }
 
 -- | Create and register the metrics to metric store.
@@ -29,4 +32,6 @@ initGameMetrics :: Store -> IO GameMetrics
 initGameMetrics s = do
   tickCounter <- createCounter "game.tick_count" s
   tickDistribution <- createDistribution "game.tick_time" s
+  robotsGauge <- createGauge "game.robots_total" s
+  activeRobotsGauge <- createGauge "game.robots_active" s
   pure GameMetrics {..}
