@@ -140,7 +140,7 @@ gameTick = measureCpuTimeInSec runTick >>= updateMetrics
       RobotStep ss -> do
         focusedRob <- use $ robotInfo . focusedRobotID
         singleStep ss focusedRob active
-  -- | See if the base is finished with a computation, and if so, record
+  -- See if the base is finished with a computation, and if so, record
   -- the result in the game state so it can be displayed by the REPL;
   -- also save the current store into the robotContext so we can
   -- restore it the next time we start a computation.
