@@ -57,9 +57,6 @@ viewChunkBounds (ViewChunk cc) = (,lr) <$> ul
     ul = mapCoords (`shiftL` viewChunkBits) <$> cc
     lr = addTuple (ul ^. planar) (viewChunkSize - 1, viewChunkSize - 1)
 
--- XXX property-based test that viewChunkBounds always produces rectangle which is viewChunkSize^2
--- XXX add a property-based test that c is always within viewChunkBounds (viewChunk c)
-
 -- | @viewChunkCover r@ generates the smallest possible set of
 --   'ViewChunk's necessary to entirely cover the given rectangle @r@.
 --   The resulting 'ViewChunk's are returned in row-major order, that

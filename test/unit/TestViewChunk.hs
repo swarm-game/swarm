@@ -7,7 +7,7 @@
 -- View chunk unit tests
 module TestViewChunk where
 
-import Control.Lens ((^.))
+import Control.Lens ((^.), allOf, both, to)
 import Data.Int (Int32)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
@@ -30,8 +30,12 @@ testViewChunk :: TestTree
 testViewChunk =
   testGroup
     "View chunks"
-    [ testProperty "view chunk size" $ \vc -> sizeOf (viewChunkBounds vc ^. planar) == (viewChunkSize, viewChunkSize)
-    , testProperty "view chunk contains loc" $ \c -> c `isWithin` viewChunkBounds (viewChunk c)
+    [ testProperty "view chunk size" $ \vc ->
+        sizeOf (viewChunkBounds vc ^. planar) == (viewChunkSize, viewChunkSize)
+    , testProperty "view chunk contains loc" $ \c ->
+        c `isWithin` viewChunkBounds (viewChunk c)
+    , testProperty "view chunk is aligned" $ \vc ->
+        allOf (planar . to fst . to unCoords . both) ((==0) . (`mod` viewChunkSize)) (viewChunkBounds vc)
     ]
 
 sizeOf :: BoundsRectangle -> (Int32, Int32)
