@@ -47,6 +47,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
 import Swarm.Game.State.Landscape (mkLandscape)
 import Swarm.Game.State.Robot (setRobotInfo)
+import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Util (adaptGameState)
 import Swarm.Game.World.Gen (Seed)
@@ -61,21 +62,24 @@ import System.Random (mkStdGen)
 scenarioToGameState ::
   ScenarioWith (Maybe ScenarioPath) ->
   ValidatedLaunchParams ->
-  GameStateConfig ->
+  Maybe GameMetrics ->
+  RuntimeState ->
   IO GameState
-scenarioToGameState si@(ScenarioWith scenario _) (LaunchParams (Identity userSeed) (Identity toRun)) gsc = do
+scenarioToGameState si@(ScenarioWith scenario _) (LaunchParams (Identity userSeed) (Identity toRun)) prevMetric rs = do
   theSeed <- arbitrateSeed userSeed $ scenario ^. scenarioLandscape
   now <- Clock.getTime Clock.Monotonic
-  return $ pureScenarioToGameState si theSeed now toRun gsc
+  gMetric <- maybe (initGameMetrics $ rs ^. metrics) pure prevMetric
+  return $ pureScenarioToGameState si theSeed now toRun (Just gMetric) (rs ^. stdGameConfigInputs)
 
 pureScenarioToGameState ::
   ScenarioWith (Maybe ScenarioPath) ->
   Seed ->
   Clock.TimeSpec ->
   Maybe CodeToRun ->
+  Maybe GameMetrics ->
   GameStateConfig ->
   GameState
-pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gsc =
+pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gMetric gsc =
   preliminaryGameState
     & discovery . structureRecognition .~ recognition
  where
@@ -112,6 +116,7 @@ pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gsc =
       -- otherwise the store of definition cells is not saved (see #333, #838)
         False -> REPLDone Nothing
         True -> REPLWorking PolyUnit Nothing
+      & gameMetrics .~ gMetric
       & temporal . robotStepsPerTick .~ ((scenario ^. scenarioOperation . scenarioStepsPerTick) ? defaultRobotStepsPerTick)
 
   robotList' = (robotCreatedAt .~ now) <$> robotList

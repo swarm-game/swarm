@@ -329,6 +329,8 @@ data AppOpts = AppOpts
   -- ^ What colour mode should be used?
   , userWebPort :: Maybe Port
   -- ^ Explicit port on which to run the web API
+  , userMetricsPort :: Maybe Port
+  -- ^ Explicit port on which to run the web API
   , repoGitInfo :: Maybe GitInfo
   -- ^ Information about the Git repository (not present in release).
   }
@@ -356,6 +358,7 @@ defaultAppOpts =
     , debugOptions = mempty
     , colorMode = Nothing
     , userWebPort = Nothing
+    , userMetricsPort = Nothing
     , repoGitInfo = Nothing
     }
 

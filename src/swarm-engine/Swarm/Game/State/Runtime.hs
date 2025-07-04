@@ -13,10 +13,12 @@ module Swarm.Game.State.Runtime (
 
   -- ** Lenses
   webPort,
+  metricsPort,
   upstreamRelease,
   eventLog,
   appData,
   stdGameConfigInputs,
+  metrics,
 
   -- ** Utility
   initScenarioInputs,
@@ -40,13 +42,16 @@ import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Log
 import Swarm.ResourceLoading (initNameGenerator, readAppData)
 import Swarm.Util.Lens (makeLensesNoSigs)
+import System.Metrics qualified as Metrics
 
 data RuntimeState = RuntimeState
   { _webPort :: Maybe Int
+  , _metricsPort :: Maybe Int
   , _upstreamRelease :: Either (Severity, Text) String
   , _eventLog :: Notifications LogEntry
   , _stdGameConfigInputs :: GameStateConfig
   , _appData :: Map Text Text
+  , _metrics :: Metrics.Store
   }
 
 initScenarioInputs ::
@@ -100,20 +105,27 @@ initRuntimeState ::
   RuntimeOptions ->
   m RuntimeState
 initRuntimeState opts = do
+  store <- sendIO Metrics.newStore
+  sendIO $ Metrics.registerGcMetrics store
   gsc <- initGameStateConfig opts
   return $
     RuntimeState
       { _webPort = Nothing
+      , _metricsPort = Nothing
       , _upstreamRelease = Left (Info, "No upstream release found.")
       , _eventLog = mempty
       , _appData = initAppDataMap gsc
       , _stdGameConfigInputs = gsc
+      , _metrics = store
       }
 
 makeLensesNoSigs ''RuntimeState
 
 -- | The port on which the HTTP debug service is running.
 webPort :: Lens' RuntimeState (Maybe Int)
+
+-- | The port on which the HTTP debug service is running.
+metricsPort :: Lens' RuntimeState (Maybe Int)
 
 -- | The upstream release version.
 upstreamRelease :: Lens' RuntimeState (Either (Severity, Text) String)
@@ -131,3 +143,9 @@ stdGameConfigInputs :: Lens' RuntimeState GameStateConfig
 -- | Free-form data loaded from the @data@ directory, for things like
 --   the logo, about page, tutorial story, etc.
 appData :: Lens' RuntimeState (Map Text Text)
+
+-- | The EKG store of metrics for Swarm. Individual components can
+-- register counters, gauges and distributions to this store. Then they
+-- will be published together with GHC metrics by the Wai server taking
+-- a reference to this store.
+metrics :: Lens' RuntimeState Metrics.Store

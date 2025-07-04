@@ -140,7 +140,9 @@ runFrameTicks dt = do
 
 -- | Run the game for a single tick, and update the UI.
 runGameTickUI :: EventM Name AppState ()
-runGameTickUI = Brick.zoom playState runGameTick >> void updateUI
+runGameTickUI = do
+  Brick.zoom playState runGameTick
+  void updateUI
 
 updateAchievements :: EventM Name PlayState ()
 updateAchievements = do

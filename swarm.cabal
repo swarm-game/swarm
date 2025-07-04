@@ -192,6 +192,12 @@ common dotgen
 common either
   build-depends: either >=5.0 && <5.1
 
+common ekg-core
+  build-depends: ekg-core >=0.1.1 && <0.1.2
+
+common ekg-wai
+  build-depends: ekg-wai >=0.1.1 && <0.1.3
+
 common exceptions
   build-depends: exceptions >=0.10 && <0.11
 
@@ -691,6 +697,7 @@ library swarm-engine
     containers,
     directory,
     extra,
+    ekg-core,
     filepath,
     fused-effects,
     fused-effects-lens,
@@ -734,6 +741,7 @@ library swarm-engine
     Swarm.Game.Scenario.Topography.Navigation.Util
     Swarm.Game.ScenarioInfo
     Swarm.Game.State
+    Swarm.Game.State.GameMetrics
     Swarm.Game.State.Initialize
     Swarm.Game.State.Robot
     Swarm.Game.State.Runtime
@@ -1131,6 +1139,8 @@ executable swarm
     bytestring,
     containers,
     extra,
+    ekg-core,
+    ekg-wai,
     fused-effects,
     githash,
     http-client,
@@ -1294,6 +1304,7 @@ test-suite swarm-integration
     stan-config, common, ghc2021-extensions,
     base,
     containers,
+    ekg-core,
     filepath,
     fused-effects,
     lens,
