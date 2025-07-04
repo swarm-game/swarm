@@ -1273,6 +1273,7 @@ test-suite swarm-unit
     TestRequirements
     TestScoring
     TestUtil
+    TestViewChunk
 
   build-depends:
     swarm:swarm-doc,

@@ -43,6 +43,7 @@ import TestQQ (testQQ)
 import TestRepl (testRepl)
 import TestRequirements (testRequirements)
 import TestScoring (testHighScores)
+import TestViewChunk (testViewChunk)
 import Witch (from)
 
 main :: IO ()
@@ -94,6 +95,7 @@ statelessTests =
     , testMisc
     , testLSP
     , testQQ
+    , testViewChunk
     ]
 
 testMisc :: TestTree
