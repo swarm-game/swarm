@@ -51,12 +51,12 @@ module Swarm.Game.State (
   messageNotifications,
   currentScenarioPath,
   dirtyCells,
+  redrawWorld,
+  flagCompleteRedraw,
   flagRedraw,
   deleteRobotAndFlag,
-  needsRedraw,
-  flagCompleteRedraw,
+  drawFrame,
   replWorking,
-  recalcViewCenterAndRedraw,
   viewingRegion,
   focusedRobot,
   RobotRange (..),
@@ -88,7 +88,6 @@ import Control.Monad.Trans.State.Strict qualified as TS
 import Data.Aeson (ToJSON)
 import Data.Digest.Pure.SHA (sha1, showDigest)
 import Data.Foldable (toList)
-import Data.Function (on)
 import Data.Int (Int32)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
@@ -207,7 +206,8 @@ data GameState = GameState
   , _currentScenarioPath :: Maybe ScenarioPath
   , _landscape :: Landscape
   , _dirtyCells :: Set (Cosmic Location)
-  , _needsRedraw :: Bool
+  , _redrawWorld :: Bool
+  , _drawFrame :: Bool
   , _gameControls :: GameControls
   , _messageInfo :: Messages
   , _completionStatsSaved :: Bool
@@ -306,7 +306,10 @@ robotInfo :: Lens' GameState Robots
 dirtyCells :: Lens' GameState (Set (Cosmic Location))
 
 -- | Whether the world view needs to be completely redrawn.
-needsRedraw :: Lens' GameState Bool
+redrawWorld :: Lens' GameState Bool
+
+-- | Should we make sure to update the UI this frame?
+drawFrame :: Lens' GameState Bool
 
 -- | Controls, including REPL and key mapping
 gameControls :: Lens' GameState GameControls
@@ -335,7 +338,7 @@ flagRedraw c = dirtyCells %= S.insert c
 
 -- | Set a flag telling the UI that the world needs to be completely redrawn.
 flagCompleteRedraw :: (Has (State GameState) sig m) => m ()
-flagCompleteRedraw = needsRedraw .= True
+flagCompleteRedraw = redrawWorld .= True
 
 deleteRobotAndFlag :: Has (State GameState) sig m => RID -> m ()
 deleteRobotAndFlag rid = do
@@ -385,20 +388,6 @@ messageIsFromNearby l e = case e ^. leSource of
   f logLoc = case cosmoMeasure manhattan l logLoc of
     InfinitelyFar -> False
     Measurable x -> x <= hearingDistance
-
--- | Recalculate the view center (and cache the result in the
---   'viewCenter' field) based on the current 'viewCenterRule'.  If
---   the 'viewCenterRule' specifies a robot which does not exist,
---   simply leave the current 'viewCenter' as it is. Set 'needsRedraw'
---   if the view center changes.
-recalcViewCenterAndRedraw :: GameState -> GameState
-recalcViewCenterAndRedraw g =
-  g
-    & robotInfo .~ newRobotInfo
-    & applyWhen (((/=) `on` (^. viewCenter)) oldRobotInfo newRobotInfo) (needsRedraw .~ True)
- where
-  oldRobotInfo = g ^. robotInfo
-  newRobotInfo = recalcViewCenter oldRobotInfo
 
 -- | Given a width and height, compute the region, centered on the
 --   'viewCenter', that should currently be in view.
@@ -537,7 +526,8 @@ initGameState gsc =
     , _currentScenarioPath = Nothing
     , _landscape = initLandscape gsc
     , _dirtyCells = S.empty
-    , _needsRedraw = False
+    , _redrawWorld = False
+    , _drawFrame = False
     , _gameControls = initGameControls
     , _messageInfo = initMessages
     , _completionStatsSaved = False

@@ -170,13 +170,10 @@ updateUI = do
   -- Some part of the world needs a redraw if either needsRedraw is
   -- set (meaning the world must be completely redrawn), or there are
   -- some cells marked as dirty
-  let worldNeededRedraw = g ^. needsRedraw || not (S.null $ g ^. dirtyCells)
+  let worldPanelUpdated = g ^. redrawWorld || g ^. drawFrame || not (S.null $ g ^. dirtyCells)
 
-  -- XXX invalidate all view chunk cache entries (for the current subworld)
-  --   if (g ^. needsRedraw) is true
-  -- Need to keep track of which entries are currently in the cache.
-  if (g ^. needsRedraw)
-    then invalidateCache  -- XXX for now, invalidate entire cache
+  if (g ^. redrawWorld)
+    then invalidateCache   -- Invalidate entire view chunk cache
     else
       -- Invalidate cache entries for view chunks containing cells that were updated,
       -- so they will be redrawn.
@@ -213,7 +210,7 @@ updateUI = do
       doRobotListUpdate dOps g
 
   let redraw =
-        worldNeededRedraw
+        worldPanelUpdated
           || inventoryUpdated
           || replUpdated
           || logUpdated

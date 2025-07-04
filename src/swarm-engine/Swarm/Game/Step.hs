@@ -109,7 +109,7 @@ gameTick = do
       _otherREPLStatus -> pure ()
 
   -- Possibly update the view center.
-  modify recalcViewCenterAndRedraw
+  modify (robotInfo %~ recalcViewCenter)
 
   when ticked $ do
     -- On new tick see if the winning condition for the current objective is met.
