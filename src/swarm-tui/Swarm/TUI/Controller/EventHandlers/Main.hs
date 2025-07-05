@@ -77,7 +77,7 @@ mainEventHandlers = allHandlers Main $ \case
     ( "View scenario goal description"
     , Brick.zoom (playState . scenarioState) viewGoal
     )
-  HideRobotsEvent -> ("Hide robots for a few ticks", Brick.zoom (playState . scenarioState . uiGameplay) hideRobots)
+  HideRobotsEvent -> ("Hide robots for a few ticks", Brick.zoom (playState . scenarioState) hideRobots)
   ShowCESKDebugEvent -> ("Show active robot CESK machine debugging line", showCESKDebug)
   PauseEvent -> ("Pause or unpause the game", Brick.zoom (playState . scenarioState) $ whenRunningPlayState safeTogglePause)
   RunSingleTickEvent -> ("Run game for a single tick", whenRunningAppState runSingleTick)
@@ -142,18 +142,11 @@ viewGoal = do
     then toggleMidScenarioModal GoalModal
     else continueWithoutRedraw
 
-hideRobots :: EventM Name UIGameplay ()
+hideRobots :: EventM Name ScenarioState ()
 hideRobots = do
   t <- liftIO $ getTime Monotonic
-  h <- use uiHideRobotsUntil
-  case h >= t of
-    -- ignore repeated keypresses
-    True -> continueWithoutRedraw
-    -- hide for two seconds
-    False -> do
-      uiHideRobotsUntil .= t + TimeSpec 2 0
-      invalidateCache
-      -- XXX need to redraw world again after 2 seconds... schedule an event?
+  uiGameplay . uiHideRobotsUntil .= Just (t + TimeSpec 2 0)
+  gameState . redrawWorld .= True
 
 showCESKDebug :: EventM Name AppState ()
 showCESKDebug = do

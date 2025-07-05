@@ -292,7 +292,7 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mCha
             }
       , _uiShowREPL = True
       , _uiShowDebug = False
-      , _uiHideRobotsUntil = startTime - 1
+      , _uiHideRobotsUntil = Nothing
       , _scenarioRef = Nothing
       }
 

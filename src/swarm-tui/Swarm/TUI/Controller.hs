@@ -396,7 +396,7 @@ handleMainEvent forceRedraw ev = do
         (UIShortcut "hide REPL") -> Brick.zoom (playState . scenarioState) toggleREPLVisibility
         (UIShortcut "show REPL") -> Brick.zoom (playState . scenarioState) toggleREPLVisibility
         (UIShortcut "debug") -> showCESKDebug
-        (UIShortcut "hide robots") -> Brick.zoom (playState . scenarioState . uiGameplay) hideRobots
+        (UIShortcut "hide robots") -> Brick.zoom (playState . scenarioState) hideRobots
         (UIShortcut "goal") -> Brick.zoom (playState . scenarioState) viewGoal
         _ -> continueWithoutRedraw
     MouseUp n _ _mouseLoc ->
