@@ -767,10 +767,7 @@ library swarm-engine
     Swarm.Log
 
   autogen-modules: Paths_swarm
-  other-modules:
-    Paths_swarm
-    Swarm.Game.State.ViewCenter.Internal
-
+  other-modules: Paths_swarm
   build-depends:
     swarm:swarm-lang,
     swarm:swarm-scenario,
