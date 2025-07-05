@@ -394,7 +394,7 @@ removeRobotFromLocationMap (Cosmic oldSubworld oldPlanar) rid =
 
 setRobotInfo :: RID -> [Robot] -> Robots -> Robots
 setRobotInfo rid robotList rState =
-  (setRobotList robotList rState)
+  setRobotList robotList rState
     & viewCenterState . VCInternal.viewRobotID .~ rid
     & viewCenterRule .~ VCRobot rid
 
