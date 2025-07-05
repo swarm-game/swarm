@@ -746,6 +746,7 @@ library swarm-engine
     Swarm.Game.State.Robot
     Swarm.Game.State.Runtime
     Swarm.Game.State.Substate
+    Swarm.Game.State.ViewCenter.Internal
     Swarm.Game.Step
     Swarm.Game.Step.Arithmetic
     Swarm.Game.Step.Combustion
@@ -769,7 +770,7 @@ library swarm-engine
   other-modules:
     Paths_swarm
     Swarm.Game.State.ViewCenter.Internal
-    
+
   build-depends:
     swarm:swarm-lang,
     swarm:swarm-scenario,
