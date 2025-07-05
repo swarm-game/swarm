@@ -14,7 +14,6 @@ import Linear.Affine ((.-.))
 import Swarm.Game.Cosmetic.Color (NamedColor (..), TrueColor (..))
 import Swarm.Game.Cosmetic.Texel (Texel, mkTexel)
 import Swarm.Game.State
-import Swarm.Game.State.Robot (viewCenter)
 import Swarm.Game.State.Substate (ticks)
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.Universe (planar)

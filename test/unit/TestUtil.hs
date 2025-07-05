@@ -21,7 +21,6 @@ import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete (isActive)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
-import Swarm.Game.State.Robot
 import Swarm.Game.Step (gameTick, hypotheticalRobot, stepCESK)
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.Language.Syntax.Pattern (TSyntax)

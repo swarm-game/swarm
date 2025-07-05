@@ -14,7 +14,6 @@ import Data.Text (Text)
 import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.State
-import Swarm.Game.State.Robot
 import Swarm.Game.Universe
 import Swarm.Language.Syntax.Direction
 

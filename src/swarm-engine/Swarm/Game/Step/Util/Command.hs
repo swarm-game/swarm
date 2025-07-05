@@ -51,7 +51,6 @@ import Swarm.Game.Scenario.Status (getScenarioPath)
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..), destination, reorientation)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
-import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util

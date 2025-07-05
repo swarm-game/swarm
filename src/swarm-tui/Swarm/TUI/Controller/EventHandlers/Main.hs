@@ -27,7 +27,6 @@ import Control.Monad.IO.Class (liftIO)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (originalStructureDefinitions)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
-import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Step (finishGameTick)
 import Swarm.TUI.Controller.EventHandlers.Frame (runGameTickUI)
