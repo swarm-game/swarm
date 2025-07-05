@@ -8,8 +8,6 @@
 module Swarm.Game.State.ViewCenter.Internal (
   -- * View center rule
   ViewCenterRule (..),
-  _VCLocation,
-  _VCRobot,
 
   -- * View center state
   ViewCenter,
@@ -26,7 +24,7 @@ module Swarm.Game.State.ViewCenter.Internal (
   unfocus,
 ) where
 
-import Control.Lens (Lens', makePrisms, (%~), (&), (.~), (^.))
+import Control.Lens (Lens', (%~), (&), (.~), (^.))
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Swarm.Game.Location
@@ -42,8 +40,6 @@ data ViewCenterRule
   | -- | The view should be centered on a certain robot.
     VCRobot RID
   deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
-
-makePrisms ''ViewCenterRule
 
 -- | The collection of view center state, which should be kept synchronised.
 --
