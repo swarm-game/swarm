@@ -81,7 +81,6 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
-import Swarm.Game.State.Robot
 import Swarm.Game.State.Runtime (eventLog)
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Path.Type

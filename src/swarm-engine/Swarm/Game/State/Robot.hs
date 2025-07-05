@@ -29,6 +29,7 @@ module Swarm.Game.State.Robot (
   viewCenterRule,
   viewCenter,
   focusedRobotID,
+  focusedRobot,
 
   -- * Utilities
   wakeWatchingRobots,
@@ -55,39 +56,28 @@ import Control.Effect.State (State)
 import Control.Effect.Throw (Has)
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad (forM_, void)
-import Data.Aeson (FromJSON, ToJSON)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
 import Data.List (partition)
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (mapMaybe)
 import Data.MonoidMap (MonoidMap)
 import Data.MonoidMap qualified as MM
 import Data.Set qualified as S
-import GHC.Generics (Generic)
 import Swarm.Game.CESK (CESK (Waiting))
 import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.State.Config
+import Swarm.Game.State.ViewCenter.Internal (ViewCenter, ViewCenterRule (..), defaultViewCenter)
+import Swarm.Game.State.ViewCenter.Internal qualified as VCInternal
 import Swarm.Game.Tick
 import Swarm.Game.Universe as U
 import Swarm.ResourceLoading (NameGenerator)
 import Swarm.Util ((<+=), (<<.=))
 import Swarm.Util.Lens (makeLensesExcluding)
-
--- | The 'ViewCenterRule' specifies how to determine the center of the
---   world viewport.
-data ViewCenterRule
-  = -- | The view should be centered on an absolute position.
-    VCLocation (Cosmic Location)
-  | -- | The view should be centered on a certain robot.
-    VCRobot RID
-  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
-
-makePrisms ''ViewCenterRule
 
 data RobotNaming = RobotNaming
   { _nameGenerator :: NameGenerator
@@ -126,9 +116,7 @@ data Robots = Robots
     -- since there may be many.
     _robotsWatching :: MonoidMap (Cosmic Location) IntSet
   , _robotNaming :: RobotNaming
-  , _viewCenterRule :: ViewCenterRule
-  , _viewCenter :: Cosmic Location
-  , _focusedRobotID :: RID
+  , _viewCenterState :: ViewCenter
   }
 
 -- We want to access active and waiting robots via lenses inside
@@ -139,7 +127,7 @@ makeLensesFor
   ]
   ''Robots
 
-makeLensesExcluding ['_viewCenter, '_viewCenterRule, '_focusedRobotID, '_activeRobots, '_waitingRobots] ''Robots
+makeLensesExcluding ['_activeRobots, '_waitingRobots] ''Robots
 
 -- | All the robots that currently exist in the game, indexed by ID.
 robotMap :: Lens' Robots (IntMap Robot)
@@ -174,12 +162,15 @@ robotsWatching :: Lens' Robots (MonoidMap (Cosmic Location) IntSet)
 -- | State and data for assigning identifiers to robots
 robotNaming :: Lens' Robots RobotNaming
 
+-- | The current view center location, focused robot and the rule for which to follow.
+viewCenterState :: Lens' Robots ViewCenter
+
 -- | The current center of the world view. Note that this cannot be
 --   modified directly, since it is calculated automatically from the
 --   'viewCenterRule'.  To modify the view center, either set the
 --   'viewCenterRule', or use 'modifyViewCenter'.
 viewCenter :: Getter Robots (Cosmic Location)
-viewCenter = to _viewCenter
+viewCenter = viewCenterState . VCInternal.viewCenterLocation
 
 -- | The current robot in focus.
 --
@@ -189,7 +180,26 @@ viewCenter = to _viewCenter
 -- Technically it's the last robot ID specified by 'viewCenterRule',
 -- but that robot may not be alive anymore - to be safe use 'focusedRobot'.
 focusedRobotID :: Getter Robots RID
-focusedRobotID = to _focusedRobotID
+focusedRobotID = viewCenterState . VCInternal.viewRobotID
+
+-- | Find out which robot has been last specified by the
+--   'viewCenterRule', if any.
+focusedRobot :: Getter Robots (Maybe Robot)
+focusedRobot = to $ \r -> r ^. robotMap . at (r ^. focusedRobotID)
+
+-- | The current rule for determining the center of the world view.
+--   It also updates 'viewCenter' and 'focusedRobot' to keep
+--   everything synchronized.
+viewCenterRule :: Lens' Robots ViewCenterRule
+viewCenterRule = lens getter setter
+ where
+  getter :: Robots -> ViewCenterRule
+  getter = view $ viewCenterState . VCInternal.viewCenterRule
+  setter :: Robots -> ViewCenterRule -> Robots
+  setter rInfo rule =
+    rInfo
+      & viewCenterState . VCInternal.viewCenterRule .~ rule
+      & viewCenterState %~ VCInternal.syncViewCenter (getLocationFromRID rInfo)
 
 -- * Utilities
 
@@ -207,33 +217,8 @@ initRobots gsc =
           { _nameGenerator = nameParts gsc
           , _gensym = 0
           }
-    , _viewCenterRule = VCRobot 0
-    , _viewCenter = defaultCosmicLocation
-    , _focusedRobotID = 0
+    , _viewCenterState = defaultViewCenter
     }
-
--- | The current rule for determining the center of the world view.
---   It updates also, 'viewCenter' and 'focusedRobot' to keep
---   everything synchronized.
-viewCenterRule :: Lens' Robots ViewCenterRule
-viewCenterRule = lens getter setter
- where
-  getter :: Robots -> ViewCenterRule
-  getter = _viewCenterRule
-
-  -- The setter takes care of updating 'viewCenter' and 'focusedRobot'
-  -- So none of these fields get out of sync.
-  setter :: Robots -> ViewCenterRule -> Robots
-  setter g rule =
-    case rule of
-      VCLocation loc -> g {_viewCenterRule = rule, _viewCenter = loc}
-      VCRobot rid ->
-        let robotcenter = g ^? robotMap . ix rid . robotLocation
-         in -- retrieve the loc of the robot if it exists, Nothing otherwise.
-            -- sometimes, lenses are amazing...
-            case robotcenter of
-              Nothing -> g
-              Just loc -> g {_viewCenterRule = rule, _viewCenter = loc, _focusedRobotID = rid}
 
 -- | Add a concrete instance of a robot template to the game state:
 --   First, generate a unique ID number for it.  Then, add it to the
@@ -408,9 +393,10 @@ removeRobotFromLocationMap (Cosmic oldSubworld oldPlanar) rid =
     %= MM.adjust (MM.adjust (IS.delete rid) oldPlanar) oldSubworld
 
 setRobotInfo :: RID -> [Robot] -> Robots -> Robots
-setRobotInfo baseID robotList rState =
-  (setRobotList robotList rState) {_focusedRobotID = baseID}
-    & viewCenterRule .~ VCRobot baseID
+setRobotInfo rid robotList rState =
+  setRobotList robotList rState
+    & viewCenterState . VCInternal.viewRobotID .~ rid
+    & viewCenterRule .~ VCRobot rid
 
 setRobotList :: [Robot] -> Robots -> Robots
 setRobotList robotList rState =
@@ -427,6 +413,10 @@ setRobotList robotList rState =
     f r = MM.adjust (g r) (r ^. (robotLocation . subworld))
     g r = MM.adjust (IS.insert (r ^. robotID)) (r ^. (robotLocation . planar))
 
+-- | Helper function to get location of robot.
+getLocationFromRID :: Robots -> RID -> Maybe (Cosmic Location)
+getLocationFromRID rs rid = rs ^? robotMap . ix rid . robotLocation
+
 -- | Modify the 'viewCenter' by applying an arbitrary function to the
 --   current value.  Note that this also modifies the 'viewCenterRule'
 --   to match.  After calling this function the 'viewCenterRule' will
@@ -434,35 +424,22 @@ setRobotList robotList rState =
 modifyViewCenter :: (Cosmic Location -> Cosmic Location) -> Robots -> Robots
 modifyViewCenter update rInfo =
   rInfo
-    & case rInfo ^. viewCenterRule of
-      VCLocation l -> viewCenterRule .~ VCLocation (update l)
-      VCRobot _ -> viewCenterRule .~ VCLocation (update (rInfo ^. viewCenter))
+    & viewCenterState %~ VCInternal.modifyViewCenter (getLocationFromRID rInfo) update
 
 -- | "Unfocus" by modifying the view center rule to look at the
 --   current location instead of a specific robot, and also set the
 --   focused robot ID to an invalid value.  In classic mode this
 --   causes the map view to become nothing but static.
 unfocus :: Robots -> Robots
-unfocus = (\ri -> ri {_focusedRobotID = -1000}) . modifyViewCenter id
+unfocus rInfo =
+  rInfo
+    & viewCenterState %~ VCInternal.unfocus (getLocationFromRID rInfo)
 
--- | Recalculate the view center (and cache the result in the
---   'viewCenter' field) based on the current 'viewCenterRule'.  If
---   the 'viewCenterRule' specifies a robot which does not exist,
---   simply leave the current 'viewCenter' as it is.
+-- | Recalculate the 'viewCenter'  based on the current 'viewCenterRule'.
+--
+-- If the 'viewCenterRule' specifies a robot which does not exist,
+-- simply leave the current 'viewCenter' as it is.
 recalcViewCenter :: Robots -> Robots
 recalcViewCenter rInfo =
   rInfo
-    { _viewCenter = newViewCenter
-    }
- where
-  newViewCenter =
-    fromMaybe (rInfo ^. viewCenter) $
-      applyViewCenterRule (rInfo ^. viewCenterRule) (rInfo ^. robotMap)
-
--- | Given a current mapping from robot names to robots, apply a
---   'ViewCenterRule' to derive the location it refers to.  The result
---   is 'Maybe' because the rule may refer to a robot which does not
---   exist.
-applyViewCenterRule :: ViewCenterRule -> IntMap Robot -> Maybe (Cosmic Location)
-applyViewCenterRule (VCLocation l) _ = Just l
-applyViewCenterRule (VCRobot name) m = m ^? at name . _Just . robotLocation
+    & viewCenterState %~ VCInternal.syncViewCenter (getLocationFromRID rInfo)

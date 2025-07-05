@@ -45,7 +45,6 @@ import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.State
-import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Tick (addTicks)
 import Swarm.Game.Universe
