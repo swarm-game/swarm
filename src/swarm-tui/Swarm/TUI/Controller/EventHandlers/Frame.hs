@@ -45,15 +45,6 @@ oneSecond = 1_000_000_000 -- one second = 10^9 nanoseconds
 
 runFramePlayState :: EventM Name PlayState ()
 runFramePlayState = Brick.zoom scenarioState $ do
-  -- Reset the redrawWorld and drawFrame flags and the dirty cells.
-  -- While processing the frame and stepping the robots, individual
-  -- cells that change will be marked as dirty, so we can be sure to
-  -- redraw them next frame, and redrawWorld and drawFrame can be set
-  -- as appropriate.
-  gameState . redrawWorld .= False
-  gameState . drawFrame .= False
-  gameState . dirtyCells .= mempty
-
   -- The logic here is taken from https://gafferongames.com/post/fix_your_timestep/ .
 
   curTime <- liftIO $ getTime Monotonic

@@ -57,6 +57,7 @@ import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
 import Data.Bits (FiniteBits (finiteBitSize))
+import Data.Maybe (isNothing)
 import Data.Text (Text)
 import Swarm.Game.Cosmetic.Color (AttributeMap)
 import Swarm.Game.Scenario (scenarioCosmetics, scenarioLandscape)
@@ -216,7 +217,7 @@ data UIGameplay = UIGameplay
   , _uiAutoShowObjectives :: Bool
   , _uiShowREPL :: Bool
   , _uiShowDebug :: Bool
-  , _uiHideRobotsUntil :: TimeSpec
+  , _uiHideRobotsUntil :: Maybe TimeSpec
   , _uiTiming :: UITiming
   , _scenarioRef :: Maybe (ScenarioWith ScenarioPath)
   }
@@ -268,12 +269,12 @@ uiShowREPL :: Lens' UIGameplay Bool
 -- the debug option 'Swarm.TUI.Model.DebugOption.DebugCESK'.
 uiShowDebug :: Lens' UIGameplay Bool
 
--- | Hide robots on the world map.
-uiHideRobotsUntil :: Lens' UIGameplay TimeSpec
+-- | Hide robots on the world map until the specified time.
+uiHideRobotsUntil :: Lens' UIGameplay (Maybe TimeSpec)
 
 -- | Whether to show or hide robots on the world map.
 uiShowRobots :: Getter UIGameplay Bool
-uiShowRobots = to (\ui -> ui ^. uiTiming . lastFrameTime > ui ^. uiHideRobotsUntil)
+uiShowRobots = uiHideRobotsUntil . to isNothing
 
 -- | The currently active Scenario description, useful for starting over.
 scenarioRef :: Lens' UIGameplay (Maybe (ScenarioWith ScenarioPath))
