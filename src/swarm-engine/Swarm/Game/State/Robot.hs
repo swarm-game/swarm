@@ -9,12 +9,6 @@ module Swarm.Game.State.Robot (
   ViewCenterRule (..),
   Robots,
 
-  -- * Robot naming
-  RobotNaming,
-  nameGenerator,
-  gensym,
-  robotNaming,
-
   -- * Initialization
   initRobots,
   setRobotInfo,
@@ -30,6 +24,7 @@ module Swarm.Game.State.Robot (
   viewCenter,
   focusedRobotID,
   focusedRobot,
+  robotNaming,
 
   -- * Utilities
   wakeWatchingRobots,
@@ -48,6 +43,11 @@ module Swarm.Game.State.Robot (
   modifyViewCenter,
   unfocus,
   recalcViewCenter,
+
+  -- ** Robot naming
+  RobotNaming,
+  nameGenerator,
+  gensym,
 ) where
 
 import Control.Arrow (Arrow ((&&&)))
@@ -71,6 +71,7 @@ import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.State.Config
+import Swarm.Game.State.RobotNaming
 import Swarm.Game.State.ViewCenter.Internal (ViewCenter, ViewCenterRule (..), defaultViewCenter)
 import Swarm.Game.State.ViewCenter.Internal qualified as VCInternal
 import Swarm.Game.Tick
@@ -78,20 +79,6 @@ import Swarm.Game.Universe as U
 import Swarm.ResourceLoading (NameGenerator)
 import Swarm.Util ((<+=), (<<.=))
 import Swarm.Util.Lens (makeLensesExcluding)
-
-data RobotNaming = RobotNaming
-  { _nameGenerator :: NameGenerator
-  , _gensym :: Int
-  }
-
-makeLensesExcluding ['_nameGenerator] ''RobotNaming
-
---- | Read-only list of words, for use in building random robot names.
-nameGenerator :: Getter RobotNaming NameGenerator
-nameGenerator = to _nameGenerator
-
--- | A counter used to generate globally unique IDs.
-gensym :: Lens' RobotNaming Int
 
 data Robots = Robots
   { _robotMap :: IntMap Robot
@@ -212,11 +199,7 @@ initRobots gsc =
     , _currentTickWakeableBots = mempty
     , _robotsByLocation = mempty
     , _robotsWatching = mempty
-    , _robotNaming =
-        RobotNaming
-          { _nameGenerator = nameParts gsc
-          , _gensym = 0
-          }
+    , _robotNaming = initRobotNaming gsc
     , _viewCenterState = defaultViewCenter
     }
 
