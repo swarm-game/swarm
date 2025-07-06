@@ -90,6 +90,7 @@ import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec)
 import System.Metrics.Counter qualified as Counter
 import System.Metrics.Distribution qualified as Distribution
+import System.Metrics.Gauge qualified as Gauge
 import Witch (From (from))
 import Prelude hiding (lookup)
 
@@ -107,50 +108,53 @@ gameTick = measureCpuTimeInSec runTick >>= updateMetrics
   updateMetrics (t, res) =
     use gameMetrics >>= \case
       Just metrics -> do
-        sendIO $ Counter.inc metrics.tickCounter
-        sendIO $ Distribution.add metrics.tickDistribution t
+        total <- use $ robotInfo . robotMap . to IM.size
+        active <- use $ robotInfo . activeRobots . to IS.size
+        sendIO $ do
+          Counter.inc metrics.tickCounter
+          Distribution.add metrics.tickDistribution t
+          Gauge.set metrics.robotsGauge $ fromIntegral total
+          Gauge.set metrics.activeRobotsGauge $ fromIntegral active
         pure res
       Nothing -> pure res
   runTick :: m Bool
   runTick = do
     time <- use $ temporal . ticks
     zoomRobots $ wakeUpRobotsDoneSleeping time
-    active <- use $ robotInfo . activeRobots
-    focusedRob <- use $ robotInfo . focusedRobotID
-
-    ticked <-
-      use (temporal . gameStep) >>= \case
-        WorldTick -> do
-          runRobotIDs active
-          temporal . ticks %= addTicks 1
-          pure True
-        RobotStep ss -> singleStep ss focusedRob active
-
-    -- See if the base is finished with a computation, and if so, record
-    -- the result in the game state so it can be displayed by the REPL;
-    -- also save the current store into the robotContext so we can
-    -- restore it the next time we start a computation.
-    mr <- use (robotInfo . robotMap . at 0)
-    forM_ mr $ \r -> do
-      res <- use $ gameControls . replStatus
-      case res of
-        REPLWorking ty Nothing -> forM_ (getResult r) $ \v ->
-          gameControls . replStatus .= REPLWorking ty (Just v)
-        _otherREPLStatus -> pure ()
-
+    ticked <- runActiveRobots
+    updateBaseReplState
     -- Possibly update the view center.
     modify recalcViewCenterAndRedraw
-
-    when ticked $ do
-      -- On new tick see if the winning condition for the current objective is met.
-      wc <- use winCondition
-      case wc of
-        WinConditions winState oc -> do
-          g <- get @GameState
-          em <- use $ landscape . terrainAndEntities . entityMap
-          hypotheticalWinCheck em g winState oc
-        _ -> pure ()
+    -- On new tick see if the winning condition for the current objective is met
+    when ticked hypotheticalWinCheck'
     return ticked
+
+-- | Run active robots for this tick or just single step.
+runActiveRobots :: HasGameStepState sig m => m Bool
+runActiveRobots = do
+  active <- use $ robotInfo . activeRobots
+  gStep <- use $ temporal . gameStep
+  case gStep of
+    WorldTick -> do
+      runRobotIDs active
+      temporal . ticks %= addTicks 1
+      pure True
+    RobotStep ss -> do
+      focusedRob <- use $ robotInfo . focusedRobotID
+      singleStep ss focusedRob active
+
+-- | See if the base is finished with a computation, and if so, record
+-- the result in the game state so it can be displayed by the REPL;
+-- also save the current store into the robotContext so we can
+-- restore it the next time we start a computation.
+updateBaseReplState :: HasGameStepState sig m => m ()
+updateBaseReplState = do
+  baseValue <- use . pre $ robotInfo . robotMap . ix 0 . folding getResult
+  forM_ baseValue $ \v -> do
+    res <- use $ gameControls . replStatus
+    case res of
+      REPLWorking ty Nothing -> gameControls . replStatus .= REPLWorking ty (Just v)
+      _otherREPLStatus -> pure ()
 
 -- | Finish a game tick in progress and set the game to 'WorldTick' mode afterwards.
 --
@@ -308,6 +312,13 @@ singleStep ss focRID robotSet = do
     m <- evalState @Robot h $ createLogEntry RobotError Debug txt
     emitMessage m
 
+-- | Check if the winning condition for the current objective is met.
+hypotheticalWinCheck' :: HasGameStepState sig m => m ()
+hypotheticalWinCheck' =
+  use winCondition >>= \case
+    WinConditions winState oc -> hypotheticalWinCheck winState oc
+    _ -> pure ()
+
 -- | An accumulator for folding over the incomplete
 -- objectives to evaluate for their completion
 data CompletionsWithExceptions = CompletionsWithExceptions
@@ -337,19 +348,18 @@ data CompletionsWithExceptions = CompletionsWithExceptions
 --    after each element.
 hypotheticalWinCheck ::
   (Has (State GameState) sig m, Has Effect.Time sig m, Has (Lift IO) sig m) =>
-  EntityMap ->
-  GameState ->
   WinStatus ->
   ObjectiveCompletion ->
   m ()
-hypotheticalWinCheck em g ws oc = do
+hypotheticalWinCheck ws oc = do
+  em <- use $ landscape . terrainAndEntities . entityMap
   -- We can fully and accurately evaluate the new state of the objectives DAG
   -- in a single pass, so long as we visit it in reverse topological order.
   --
   -- N.B. The "reverse" is essential due to the re-population of the
   -- "incomplete" goal list by cons-ing.
   finalAccumulator <-
-    foldM foldFunc initialAccumulator $
+    foldM (foldFunc em) initialAccumulator $
       reverse incompleteGoals
 
   ts <- use $ temporal . ticks
@@ -386,12 +396,14 @@ hypotheticalWinCheck em g ws oc = do
   -- Each iteration, we either place the goal back into the "incomplete" bucket, or
   -- we determine that it has been met or impossible and place it into the "completed"
   -- or "unwinnable" bucket, respectively.
-  foldFunc (CompletionsWithExceptions exnTexts currentCompletions announcements) obj = do
+  foldFunc em (CompletionsWithExceptions exnTexts currentCompletions announcements) obj = do
     v <-
       if WC.isPrereqsSatisfied currentCompletions obj
-        then runThrow @Exn . evalState @GameState g $ evalT $ obj ^. OB.objectiveCondition
+        then do
+          g <- get @GameState
+          runThrow @Exn . evalState g $ evalT $ obj ^. OB.objectiveCondition
         else return $ Right $ VBool False
-    return $ case simplifyResult v of
+    return $ case simplifyResult em v of
       Left exnText ->
         CompletionsWithExceptions
           (exnText : exnTexts)
@@ -411,7 +423,7 @@ hypotheticalWinCheck em g ws oc = do
           | WC.isUnwinnable currentCompletions obj = (OB.addUnwinnable, id)
           | otherwise = (OB.addIncomplete, id)
 
-  simplifyResult = \case
+  simplifyResult em = \case
     Left exn -> Left $ formatExn em exn
     Right (VBool x) -> Right x
     Right val ->
@@ -428,6 +440,7 @@ hypotheticalWinCheck em g ws oc = do
    where
     h = hypotheticalRobot (Out VUnit emptyStore []) 0
 
+-- | Helper function to evaluate code in a fresh CESK machine.
 evalT ::
   ( Has Effect.Time sig m
   , Has (Throw Exn) sig m
