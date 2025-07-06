@@ -182,8 +182,11 @@ updateRobotLocation oldLoc newLoc
   | otherwise = do
       newlocWithPortal <- applyPortal newLoc
       rid <- use robotID
+      t <- use $ temporal . ticks
+      invis <- use $ robotDisplay . invisible
       zoomRobots $ do
-        -- wakeWatchingRobots?
+        unless invis $ wakeRobotsWatchingForRobots rid t newLoc
+        unless invis $ wakeRobotsWatchingForRobots rid t oldLoc
         removeRobotFromLocationMap oldLoc rid
         addRobotToLocation rid newlocWithPortal
       modify (unsafeSetRobotLocation newlocWithPortal)
@@ -331,20 +334,20 @@ updateAvailableCommands e = do
 ------------------------------------------------------------
 
 -- | Watch for entity change at the location.
-addWatchedForEntitiesLocation ::
+watchForEntities ::
   HasRobotStepState sig m =>
   Cosmic Location ->
   m ()
-addWatchedForEntitiesLocation loc = do
+watchForEntities loc = do
   rid <- use robotID
   robotInfo . robotsWatchingForEntities %= MM.adjust (IS.insert rid) loc
 
 -- | Watch for robots entering/leaving the location.
-addWatchedForRobotsLocation ::
+watchForRobots ::
   HasRobotStepState sig m =>
   Cosmic Location ->
   m ()
-addWatchedForRobotsLocation loc = do
+watchForRobots loc = do
   rid <- use robotID
   robotInfo . robotsWatchingForRobots %= MM.adjust (IS.insert rid) loc
 
