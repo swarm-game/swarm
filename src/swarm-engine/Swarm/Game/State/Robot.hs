@@ -228,9 +228,13 @@ wakeRobotsWatchingForRobots myID currentTick loc = do
 --
 -- NOTE: Clearing 'TickNumber' map entries from 'waitingRobots'
 -- upon wakeup is handled by 'wakeUpRobotsDoneSleeping'
-wakeWatchingRobotsInternal :: (Has (State Robots) sig m) =>
+wakeWatchingRobotsInternal ::
+  (Has (State Robots) sig m) =>
   MonoidMap (Cosmic Location) IntSet ->
-  RID -> TickNumber -> Cosmic Location -> m ()
+  RID ->
+  TickNumber ->
+  Cosmic Location ->
+  m ()
 wakeWatchingRobotsInternal watchingMap myID currentTick loc = do
   waitingMap <- use waitingRobots
   rMap <- use robotMap
