@@ -15,7 +15,8 @@ module Swarm.Game.State.Robots.Internal (
   robotMap,
   currentTickWakeableBots,
   robotsByLocation,
-  robotsWatching,
+  robotsWatchingForEntities,
+  robotsWatchingForRobots,
   robotNaming,
   viewCenterState,
 
@@ -46,7 +47,8 @@ data Robots = Robots
   , _waitingRobots :: MonoidMap TickNumber [RID]
   , _currentTickWakeableBots :: [RID]
   , _robotsByLocation :: MonoidMap SubworldName (MonoidMap Location IntSet)
-  , _robotsWatching :: MonoidMap (Cosmic Location) IntSet
+  , _robotsWatchingForEntities :: MonoidMap (Cosmic Location) IntSet
+  , _robotsWatchingForRobots :: MonoidMap (Cosmic Location) IntSet
   , _robotNaming :: RobotNaming
   , _viewCenterState :: ViewCenter
   }
@@ -60,7 +62,8 @@ initRobots gsc =
     , _waitingRobots = mempty
     , _currentTickWakeableBots = mempty
     , _robotsByLocation = mempty
-    , _robotsWatching = mempty
+    , _robotsWatchingForEntities = mempty
+    , _robotsWatchingForRobots = mempty
     , _robotNaming = initRobotNaming gsc
     , _viewCenterState = defaultViewCenter
     }
@@ -109,11 +112,11 @@ currentTickWakeableBots :: Lens' Robots [RID]
 --   happen.
 robotsByLocation :: Lens' Robots (MonoidMap SubworldName (MonoidMap Location IntSet))
 
--- | Get a list of all the robots that are \"watching\" by location.
---
--- This is an optimization so that we do not have to iterate over all
--- "waiting" robots, since there may be many.
-robotsWatching :: Lens' Robots (MonoidMap (Cosmic Location) IntSet)
+-- | Get a list of all the robots that are watching for entity change in a location.
+robotsWatchingForEntities :: Lens' Robots (MonoidMap (Cosmic Location) IntSet)
+
+-- | Get a list of all the robots that are watching for robots entering or leaving a location.
+robotsWatchingForRobots :: Lens' Robots (MonoidMap (Cosmic Location) IntSet)
 
 -- | State and data for assigning identifiers to robots
 robotNaming :: Lens' Robots RobotNaming
