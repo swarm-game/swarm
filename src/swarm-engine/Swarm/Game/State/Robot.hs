@@ -56,7 +56,7 @@ import Control.Arrow (Arrow ((&&&)))
 import Control.Effect.Lens
 import Control.Effect.State (State)
 import Control.Effect.Throw (Has)
-import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
+import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=), (<>=))
 import Control.Monad (forM_, void)
 import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
@@ -78,7 +78,7 @@ import Swarm.Game.State.ViewCenter.Internal (ViewCenterRule (..))
 import Swarm.Game.State.ViewCenter.Internal qualified as VCInternal
 import Swarm.Game.Tick
 import Swarm.Game.Universe as U
-import Swarm.Util ((<+=), (<<.=))
+import Swarm.Util ((<+=), (<<.=), (<>=))
 
 -- | The names of the robots that are currently not sleeping.
 activeRobots :: Getter Robots IntSet
@@ -276,9 +276,9 @@ wakeWatchingRobotsInternal watchingMap myID currentTick loc = do
         ]
       newInsertions = MM.fromList wakeTimeGroups
 
-  -- Contract: This must be emptied immediately
-  -- in 'iterateRobots'
-  currentTickWakeableBots .= currTickWakeable
+  -- Contract: This must be emptied immediately in 'iterateRobots'
+  -- after this robot finishes its step
+  currentTickWakeableBots <>= IS.fromList currTickWakeable
 
   -- NOTE: There are two "sources of truth" for the waiting state of robots:
   -- 1. In the GameState via "Internal.waitingRobots"
