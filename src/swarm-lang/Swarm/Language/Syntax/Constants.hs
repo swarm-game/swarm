@@ -757,7 +757,7 @@ constInfo c = case c of
   WatchRobots ->
     command 1 short $
       doc
-        (Set.singleton $ Query $ Sensing RobotSensing) 
+        (Set.singleton $ Query $ Sensing RobotSensing)
         "Interrupt `wait` upon robots entering/leaving the location."
         [ "Place seismic detectors to alert upon robot entering or leaving the specified location."
         , "Supply a direction, as with the `scan` command, to specify a nearby location."
