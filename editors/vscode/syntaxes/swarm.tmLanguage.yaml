@@ -47,7 +47,7 @@ repository:
       keyword:
         name: keyword.other
         match: >-
-          \b(waypoint|waypoints|hastag|tagmembers|self|parent|base|if|inl|inr|case|match|force|undefined|fail|not|format|read|chars|split|charat|tochar|key|noop|wait|selfdestruct|move|backup|volume|path|push|stride|turn|grab|harvest|sow|ignite|place|ping|give|equip|unequip|make|has|equipped|count|drill|use|build|salvage|reprogram|say|listen|log|view|appear|create|halt|time|scout|whereami|locateme|structures|floorplan|detect|resonate|density|sniff|chirp|watch|surveil|heading|blocked|scan|upload|ishere|isempty|meet|meetall|whoami|setname|random|run|pure|try|print|erase|swap|atomic|instant|installkeyhandler|teleport|warp|as|robotnamed|robotnumbered|knows|destroy)\b
+          \b(waypoints|hastag|tagmembers|self|parent|base|if|inl|inr|case|match|force|undefined|fail|not|format|read|chars|split|charat|tochar|key|noop|wait|selfdestruct|move|backup|volume|path|push|stride|turn|grab|harvest|sow|ignite|place|ping|give|equip|unequip|make|has|equipped|count|drill|use|build|salvage|reprogram|say|listen|log|view|appear|create|halt|time|scout|whereami|locateme|structures|floorplan|detect|resonate|density|sniff|chirp|watch|watchrobots|surveil|surveilrobots|heading|blocked|scan|upload|ishere|isempty|meet|meetall|whoami|setname|random|run|pure|try|print|erase|swap|atomic|instant|installkeyhandler|teleport|warp|as|robotnamed|robotnumbered|knows|destroy)\b
       require:
         name: keyword.control.require
         match: \b(require)\b
