@@ -106,14 +106,21 @@ def go =
     turn right;
     doN 2 move;
     turn back;
+    log "building bots 1!"; // 4,-6
     buildBot right;
-    turn back;
+    
+    // walk around the watched place
+    turn right;
     move;
-
+    turn right;
+    move;
     turn left;
-    move;
+
+    log "building bots 2!";
     buildBot left;
     turn back;
+    wait 20;
+    log "going back now!";
     move;
 
     place obj;
