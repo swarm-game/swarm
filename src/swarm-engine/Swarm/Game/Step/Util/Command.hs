@@ -158,7 +158,7 @@ purgeFarAwayWatches = do
         applyWhen (not $ isNearby loc) $
           IS.delete rid
 
-  robotInfo . robotsWatching %= MM.mapWithKey f
+  robotInfo . robotsWatchingForEntities %= MM.mapWithKey f
 
 verbedGrabbingCmd :: GrabbingCmd -> Text
 verbedGrabbingCmd = \case
@@ -330,13 +330,27 @@ updateAvailableCommands e = do
 -- The "watch" command
 ------------------------------------------------------------
 
-addWatchedLocation ::
+-- | Watch for entity change at the location.
+addWatchedForEntitiesLocation ::
   HasRobotStepState sig m =>
   Cosmic Location ->
   m ()
-addWatchedLocation loc = do
+addWatchedForEntitiesLocation loc = do
   rid <- use robotID
-  robotInfo . robotsWatching %= MM.adjust (IS.insert rid) loc
+  robotInfo . robotsWatchingForEntities %= MM.adjust (IS.insert rid) loc
+
+-- | Watch for robots entering/leaving the location.
+addWatchedForRobotsLocation ::
+  HasRobotStepState sig m =>
+  Cosmic Location ->
+  m ()
+addWatchedForRobotsLocation loc = do
+  rid <- use robotID
+  robotInfo . robotsWatchingForRobots %= MM.adjust (IS.insert rid) loc
+
+------------------------------------------------------------
+-- Build/Reprogram
+------------------------------------------------------------
 
 -- | Give some entities from a parent robot (the robot represented by
 --   the ambient @State Robot@ effect) to a child robot (represented

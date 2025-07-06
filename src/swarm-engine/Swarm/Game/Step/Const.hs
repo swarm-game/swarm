@@ -672,14 +672,14 @@ execConst runChildProg c vs s k = do
     Watch -> case vs of
       [VDir d] -> do
         (loc, _me) <- lookInDirection d
-        addWatchedLocation loc
+        addWatchedForEntitiesLocation loc
         return $ mkReturn ()
       _ -> badConst
     Surveil -> case vs of
       [VPair (VInt x) (VInt y)] -> do
         Cosmic swName _ <- use robotLocation
         let loc = Cosmic swName $ Location (fromIntegral x) (fromIntegral y)
-        addWatchedLocation loc
+        addWatchedForEntitiesLocation loc
         return $ mkReturn ()
       _ -> badConst
     Chirp -> case vs of
