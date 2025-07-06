@@ -747,6 +747,7 @@ library swarm-engine
     Swarm.Game.State.Redraw
     Swarm.Game.State.Robot
     Swarm.Game.State.RobotNaming
+    Swarm.Game.State.Robots.Internal
     Swarm.Game.State.Runtime
     Swarm.Game.State.Substate
     Swarm.Game.State.ViewCenter.Internal
