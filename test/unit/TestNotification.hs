@@ -12,7 +12,6 @@ import Data.Text qualified as T
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete (robotLog)
 import Swarm.Game.State
-import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Log

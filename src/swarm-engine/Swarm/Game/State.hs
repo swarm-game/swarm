@@ -23,7 +23,6 @@ module Swarm.Game.State (
 
   -- *** Subrecord accessors
   temporal,
-  robotNaming,
   recipesInfo,
   messageInfo,
   gameControls,
@@ -75,6 +74,7 @@ module Swarm.Game.State (
 
   -- * Re-exports
   module GameMetrics,
+  module Robots,
 ) where
 
 import Control.Carrier.State.Lazy qualified as Fused
@@ -115,7 +115,8 @@ import Swarm.Game.Scenario.Status
 import Swarm.Game.State.Config
 import Swarm.Game.State.GameMetrics as GameMetrics
 import Swarm.Game.State.Landscape
-import Swarm.Game.State.Robot
+import Swarm.Game.State.Robot as Robots hiding (focusedRobot, robotNaming)
+import Swarm.Game.State.Robot qualified as RobotsInternal
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Terrain
@@ -398,7 +399,7 @@ viewingRegion (Cosmic sw (Location cx cy)) (w, h) =
 -- | Find out which robot has been last specified by the
 --   'viewCenterRule', if any.
 focusedRobot :: GameState -> Maybe Robot
-focusedRobot g = g ^. robotInfo . robotMap . at (g ^. robotInfo . focusedRobotID)
+focusedRobot g = g ^. robotInfo . RobotsInternal.focusedRobot
 
 -- | Type for describing how far away a robot is from the base, which
 --   determines what kind of communication can take place.

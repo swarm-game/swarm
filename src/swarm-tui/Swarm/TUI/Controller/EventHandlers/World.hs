@@ -17,7 +17,6 @@ import Linear
 import Swarm.Game.Location
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
-import Swarm.Game.State.Robot
 import Swarm.Language.Syntax.Direction (Direction (..), directionSyntax)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model

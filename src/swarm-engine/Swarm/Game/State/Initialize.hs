@@ -46,7 +46,6 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (emptyFound
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
 import Swarm.Game.State.Landscape (mkLandscape)
-import Swarm.Game.State.Robot (setRobotInfo)
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Util (adaptGameState)

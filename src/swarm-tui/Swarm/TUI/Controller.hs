@@ -68,7 +68,6 @@ import Swarm.Game.Scenario.Status (ScenarioPath (..), ScenarioWith (..), getScen
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
-import Swarm.Game.State.Robot
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Language.Capability (
