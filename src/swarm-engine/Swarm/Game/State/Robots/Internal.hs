@@ -45,7 +45,7 @@ data Robots = Robots
   { _robotMap :: IntMap Robot
   , _activeRobots :: IntSet
   , _waitingRobots :: MonoidMap TickNumber [RID]
-  , _currentTickWakeableBots :: [RID]
+  , _currentTickWakeableBots :: IntSet
   , _robotsByLocation :: MonoidMap SubworldName (MonoidMap Location IntSet)
   , _robotsWatchingForEntities :: MonoidMap (Cosmic Location) IntSet
   , _robotsWatchingForRobots :: MonoidMap (Cosmic Location) IntSet
@@ -98,8 +98,8 @@ activeRobots :: Lens' Robots IntSet
 -- prepend to a list than insert into a 'Set'.
 waitingRobots :: Lens' Robots (MonoidMap TickNumber [RID])
 
--- | Get a list of all the robots that are \"watching\" by location.
-currentTickWakeableBots :: Lens' Robots [RID]
+-- | Get a set of all the robots that are about to wake.
+currentTickWakeableBots :: Lens' Robots IntSet
 
 -- | The names of all robots that currently exist in the game, indexed by
 --   location (which we need both for /e.g./ the @salvage@ command as

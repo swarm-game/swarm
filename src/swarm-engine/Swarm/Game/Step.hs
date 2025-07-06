@@ -236,12 +236,12 @@ iterateRobots time f runnableBots =
       -- robots with a larger RID are scheduled for the current tick;
       -- robots with smaller RIDs will be scheduled for the next tick.
       robotsToAdd <- use $ robotInfo . currentTickWakeableBots
-      if null robotsToAdd
+      if IS.null robotsToAdd
         then return id
         else do
           zoomRobots $ wakeUpRobotsDoneSleeping time
-          robotInfo . currentTickWakeableBots .= []
-          return $ IS.union $ IS.fromList robotsToAdd
+          robotInfo . currentTickWakeableBots .= mempty
+          return $ IS.union robotsToAdd
 
     iterateRobots time f $ poolAugmentation remainingBotIDs
 
