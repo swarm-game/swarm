@@ -22,6 +22,14 @@ def getDirection = \n.
     };
     end;
 
+def forDirs = \c.
+  forwardRes <- c forward;
+  rightRes <- c right;
+  backRes <- c back;
+  leftRes <- c left;
+  pure (forwardRes, rightRes, backRes, leftRes)
+  end;
+
 def watchDir = \n.
     watch $ getDirection n;
     if (n > 0) {
@@ -50,6 +58,18 @@ def countBlocked = \n.
 def reWatch =
     watchDir 4;
     end;
+
+def reWatchEntities = \instantCont.
+    s1 <- instant (
+        forDirs (\d. watch d; scan d)
+    );
+    wait 10000;
+    instant (
+        s2 <- forDirs scan;
+        if (s1 != s2) {instantCont} {}
+    );
+    reWatchEntities instantCont
+    end
 
 def locationIsOpen =
     emptyHere <- isempty;
@@ -104,9 +124,7 @@ def handleBlockage =
     end;
 
 def go =
-    instant reWatch;
-    wait 1000;
-    instant handleBlockage;
+    reWatchEntities handleBlockage;
     go;
     end;
 
