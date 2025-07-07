@@ -1181,13 +1181,19 @@ execConst runChildProg c vs s k = do
             let knownItems = map snd . filter ((== 0) . fst) . elems $ salvageInventory
             robotInventory %= \i -> foldr (insertCount 0) i knownItems
 
+            -- If we are the focused robot, we might have learned
+            -- about some new entities, so flag the world to be
+            -- redrawn.  This is slightly unnecessarily conservative;
+            -- see #2527.
+            ourID <- use @Robot robotID
+            focus <- use (robotInfo . focusedRobotID)
+            when (focus == ourID) flagCompleteRedraw
+
             -- Now reprogram the robot being salvaged to 'give' each
             -- item in its inventory to us, one at a time, then
             -- self-destruct at the end.  Make it a system robot so we
             -- don't have to worry about capabilities.
             robotInfo . robotMap . at (target ^. robotID) . traverse . systemRobot .= True
-
-            ourID <- use @Robot robotID
 
             -- The program for the salvaged robot to run
             let giveInventory =

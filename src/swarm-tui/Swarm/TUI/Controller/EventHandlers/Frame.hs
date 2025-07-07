@@ -82,7 +82,7 @@ runFramePlayState = Brick.zoom scenarioState $ do
         uiTPF .= fromIntegral uiTicks / fromIntegral frames
 
       -- ensure this frame gets drawn
-      gameState . drawFrame .= True
+      gameState . redraw . drawFrame .= True
 
     Brick.zoom (uiGameplay . uiTiming) $ do
       -- Reset the counter and wait another seconds for the next update

@@ -63,8 +63,8 @@ import Witch (into)
 -- This function is used after running the game for some number of ticks.
 updateAndRedrawUI :: Bool -> EventM Name AppState ()
 updateAndRedrawUI forceRedraw = do
-  redraw <- updateUI
-  unless (forceRedraw || redraw) continueWithoutRedraw
+  shouldRedraw <- updateUI
+  unless (forceRedraw || shouldRedraw) continueWithoutRedraw
 
 checkInventoryUpdated :: Maybe Robot -> EventM Name ScenarioState Bool
 checkInventoryUpdated fr = do
@@ -170,7 +170,7 @@ checkUnhideRobots = do
     Nothing -> pure ()
     Just ht -> when (t >= ht) $ do
       uiGameplay . uiHideRobotsUntil .= Nothing
-      gameState . redrawWorld .= True
+      Brick.zoom (gameState . redraw) $ redrawWorld .= True
 
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
@@ -184,20 +184,17 @@ updateUI = do
   -- Some part of the world needs a redraw if either needsRedraw is
   -- set (meaning the world must be completely redrawn), or there are
   -- some cells marked as dirty
-  let worldPanelUpdated = g ^. redrawWorld || g ^. drawFrame || not (S.null $ g ^. dirtyCells)
+  let worldPanelUpdated = needsRedraw (g ^. redraw)
 
-  if (g ^. redrawWorld)
+  if (g ^. redraw . redrawWorld)
     then invalidateCache   -- Invalidate entire view chunk cache
     else
       -- Invalidate cache entries for view chunks containing cells that were updated,
       -- so they will be redrawn.
-      forM_ (g ^. dirtyCells) $ invalidateCacheEntry . ViewChunkCache . viewChunkFor
+      forM_ (g ^. redraw . dirtyCells) $ invalidateCacheEntry . ViewChunkCache . viewChunkFor
 
-  -- Reset the redrawWorld and drawFrame flags and the dirty cells.
-  Brick.zoom (playState . scenarioState . gameState) $ do
-    redrawWorld .= False
-    drawFrame .= False
-    dirtyCells .= mempty
+  -- Reset the redraw state.
+  playState . scenarioState . gameState . redraw %= resetRedraw
 
   let fr = g ^. to focusedRobot
   inventoryUpdated <- Brick.zoom (playState . scenarioState) $ checkInventoryUpdated fr
@@ -229,14 +226,14 @@ updateUI = do
     Brick.zoom (playState . scenarioState . uiGameplay . uiDialogs . uiRobot) $
       doRobotListUpdate dOps g
 
-  let redraw =
+  let shouldRedraw =
         worldPanelUpdated
           || inventoryUpdated
           || replUpdated
           || logUpdated
           || goalOrWinUpdated
           || newPopups
-  pure redraw
+  pure shouldRedraw
 
 replayRepl :: EventM Name ScenarioState ()
 replayRepl = do

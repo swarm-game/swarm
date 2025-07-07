@@ -146,7 +146,7 @@ hideRobots :: EventM Name ScenarioState ()
 hideRobots = do
   t <- liftIO $ getTime Monotonic
   uiGameplay . uiHideRobotsUntil .= Just (t + TimeSpec 2 0)
-  gameState . redrawWorld .= True
+  gameState . redraw . redrawWorld .= True
 
 showCESKDebug :: EventM Name AppState ()
 showCESKDebug = do

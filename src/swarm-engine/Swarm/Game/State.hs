@@ -29,6 +29,7 @@ module Swarm.Game.State (
   randomness,
   discovery,
   landscape,
+  redraw,
   robotInfo,
   pathCaching,
   gameMetrics,
@@ -50,12 +51,10 @@ module Swarm.Game.State (
   baseStore,
   messageNotifications,
   currentScenarioPath,
-  dirtyCells,
-  redrawWorld,
+  module Swarm.Game.State.Redraw,
   flagCompleteRedraw,
   flagRedraw,
   deleteRobotAndFlag,
-  drawFrame,
   replWorking,
   viewingRegion,
   focusedRobot,
@@ -100,7 +99,6 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.MonoidMap qualified as MM
 import Data.Sequence (Seq ((:<|)))
 import Data.Sequence qualified as Seq
-import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T (drop, take)
@@ -120,6 +118,7 @@ import Swarm.Game.Scenario.Status
 import Swarm.Game.State.Config
 import Swarm.Game.State.GameMetrics as GameMetrics
 import Swarm.Game.State.Landscape
+import Swarm.Game.State.Redraw
 import Swarm.Game.State.Robot as Robots hiding (focusedRobot, robotNaming)
 import Swarm.Game.State.Robot qualified as RobotsInternal
 import Swarm.Game.State.Substate
@@ -211,9 +210,7 @@ data GameState = GameState
   , _recipesInfo :: Recipes
   , _currentScenarioPath :: Maybe ScenarioPath
   , _landscape :: Landscape
-  , _dirtyCells :: Set (Cosmic Location)
-  , _redrawWorld :: Bool
-  , _drawFrame :: Bool
+  , _redraw :: Redraw
   , _gameControls :: GameControls
   , _messageInfo :: Messages
   , _completionStatsSaved :: Bool
@@ -306,17 +303,11 @@ currentScenarioPath :: Lens' GameState (Maybe ScenarioPath)
 -- | Info about the lay of the land
 landscape :: Lens' GameState Landscape
 
+-- | Info about redrawing the world view
+redraw :: Lens' GameState Redraw
+
 -- | Info about robots
 robotInfo :: Lens' GameState Robots
-
--- | Specific world cells that need to be redrawn.
-dirtyCells :: Lens' GameState (Set (Cosmic Location))
-
--- | Whether the world view needs to be completely redrawn.
-redrawWorld :: Lens' GameState Bool
-
--- | Should we make sure to update the UI this frame?
-drawFrame :: Lens' GameState Bool
 
 -- | Controls, including REPL and key mapping
 gameControls :: Lens' GameState GameControls
@@ -344,12 +335,14 @@ gameMetrics :: Lens' GameState (Maybe GameMetrics)
 
 -- | Set a flag telling the UI that a certain cell needs to be redrawn.
 flagRedraw :: (Has (State GameState) sig m) => Cosmic Location -> m ()
-flagRedraw c = dirtyCells %= S.insert c
+flagRedraw c = redraw . dirtyCells %= S.insert c
 
 -- | Set a flag telling the UI that the world needs to be completely redrawn.
 flagCompleteRedraw :: (Has (State GameState) sig m) => m ()
-flagCompleteRedraw = redrawWorld .= True
+flagCompleteRedraw = redraw . redrawWorld .= True
 
+-- | Delete a robot from the robot map, and flag its former location
+--   to be redrawn.
 deleteRobotAndFlag :: Has (State GameState) sig m => RID -> m ()
 deleteRobotAndFlag rid = do
   mloc <- zoomRobots $ deleteRobot rid
@@ -535,9 +528,7 @@ initGameState gsc =
     , _recipesInfo = initRecipeMaps gsc
     , _currentScenarioPath = Nothing
     , _landscape = initLandscape gsc
-    , _dirtyCells = S.empty
-    , _redrawWorld = False
-    , _drawFrame = False
+    , _redraw = initRedraw
     , _gameControls = initGameControls
     , _messageInfo = initMessages
     , _completionStatsSaved = False
