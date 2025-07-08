@@ -541,6 +541,10 @@ handleModalEvent = \case
 -- * returns to the previous menu
 quitGame :: Bool -> EventM Name AppState ()
 quitGame isNoMenu = do
+  -- Invalidate drawing cache so the world preview in the menu will be
+  -- refreshed
+  -- invalidateCache
+
   -- Write out REPL history.
   history <- use $ playState . scenarioState . uiGameplay . uiREPL . replHistory
   let hist = mapMaybe getREPLSubmitted $ getLatestREPLHistoryItems maxBound history

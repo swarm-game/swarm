@@ -302,7 +302,7 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
     ri = RenderingInput theWorlds entIsKnown tm aMap
 
     renderCoord = texelImage V.defaultStyleMask . renderBaseLoc (WorldOverdraw False mempty) ri
-    worldPeek = worldWidget renderCoord vc
+    worldPeek = worldWidget NoViewChunkCache renderCoord vc
 
     firstRow =
       ( withAttr dimAttr $ txt "Author:"
@@ -1069,7 +1069,14 @@ drawWorldPane ui g =
   reportExtent WorldExtent
     -- Set the clickable request after the extent to play nice with the cache
     . clickable (FocusablePanel WorldPanel)
-    $ worldWidget (locImage ui g) (g ^. robotInfo . viewCenter)
+    $ worldWidget UseViewChunkCache (locImage ui g) (g ^. robotInfo . viewCenter)
+
+-- | Should we cache individual view chunks when drawing the world view?
+--
+--   We want to do this when drawing the currently playing scenario,
+--   but not when e.g. rendering world previews in the new game menu.
+data ViewChunkCacheUse = UseViewChunkCache | NoViewChunkCache
+  deriving (Eq, Ord, Show)
 
 -- | Render a widget containing an appropriate view of the world,
 --   given a way to render individual cells and a specific location
@@ -1082,12 +1089,14 @@ drawWorldPane ui g =
 --   changed, but make the chunks large enough to avoid too much
 --   overhead from composing them all into a grid.
 worldWidget ::
+  -- | Should we cache individual view chunks?
+  ViewChunkCacheUse ->
   -- | How to render each cell
   (Cosmic Coords -> V.Image) ->
   -- | View center
   Cosmic Location ->
   Widget Name
-worldWidget renderCoord gameViewCenter = Widget Greedy Greedy $ do
+worldWidget shouldCache  renderCoord gameViewCenter = Widget Greedy Greedy $ do
   -- Get the width and height available to this widget
   ctx <- getContext
   let w = ctx ^. availWidthL
@@ -1127,15 +1136,15 @@ worldWidget renderCoord gameViewCenter = Widget Greedy Greedy $ do
       . cropRightBy (fromIntegral brColOff)
       . vBox
       . NE.toList
-      . fmap (hBox . NE.toList . fmap (viewChunkWidget renderCoord))
+      . fmap (hBox . NE.toList . fmap (viewChunkWidget shouldCache renderCoord))
     $ chunks
 
 -- | Render a single 2^k x 2^k view chunk, by rendering all the
 --   individual cells into a Vty Image, then turning them into a
 --   widget via 'raw'.
-viewChunkWidget :: (Cosmic Coords -> V.Image) -> ViewChunk -> Widget Name
-viewChunkWidget renderCoord vc =
-  cached (ViewChunkCache vc)
+viewChunkWidget :: ViewChunkCacheUse -> (Cosmic Coords -> V.Image) -> ViewChunk -> Widget Name
+viewChunkWidget shouldCache renderCoord vc =
+  (if shouldCache == UseViewChunkCache then cached (ViewChunkCache vc) else id)
     . raw
     . V.vertCat
     . map V.horizCat
