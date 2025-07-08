@@ -1096,7 +1096,7 @@ worldWidget ::
   -- | View center
   Cosmic Location ->
   Widget Name
-worldWidget shouldCache  renderCoord gameViewCenter = Widget Greedy Greedy $ do
+worldWidget shouldCache renderCoord gameViewCenter = Widget Greedy Greedy $ do
   -- Get the width and height available to this widget
   ctx <- getContext
   let w = ctx ^. availWidthL
