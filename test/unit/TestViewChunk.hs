@@ -7,7 +7,7 @@
 -- View chunk unit tests
 module TestViewChunk where
 
-import Control.Lens ((^.), allOf, both, to)
+import Control.Lens (allOf, both, to, (^.))
 import Data.Int (Int32)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
@@ -19,9 +19,10 @@ instance Arbitrary Coords where
   arbitrary = curry Coords <$> arbitrary <*> arbitrary
 
 instance Arbitrary a => Arbitrary (Cosmic a) where
-  arbitrary = Cosmic
-     <$> oneof [pure DefaultRootSubworld, pure $ SubworldName "a", pure $ SubworldName "b"]
-     <*> arbitrary
+  arbitrary =
+    Cosmic
+      <$> oneof [pure DefaultRootSubworld, pure $ SubworldName "a", pure $ SubworldName "b"]
+      <*> arbitrary
 
 instance Arbitrary ViewChunk where
   arbitrary = ViewChunk <$> arbitrary
@@ -35,12 +36,12 @@ testViewChunk =
     , testProperty "view chunk contains loc" $ \c ->
         c `isWithin` viewChunkBounds (viewChunk c)
     , testProperty "view chunk is aligned" $ \vc ->
-        allOf (planar . to fst . to unCoords . both) ((==0) . (`mod` viewChunkSize)) (viewChunkBounds vc)
+        allOf (planar . to fst . to unCoords . both) ((== 0) . (`mod` viewChunkSize)) (viewChunkBounds vc)
     ]
 
 sizeOf :: BoundsRectangle -> (Int32, Int32)
-sizeOf (Coords (r1,c1), Coords (r2, c2)) = (r2 - r1 + 1, c2 - c1 + 1)
+sizeOf (Coords (r1, c1), Coords (r2, c2)) = (r2 - r1 + 1, c2 - c1 + 1)
 
 isWithin :: Cosmic Coords -> Cosmic BoundsRectangle -> Bool
-isWithin (Cosmic s (Coords (r,c))) (Cosmic s' (Coords (tlr, tlc), Coords (brr, brc)))
-  = s == s' && tlr <= r && r <= brr && tlc <= c && c <= brc
+isWithin (Cosmic s (Coords (r, c))) (Cosmic s' (Coords (tlr, tlc), Coords (brr, brc))) =
+  s == s' && tlr <= r && r <= brr && tlc <= c && c <= brc

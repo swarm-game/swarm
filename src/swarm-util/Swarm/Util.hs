@@ -195,11 +195,12 @@ chunksOfNE :: Int -> NonEmpty a -> NonEmpty (NonEmpty a)
 chunksOfNE n xs
   | n <= 0 = fmap NE.singleton xs
   | otherwise = NE.unfoldr takeN xs
-  where
-   takeN :: NonEmpty a -> (NonEmpty a, Maybe (NonEmpty a))
-   takeN = (NE.fromList *** NE.nonEmpty) . NE.splitAt n
-     -- Calling NE.fromList is safe here, since we know n > 0, so
-     -- NE.splitAt n will generate a first chunk of length n > 0.
+ where
+  takeN :: NonEmpty a -> (NonEmpty a, Maybe (NonEmpty a))
+  takeN = (NE.fromList *** NE.nonEmpty) . NE.splitAt n
+
+-- Calling NE.fromList is safe here, since we know n > 0, so
+-- NE.splitAt n will generate a first chunk of length n > 0.
 
 -- | Like 'range', except that at least the first index is always
 --   returned, even if the indices are out of order.  For example,

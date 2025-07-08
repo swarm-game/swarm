@@ -55,7 +55,7 @@ import Swarm.TUI.Model.ViewChunk
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Robot.Type
-import System.Clock (getTime, Clock (Monotonic))
+import System.Clock (Clock (Monotonic), getTime)
 import Witch (into)
 
 -- | Update the UI and redraw if needed.
@@ -187,7 +187,7 @@ updateUI = do
   let worldPanelUpdated = needsRedraw (g ^. redraw)
 
   if (g ^. redraw . redrawWorld)
-    then invalidateCache   -- Invalidate entire view chunk cache
+    then invalidateCache -- Invalidate entire view chunk cache
     else
       -- Invalidate cache entries for view chunks containing cells that were updated,
       -- so they will be redrawn.

@@ -56,7 +56,7 @@ diffCoords :: Coords -> Coords -> (Int32, Int32)
 diffCoords (Coords (r1, c1)) (Coords (r2, c2)) = (r2 - r1, c2 - c1)
 
 mapCoords :: (Int32 -> Int32) -> Coords -> Coords
-mapCoords f (Coords (r,c)) = Coords (f r, f c)
+mapCoords f (Coords (r, c)) = Coords (f r, f c)
 
 -- | Represents the top-left and bottom-right coordinates
 -- of a bounding rectangle of cells in the world map

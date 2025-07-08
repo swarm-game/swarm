@@ -6,24 +6,20 @@
 -- A subrecord containing state specific to deciding when and which
 -- parts of the world view to redraw.
 module Swarm.Game.State.Redraw (
-
   Redraw,
 
   -- * Lenses
-
   dirtyCells,
   redrawWorld,
   drawFrame,
 
   -- * Utility
-
   initRedraw,
   resetRedraw,
-  needsRedraw
-
+  needsRedraw,
 ) where
 
-import Control.Lens ((^.), Lens')
+import Control.Lens (Lens', (^.))
 import Data.Set (Set)
 import Data.Set qualified as S
 import Swarm.Game.Location (Location)
@@ -67,8 +63,9 @@ resetRedraw = const initRedraw
 
 -- | Does the world pane need redrawing at all?
 needsRedraw :: Redraw -> Bool
-needsRedraw r = or
-  [ r ^. redrawWorld
-  , r ^. drawFrame
-  , not (S.null $ r ^. dirtyCells)
-  ]
+needsRedraw r =
+  or
+    [ r ^. redrawWorld
+    , r ^. drawFrame
+    , not (S.null $ r ^. dirtyCells)
+    ]

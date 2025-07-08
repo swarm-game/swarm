@@ -1119,8 +1119,8 @@ worldWidget renderCoord gameViewCenter = Widget Greedy Greedy $ do
   -- It's important that we render all the view chunks in a context
   -- with enough available width + height to accommodate all of
   -- them, and then crop to the desired final size.
-  withReaderT ((availWidthL .~ vcWidth) . (availHeightL .~ vcHeight)) $
-    render
+  withReaderT ((availWidthL .~ vcWidth) . (availHeightL .~ vcHeight))
+    $ render
       . cropTopBy (fromIntegral tlRowOff)
       . cropLeftBy (fromIntegral tlColOff)
       . cropBottomBy (fromIntegral brRowOff)
@@ -1129,7 +1129,7 @@ worldWidget renderCoord gameViewCenter = Widget Greedy Greedy $ do
       . NE.toList
       . fmap (hBox . NE.toList)
       . (fmap . fmap) (viewChunkWidget renderCoord)
-      $ chunks
+    $ chunks
 
 -- | Render a single 2^k x 2^k view chunk, by rendering all the
 --   individual cells into a Vty Image, then turning them into a
@@ -1137,15 +1137,15 @@ worldWidget renderCoord gameViewCenter = Widget Greedy Greedy $ do
 viewChunkWidget :: (Cosmic Coords -> V.Image) -> ViewChunk -> Widget Name
 viewChunkWidget renderCoord vc =
   cached (ViewChunkCache vc)
-  . raw
-  . V.vertCat
-  . map V.horizCat
-  . chunksOf (fromIntegral viewChunkSize)
-  . map (renderCoord . (<$ bounds))
-  $ ixs
-  where
-    bounds = viewChunkBounds vc
-    ixs = range $ bounds ^. planar
+    . raw
+    . V.vertCat
+    . map V.horizCat
+    . chunksOf (fromIntegral viewChunkSize)
+    . map (renderCoord . (<$ bounds))
+    $ ixs
+ where
+  bounds = viewChunkBounds vc
+  ixs = range $ bounds ^. planar
 
 ------------------------------------------------------------
 -- Robot inventory panel

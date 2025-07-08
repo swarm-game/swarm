@@ -412,7 +412,6 @@ execConst runChildProg c vs s k = do
             -- world, since question marks may change to something else.
             focus <- use (robotInfo . focusedRobotID)
             when (focus == otherID && not knew) flagCompleteRedraw
-
           else grantAchievementForRobot GaveToSelf
 
         return $ mkReturn ()

@@ -4,7 +4,6 @@
 -- A "view chunk" is a square 2^k x 2^k section of the world
 -- which is individually cached when drawing the world.  View chunks
 -- which have not changed do not need to be re-rendered.
---
 module Swarm.TUI.Model.ViewChunk where
 
 import Control.Lens
@@ -25,7 +24,7 @@ import Swarm.Util (chunksOfNE, rangeNE)
 --   expressed in units of 2^k.  For example, if @viewChunkBits = 4@
 --   then the view chunk with coordinates @(1,2)@ spans world
 --   coordinates @(16,32) - (31,47)@.
-newtype ViewChunk = ViewChunk { unViewChunk :: Cosmic Coords }
+newtype ViewChunk = ViewChunk {unViewChunk :: Cosmic Coords}
   deriving (Eq, Ord, Show, Read)
 
 -- | If viewChunkBits = k then each view chunk will be 2^k x 2^k
@@ -53,9 +52,9 @@ viewChunkFor = viewChunk . fmap locToCoords
 --   @(1,2)@ will have bounds @(16,32) - (31,47)@.
 viewChunkBounds :: ViewChunk -> Cosmic BoundsRectangle
 viewChunkBounds (ViewChunk cc) = (,lr) <$> ul
-  where
-    ul = mapCoords (`shiftL` viewChunkBits) <$> cc
-    lr = addTuple (ul ^. planar) (viewChunkSize - 1, viewChunkSize - 1)
+ where
+  ul = mapCoords (`shiftL` viewChunkBits) <$> cc
+  lr = addTuple (ul ^. planar) (viewChunkSize - 1, viewChunkSize - 1)
 
 -- | @viewChunkCover r@ generates the smallest possible set of
 --   'ViewChunk's necessary to entirely cover the given rectangle @r@.
@@ -64,20 +63,20 @@ viewChunkBounds (ViewChunk cc) = (,lr) <$> ul
 --   the second list represents the second row, and so on.
 viewChunkCover :: Cosmic BoundsRectangle -> NonEmpty (NonEmpty ViewChunk)
 viewChunkCover c@(Cosmic _ (tl, br)) = chunksOfNE (fromIntegral cols) vcs
-  where
-    -- Coordinates of the top-left and bottom-right view chunks, in
-    -- view chunk space
-    tlvc, brvc :: Cosmic Coords
-    tlvc = unViewChunk $ viewChunk (tl <$ c)
-    brvc = unViewChunk $ viewChunk (br <$ c)
+ where
+  -- Coordinates of the top-left and bottom-right view chunks, in
+  -- view chunk space
+  tlvc, brvc :: Cosmic Coords
+  tlvc = unViewChunk $ viewChunk (tl <$ c)
+  brvc = unViewChunk $ viewChunk (br <$ c)
 
-    -- Number of view chunks needed to cover the rectangle horizontally
-    cols :: Int32
-    cols = getCol brvc - getCol tlvc + 1
-     where
-      getCol = snd . unCoords . view planar
+  -- Number of view chunks needed to cover the rectangle horizontally
+  cols :: Int32
+  cols = getCol brvc - getCol tlvc + 1
+   where
+    getCol = snd . unCoords . view planar
 
-    -- List of all view chunks from top-left to bottom-right,
-    -- generated using 'rangeNE'
-    vcs :: NonEmpty ViewChunk
-    vcs = fmap ViewChunk $ traverse (curry rangeNE (tlvc ^. planar)) brvc
+  -- List of all view chunks from top-left to bottom-right,
+  -- generated using 'rangeNE'
+  vcs :: NonEmpty ViewChunk
+  vcs = fmap ViewChunk $ traverse (curry rangeNE (tlvc ^. planar)) brvc
