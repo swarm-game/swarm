@@ -121,6 +121,7 @@ handleEvent e = do
     AppEvent (UpstreamVersion ev) -> handleUpstreamVersionResponse ev
     AppEvent (Web (RunWebCode {..})) | not playing -> liftIO . webReply $ Rejected NoActiveGame
     AppEvent (PopupEvent event) -> event >> continueWithoutRedraw
+    VtyEvent (V.EvResize _ _) -> invalidateCache
     _ -> do
       -- Handle popup display at the very top level, so it is
       -- unaffected by any other state, e.g. even when starting or
@@ -346,7 +347,6 @@ handleMainEvent forceRedraw ev = do
       UpstreamVersion _ -> pure ()
       -- PopupEvent event should already be handled by top-level handler, so this shouldn't happen.
       PopupEvent _ -> pure ()
-    VtyEvent (V.EvResize _ _) -> invalidateCache
     EscapeKey
       | Just m <- s ^. playState . scenarioState . uiGameplay . uiDialogs . uiModal ->
           Brick.zoom (playState . scenarioState) $
