@@ -28,9 +28,9 @@ newtype ViewChunk = ViewChunk {unViewChunk :: Cosmic Coords}
   deriving (Eq, Ord, Show, Read)
 
 -- | If viewChunkBits = k then each view chunk will be 2^k x 2^k
---   cells.
+--   cells.  Empirically, k = 2 seems to give the best performance.
 viewChunkBits :: Int
-viewChunkBits = 3
+viewChunkBits = 2
 
 -- | The number of cells on one side of a view chunk.
 viewChunkSize :: Int32
