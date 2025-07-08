@@ -186,7 +186,7 @@ updateUI = do
   -- some cells marked as dirty
   let worldPanelUpdated = needsRedraw (g ^. redraw)
 
-  if (g ^. redraw . redrawWorld)
+  if g ^. redraw . redrawWorld
     then invalidateCache -- Invalidate entire view chunk cache
     else
       -- Invalidate cache entries for view chunks containing cells that were updated,

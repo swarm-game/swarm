@@ -64,8 +64,4 @@ resetRedraw = const initRedraw
 -- | Does the world pane need redrawing at all?
 needsRedraw :: Redraw -> Bool
 needsRedraw r =
-  or
-    [ r ^. redrawWorld
-    , r ^. drawFrame
-    , not (S.null $ r ^. dirtyCells)
-    ]
+  r ^. redrawWorld || r ^. drawFrame || not (S.null $ r ^. dirtyCells)

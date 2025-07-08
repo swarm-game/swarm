@@ -1127,8 +1127,7 @@ worldWidget renderCoord gameViewCenter = Widget Greedy Greedy $ do
       . cropRightBy (fromIntegral brColOff)
       . vBox
       . NE.toList
-      . fmap (hBox . NE.toList)
-      . (fmap . fmap) (viewChunkWidget renderCoord)
+      . fmap (hBox . NE.toList . fmap (viewChunkWidget renderCoord))
     $ chunks
 
 -- | Render a single 2^k x 2^k view chunk, by rendering all the

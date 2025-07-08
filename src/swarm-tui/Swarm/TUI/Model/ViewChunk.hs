@@ -79,4 +79,4 @@ viewChunkCover c@(Cosmic _ (tl, br)) = chunksOfNE (fromIntegral cols) vcs
   -- List of all view chunks from top-left to bottom-right,
   -- generated using 'rangeNE'
   vcs :: NonEmpty ViewChunk
-  vcs = fmap ViewChunk $ traverse (curry rangeNE (tlvc ^. planar)) brvc
+  vcs = ViewChunk <$> traverse (curry rangeNE (tlvc ^. planar)) brvc
