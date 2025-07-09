@@ -9,7 +9,9 @@ module Swarm.TUI.Model.ViewChunk where
 import Control.Lens
 import Data.Bits (shiftL, shiftR)
 import Data.Int (Int32)
+import Data.Ix (rangeSize)
 import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Swarm.Game.Location (Location)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
@@ -21,9 +23,9 @@ import Swarm.Util (chunksOfNE, rangeNE)
 --   coordinates can be determined by a simple bit shift.
 --
 --   Note the 'Coords' stored here are in "view chunk space", which is
---   expressed in units of 2^k.  For example, if @viewChunkBits = 4@
+--   expressed in units of 2^k.  For example, if @viewChunkBits = 2@
 --   then the view chunk with coordinates @(1,2)@ spans world
---   coordinates @(16,32) - (31,47)@.
+--   coordinates @(4,8) - (7,11)@.
 newtype ViewChunk = ViewChunk {unViewChunk :: Cosmic Coords}
   deriving (Eq, Ord, Show, Read)
 
@@ -48,8 +50,8 @@ viewChunkFor :: Cosmic Location -> ViewChunk
 viewChunkFor = viewChunk . fmap locToCoords
 
 -- | Compute the bounding rectangle, in world coordinates, for a given
---   'ViewChunk'.  For example, if @viewChunkBits = 4@ then view chunk
---   @(1,2)@ will have bounds @(16,32) - (31,47)@.
+--   'ViewChunk'.  For example, if @viewChunkBits = 2@ then view chunk
+--   @(1,2)@ will have bounds @(4,8) - (7,11)@.
 viewChunkBounds :: ViewChunk -> Cosmic BoundsRectangle
 viewChunkBounds (ViewChunk cc) = (,lr) <$> ul
  where
@@ -62,7 +64,9 @@ viewChunkBounds (ViewChunk cc) = (,lr) <$> ul
 --   is, the first list represents the topmost row from left to right,
 --   the second list represents the second row, and so on.
 viewChunkCover :: Cosmic BoundsRectangle -> NonEmpty (NonEmpty ViewChunk)
-viewChunkCover c@(Cosmic _ (tl, br)) = chunksOfNE (fromIntegral cols) vcs
+viewChunkCover c@(Cosmic _ (tl, br))
+  | rangeSize (tl, br) == 0 = NE.singleton (NE.singleton (viewChunk (tl <$ c)))
+  | otherwise = chunksOfNE (fromIntegral cols) vcs
  where
   -- Coordinates of the top-left and bottom-right view chunks, in
   -- view chunk space

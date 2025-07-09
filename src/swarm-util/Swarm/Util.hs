@@ -96,7 +96,7 @@ import Data.Foldable (Foldable (..))
 import Data.Foldable qualified as Foldable
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
-import Data.Ix (Ix, range)
+import Data.Ix (Ix, range, rangeSize)
 import Data.List (maximumBy, partition)
 import Data.List qualified as List
 import Data.List.Extra (enumerate)
@@ -205,8 +205,10 @@ chunksOfNE n xs
 -- | Like 'range', except that at least the first index is always
 --   returned, even if the indices are out of order.  For example,
 --   'range (4,0) = []' but 'rangeNE (4,0) = [4]'.
-rangeNE :: (Ord a, Ix a) => (a, a) -> NonEmpty a
-rangeNE (lo, hi) = NE.fromList $ range (lo, max lo hi)
+rangeNE :: Ix a => (a, a) -> NonEmpty a
+rangeNE rng@(lo, _)
+  | rangeSize rng == 0 = NE.singleton lo
+  | otherwise = NE.fromList $ range rng
 
 -- | Drop repeated elements that are adjacent to each other.
 --
