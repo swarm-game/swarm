@@ -10,16 +10,18 @@ module Swarm.Game.State.Redraw (
 
   -- * Lenses
   dirtyCells,
-  redrawWorld,
+  redrawWorldFlag,
   drawFrame,
 
   -- * Utility
   initRedraw,
   resetRedraw,
   needsRedraw,
+  markDirtyCell,
+  redrawWorld,
 ) where
 
-import Control.Lens (Lens', (^.))
+import Control.Lens (Lens', Getter)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Swarm.Game.Location (Location)
@@ -30,7 +32,7 @@ import Swarm.Util.Lens (makeLensesNoSigs)
 --   world view needs to redrawn.
 data Redraw = Redraw
   { _dirtyCells :: Set (Cosmic Location)
-  , _redrawWorld :: Bool
+  , _redrawWorldFlag :: Bool
   , _drawFrame :: Bool
   }
 
@@ -39,11 +41,11 @@ makeLensesNoSigs ''Redraw
 -- | Which locations have changed since the previous frame?  We will
 --   need to be sure to redraw the view chunks containing these
 --   locations.
-dirtyCells :: Lens' Redraw (Set (Cosmic Location))
+dirtyCells :: Getter Redraw (Set (Cosmic Location))
 
 -- | Should we redraw the entire world (i.e. invalidate the entire
 --   view chunk cache) next frame?
-redrawWorld :: Lens' Redraw Bool
+redrawWorldFlag :: Getter Redraw Bool
 
 -- | Should we make sure that we redraw the world pane, even if the
 --   world view itself has not changed?  This might be relevant
@@ -63,5 +65,14 @@ resetRedraw = const initRedraw
 
 -- | Does the world pane need redrawing at all?
 needsRedraw :: Redraw -> Bool
-needsRedraw r =
-  r ^. redrawWorld || r ^. drawFrame || not (S.null $ r ^. dirtyCells)
+needsRedraw (Redraw d w f) = w || f || not (S.null d)
+
+-- | Mark a cell dirty, but if the entire world is already flagged for
+--   a redraw, don't bother.
+markDirtyCell :: Cosmic Location -> Redraw -> Redraw
+markDirtyCell loc (Redraw d w f) = Redraw ((if w then id else S.insert loc) d) w f
+
+-- | Mark the entire world for a redraw.  Clear out the set of dirty
+--   locations since it doesn't matter anymore.
+redrawWorld :: Redraw -> Redraw
+redrawWorld (Redraw _ _ f) = Redraw S.empty True f

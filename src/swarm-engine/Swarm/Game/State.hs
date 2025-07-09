@@ -51,9 +51,8 @@ module Swarm.Game.State (
   baseStore,
   messageNotifications,
   currentScenarioPath,
-  module Swarm.Game.State.Redraw,
   flagCompleteRedraw,
-  flagRedraw,
+  markDirty,
   deleteRobotAndFlag,
   replWorking,
   viewingRegion,
@@ -78,6 +77,7 @@ module Swarm.Game.State (
   -- * Re-exports
   module GameMetrics,
   module Robots,
+  module Redraw,
 ) where
 
 import Control.Carrier.State.Lazy qualified as Fused
@@ -99,7 +99,6 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.MonoidMap qualified as MM
 import Data.Sequence (Seq ((:<|)))
 import Data.Sequence qualified as Seq
-import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T (drop, take)
 import Data.Text.IO qualified as TIO
@@ -118,7 +117,7 @@ import Swarm.Game.Scenario.Status
 import Swarm.Game.State.Config
 import Swarm.Game.State.GameMetrics as GameMetrics
 import Swarm.Game.State.Landscape
-import Swarm.Game.State.Redraw
+import Swarm.Game.State.Redraw as Redraw
 import Swarm.Game.State.Robot as Robots hiding (focusedRobot, robotNaming)
 import Swarm.Game.State.Robot qualified as RobotsInternal
 import Swarm.Game.State.Substate
@@ -333,20 +332,21 @@ gameMetrics :: Lens' GameState (Maybe GameMetrics)
 -- Utilities
 ------------------------------------------------------------
 
--- | Set a flag telling the UI that a certain cell needs to be redrawn.
-flagRedraw :: (Has (State GameState) sig m) => Cosmic Location -> m ()
-flagRedraw c = redraw . dirtyCells %= S.insert c
-
 -- | Set a flag telling the UI that the world needs to be completely redrawn.
 flagCompleteRedraw :: (Has (State GameState) sig m) => m ()
-flagCompleteRedraw = redraw . redrawWorld .= True
+flagCompleteRedraw = redraw %= redrawWorld
+
+-- | Mark a certain cell as dirty, so the UI knows that it needs to be
+--   redrawn.
+markDirty :: (Has (State GameState) sig m) => Cosmic Location -> m ()
+markDirty c = redraw %= markDirtyCell c
 
 -- | Delete a robot from the robot map, and flag its former location
 --   to be redrawn.
 deleteRobotAndFlag :: Has (State GameState) sig m => RID -> m ()
 deleteRobotAndFlag rid = do
   mloc <- zoomRobots $ deleteRobot rid
-  forM_ mloc flagRedraw
+  forM_ mloc markDirty
 
 -- | Get the notification list of messages from the point of view of focused robot.
 messageNotifications :: Getter GameState (Notifications LogEntry)

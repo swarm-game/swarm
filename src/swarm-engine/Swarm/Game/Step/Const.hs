@@ -166,7 +166,7 @@ execConst runChildProg c vs s k = do
           else do
             _ <- zoomRobots $ deleteRobot rid
             when (rid == 0) $ grantAchievement DestroyedBase
-        maybe (pure ()) flagRedraw loc
+        maybe (pure ()) markDirty loc
         return $ mkReturn ()
       _ -> badConst
     Move -> do
@@ -341,7 +341,7 @@ execConst runChildProg c vs s k = do
       [VDir d] -> do
         when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
         robotOrientation . _Just %= applyTurn d
-        use robotLocation >>= flagRedraw
+        use robotLocation >>= markDirty
 
         inst <- use equippedDevices
         when (d == DRelative DDown && countByName "compass" inst == 0) $ do
@@ -399,8 +399,7 @@ execConst runChildProg c vs s k = do
         if otherID /= myID
           then do
             -- Check whether the receiving robot knew about this item before
-            inv <- gets (preview (robotInfo . robotMap . at otherID . _Just . robotInventory))
-            -- No idea why 'preuse' doesn't typecheck above, but (gets . preview) works
+            inv <- use (pre (robotInfo . robotMap . at otherID . _Just . robotInventory))
             let knew = maybe True (contains0plus item) (inv :: Maybe Inventory)
 
             -- Make the exchange
@@ -907,7 +906,7 @@ execConst runChildProg c vs s k = do
           (True, VText attr) -> robotDisplay . displayAttr .= readAttribute attr
           _ -> return ()
 
-        use robotLocation >>= flagRedraw
+        use robotLocation >>= markDirty
         return $ mkReturn ()
       _ -> badConst
     Create -> case vs of
@@ -1147,7 +1146,7 @@ execConst runChildProg c vs s k = do
         provisionChild (newRobot ^. robotID) (fromList . S.toList $ toEquip) toGive
 
         -- Flag the location for a redraw and return the ID of the newly constructed robot.
-        flagRedraw (newRobot ^. robotLocation)
+        markDirty (newRobot ^. robotLocation)
         return $ mkReturn newRobot
       _ -> badConst
     Salvage -> case vs of

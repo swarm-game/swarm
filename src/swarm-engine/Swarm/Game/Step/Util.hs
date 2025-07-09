@@ -96,7 +96,7 @@ updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
     pcr <- use $ pathCaching . pathCachingRobots
     mapM_ (revalidatePathCache cLoc modType) $ IM.toList pcr
 
-    flagRedraw cLoc
+    markDirty cLoc
 
 -- * Capabilities
 

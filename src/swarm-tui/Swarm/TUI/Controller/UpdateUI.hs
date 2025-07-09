@@ -170,7 +170,7 @@ checkUnhideRobots = do
     Nothing -> pure ()
     Just ht -> when (t >= ht) $ do
       uiGameplay . uiHideRobotsUntil .= Nothing
-      Brick.zoom (gameState . redraw) $ redrawWorld .= True
+      gameState . redraw %= redrawWorld
 
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
@@ -186,7 +186,7 @@ updateUI = do
   -- some cells marked as dirty
   let worldPanelUpdated = needsRedraw (g ^. redraw)
 
-  if g ^. redraw . redrawWorld
+  if g ^. redraw . redrawWorldFlag
     then invalidateCache -- Invalidate entire view chunk cache
     else
       -- Invalidate cache entries for view chunks containing cells that were updated,

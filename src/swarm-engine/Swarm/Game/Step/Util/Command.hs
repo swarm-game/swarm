@@ -187,8 +187,8 @@ updateRobotLocation oldLoc newLoc
         removeRobotFromLocationMap oldLoc rid
         addRobotToLocation rid newlocWithPortal
       modify (unsafeSetRobotLocation newlocWithPortal)
-      flagRedraw oldLoc
-      flagRedraw newLoc
+      markDirty oldLoc
+      markDirty newLoc
  where
   applyPortal loc = do
     lms <- use $ landscape . worldNavigation
