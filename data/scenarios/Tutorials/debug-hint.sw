@@ -23,7 +23,7 @@ end
 def iterate = \state. \com. n <- com state; iterate n com end
 
 // -------------------------------------------------------------------------
-// Robot State - this allows us to skip some commands, so that this hont robot
+// Robot State - this allows us to skip some commands, so that this hint robot
 // does not have to busy-wait to meet each robot
 tydef RobotState = [gave_win: Bool, said_loc: Int * Int, said_log_missing: Bool] end
 
