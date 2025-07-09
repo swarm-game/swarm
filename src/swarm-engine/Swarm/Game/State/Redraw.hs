@@ -21,7 +21,7 @@ module Swarm.Game.State.Redraw (
   redrawWorld,
 ) where
 
-import Control.Lens (Lens', Getter)
+import Control.Lens (Getter, Lens')
 import Data.Set (Set)
 import Data.Set qualified as S
 import Swarm.Game.Location (Location)

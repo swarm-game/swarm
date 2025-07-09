@@ -17,7 +17,7 @@ import Data.Set qualified as S
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.TUI.Model.ViewChunk
-import Swarm.Util (rangeNE, chunksOfNE)
+import Swarm.Util (chunksOfNE, rangeNE)
 import Test.Tasty
 import Test.Tasty.QuickCheck
 
@@ -33,21 +33,21 @@ instance Arbitrary a => Arbitrary (Cosmic a) where
 instance Arbitrary ViewChunk where
   arbitrary = ViewChunk <$> arbitrary
 
-newtype BR = BR { getBR :: BoundsRectangle }
-  deriving Show
+newtype BR = BR {getBR :: BoundsRectangle}
+  deriving (Show)
 
 instance Arbitrary BR where
   arbitrary = do
     ul <- arbitrary
-    dr <- choose (-5,50)
-    dc <- choose (-5,50)
+    dr <- choose (-5, 50)
+    dc <- choose (-5, 50)
     pure $ BR (ul, ul `addTuple` (dr, dc))
 
 testViewChunk :: TestTree
 testViewChunk =
   testGroup
     "View chunks"
-    [ testProperty "rangeNE is nonempty" $ \rng -> NE.length (rangeNE @(Int,Int) rng) > 0
+    [ testProperty "rangeNE is nonempty" $ \rng -> NE.length (rangeNE @(Int, Int) rng) > 0
     , testProperty "chunksOfNE is nonempty" $ \i (NonEmpty ne) -> NE.length (chunksOfNE @() i (NE.fromList ne)) > 0
     , testProperty "view chunk size" $ \vc ->
         sizeOf (viewChunkBounds vc ^. planar) == (viewChunkSize, viewChunkSize)
