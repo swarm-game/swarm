@@ -1328,11 +1328,12 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         when (actualFields /= expectedFields) $
           throwTypeErr l $
             FieldsMismatch (joined expectedFields actualFields)
-        m' <- itraverse
-          (\x (ms, ty) -> check (fromMaybe (STerm (TVar x)) ms) ty)
-          -- Since we checked above that 'fields' and 'tyMap' have the
-          -- same keys, intersectionWith is really just a zip.
-          (M.intersectionWith (,) fields tyMap)
+        m' <-
+          itraverse
+            (\x (ms, ty) -> check (fromMaybe (STerm (TVar x)) ms) ty)
+            -- Since we checked above that 'fields' and 'tyMap' have the
+            -- same keys, intersectionWith is really just a zip.
+            (M.intersectionWith (,) fields tyMap)
         return $ Syntax' l (SRcd (Just <$> m')) cs expected
 
   -- The type of @suspend t@ is @Cmd T@ if @t : T@.
