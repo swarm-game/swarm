@@ -170,7 +170,9 @@ adjustTPS :: (Int -> Int -> Int) -> ScenarioState -> ScenarioState
 adjustTPS (+/-) = uiGameplay . uiTiming . lgTicksPerSecond %~ (+/- 1)
 
 toggleCreativeMode :: EventM Name ScenarioState ()
-toggleCreativeMode = gameState . creativeMode %= not
+toggleCreativeMode = do
+  gameState . creativeMode %= not
+  gameState . redraw %= redrawWorld
 
 toggleWorldEditor :: EventM Name ScenarioState ()
 toggleWorldEditor = do
