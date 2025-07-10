@@ -1321,7 +1321,6 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   -- completely into inference mode.  See Note [Checking and inference
   -- for record literals].
   SRcd fields
-    -- fields :: Map Var (Maybe (Syntax' ty))
     | UTyRcd tyMap <- expected -> do
         let expectedFields = M.keysSet tyMap
             actualFields = M.keysSet fields
