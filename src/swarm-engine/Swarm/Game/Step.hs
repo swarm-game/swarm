@@ -124,7 +124,7 @@ gameTick = measureCpuTimeInSec runTick >>= updateMetrics
     ticked <- runActiveRobots
     updateBaseReplState
     -- Possibly update the view center.
-    modify recalcViewCenterAndRedraw
+    modify (robotInfo %~ recalcViewCenter)
     -- On new tick see if the winning condition for the current objective is met
     when ticked hypotheticalWinCheck'
     return ticked
@@ -171,18 +171,17 @@ finishGameTick =
 insertBackRobot :: Has (State GameState) sig m => RID -> Robot -> m ()
 insertBackRobot rn rob = do
   time <- use $ temporal . ticks
-  zoomRobots $
-    if rob ^. selfDestruct
-      then deleteRobot rn
-      else do
-        robotMap %= IM.insert rn rob
-        case waitingUntil rob of
-          Just wakeUpTime
-            -- if w=2 t=1 then we do not needlessly put robot to waiting queue
-            | wakeUpTime <= addTicks 2 time -> return ()
-            | otherwise -> sleepUntil rn wakeUpTime
-          Nothing ->
-            unless (isActive rob) (sleepForever rn)
+  if rob ^. selfDestruct
+    then deleteRobotAndFlag rn
+    else zoomRobots $ do
+      robotMap %= IM.insert rn rob
+      case waitingUntil rob of
+        Just wakeUpTime
+          -- if w=2 t=1 then we do not needlessly put robot to waiting queue
+          | wakeUpTime <= addTicks 2 time -> return ()
+          | otherwise -> sleepUntil rn wakeUpTime
+        Nothing ->
+          unless (isActive rob) (sleepForever rn)
 
 -- | Run a set of robots - this is used to run robots before/after the focused one.
 --

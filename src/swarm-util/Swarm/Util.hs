@@ -18,6 +18,8 @@ module Swarm.Util (
   enumerateNonEmpty,
   showEnum,
   indexWrapNonEmpty,
+  chunksOfNE,
+  rangeNE,
   uniq,
   binTuples,
   histogram,
@@ -81,6 +83,7 @@ module Swarm.Util (
   smallHittingSet,
 ) where
 
+import Control.Arrow ((***))
 import Control.Carrier.Throw.Either
 import Control.Effect.State (State, modify, state)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<&>), (<>~))
@@ -93,6 +96,7 @@ import Data.Foldable (Foldable (..))
 import Data.Foldable qualified as Foldable
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
+import Data.Ix (Ix, range, rangeSize)
 import Data.List (maximumBy, partition)
 import Data.List qualified as List
 import Data.List.Extra (enumerate)
@@ -183,6 +187,28 @@ indexWrapNonEmpty list idx =
   NE.toList list !! fromIntegral wrappedIdx
  where
   wrappedIdx = idx `mod` fromIntegral (NE.length list)
+
+-- | Split the given list into chunks of the given size; the last
+--   chunk may be smaller.  If @n <= 0@, chunks of size 1 will be
+--   returned.
+chunksOfNE :: Int -> NonEmpty a -> NonEmpty (NonEmpty a)
+chunksOfNE n xs
+  | n <= 0 = fmap NE.singleton xs
+  | otherwise = NE.unfoldr takeN xs
+ where
+  takeN :: NonEmpty a -> (NonEmpty a, Maybe (NonEmpty a))
+  takeN = (NE.fromList *** NE.nonEmpty) . NE.splitAt n
+
+-- Calling NE.fromList is safe here, since we know n > 0, so
+-- NE.splitAt n will generate a first chunk of length n > 0.
+
+-- | Like 'range', except that at least the first index is always
+--   returned, even if the indices are out of order.  For example,
+--   'range (4,0) = []' but 'rangeNE (4,0) = [4]'.
+rangeNE :: Ix a => (a, a) -> NonEmpty a
+rangeNE rng@(lo, _)
+  | rangeSize rng == 0 = NE.singleton lo
+  | otherwise = NE.fromList $ range rng
 
 -- | Drop repeated elements that are adjacent to each other.
 --

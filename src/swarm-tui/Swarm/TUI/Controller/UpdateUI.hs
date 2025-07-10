@@ -51,9 +51,11 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
+import Swarm.TUI.Model.ViewChunk
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Robot.Type
+import System.Clock (Clock (Monotonic), getTime)
 import Witch (into)
 
 -- | Update the UI and redraw if needed.
@@ -61,8 +63,8 @@ import Witch (into)
 -- This function is used after running the game for some number of ticks.
 updateAndRedrawUI :: Bool -> EventM Name AppState ()
 updateAndRedrawUI forceRedraw = do
-  redraw <- updateUI
-  unless (forceRedraw || redraw) continueWithoutRedraw
+  shouldRedraw <- updateUI
+  unless (forceRedraw || shouldRedraw) continueWithoutRedraw
 
 checkInventoryUpdated :: Maybe Robot -> EventM Name ScenarioState Bool
 checkInventoryUpdated fr = do
@@ -158,17 +160,41 @@ checkLogUpdated fr = do
       uiGameplay . uiScrollToEnd .= True
       pure True
 
+-- | Check whether we're currently hiding all robots and it's time to
+--   unhide them.
+checkUnhideRobots :: EventM Name ScenarioState ()
+checkUnhideRobots = do
+  t <- liftIO $ getTime Monotonic
+  hideTime <- use (uiGameplay . uiHideRobotsUntil)
+  case hideTime of
+    Nothing -> pure ()
+    Just ht -> when (t >= ht) $ do
+      uiGameplay . uiHideRobotsUntil .= Nothing
+      gameState . redraw %= redrawWorld
+
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
 updateUI :: EventM Name AppState Bool
 updateUI = do
-  g <- use $ playState . scenarioState . gameState
-
+  Brick.zoom (playState . scenarioState) checkUnhideRobots
   Brick.zoom (playState . scenarioState . gameState) loadVisibleRegion
 
-  -- If the game state indicates a redraw is needed, invalidate the
-  -- world cache so it will be redrawn.
-  when (g ^. needsRedraw) $ invalidateCacheEntry WorldCache
+  g <- use $ playState . scenarioState . gameState
+
+  -- Some part of the world needs a redraw if either needsRedraw is
+  -- set (meaning the world must be completely redrawn), or there are
+  -- some cells marked as dirty
+  let worldPanelUpdated = needsRedraw (g ^. redraw)
+
+  if g ^. redraw . redrawWorldFlag
+    then invalidateCache -- Invalidate entire view chunk cache
+    else
+      -- Invalidate cache entries for view chunks containing cells that were updated,
+      -- so they will be redrawn.
+      forM_ (g ^. redraw . dirtyCells) $ invalidateCacheEntry . ViewChunkCache . viewChunkFor
+
+  -- Reset the redraw state.
+  playState . scenarioState . gameState . redraw %= resetRedraw
 
   let fr = g ^. to focusedRobot
   inventoryUpdated <- Brick.zoom (playState . scenarioState) $ checkInventoryUpdated fr
@@ -200,14 +226,14 @@ updateUI = do
     Brick.zoom (playState . scenarioState . uiGameplay . uiDialogs . uiRobot) $
       doRobotListUpdate dOps g
 
-  let redraw =
-        g ^. needsRedraw
+  let shouldRedraw =
+        worldPanelUpdated
           || inventoryUpdated
           || replUpdated
           || logUpdated
           || goalOrWinUpdated
           || newPopups
-  pure redraw
+  pure shouldRedraw
 
 replayRepl :: EventM Name ScenarioState ()
 replayRepl = do

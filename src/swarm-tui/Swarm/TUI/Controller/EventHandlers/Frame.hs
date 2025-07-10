@@ -45,11 +45,6 @@ oneSecond = 1_000_000_000 -- one second = 10^9 nanoseconds
 
 runFramePlayState :: EventM Name PlayState ()
 runFramePlayState = Brick.zoom scenarioState $ do
-  -- Reset the needsRedraw flag.  While processing the frame and stepping the robots,
-  -- the flag will get set to true if anything changes that requires redrawing the
-  -- world (e.g. a robot moving or disappearing).
-  gameState . needsRedraw .= False
-
   -- The logic here is taken from https://gafferongames.com/post/fix_your_timestep/ .
 
   curTime <- liftIO $ getTime Monotonic
@@ -87,7 +82,7 @@ runFramePlayState = Brick.zoom scenarioState $ do
         uiTPF .= fromIntegral uiTicks / fromIntegral frames
 
       -- ensure this frame gets drawn
-      gameState . needsRedraw .= True
+      gameState . redraw . drawFrame .= True
 
     Brick.zoom (uiGameplay . uiTiming) $ do
       -- Reset the counter and wait another seconds for the next update

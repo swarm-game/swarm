@@ -9,6 +9,7 @@
 module Swarm.TUI.Model.Name where
 
 import Data.Text (Text)
+import Swarm.TUI.Model.ViewChunk
 
 data WorldEditorFocusable
   = BrushSelector
@@ -84,8 +85,8 @@ data Name
     REPLInput
   | -- | The REPL history cache.
     REPLHistoryCache
-  | -- | The render cache for the world view.
-    WorldCache
+  | -- | Caches for rendered chunks of the world view.
+    ViewChunkCache ViewChunk
   | -- | The cached extent for the world view.
     WorldExtent
   | -- | The cursor/viewCenter display in the bottom left of the World view

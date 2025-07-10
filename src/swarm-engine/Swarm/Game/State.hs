@@ -29,6 +29,7 @@ module Swarm.Game.State (
   randomness,
   discovery,
   landscape,
+  redraw,
   robotInfo,
   pathCaching,
   gameMetrics,
@@ -50,9 +51,10 @@ module Swarm.Game.State (
   baseStore,
   messageNotifications,
   currentScenarioPath,
-  needsRedraw,
+  flagCompleteRedraw,
+  markDirty,
+  deleteRobotAndFlag,
   replWorking,
-  recalcViewCenterAndRedraw,
   viewingRegion,
   focusedRobot,
   RobotRange (..),
@@ -75,6 +77,7 @@ module Swarm.Game.State (
   -- * Re-exports
   module GameMetrics,
   module Robots,
+  module Redraw,
 ) where
 
 import Control.Carrier.State.Lazy qualified as Fused
@@ -83,12 +86,11 @@ import Control.Effect.Lift
 import Control.Effect.State (State)
 import Control.Effect.Throw
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
-import Control.Monad (forM, join)
+import Control.Monad (forM, forM_, join)
 import Control.Monad.Trans.State.Strict qualified as TS
 import Data.Aeson (ToJSON)
 import Data.Digest.Pure.SHA (sha1, showDigest)
 import Data.Foldable (toList)
-import Data.Function (on)
 import Data.Int (Int32)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
@@ -115,6 +117,7 @@ import Swarm.Game.Scenario.Status
 import Swarm.Game.State.Config
 import Swarm.Game.State.GameMetrics as GameMetrics
 import Swarm.Game.State.Landscape
+import Swarm.Game.State.Redraw as Redraw
 import Swarm.Game.State.Robot as Robots hiding (focusedRobot, robotNaming)
 import Swarm.Game.State.Robot qualified as RobotsInternal
 import Swarm.Game.State.Substate
@@ -206,7 +209,7 @@ data GameState = GameState
   , _recipesInfo :: Recipes
   , _currentScenarioPath :: Maybe ScenarioPath
   , _landscape :: Landscape
-  , _needsRedraw :: Bool
+  , _redraw :: Redraw
   , _gameControls :: GameControls
   , _messageInfo :: Messages
   , _completionStatsSaved :: Bool
@@ -299,11 +302,11 @@ currentScenarioPath :: Lens' GameState (Maybe ScenarioPath)
 -- | Info about the lay of the land
 landscape :: Lens' GameState Landscape
 
+-- | Info about redrawing the world view
+redraw :: Lens' GameState Redraw
+
 -- | Info about robots
 robotInfo :: Lens' GameState Robots
-
--- | Whether the world view needs to be redrawn.
-needsRedraw :: Lens' GameState Bool
 
 -- | Controls, including REPL and key mapping
 gameControls :: Lens' GameState GameControls
@@ -328,6 +331,22 @@ gameMetrics :: Lens' GameState (Maybe GameMetrics)
 ------------------------------------------------------------
 -- Utilities
 ------------------------------------------------------------
+
+-- | Set a flag telling the UI that the world needs to be completely redrawn.
+flagCompleteRedraw :: (Has (State GameState) sig m) => m ()
+flagCompleteRedraw = redraw %= redrawWorld
+
+-- | Mark a certain cell as dirty, so the UI knows that it needs to be
+--   redrawn.
+markDirty :: (Has (State GameState) sig m) => Cosmic Location -> m ()
+markDirty c = redraw %= markDirtyCell c
+
+-- | Delete a robot from the robot map, and flag its former location
+--   to be redrawn.
+deleteRobotAndFlag :: Has (State GameState) sig m => RID -> m ()
+deleteRobotAndFlag rid = do
+  mloc <- zoomRobots $ deleteRobot rid
+  forM_ mloc markDirty
 
 -- | Get the notification list of messages from the point of view of focused robot.
 messageNotifications :: Getter GameState (Notifications LogEntry)
@@ -372,20 +391,6 @@ messageIsFromNearby l e = case e ^. leSource of
   f logLoc = case cosmoMeasure manhattan l logLoc of
     InfinitelyFar -> False
     Measurable x -> x <= hearingDistance
-
--- | Recalculate the view center (and cache the result in the
---   'viewCenter' field) based on the current 'viewCenterRule'.  If
---   the 'viewCenterRule' specifies a robot which does not exist,
---   simply leave the current 'viewCenter' as it is. Set 'needsRedraw'
---   if the view center changes.
-recalcViewCenterAndRedraw :: GameState -> GameState
-recalcViewCenterAndRedraw g =
-  g
-    & robotInfo .~ newRobotInfo
-    & applyWhen (((/=) `on` (^. viewCenter)) oldRobotInfo newRobotInfo) (needsRedraw .~ True)
- where
-  oldRobotInfo = g ^. robotInfo
-  newRobotInfo = recalcViewCenter oldRobotInfo
 
 -- | Given a width and height, compute the region, centered on the
 --   'viewCenter', that should currently be in view.
@@ -523,7 +528,7 @@ initGameState gsc =
     , _recipesInfo = initRecipeMaps gsc
     , _currentScenarioPath = Nothing
     , _landscape = initLandscape gsc
-    , _needsRedraw = False
+    , _redraw = initRedraw
     , _gameControls = initGameControls
     , _messageInfo = initMessages
     , _completionStatsSaved = False

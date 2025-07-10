@@ -26,6 +26,7 @@
 #
 - functions:
   - {name: Data.List.head, within: []}
+  - {name: Data.List.NonEmpty.fromList, within: [Swarm.Util]}
   - {name: Prelude.head, within: [Swarm.Web.Tournament.Database.Query]}
   - {name: Prelude.tail, within: []}
   - {name: Prelude.maximum, within: [Swarm.Util]}

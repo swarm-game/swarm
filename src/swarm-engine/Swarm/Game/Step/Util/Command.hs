@@ -187,7 +187,8 @@ updateRobotLocation oldLoc newLoc
         removeRobotFromLocationMap oldLoc rid
         addRobotToLocation rid newlocWithPortal
       modify (unsafeSetRobotLocation newlocWithPortal)
-      flagRedraw
+      markDirty oldLoc
+      markDirty newLoc
  where
   applyPortal loc = do
     lms <- use $ landscape . worldNavigation
@@ -213,10 +214,9 @@ onTarget rid act = do
       mtgt <- use (robotInfo . robotMap . at rid)
       forM_ mtgt $ \tgt -> do
         tgt' <- execState @Robot tgt act
-        zoomRobots $
-          if tgt' ^. selfDestruct
-            then deleteRobot rid
-            else robotMap . ix rid .= tgt'
+        if tgt' ^. selfDestruct
+          then deleteRobotAndFlag rid
+          else zoomRobots $ robotMap . ix rid .= tgt'
 
 -- | Enforces validity of the robot's privileged status to receive
 -- an achievement.
@@ -404,7 +404,6 @@ updateWorldAndRobots ::
 updateWorldAndRobots cmd wf rf = do
   mapM_ (updateWorld cmd) wf
   applyRobotUpdates rf
-  flagRedraw
 
 -- | Format a set of suggested devices for use in an error message,
 --   in the format @device1 or device2 or ... or deviceN@.
