@@ -63,7 +63,7 @@ import Data.Data (Data, gmapM)
 import Data.Foldable (fold)
 import Data.Functor.Identity
 import Data.Generics (mkM)
-import Data.Map (Map, (!))
+import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe
 import Data.Set (Set, (\\))
@@ -1321,13 +1321,18 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   -- completely into inference mode.  See Note [Checking and inference
   -- for record literals].
   SRcd fields
+    -- fields :: Map Var (Maybe (Syntax' ty))
     | UTyRcd tyMap <- expected -> do
         let expectedFields = M.keysSet tyMap
             actualFields = M.keysSet fields
         when (actualFields /= expectedFields) $
           throwTypeErr l $
             FieldsMismatch (joined expectedFields actualFields)
-        m' <- itraverse (\x ms -> check (fromMaybe (STerm (TVar x)) ms) (tyMap ! x)) fields
+        m' <- itraverse
+          (\x (ms, ty) -> check (fromMaybe (STerm (TVar x)) ms) ty)
+          -- Since we checked above that 'fields' and 'tyMap' have the
+          -- same keys, intersectionWith is really just a zip.
+          (M.intersectionWith (,) fields tyMap)
         return $ Syntax' l (SRcd (Just <$> m')) cs expected
 
   -- The type of @suspend t@ is @Cmd T@ if @t : T@.
