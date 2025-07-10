@@ -47,8 +47,12 @@ testViewChunk :: TestTree
 testViewChunk =
   testGroup
     "View chunks"
-    [ testProperty "rangeNE is nonempty" $ \rng -> NE.length (rangeNE @(Int, Int) rng) > 0
-    , testProperty "chunksOfNE is nonempty" $ \i (NonEmpty ne) -> NE.length (chunksOfNE @() i (NE.fromList ne)) > 0
+    [ testProperty "rangeNE is nonempty" $ \rng -> not (null (rangeNE @(Int, Int) rng))
+    , testProperty "chunksOfNE is nonempty" $ \i ne ->
+        not (null ne) ==>
+          case ne of
+            [] -> True
+            (x : xs) -> not (null (chunksOfNE @() i (x NE.:| xs)))
     , testProperty "view chunk size" $ \vc ->
         sizeOf (viewChunkBounds vc ^. planar) == (viewChunkSize, viewChunkSize)
     , testProperty "view chunk contains loc" $ \c ->
