@@ -461,7 +461,7 @@ execConst runChildProg c vs s k = do
                   ]
           void $ traceLog Logged Warning warnMsg
           createdAt <- getNow
-          loc <- use robotLocation
+          loc <- use (robotLocation @Instantiated)
           addAsphyxiateBot createdAt loc
 
         -- Now check whether being on the current cell would still be
