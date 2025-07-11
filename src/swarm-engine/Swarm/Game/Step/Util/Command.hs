@@ -586,7 +586,7 @@ addAsphyxiateBot ts loc =
 --   we detect that the base has the life support system re-equipped,
 --   stop the countdown and self-destruct.  Otherwise, at the end of
 --   the countdown, destroy the base.
-asphyxiateProg :: TSyntax
+asphyxiateProg :: Syntax Typed
 asphyxiateProg =
   [tmQ|
     def countdown : Int -> Cmd Unit = \n.

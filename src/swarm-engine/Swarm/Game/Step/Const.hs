@@ -459,7 +459,7 @@ execConst runChildProg c vs s k = do
                   ]
           void $ traceLog Logged Warning warnMsg
           createdAt <- getNow
-          loc <- use robotLocation
+          loc <- use (robotLocation @Instantiated)
           addAsphyxiateBot createdAt loc
 
         -- Grant an achievement for unequipping a welder.
