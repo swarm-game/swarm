@@ -49,7 +49,7 @@ import Data.Sequence (Seq)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Time (getZonedTime)
+import Data.Time (getZonedTime, getCurrentTime)
 import Data.Yaml (decodeFileEither, prettyPrintParseException)
 import Swarm.Failure (SystemFailure (..))
 import Swarm.Game.Achievement.Attainment
@@ -109,6 +109,7 @@ import Swarm.TUI.View.Structure qualified as SR
 import Swarm.Util
 import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
+import Log hiding ((.=))
 
 -- | The resolution at which the animation manager checks animations for updates, in miliseconds
 animMgrTickDuration :: Int
@@ -144,6 +145,7 @@ mkRuntimeOptions AppOpts {..} =
     { startPaused = pausedAtStart
     , pauseOnObjectiveCompletion = autoShowObjectives
     , loadTestScenarios = Set.member LoadTestingScenarios debugOptions
+    , startLogging = True
     }
 
 data PersistentState
@@ -164,6 +166,18 @@ initPersistentState ::
 initPersistentState opts@(AppOpts {..}) = do
   (warnings :: Seq SystemFailure, PersistentState initRS initUI initKs initProg) <- runAccum mempty $ do
     rs <- initRuntimeState $ mkRuntimeOptions opts
+
+    -- TODO: this is a hello world, fix it with proper LogEnv
+    timeNow <- sendIO getCurrentTime
+    sendIO $ execLogger (rs ^. logger) $ LogMessage
+      { lmComponent = T.pack "TUI"
+      , lmDomain = [T.pack "State update"]
+      , lmTime = timeNow
+      , lmLevel = LogInfo
+      , lmMessage = T.pack "Hello world! I just initialized the runtime state"
+      , lmData = object []
+      }
+
     let showMainMenu = not (skipMenu opts)
     ui <- initUIState UIInitOptions {..}
     ks <- initKeyHandlingState

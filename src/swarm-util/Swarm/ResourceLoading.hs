@@ -15,6 +15,7 @@ module Swarm.ResourceLoading (
   getSwarmSavePath,
   getSwarmHistoryPath,
   getSwarmAchievementsPath,
+  getSwarmLogsPath,
 
   -- ** Loading text files
   readAppData,
@@ -106,14 +107,20 @@ getSwarmConfigIniFile createDirs = do
   iniExists <- doesFileExist ini
   return (iniExists, ini)
 
+-- | Get path to swarm XDG (sub)directory, optionally creating necessary
+--   directories. This could fail if user has bad permissions
+--   on his own @$HOME@ or @$XDG_DATA_HOME@ which is unlikely.
+getSwarmXdgSubdir :: XdgDirectory -> Bool -> FilePath -> IO FilePath
+getSwarmXdgSubdir xdgDir createDirs subDir = do
+  swarmData <- (</> subDir) <$> getXdgDirectory xdgDir "swarm"
+  when createDirs (createDirectoryIfMissing True swarmData)
+  pure swarmData
+
 -- | Get path to swarm data, optionally creating necessary
 --   directories. This could fail if user has bad permissions
 --   on his own @$HOME@ or @$XDG_DATA_HOME@ which is unlikely.
 getSwarmXdgDataSubdir :: Bool -> FilePath -> IO FilePath
-getSwarmXdgDataSubdir createDirs subDir = do
-  swarmData <- (</> subDir) <$> getXdgDirectory XdgData "swarm"
-  when createDirs (createDirectoryIfMissing True swarmData)
-  pure swarmData
+getSwarmXdgDataSubdir = getSwarmXdgSubdir XdgData
 
 getSwarmXdgDataFile :: Bool -> FilePath -> IO FilePath
 getSwarmXdgDataFile createDirs filepath = do
@@ -136,6 +143,9 @@ getSwarmHistoryPath createDirs = getSwarmXdgDataFile createDirs "history"
 --   it does not exist.
 getSwarmAchievementsPath :: Bool -> IO FilePath
 getSwarmAchievementsPath createDirs = getSwarmXdgDataSubdir createDirs "achievement"
+
+getSwarmLogsPath :: IO FilePath
+getSwarmLogsPath = getSwarmXdgSubdir XdgState True "logs"
 
 -- | Read all the @.txt@ files in the @data/@ directory.
 readAppData ::

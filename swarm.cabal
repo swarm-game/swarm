@@ -246,6 +246,9 @@ common lens
 common linear
   build-depends: linear >=1.21.6 && <1.24
 
+common log-base
+  build-depends: log-base >=0.11 && <0.13
+
 common lsp
   build-depends: lsp >=2.4 && <2.8
 
@@ -703,6 +706,7 @@ library swarm-engine
     fused-effects-lens,
     lens,
     linear,
+    log-base,
     megaparsec,
     monoidmap,
     mtl,
@@ -1034,6 +1038,7 @@ library swarm-tui
     githash,
     lens,
     linear,
+    log-base,
     mtl,
     murmur3,
     natural-sort,
