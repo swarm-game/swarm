@@ -46,9 +46,9 @@ import Swarm.Language.Phase
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Import
+import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern
 import Swarm.Language.Var (LocVar, Var)
-import Swarm.Util.SrcLoc
 
 -- Setup for doctests
 
