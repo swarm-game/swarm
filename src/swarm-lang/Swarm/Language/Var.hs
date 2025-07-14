@@ -5,7 +5,7 @@
 module Swarm.Language.Var where
 
 import Data.Text (Text)
-import Swarm.Util.SrcLoc (Located)
+import Swarm.Language.Syntax.Loc (Located)
 
 -- | For now, we just use 'Text' to represent variables.  In theory,
 --   at some point in the future we might want to represent them in some
