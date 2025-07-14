@@ -727,6 +727,7 @@ library swarm-engine
   -- cabal-gild: discover src/swarm-engine
   exposed-modules:
     Swarm.Effect
+    Swarm.Effect.Log
     Swarm.Effect.Time
     Swarm.Game.Achievement.Attainment
     Swarm.Game.Achievement.Description
