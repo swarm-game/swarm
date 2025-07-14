@@ -10,6 +10,7 @@
 -- Loading Swarm modules from disk or network, recursively loading
 -- any imports.
 module Swarm.Language.Load where
+-- XXX
 -- (
 --   dirToFilePath,
 --   locToFilePath,
@@ -52,69 +53,6 @@ import Swarm.Util.Graph (findCycle)
 import System.Directory (doesFileExist, getCurrentDirectory, getHomeDirectory)
 import System.FilePath (joinPath, splitPath, (</>))
 import Witch (into)
-
-------------------------------------------------------------
--- Import location utilities
-
--- | Turn an 'Anchor' into a concrete 'FilePath' (or URL).
-anchorToFilePath :: (Has (Lift IO) sig m) => Anchor -> m FilePath
-anchorToFilePath = \case
-  Web w -> pure $ into @FilePath w
-  Local n -> local n <$> sendIO getCurrentDirectory
-  Home -> sendIO getHomeDirectory
-  Absolute -> pure "/"
- where
-  local :: Int -> FilePath -> FilePath
-  local n = ("/" </>) . joinPath . reverse . drop n . reverse . splitPath
-
--- | Turn an 'ImportDir' into a concrete 'FilePath' (or URL).
-dirToFilePath :: (Has (Lift IO) sig m) => ImportDir -> m FilePath
-dirToFilePath = withImportDir $ \a p -> do
-  af <- anchorToFilePath a
-  pure $ af </> joinPath (map (into @FilePath) p)
-
--- | Turn an 'ImportLoc' into a concrete 'FilePath' (or URL).
-locToFilePath :: (Has (Lift IO) sig m) => ImportLoc phase -> m FilePath
-locToFilePath (ImportLoc d f _ _) = do
-  df <- dirToFilePath d
-  pure $ df </> into @FilePath f
-
--- XXX simply assume web resources exist without checking?  + require them to be fully named...?
-
--- | Check whether a given 'ImportLoc' in fact exists.  Note that, for
---   the sake of efficiency, this simply assumes that any 'Web'
---   resource exists without checking; all other locations will
---   actually be checked.
-doesLocationExist :: (Has (Lift IO) sig m) => ImportLoc Resolved -> m Bool
-doesLocationExist loc = do
-  fp <- locToFilePath loc
-  case importAnchorResolved loc of
-    Web {} -> pure True
-    _ -> sendIO $ doesFileExist fp
-
--- XXX need to be able to resolve "local" to something in a standard Swarm data location??
-
--- | Fully resolve an implicitly specified import location, relative
---   to a given base directory, possibly appending @.sw@.
---
---   Note that URLs will /not/ have @.sw@ appended automatically.
-resolveImportLoc ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  ImportDir ->
-  ImportLoc Raw ->
-  m (ImportLoc Resolved)
-resolveImportLoc parent (ImportLoc d f _ _) = do
-  e1 <- doesLocationExist loc'
-  e2 <- doesLocationExist loc'sw
-  case (e1, e2) of
-    -- Only automatically add .sw extension if the original location
-    -- does not exist, but the location with .sw appended does
-    (False, True) -> pure loc'sw
-    _ -> pure loc'
- where
-  d' = parent <> d
-  loc' = ImportLoc d' f d f
-  loc'sw = ImportLoc d' (f <> ".sw") d f
 
 -- | A 'Module' is a (possibly empty) AST, along with a context for
 --   any definitions contained in it, and a list of transitive,

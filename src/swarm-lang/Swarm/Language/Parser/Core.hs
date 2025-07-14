@@ -13,6 +13,7 @@ module Swarm.Language.Parser.Core (
   defaultParserConfig,
   antiquoting,
   languageVersion,
+  importLoc,
 
   -- * Comment parsing state
   WSState (..),
@@ -39,7 +40,7 @@ import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Void (Void)
 import Language.Haskell.TH qualified as TH
-import Swarm.Language.Syntax (Comment)
+import Swarm.Language.Syntax (Comment, ImportLoc, Phase (Resolved), locToFilePath)
 import Text.Megaparsec hiding (runParser, runParser')
 import Text.Megaparsec qualified as MP
 import Text.Megaparsec.State (initialPosState, initialState)
@@ -65,6 +66,7 @@ data LanguageVersion = SwarmLang0_6 | SwarmLangLatest
 data ParserConfig = ParserConfig
   { _antiquoting :: Antiquoting
   , _languageVersion :: LanguageVersion
+  , _importLoc :: Maybe (ImportLoc Resolved)
   }
 
 makeLenses ''ParserConfig
@@ -74,6 +76,7 @@ defaultParserConfig =
   ParserConfig
     { _antiquoting = DisallowAntiquoting
     , _languageVersion = SwarmLangLatest
+    , _importLoc = Nothing
     }
 
 -- | Miscellaneous state relating to parsing whitespace + comments
@@ -115,7 +118,7 @@ runParser = runParser' defaultParserConfig
 --   'ParserConfig'.
 runParser' :: ParserConfig -> Parser a -> Text -> Either ParserError (a, Seq Comment)
 runParser' cfg p t =
-  (\pt -> parse pt "" t)
+  (\pt -> parse pt (maybe "" locToFilePath (cfg ^. importLoc)) t)
     . fmap (second (^. comments))
     . flip runStateT initWSState
     . flip runReaderT cfg
