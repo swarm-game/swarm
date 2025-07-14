@@ -48,11 +48,14 @@ module Swarm.Language.Syntax (
   Phase (..),
   SwarmType,
 
-  -- * Syntax
+  -- * Imports
   ImportDir,
   ImportLoc (..),
   ResolvedDir,
   ResolvedFile,
+  locToFilePath,
+
+  -- * Syntax
   Syntax (..),
   sLoc,
   sTerm,
