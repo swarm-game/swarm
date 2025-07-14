@@ -6,7 +6,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Types for working with locations of something in source code.
-module Swarm.Util.SrcLoc (
+module Swarm.Language.Syntax.Loc (
   SrcLoc (..),
   Located (..),
   srcLocStartsBefore,
