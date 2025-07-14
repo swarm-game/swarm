@@ -74,7 +74,7 @@ initRedraw = Redraw S.empty Nothing False False
 --   focus range (since the whole point is to remember what it was to
 --   compare to the focus range next frame).
 resetRedraw :: Redraw -> Redraw
-resetRedraw r = initRedraw { _prevFocusRange = _prevFocusRange r }
+resetRedraw r = initRedraw {_prevFocusRange = _prevFocusRange r}
 
 -- | Does the world pane need redrawing at all?
 needsRedraw :: Redraw -> Bool
@@ -84,7 +84,7 @@ needsRedraw (Redraw d _ w f) = w || f || not (S.null d)
 --   world for redrawing.
 updateFocusRange :: Maybe RobotRange -> Redraw -> Redraw
 updateFocusRange newR r
-  | _prevFocusRange r /= newR = redrawWorld $ r { _prevFocusRange = newR }
+  | _prevFocusRange r /= newR = redrawWorld $ r {_prevFocusRange = newR}
   | otherwise = r
 
 -- | Mark a cell dirty, but if the entire world is already flagged for
