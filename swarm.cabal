@@ -479,7 +479,6 @@ library swarm-lang
     Swarm.Language.Parser.Type
     Swarm.Language.Parser.Util
     Swarm.Language.Parser.Value
-    Swarm.Language.Phase
     Swarm.Language.Pipeline
     Swarm.Language.Pipeline.QQ
     Swarm.Language.Requirements
@@ -490,7 +489,6 @@ library swarm-lang
     Swarm.Language.Syntax.CommandMetadata
     Swarm.Language.Syntax.Comments
     Swarm.Language.Syntax.Constants
-    Swarm.Language.Syntax.Import
     Swarm.Language.Syntax.Pattern
     Swarm.Language.Syntax.Pretty
     Swarm.Language.Syntax.Util
@@ -937,7 +935,9 @@ library swarm-util
   exposed-modules:
     Data.BoolExpr.Simplify
     Swarm.Failure
+    Swarm.Language.Phase
     Swarm.Language.Syntax.Direction
+    Swarm.Language.Syntax.Import
     Swarm.Language.Syntax.Loc
     Swarm.Pretty
     Swarm.ResourceLoading
