@@ -146,7 +146,7 @@ termSyntax fty floc fsyn = \case
   STydef x ty info s -> STydef x ty info <$> fsyn s
   SBind x t1 t2 req s1 s2 -> SBind x <$> traverse fty t1 <*> pure t2 <*> pure req <*> fsyn s1 <*> fsyn s2
   SDelay s -> SDelay <$> fsyn s
-  SRcd m -> SRcd <$> (traverse . traverse) fsyn m
+  SRcd m -> SRcd <$> (traverse . traverse . traverse) fsyn m
   SProj s x -> SProj <$> fsyn s <*> pure x
   SAnnotate s pty -> SAnnotate <$> fsyn s <*> pure pty
   SSuspend s -> SSuspend <$> fsyn s

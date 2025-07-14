@@ -50,7 +50,7 @@ toErrPos code (VarUsage (Loc loc v) scope) = do
   -- A leading underscore will suppress the unused variable warning
   guard $ not $ "_" `T.isPrefixOf` v
   rangePair <- case loc of
-    SrcLoc s e -> Just (s, e)
+    SrcLoc _ s e -> Just (s, e)
     _ -> Nothing
   let (start, end) = P.getLocRange code rangePair
       ((startLine, startCol), (endLine, endCol)) = (minusOne start, minusOne end)
