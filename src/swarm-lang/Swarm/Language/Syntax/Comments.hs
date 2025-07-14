@@ -56,7 +56,7 @@ data Comment = Comment
   , commentSituation :: CommentSituation
   , commentText :: Text
   }
-  deriving (Eq, Show, Generic, Data, ToJSON, FromJSON, Hashable)
+  deriving (Eq, Show, Generic, Data, ToJSON, Hashable)
 
 instance PrettyPrec Comment where
   prettyPrec _ (Comment _ LineComment _ txt) = "//" <> pretty txt
@@ -77,10 +77,6 @@ instance ToJSON Comments where
   omitField = \case
     Empty -> True
     _ -> False
-
-instance FromJSON Comments where
-  parseJSON = A.genericParseJSON A.defaultOptions
-  omittedField = Just Empty
 
 instance Semigroup Comments where
   Comments b1 a1 <> Comments b2 a2 = Comments (b1 <> b2) (a1 <> a2)
