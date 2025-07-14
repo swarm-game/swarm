@@ -743,6 +743,7 @@ library swarm-engine
     Swarm.Game.State
     Swarm.Game.State.GameMetrics
     Swarm.Game.State.Initialize
+    Swarm.Game.State.Range
     Swarm.Game.State.Redraw
     Swarm.Game.State.Robot
     Swarm.Game.State.Runtime

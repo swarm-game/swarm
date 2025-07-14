@@ -36,7 +36,7 @@ import Swarm.Game.Robot.Concrete
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
-import Swarm.Game.Tick (TickNumber)
+import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value (VExc, VUnit), emptyEnv, envTydefs, prettyValue)
@@ -55,6 +55,7 @@ import Swarm.TUI.Model.ViewChunk
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Robot.Type
+import Swarm.TUI.View.Static
 import System.Clock (Clock (Monotonic), getTime)
 import Witch (into)
 
@@ -172,12 +173,30 @@ checkUnhideRobots = do
       uiGameplay . uiHideRobotsUntil .= Nothing
       gameState . redraw %= redrawWorld
 
+-- | Check whether we need to redraw the whole world if the cells
+--   showing static has changed.
+checkRedrawStatic :: EventM Name ScenarioState ()
+checkRedrawStatic = do
+  g <- use gameState
+  let newFR = focusedRange g
+  -- Redraw if the focusedRange has changed
+  gameState . redraw %= updateFocusRange newFR
+  -- Also redraw if we've reached # of ticks when static changes, and
+  -- focus range is not Close
+  let staticChanging = getTickNumber (g ^. temporal . ticks) `mod` staticFrequency == 0
+  when (newFR /= Just Close && staticChanging) $ gameState . redraw %= redrawWorld
+
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
 updateUI :: EventM Name AppState Bool
 updateUI = do
-  Brick.zoom (playState . scenarioState) checkUnhideRobots
+  -- Make sure world tiles covering the visible region are loaded.
   Brick.zoom (playState . scenarioState . gameState) loadVisibleRegion
+
+  -- Some checks to see whether we should redraw the full world.
+  Brick.zoom (playState . scenarioState) $ do
+    checkUnhideRobots
+    checkRedrawStatic
 
   g <- use $ playState . scenarioState . gameState
 
