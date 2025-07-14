@@ -10,7 +10,6 @@ module Swarm.Game.State.Redraw (
 
   -- * Lenses
   dirtyCells,
-  prevFocusRange,
   redrawWorldFlag,
   drawFrame,
 
@@ -29,7 +28,7 @@ import Data.Set qualified as S
 import Swarm.Game.Location (Location)
 import Swarm.Game.State.Range
 import Swarm.Game.Universe (Cosmic)
-import Swarm.Util.Lens (makeLensesNoSigs)
+import Swarm.Util.Lens (inherit, makeLensesNoSigs)
 
 -- | Subrecord of state relating to whether (and which parts of) the
 --   world view needs to redrawn.
@@ -50,7 +49,7 @@ dirtyCells :: Getter Redraw (Set (Cosmic Location))
 -- | The range between the base and focused robot from the previous
 --   frame.  Used to determine when we need to redraw the world since
 --   the amount of static has changed.
-prevFocusRange :: Getter Redraw (Maybe RobotRange)
+prevFocusRange :: Lens' Redraw (Maybe RobotRange)
 
 -- | Should we redraw the entire world (i.e. invalidate the entire
 --   view chunk cache) next frame?
@@ -74,7 +73,7 @@ initRedraw = Redraw S.empty Nothing False False
 --   focus range (since the whole point is to remember what it was to
 --   compare to the focus range next frame).
 resetRedraw :: Redraw -> Redraw
-resetRedraw r = initRedraw {_prevFocusRange = _prevFocusRange r}
+resetRedraw r = inherit prevFocusRange r initRedraw
 
 -- | Does the world pane need redrawing at all?
 needsRedraw :: Redraw -> Bool
