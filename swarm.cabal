@@ -956,6 +956,7 @@ library swarm-util
     Swarm.Effect.Time
     Swarm.Failure
     Swarm.Language.Syntax.Direction
+    Swarm.Language.Syntax.Loc
     Swarm.Pretty
     Swarm.ResourceLoading
     Swarm.Util
@@ -964,7 +965,6 @@ library swarm-util
     Swarm.Util.Graph
     Swarm.Util.JSON
     Swarm.Util.Lens
-    Swarm.Util.SrcLoc
     Swarm.Util.OccurrenceEncoder
     Swarm.Util.RingBuffer
     Swarm.Util.UnitInterval

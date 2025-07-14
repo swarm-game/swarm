@@ -31,12 +31,12 @@ import Prettyprinter
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
+import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern (sComments, pattern RTerm)
 import Swarm.Language.Syntax.Util (eraseRaw, unTuple)
 import Swarm.Language.TDVar (TDVar)
 import Swarm.Language.Types
 import Swarm.Pretty (PrettyPrec (..), encloseWithIndent, pparens, ppr, prettyEquality)
-import Swarm.Util.SrcLoc
 import Text.Show.Unicode (ushow)
 
 -- | Pretty-print a syntax node with comments.

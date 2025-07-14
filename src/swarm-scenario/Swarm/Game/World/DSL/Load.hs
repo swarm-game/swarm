@@ -17,11 +17,11 @@ import Swarm.Failure (Asset (..), AssetData (..), LoadingFailure (..), SystemFai
 import Swarm.Game.Land
 import Swarm.Game.World.DSL.Parse (parseWExp, runParser)
 import Swarm.Game.World.DSL.Typecheck
+import Swarm.Language.Syntax.Loc (SrcLoc (..))
 import Swarm.Pretty (prettyText)
 import Swarm.ResourceLoading (getDataDirSafe)
 import Swarm.Util (acquireAllWithExt)
 import Swarm.Util.Effect (withThrow)
-import Swarm.Util.SrcLoc (SrcLoc (..))
 import System.FilePath (dropExtension, joinPath, splitPath)
 import Witch (into)
 
