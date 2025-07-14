@@ -1108,7 +1108,7 @@
       `watch : Dir -> Cmd Unit` will mark an adjacent (in the specified direction) location of interest to monitor for placement or removal of items.
       A subsequent call to `wait` will be interrupted upon a change to the location.
   properties: [pickable]
-  capabilities: [time, wait, watch]
+  capabilities: [time, wait, watch, watchRobots]
 - name: comparator
   display:
     attr: device
