@@ -46,7 +46,7 @@ module Swarm.Language.Parser.Lex (
   brackets,
 ) where
 
-import Control.Lens (use, (%=), (.=))
+import Control.Lens (use, view, (%=), (.=))
 import Control.Monad (void)
 import Data.Char (isLower, isUpper)
 import Data.Containers.ListUtils (nubOrd)
@@ -81,7 +81,8 @@ parseLocG pa = do
   -- @preWSLoc@ which was set by 'sc' at the /beginning/ of the
   -- consumed whitespace.
   end <- use preWSLoc
-  pure (SrcLoc start end, a)
+  imp <- view importLoc
+  pure (SrcLoc imp start end, a)
 
 -- | Add 'SrcLoc' to a 'Term' parser
 parseLoc :: Parser (Term Raw) -> Parser (Syntax Raw)
@@ -111,7 +112,8 @@ lineComment start = do
   s <- getOffset
   t <- string start *> takeWhileP (Just "character") (/= '\n')
   e <- getOffset
-  comments %= (Seq.|> Comment (SrcLoc s e) LineComment cs t)
+  imp <- view importLoc
+  comments %= (Seq.|> Comment (SrcLoc imp s e) LineComment cs t)
 
 -- | Parse a block comment, while appending it out-of-band to the list of
 --   comments saved in the custom state.
@@ -125,7 +127,8 @@ blockComment start end = do
   void $ string start
   t <- manyTill anySingle (string end)
   e <- getOffset
-  comments %= (Seq.|> Comment (SrcLoc s e) BlockComment cs (into @Text t))
+  imp <- view importLoc
+  comments %= (Seq.|> Comment (SrcLoc imp s e) BlockComment cs (into @Text t))
 
 -- | Skip spaces and comments.
 sc :: Parser ()
