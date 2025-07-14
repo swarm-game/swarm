@@ -76,8 +76,9 @@ module Swarm.Game.State (
 
   -- * Re-exports
   module GameMetrics,
-  module Robots,
+  module Range,
   module Redraw,
+  module Robots,
 ) where
 
 import Control.Carrier.State.Lazy qualified as Fused
@@ -117,6 +118,7 @@ import Swarm.Game.Scenario.Status
 import Swarm.Game.State.Config
 import Swarm.Game.State.GameMetrics as GameMetrics
 import Swarm.Game.State.Landscape
+import Swarm.Game.State.Range as Range
 import Swarm.Game.State.Redraw as Redraw
 import Swarm.Game.State.Robot as Robots hiding (focusedRobot, robotNaming)
 import Swarm.Game.State.Robot qualified as RobotsInternal
@@ -405,17 +407,6 @@ viewingRegion (Cosmic sw (Location cx cy)) (w, h) =
 --   'viewCenterRule', if any.
 focusedRobot :: GameState -> Maybe Robot
 focusedRobot g = g ^. robotInfo . RobotsInternal.focusedRobot
-
--- | Type for describing how far away a robot is from the base, which
---   determines what kind of communication can take place.
-data RobotRange
-  = -- | Close; communication is perfect.
-    Close
-  | -- | Mid-range; communication is possible but lossy.
-    MidRange Double
-  | -- | Far; communication is not possible.
-    Far
-  deriving (Eq, Ord)
 
 -- | Check how far away the focused robot is from the base.  @Nothing@
 --   is returned if there is no focused robot; otherwise, return a

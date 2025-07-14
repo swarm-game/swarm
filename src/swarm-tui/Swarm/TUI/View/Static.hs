@@ -8,6 +8,7 @@ import Control.Lens ((^.))
 import Data.ByteString (ByteString)
 import Data.Colour.SRGB (RGB (..))
 import Data.Hash.Murmur (murmur3)
+import Data.Int (Int64)
 import Data.Tagged (unTagged)
 import Data.Word (Word32)
 import Linear.Affine ((.-.))
@@ -56,6 +57,10 @@ staticChar = \case
   15 -> '█'
   _ -> ' '
 
+-- | How often (measured in game ticks) does the static change?
+staticFrequency :: Int64
+staticFrequency = 16
+
 -- | Random "static" based on the distance to the robot being
 --   @view@ed.  A cell can either be static-free (represented by
 --   @Nothing@) or can have one of sixteen values (representing the
@@ -72,9 +77,9 @@ getStatic g coords
   -- Hash.
   h =
     murmur3 1 . unTagged . from @String @(Encoding.UTF_8 ByteString) . show $
-      -- include the current tick count / 16 in the hash, so the pattern of static
-      -- changes once every 16 ticks
-      (offset, getTickNumber (g ^. temporal . ticks) `div` 16)
+      -- include the current tick count / staticFrequency in the hash,
+      -- so the pattern of static changes once every 'staticFrequency' ticks
+      (offset, getTickNumber (g ^. temporal . ticks) `div` staticFrequency)
 
   -- Hashed probability, i.e. convert the hash into a floating-point number between 0 and 1
   hp :: Double
