@@ -3,7 +3,7 @@
 --
 -- Data type for talking about ranges between robots.
 module Swarm.Game.State.Range (
-  RobotRange(..),
+  RobotRange (..),
 ) where
 
 -- | Type for describing how far away a robot is from the base, which
