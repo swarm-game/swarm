@@ -1,14 +1,11 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeData #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
-
--- XXX raw importlocs can have things like home, local.  Resolved
--- should ONLY be Web or Absolute.  So, for example, we can turn a
--- resolved importloc into a FilePath with NO I/O.  IO is only needed
--- when doing the resolving.
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -29,13 +26,6 @@ module Swarm.Language.Syntax.Import (
 
   -- * ImportLoc
   ImportLoc (..),
-  ResolvedDir,
-  ResolvedFile,
-  importAnchorRaw,
-  importAnchorResolved,
-  unsafeResolveImport,
-  inferImportLoc,
-  generalizeImportLoc,
 
   -- ** Utilities
   anchorToFilePath,
@@ -43,46 +33,75 @@ module Swarm.Language.Syntax.Import (
   locToFilePath,
 
   -- ** Resolution
+  -- unsafeResolveImportLoc,
   resolveImportLoc,
 ) where
 
 import Control.Algebra (Has)
 import Control.Effect.Lift (Lift, sendIO)
-import Data.Aeson (FromJSON, ToJSON)
-import Data.Data (Data, Typeable)
-import Data.Hashable (Hashable)
+import Data.Aeson (FromJSON (..), ToJSON (..))
+import Data.Hashable (Hashable (..))
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter (hcat, pretty, punctuate, slash)
-import Swarm.Language.Phase
 import Swarm.Pretty
-import System.Directory (getCurrentDirectory, getHomeDirectory)
-import System.FilePath (joinPath, splitPath, (</>))
+import System.Directory (doesFileExist, getCurrentDirectory, getHomeDirectory)
+import System.FilePath (joinPath, splitDirectories, (</>))
 import Witch (into)
+
+------------------------------------------------------------
+-- Import phases
+
+-- | Import locations can be raw, or fully resolved to a canonical URL
+--   or absolute path.
+type data ImportPhase where
+  Raw :: ImportPhase
+  Resolved :: ImportPhase
 
 ------------------------------------------------------------
 -- Anchor
 
 -- | An "anchor" from which to interpret a path.
-data Anchor where
-  -- | Text represents scheme + authority, /e.g./ "https://github.com"
-  Web :: Text -> Anchor
-  -- | Relative to local dir.  The @Int@ is the
-  --   number of levels to go up, *e.g.* 2 means
-  --   "../..".  0 means the current dir, /i.e./ "."
-  Local :: Int -> Anchor
-  -- | Relative to the home directory, /i.e./ "~"
-  Home :: Anchor
+data Anchor (phase :: ImportPhase) where
   -- | Absolute, /i.e./ relative to the filesystem root.
-  Absolute :: Anchor
-  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON, Hashable)
+  Absolute :: Anchor phase
+  -- | Text represents scheme + authority, /e.g./ "https://github.com"
+  Web :: Text -> Anchor phase
+  -- | Relative to local dir.  The @Int@ is the number of levels to go
+  --   up, *e.g.* 2 means "../..".  0 means the current dir, /i.e./
+  --   "."
+  --
+  --   Local anchors can only be raw; they get resolved into an
+  --   Absolute path.
+  Local :: Int -> Anchor Raw
+  -- | Relative to the home directory, /i.e./ "~".  Home anchor can
+  --   only be raw; it will get resolved into an Absolute path.
+  Home :: Anchor Raw
+  --  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON, Hashable)
 
-instance PrettyPrec Anchor where
+deriving instance Eq (Anchor phase)
+deriving instance Ord (Anchor phase)
+deriving instance Show (Anchor phase)
+
+instance FromJSON (Anchor phase) where
+  parseJSON = undefined -- XXX can't auto-derive due to GADT; implement by hand?
+instance ToJSON (Anchor phase) where
+  toJSON = undefined -- XXX
+instance Hashable (Anchor phase) where
+  hashWithSalt = undefined -- XXX
+
+instance PrettyPrec (Anchor phase) where
   prettyPrec _ = \case
+    Absolute -> slash
     Web w -> pretty w
     Local n -> hcat $ punctuate slash (replicate n "..")
     Home -> "~"
-    Absolute -> slash
+
+-- | Turn an 'Anchor' into a concrete 'FilePath' (or URL).
+anchorToFilePath :: Anchor Resolved -> FilePath
+anchorToFilePath = \case
+  Absolute -> "/"
+  Web w -> into @FilePath w
 
 ------------------------------------------------------------
 -- ImportDir
@@ -103,31 +122,31 @@ instance PrettyPrec Anchor where
 --   that 'ImportDir' values are always normalized.  To create one,
 --   use the 'mkImportDir' smart constructor. To extract information,
 --   use 'withImportDir'.
-data ImportDir = ImportDir Anchor [Text]
-  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON, Hashable)
+data ImportDir (phase :: ImportPhase) = ImportDir (Anchor phase) [Text]
+  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON, Hashable)
 
-instance PrettyPrec ImportDir where
+instance PrettyPrec (ImportDir phase) where
   prettyPrec _ (ImportDir anchor ps) = hcat $ punctuate slash (ppr anchor : map pretty ps)
 
 -- | Convenient shortcut for the 'ImportDir' representing the user's
 --   home directory.
-homeDir :: ImportDir
+homeDir :: ImportDir Raw
 homeDir = ImportDir Home []
 
 -- | Convenient shortcut for the 'ImportDir' representing the current
 --   working directory.
-currentDir :: ImportDir
+currentDir :: ImportDir Raw
 currentDir = ImportDir (Local 0) []
 
 -- | Smart constructor for 'ImportDir' which ensures that it is
 -- normalized.
-mkImportDir :: Anchor -> [Text] -> ImportDir
+mkImportDir :: Anchor phase -> [Text] -> ImportDir phase
 mkImportDir a p = canonicalizeImportDir $ ImportDir a p
 
 -- | Destructor/eliminator for 'ImportDir'.  Since the constructor for
 --   'ImportDir' is not exported, this is the primary way to access
 --   the contents.
-withImportDir :: (Anchor -> [Text] -> r) -> ImportDir -> r
+withImportDir :: (Anchor phase -> [Text] -> r) -> ImportDir phase -> r
 withImportDir f (ImportDir a p) = f a p
 
 -- | The Semigroup instance for 'ImportDir' interprets the second in
@@ -141,70 +160,27 @@ withImportDir f (ImportDir a p) = f a p
 --   See
 --   https://github.com/dhall-lang/dhall-lang/blob/master/standard/imports.md#chaining-directories
 --   for inspiration.
-instance Semigroup ImportDir where
+instance Semigroup (ImportDir phase) where
+  _ <> d@(ImportDir Absolute _) = d
   _ <> d@(ImportDir (Web {}) _) = d
   _ <> d@(ImportDir Home _) = d
-  _ <> d@(ImportDir Absolute _) = d
   ImportDir a p1 <> ImportDir (Local n) p2 = mkImportDir a (p1 ++ replicate n ".." ++ p2)
 
 -- | The identity 'ImportDir' is one with a local anchor and empty
 --   path component list.
-instance Monoid ImportDir where
+instance Monoid (ImportDir Raw) where
   mempty = ImportDir (Local 0) []
 
-------------------------------------------------------------
--- ImportLoc
+-- appendImportDir :: ImportDir Resolved -> ImportDir phase -> ImportDir Resolved
+-- appendImportDir _ d@(ImportDir (Web {}) _) = d
+-- appendImportDir _ d@(ImportDir Home _) = d
+-- appendImportDir _ d@(ImportDir Absolute _) = d
+-- appendImportDir (ImportDir a p1) (ImportDir (Local n) p2) = mkImportDir a (p1 ++ replicate n ".." ++ p2)
 
--- | A location from which to import a file containing Swarm code,
---   consisting of a directory paired with a filename.
---
---   Parameterized by the phase so we can be sure to canonicalize +
---   process imports in a typesafe way.
-data ImportLoc (phase :: Phase) = ImportLoc
-  { importDirRaw :: ImportDir
-  , importFileRaw :: Text
-  , importDirRes :: ResolvedDir phase      -- Maybe ImportDir
-  , importFileRes :: ResolvedFile phase    -- Maybe Text
-  }
-  deriving (Generic)
-
-type family ResolvedDir (phase :: Phase) where
-  ResolvedDir Raw = ()
-  ResolvedDir _ = ImportDir
-
-type family ResolvedFile (phase :: Phase) where
-  ResolvedFile Raw = ()
-  ResolvedFile _ = Text
-
-deriving instance (Eq (ResolvedDir phase), Eq (ResolvedFile phase)) => Eq (ImportLoc phase)
-deriving instance (Ord (ResolvedDir phase), Ord (ResolvedFile phase)) => Ord (ImportLoc phase)
-deriving instance (Show (ResolvedDir phase), Show (ResolvedFile phase)) => Show (ImportLoc phase)
-deriving instance (Hashable (ResolvedDir phase), Hashable (ResolvedFile phase)) => Hashable (ImportLoc phase)
-deriving instance (ToJSON (ResolvedDir phase), ToJSON (ResolvedFile phase)) => ToJSON (ImportLoc phase)
-deriving instance (Typeable phase, Data (ResolvedDir phase), Data (ResolvedFile phase)) => Data (ImportLoc phase)
-
-instance PrettyPrec (ImportLoc phase) where
-  prettyPrec _ (ImportLoc d f _ _) = ppr d <> "/" <> pretty f
-
--- | Get the raw 'Anchor' for an 'ImportLoc'.
-importAnchorRaw :: ImportLoc Raw -> Anchor
-importAnchorRaw = withImportDir const . importDirRaw
-
--- | Get the resolved 'Anchor' for an 'ImportLoc'.
-importAnchorResolved :: ImportLoc Resolved -> Anchor
-importAnchorResolved = withImportDir const . importDirRes
-
--- | XXX
-unsafeResolveImport :: ImportLoc Raw -> ImportLoc Resolved
-unsafeResolveImport (ImportLoc d f _ _) = ImportLoc d f d f
-
--- | XXX
-inferImportLoc :: ImportLoc Resolved -> ImportLoc Inferred
-inferImportLoc (ImportLoc d f rd rf) = ImportLoc d f rd rf
-
--- | XXX
-generalizeImportLoc :: ImportLoc Inferred -> ImportLoc Typed
-generalizeImportLoc (ImportLoc d f rd rf) = ImportLoc d f rd rf
+-- | Turn an 'ImportDir' into a concrete 'FilePath' (or URL).
+dirToFilePath :: ImportDir Resolved -> FilePath
+dirToFilePath = withImportDir $ \a p ->
+  anchorToFilePath a </> joinPath (map (into @FilePath) p)
 
 ------------------------------------------------------------
 -- Canonicalization
@@ -232,7 +208,7 @@ generalizeImportLoc (ImportLoc d f rd rf) = ImportLoc d f rd rf
 --  ImportDir {importAnchor = Local 1, importPath = ["b","c"]}
 --  >>> canonicalizeImportDir (ImportDir (Local 1) ["a", "..", "..", "b", "c", "..", "d", "..", "..", ".."])
 --  ImportDir {importAnchor = Local 3, importPath = []}
-canonicalizeImportDir :: ImportDir -> ImportDir
+canonicalizeImportDir :: ImportDir phase -> ImportDir phase
 canonicalizeImportDir (ImportDir a p) = case (a, canonicalizeDir (0, [], p)) of
   (Local n, (m, p')) -> ImportDir (Local (n + m)) p'
   (_, (_, p')) -> ImportDir a p'
@@ -246,36 +222,46 @@ canonicalizeImportDir (ImportDir a p) = case (a, canonicalizeDir (0, [], p)) of
     (n, pre, []) -> (n, reverse pre)
 
 ------------------------------------------------------------
--- Import location utilities
+-- ImportLoc
 
--- | Turn an 'Anchor' into a concrete 'FilePath' (or URL).
-anchorToFilePath :: (Has (Lift IO) sig m) => Anchor -> m FilePath
-anchorToFilePath = \case
-  Web w -> pure $ into @FilePath w
-  Local n -> local n <$> sendIO getCurrentDirectory
-  Home -> sendIO getHomeDirectory
-  Absolute -> pure "/"
- where
-  local :: Int -> FilePath -> FilePath
-  local n = ("/" </>) . joinPath . reverse . drop n . reverse . splitPath
+-- | A location from which to import a file containing Swarm code,
+--   consisting of a directory paired with a filename.
+--
+--   Parameterized by phase so we can be sure to canonicalize +
+--   process imports in a typesafe way.
+data ImportLoc (phase :: ImportPhase) = ImportLoc
+  { importDir :: ImportDir phase
+  , importFile :: Text
+  }
+  deriving (Generic, Eq, Ord, Show, Hashable, ToJSON)
 
--- | Turn an 'ImportDir' into a concrete 'FilePath' (or URL).
-dirToFilePath :: (Has (Lift IO) sig m) => ImportDir -> m FilePath
-dirToFilePath = withImportDir $ \a p -> do
-  af <- anchorToFilePath a
-  pure $ af </> joinPath (map (into @FilePath) p)
+instance PrettyPrec (ImportLoc phase) where
+  prettyPrec _ (ImportLoc d f) = ppr d <> "/" <> pretty f
+
+-- | Get the 'Anchor' for an 'ImportLoc'.
+importAnchor :: ImportLoc phase -> Anchor phase
+importAnchor = withImportDir const . importDir
 
 -- | Turn an 'ImportLoc' into a concrete 'FilePath' (or URL).
-locToFilePath :: (Has (Lift IO) sig m) => ImportLoc phase -> m FilePath
-locToFilePath (ImportLoc d f _ _) = do
-  df <- dirToFilePath d
-  pure $ df </> into @FilePath f
+locToFilePath :: ImportLoc Resolved -> FilePath
+locToFilePath (ImportLoc d f) = dirToFilePath d </> into @FilePath f
 
 ------------------------------------------------------------
 -- Import resolution
 
-
 -- XXX simply assume web resources exist without checking?  + require them to be fully named...?
+
+-- | Resolve an import directory, turning it into an absolute path.
+resolveImportDir :: Has (Lift IO) sig m => ImportDir Raw -> m (ImportDir Resolved)
+resolveImportDir (ImportDir a p) = case a of
+  Web t -> pure $ ImportDir (Web t) p
+  Local n -> do
+    cwd <- drop 1 . reverse . drop n . reverse . splitDirectories <$> sendIO getCurrentDirectory
+    pure $ ImportDir Absolute (map (into @Text) cwd ++ p)
+  Home -> do
+    home <- drop 1 . splitDirectories <$> sendIO getHomeDirectory
+    pure $ ImportDir Absolute (map (into @Text) home ++ p)
+  Absolute -> pure $ ImportDir Absolute p
 
 -- | Check whether a given 'ImportLoc' in fact exists.  Note that, for
 --   the sake of efficiency, this simply assumes that any 'Web'
@@ -283,23 +269,21 @@ locToFilePath (ImportLoc d f _ _) = do
 --   actually be checked.
 doesLocationExist :: (Has (Lift IO) sig m) => ImportLoc Resolved -> m Bool
 doesLocationExist loc = do
-  fp <- locToFilePath loc
-  case importAnchorResolved loc of
+  let fp = locToFilePath loc
+  case importAnchor loc of
     Web {} -> pure True
     _ -> sendIO $ doesFileExist fp
 
--- XXX need to be able to resolve "local" to something in a standard Swarm data location??
+-- XXX need to be able to resolve "local" to something in a standard
+-- Swarm data location, instead of just looking up CWD??
 
--- | Fully resolve an implicitly specified import location, relative
---   to a given base directory, possibly appending @.sw@.
---
---   Note that URLs will /not/ have @.sw@ appended automatically.
-resolveImportLoc ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  ImportDir ->
-  ImportLoc Raw ->
-  m (ImportLoc Resolved)
-resolveImportLoc parent (ImportLoc d f _ _) = do
+-- | Resolve an import location, by turning the path into an absolute
+--   path, and optionally adding a .sw suffix to the file name.
+resolveImportLoc :: Has (Lift IO) sig m => ImportLoc Raw -> m (ImportLoc Resolved)
+resolveImportLoc (ImportLoc d f) = do
+  d' <- resolveImportDir d
+  let loc' = ImportLoc d' f
+      loc'sw = ImportLoc d' (f <> ".sw")
   e1 <- doesLocationExist loc'
   e2 <- doesLocationExist loc'sw
   case (e1, e2) of
@@ -307,8 +291,3 @@ resolveImportLoc parent (ImportLoc d f _ _) = do
     -- does not exist, but the location with .sw appended does
     (False, True) -> pure loc'sw
     _ -> pure loc'
- where
-  d' = parent <> d
-  loc' = ImportLoc d' f d f
-  -- XXX wrong, need to keep first two same, use second two for resolved?
-  loc'sw = ImportLoc d' (f <> ".sw") d f
