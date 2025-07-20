@@ -86,7 +86,7 @@ myLoc <- whereami;
 // The robot will also receive instructions, so it **must have a logger!**
 def tryGive: Text -> State -> Cmd State 
   = \msg. \state.
-  if (state.can_wait) {watchRobots down; wait 2048} {};
+  if (state.can_wait) {watch down; wait 2048} {};
   instant (
     rs <- meetall;
     foldM rs state (
