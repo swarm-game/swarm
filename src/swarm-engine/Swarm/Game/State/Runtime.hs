@@ -37,6 +37,7 @@ import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
+import Log
 import Swarm.Failure (SystemFailure)
 import Swarm.Game.Land
 import Swarm.Game.Recipe (loadRecipes)
@@ -44,12 +45,11 @@ import Swarm.Game.Scenario (GameStateInputs (..), ScenarioInputs (..))
 import Swarm.Game.State.Substate
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Log
-import Swarm.ResourceLoading (initNameGenerator, readAppData, getSwarmLogsPath)
+import Swarm.ResourceLoading (getSwarmLogsPath, initNameGenerator, readAppData)
 import Swarm.Util.Lens (makeLensesNoSigs)
-import System.Metrics qualified as Metrics
-import Log
-import System.IO (openFile, IOMode(..), BufferMode(..), hSetBuffering)
 import System.FilePath
+import System.IO (BufferMode (..), IOMode (..), hSetBuffering, openFile)
+import System.Metrics qualified as Metrics
 
 data RuntimeState = RuntimeState
   { _webPort :: Maybe Int

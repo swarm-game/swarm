@@ -24,6 +24,7 @@ import Data.Maybe (isNothing)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Tuple.Extra (dupe)
+import Log (Logger)
 import Swarm.Game.CESK (finalValue, initMachine)
 import Swarm.Game.Device (getCapabilitySet, getMap)
 import Swarm.Game.Entity
@@ -56,7 +57,6 @@ import Swarm.Language.Types
 import Swarm.Util (applyWhen, binTuples, (?))
 import System.Clock qualified as Clock
 import System.Random (mkStdGen)
-import Log (Logger)
 
 -- | Create an initial game state corresponding to the given scenario.
 scenarioToGameState ::

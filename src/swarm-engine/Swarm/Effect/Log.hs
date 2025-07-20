@@ -1,49 +1,50 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-{-# LANGUAGE InstanceSigs #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 -- Description: Log effects
 module Swarm.Effect.Log (
-    Log (..),
+  Log (..),
 
-    -- ** Log functions
-    logMessage,
-    localData,
-    localDomain,
-    localMaxLogLevel,
-    getLoggerEnv,
-    logAttention,
-    logInfo,
-    logTrace,
-    logAttention_,
-    logInfo_,
-    logTrace_,
+  -- ** Log functions
+  logMessage,
+  localData,
+  localDomain,
+  localMaxLogLevel,
+  getLoggerEnv,
+  logAttention,
+  logInfo,
+  logTrace,
+  logAttention_,
+  logInfo_,
+  logTrace_,
 
-    -- ** Log Carrier
-    LogIOC (..),
-    runLogIOC,
-    runLogEnvIOC,
+  -- ** Log Carrier
+  LogIOC (..),
+  runLogIOC,
+  runLogEnvIOC,
 
-    -- * Re-exports
-    module Log,
+  -- * Re-exports
+  module Log,
 ) where
-import Log.Data as Log
-import Log.Logger as Log
-import Log as Log ((.=), object) 
-import Log.Monad
+
 import Control.Algebra
 import Control.Carrier.Reader
 import Control.Monad.Trans (MonadIO (liftIO))
-import Data.Kind (Type)
-import Data.Time.Clock
-import Data.Text (Text)
 import Data.Aeson.Types
+import Data.Kind (Type)
+import Data.Text (Text)
+import Data.Time.Clock
+import Log as Log (object, (.=))
+import Log.Data as Log
+import Log.Logger as Log
+import Log.Monad
 
 -- | Effect for logging
 data Log (m :: Type -> Type) k where
@@ -61,19 +62,21 @@ runReader :: r -> ReaderC r m a -> m a
 runReader r (ReaderC runReaderC) = runReaderC r
 -}
 
-runLogIOC
-    :: Text
-    -> Logger
-    -> LogLevel
-    -> LogIOC m a
-    -> m a
-runLogIOC component logger maxLogLevel = runLogEnvIOC $ LoggerEnv
-    { leLogger = logger
-    , leComponent = component
-    , leDomain = []
-    , leData = []
-    , leMaxLogLevel = maxLogLevel
-    }
+runLogIOC ::
+  Text ->
+  Logger ->
+  LogLevel ->
+  LogIOC m a ->
+  m a
+runLogIOC component logger maxLogLevel =
+  runLogEnvIOC $
+    LoggerEnv
+      { leLogger = logger
+      , leComponent = component
+      , leDomain = []
+      , leData = []
+      , leMaxLogLevel = maxLogLevel
+      }
 
 runLogEnvIOC :: LoggerEnv -> LogIOC m a -> m a
 runLogEnvIOC env (LogIOC (ReaderC runLogIO)) = runLogIO env
@@ -90,8 +93,10 @@ ctx = ReaderC $ \ r -> case sig of
 
 instance (MonadIO m, Algebra sig m) => Algebra (Log :+: sig) (LogIOC m) where
   alg hdl sig ctx = LogIOC . ReaderC $ \env -> case sig of
-    L (LogMessageOp lvl msg data_) -> (<$ ctx) <$> liftIO (
-        getCurrentTime >>= \time -> logMessageIO env time lvl msg data_)
+    L (LogMessageOp lvl msg data_) ->
+      (<$ ctx)
+        <$> liftIO
+          (getCurrentTime >>= \time -> logMessageIO env time lvl msg data_)
     L (LocalData data_ m) -> runLogEnvIOC (env {leData = leData env <> data_}) (hdl (m <$ ctx))
     L (LocalDomain domain m) -> runLogEnvIOC (env {leDomain = leDomain env <> [domain]}) (hdl (m <$ ctx))
     L (LocalMaxLogLevel lvl m) -> runLogEnvIOC (env {leMaxLogLevel = lvl}) (hdl (m <$ ctx))

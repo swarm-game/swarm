@@ -1,9 +1,9 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE FlexibleInstances #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -58,6 +58,7 @@ import Data.Text qualified as T
 import Linear (zero)
 import Prettyprinter (pretty)
 import Swarm.Effect as Effect (Time, getNow, measureCpuTimeInSec)
+import Swarm.Effect.Log qualified as Effect
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
 import Swarm.Game.Cosmetic.Display
@@ -94,7 +95,6 @@ import System.Metrics.Distribution qualified as Distribution
 import System.Metrics.Gauge qualified as Gauge
 import Witch (From (from))
 import Prelude hiding (lookup)
-import Swarm.Effect.Log qualified as Effect
 
 -- | GameState with support for IO and Time effect
 type HasGameStepState sig m =

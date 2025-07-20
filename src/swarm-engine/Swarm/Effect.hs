@@ -7,5 +7,5 @@ module Swarm.Effect (
 )
 where
 
+import Swarm.Effect.Log as Log (Log (..), LogIOC (..), runLogEnvIOC, runLogIOC)
 import Swarm.Effect.Time as Time
-import Swarm.Effect.Log as Log (Log (..), LogIOC (..), runLogIOC, runLogEnvIOC)

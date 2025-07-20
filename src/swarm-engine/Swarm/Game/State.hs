@@ -107,6 +107,7 @@ import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
+import Log (LogLevel (..), Logger, LoggerEnv (LoggerEnv))
 import Swarm.Failure (SystemFailure (..))
 import Swarm.Game.CESK (Store, emptyStore, store, suspendedEnv)
 import Swarm.Game.Entity
@@ -134,7 +135,6 @@ import Swarm.Language.Value (Env)
 import Swarm.Log
 import Swarm.Util (applyWhen, uniq)
 import Swarm.Util.Lens (makeLensesNoSigs)
-import Log (LoggerEnv(LoggerEnv), Logger, LogLevel(..))
 
 newtype Sha1 = Sha1 String
   deriving (Show, Eq, Ord, Generic, ToJSON)
