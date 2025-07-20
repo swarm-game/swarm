@@ -86,7 +86,7 @@ updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
   forM_ (WM.getModification =<< someChange) $ \modType -> do
     currentTick <- use $ temporal . ticks
     myID <- use robotID
-    zoomRobots $ wakeRobotsWatchingForEntities myID currentTick cLoc
+    zoomRobots $ wakeWatchingRobots myID currentTick cLoc
 
     structureRecognizer <- use $ landscape . recognizerAutomatons
     oldRecognition <- use $ discovery . structureRecognition

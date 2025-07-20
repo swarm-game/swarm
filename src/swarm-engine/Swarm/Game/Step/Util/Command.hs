@@ -158,7 +158,7 @@ purgeFarAwayWatches = do
         applyWhen (not $ isNearby loc) $
           IS.delete rid
 
-  robotInfo . robotsWatchingForEntities %= MM.mapWithKey f
+  robotInfo . robotsWatching %= MM.mapWithKey f
 
 verbedGrabbingCmd :: GrabbingCmd -> Text
 verbedGrabbingCmd = \case
@@ -185,8 +185,8 @@ updateRobotLocation oldLoc newLoc
       t <- use $ temporal . ticks
       invis <- use $ robotDisplay . invisible
       zoomRobots $ do
-        unless invis $ wakeRobotsWatchingForRobots rid t newLoc
-        unless invis $ wakeRobotsWatchingForRobots rid t oldLoc
+        unless invis $ wakeWatchingRobots rid t newLoc
+        unless invis $ wakeWatchingRobots rid t oldLoc
         removeRobotFromLocationMap oldLoc rid
         addRobotToLocation rid newlocWithPortal
       modify (unsafeSetRobotLocation newlocWithPortal)
@@ -333,27 +333,13 @@ updateAvailableCommands e = do
 -- The "watch" command
 ------------------------------------------------------------
 
--- | Watch for entity change at the location.
-watchForEntities ::
+addWatchedLocation ::
   HasRobotStepState sig m =>
   Cosmic Location ->
   m ()
-watchForEntities loc = do
+addWatchedLocation loc = do
   rid <- use robotID
-  robotInfo . robotsWatchingForEntities %= MM.adjust (IS.insert rid) loc
-
--- | Watch for robots entering/leaving the location.
-watchForRobots ::
-  HasRobotStepState sig m =>
-  Cosmic Location ->
-  m ()
-watchForRobots loc = do
-  rid <- use robotID
-  robotInfo . robotsWatchingForRobots %= MM.adjust (IS.insert rid) loc
-
-------------------------------------------------------------
--- Build/Reprogram
-------------------------------------------------------------
+  robotInfo . robotsWatching %= MM.adjust (IS.insert rid) loc
 
 -- | Give some entities from a parent robot (the robot represented by
 --   the ambient @State Robot@ effect) to a child robot (represented

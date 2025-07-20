@@ -14,8 +14,7 @@ module Swarm.Game.State.Robot (
   -- * Lenses
   robotMap,
   robotsByLocation,
-  robotsWatchingForEntities,
-  robotsWatchingForRobots,
+  robotsWatching,
   activeRobots,
   waitingRobots,
   currentTickWakeableBots,
@@ -28,8 +27,7 @@ module Swarm.Game.State.Robot (
   focusedRobot,
 
   -- * Utilities
-  wakeRobotsWatchingForEntities,
-  wakeRobotsWatchingForRobots,
+  wakeWatchingRobots,
   sleepUntil,
   sleepForever,
   wakeUpRobotsDoneSleeping,
@@ -207,35 +205,18 @@ clearWatchingRobots ::
   IntSet ->
   m ()
 clearWatchingRobots rids = do
-  robotsWatchingForEntities %= MM.map (`IS.difference` rids)
-  robotsWatchingForRobots %= MM.map (`IS.difference` rids)
+  robotsWatching %= MM.map (`IS.difference` rids)
 
--- | Wake the robots watching for entity change in the location.
-wakeRobotsWatchingForEntities :: (Has (State Robots) sig m) => RID -> TickNumber -> Cosmic Location -> m ()
-wakeRobotsWatchingForEntities myID currentTick loc = do
-  m <- use robotsWatchingForEntities
-  wakeWatchingRobotsInternal m myID currentTick loc
-
--- | Wake the robots watching for robots entering or leaving the location.
-wakeRobotsWatchingForRobots :: (Has (State Robots) sig m) => RID -> TickNumber -> Cosmic Location -> m ()
-wakeRobotsWatchingForRobots myID currentTick loc = do
-  m <- use robotsWatchingForRobots
-  wakeWatchingRobotsInternal m myID currentTick loc
-
--- | Wake the robots watching given location.
+-- | Iterates through all of the currently @wait@-ing robots,
+-- and moves forward the wake time of the ones that are @watch@-ing this location.
 --
--- NOTE: Clearing 'TickNumber' map entries from 'waitingRobots'
+-- NOTE: Clearing 'TickNumber' map entries from 'Internal.waitingRobots'
 -- upon wakeup is handled by 'wakeUpRobotsDoneSleeping'
-wakeWatchingRobotsInternal ::
-  (Has (State Robots) sig m) =>
-  MonoidMap (Cosmic Location) IntSet ->
-  RID ->
-  TickNumber ->
-  Cosmic Location ->
-  m ()
-wakeWatchingRobotsInternal watchingMap myID currentTick loc = do
+wakeWatchingRobots :: (Has (State Robots) sig m) => RID -> TickNumber -> Cosmic Location -> m ()
+wakeWatchingRobots myID currentTick loc = do
   waitingMap <- use waitingRobots
   rMap <- use robotMap
+  watchingMap <- use robotsWatching
 
   -- The bookkeeping updates to robot waiting
   -- states are prepared in 4 steps...
