@@ -228,8 +228,7 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mCha
   chan <- sendIO $ maybe initTestChan pure mChan
   animMgr <- sendIO $ startAnimationManager animMgrTickDuration chan PopupEvent
 
-  let gsc = rs ^. stdGameConfigInputs
-      gs = initGameState gsc
+  let gs = initGameState (rs ^. stdGameConfigInputs) (rs ^. logger)
       ps =
         PlayState
           { _scenarioState = ScenarioState gs $ initialUiGameplay startTime history

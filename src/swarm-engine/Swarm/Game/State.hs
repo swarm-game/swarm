@@ -33,6 +33,7 @@ module Swarm.Game.State (
   robotInfo,
   pathCaching,
   gameMetrics,
+  gameLogEnv,
 
   -- ** GameState initialization
   initGameState,
@@ -133,6 +134,7 @@ import Swarm.Language.Value (Env)
 import Swarm.Log
 import Swarm.Util (applyWhen, uniq)
 import Swarm.Util.Lens (makeLensesNoSigs)
+import Log (LoggerEnv(LoggerEnv), Logger, LogLevel(..))
 
 newtype Sha1 = Sha1 String
   deriving (Show, Eq, Ord, Generic, ToJSON)
@@ -214,6 +216,7 @@ data GameState = GameState
   , _messageInfo :: Messages
   , _completionStatsSaved :: Bool
   , _gameMetrics :: Maybe GameMetrics
+  , _gameLogEnv :: LoggerEnv
   }
 
 makeLensesNoSigs ''GameState
@@ -327,6 +330,9 @@ completionStatsSaved :: Lens' GameState Bool
 
 -- | Metrics tracked for the Swarm Engine. See 'RuntimeState' metrics store.
 gameMetrics :: Lens' GameState (Maybe GameMetrics)
+
+-- | The logging setup for the Swarm Engine. See 'RuntimeState' logger.
+gameLogEnv :: Lens' GameState LoggerEnv
 
 ------------------------------------------------------------
 -- Utilities
@@ -512,8 +518,8 @@ type LaunchParams a = ParameterizableLaunchParams CodeToRun a
 type ValidatedLaunchParams = LaunchParams Identity
 
 -- | Create an initial, fresh game state record when starting a new scenario.
-initGameState :: GameStateConfig -> GameState
-initGameState gsc =
+initGameState :: GameStateConfig -> Logger -> GameState
+initGameState gsc logger =
   GameState
     { _creativeMode = False
     , _temporal =
@@ -533,6 +539,7 @@ initGameState gsc =
     , _messageInfo = initMessages
     , _completionStatsSaved = False
     , _gameMetrics = Nothing
+    , _gameLogEnv = LoggerEnv logger "Engine" [] [] LogTrace
     }
 
 -- | Provide an entity accessor via the MTL transformer State API.

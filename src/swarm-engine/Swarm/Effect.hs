@@ -2,8 +2,10 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 -- Description: Effect system
 module Swarm.Effect (
-  module X,
+  module Time,
+  module Log,
 )
 where
 
-import Swarm.Effect.Time as X
+import Swarm.Effect.Time as Time
+import Swarm.Effect.Log as Log (Log (..), LogIOC (..), runLogIOC, runLogEnvIOC)

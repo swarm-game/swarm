@@ -56,6 +56,7 @@ import Swarm.Language.Types
 import Swarm.Util (applyWhen, binTuples, (?))
 import System.Clock qualified as Clock
 import System.Random (mkStdGen)
+import Log (Logger)
 
 -- | Create an initial game state corresponding to the given scenario.
 scenarioToGameState ::
@@ -68,7 +69,7 @@ scenarioToGameState si@(ScenarioWith scenario _) (LaunchParams (Identity userSee
   theSeed <- arbitrateSeed userSeed $ scenario ^. scenarioLandscape
   now <- Clock.getTime Clock.Monotonic
   gMetric <- maybe (initGameMetrics $ rs ^. metrics) pure prevMetric
-  return $ pureScenarioToGameState si theSeed now toRun (Just gMetric) (rs ^. stdGameConfigInputs)
+  return $ pureScenarioToGameState si theSeed now toRun (Just gMetric) (rs ^. logger) (rs ^. stdGameConfigInputs)
 
 pureScenarioToGameState ::
   ScenarioWith (Maybe ScenarioPath) ->
@@ -76,9 +77,10 @@ pureScenarioToGameState ::
   Clock.TimeSpec ->
   Maybe CodeToRun ->
   Maybe GameMetrics ->
+  Logger ->
   GameStateConfig ->
   GameState
-pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gMetric gsc =
+pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gMetric gLogger gsc =
   preliminaryGameState
     & discovery . structureRecognition .~ recognition
  where
@@ -94,7 +96,7 @@ pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gMetric gsc
       . adaptGameState
       $ initializeRecognition mtlEntityAt (sLandscape ^. scenarioStructures)
 
-  gs = initGameState gsc
+  gs = initGameState gsc gLogger
   preliminaryGameState =
     gs
       & currentScenarioPath .~ fp

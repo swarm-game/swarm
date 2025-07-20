@@ -21,6 +21,7 @@ import Swarm.Game.State.Substate (WinCondition (..), WinStatus (..), messageQueu
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Tick (TickNumber)
 import Swarm.Log (logToText)
+import Swarm.Effect.Log qualified as Log
 
 -- | Keep stepping a 'GameState' until completion, returning the
 --   number of ticks taken if successful, or any bad error messages
@@ -33,7 +34,9 @@ playUntilWin = do
     Just badErrs -> return $ Left badErrs
     Nothing -> case w of
       WinConditions (Won _ ts) _ -> return $ Right ts
-      _ -> runTimeIO gameTick >> playUntilWin
+      _ -> runEffects gameTick >> playUntilWin
+ where
+  runEffects = runTimeIO . Log.runLogIOC mempty mempty minBound 
 
 -- | Extract any bad error messages from robot logs or the global
 --   message queue, where "bad" errors are either fatal errors or
