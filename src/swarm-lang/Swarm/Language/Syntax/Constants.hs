@@ -172,14 +172,10 @@ data Const
     Sniff
   | -- | Get the direction to the closest instance of the specified entity.
     Chirp
-  | -- | Register a location to interrupt a `wait` upon entity changes
+  | -- | Register a location to interrupt a `wait` upon changes
     Watch
-  | -- | Register a location to interrupt a `wait` upon robots entering/leaving
-    WatchRobots
-  | -- | Register a (remote) location to interrupt a `wait` upon entity changes
+  | -- | Register a (remote) location to interrupt a `wait` upon changes
     Surveil
-  | -- | Register a (remote) location to interrupt a `wait` upon robots entering/leaving
-    SurveilRobots
   | -- | Get the current heading.
     Heading
   | -- | See if we can move forward or not.
@@ -748,36 +744,18 @@ constInfo c = case c of
       , T.unwords ["Has a max range of", T.pack $ show maxSniffRange, "units."]
       ]
   Watch ->
-    command 1 short . doc (Set.singleton $ Query $ Sensing EntitySensing) "Interrupt `wait` upon location entity changes." $
-      [ "Place seismic detectors to alert upon entity changes to the specified location."
+    command 1 short . doc (Set.fromList [Query $ Sensing EntitySensing, Query $ Sensing RobotSensing]) "Interrupt `wait` upon location changes." $
+      [ "Place seismic detectors to alert upon changes to the specified location."
       , "Supply a direction, as with the `scan` command, to specify a nearby location."
       , "Can be invoked more than once until the next `wait` command, at which time the only the registered locations that are currently nearby are preserved."
       , "Any change to entities at the monitored locations will cause the robot to wake up before the `wait` timeout."
       ]
-  WatchRobots ->
-    command 1 short $
-      doc
-        (Set.singleton $ Query $ Sensing RobotSensing)
-        "Interrupt `wait` upon robots entering/leaving the location."
-        [ "Place seismic detectors to alert upon robot entering or leaving the specified location."
-        , "Supply a direction, as with the `scan` command, to specify a nearby location."
-        , "Can be invoked more than once until the next `wait` command, at which time the only the registered locations that are currently nearby are preserved."
-        , "The alert will cause current robot to wake up before the `wait` timeout."
-        ]
   Surveil ->
     command 1 Intangible $
       doc
         (Set.singleton $ Query $ Sensing EntitySensing)
-        "Interrupt `wait` upon (remote) location entity changes."
+        "Interrupt `wait` upon (remote) location changes."
         [ "Like `watch`, but instantaneous and with no restriction on distance."
-        , "Supply absolute coordinates."
-        ]
-  SurveilRobots ->
-    command 1 Intangible $
-      doc
-        (Set.singleton $ Query $ Sensing RobotSensing)
-        "Interrupt `wait` upon robots entering/leaving the (remote) location."
-        [ "Like `watchRobots`, but instantaneous and with no restriction on distance."
         , "Supply absolute coordinates."
         ]
   Heading -> command 0 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Get the current heading."
