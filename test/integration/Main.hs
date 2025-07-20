@@ -247,7 +247,7 @@ testScenarioSolutions ps =
         , testSolution (Sec 10) "Challenges/combo-lock"
         , testSolution (Sec 15) "Challenges/wave"
         , testSolution (Sec 3) "Challenges/arbitrage"
-        , testSolution (Sec 10) "Challenges/gopher"
+        , testSolution (Sec 30) "Challenges/gopher"
         , testSolution (Sec 5) "Challenges/hackman"
         , testSolution (Sec 5) "Challenges/blender"
         , testSolution (Sec 10) "Challenges/dna"

@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -9,23 +7,20 @@ module Swarm.Game.State.Robot (
   ViewCenterRule (..),
   Robots,
 
-  -- * Robot naming
-  RobotNaming,
-  nameGenerator,
-  gensym,
-  robotNaming,
-
   -- * Initialization
   initRobots,
   setRobotInfo,
 
-  -- * Accessors
+  -- * Lenses
   robotMap,
   robotsByLocation,
   robotsWatching,
   activeRobots,
   waitingRobots,
   currentTickWakeableBots,
+  robotNaming,
+
+  -- ** View center lenses
   viewCenterRule,
   viewCenter,
   focusedRobotID,
@@ -48,15 +43,19 @@ module Swarm.Game.State.Robot (
   modifyViewCenter,
   unfocus,
   recalcViewCenter,
+
+  -- ** Robot naming
+  RobotNaming,
+  nameGenerator,
+  gensym,
 ) where
 
 import Control.Arrow (Arrow ((&&&)))
 import Control.Effect.Lens
 import Control.Effect.State (State)
 import Control.Effect.Throw (Has)
-import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
+import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=), (<>=))
 import Control.Monad (forM_, void)
-import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
@@ -70,100 +69,24 @@ import Swarm.Game.CESK (CESK (Waiting))
 import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
-import Swarm.Game.State.Config
-import Swarm.Game.State.ViewCenter.Internal (ViewCenter, ViewCenterRule (..), defaultViewCenter)
+import Swarm.Game.State.RobotNaming
+import Swarm.Game.State.Robots.Internal hiding (activeRobots, waitingRobots)
+import Swarm.Game.State.Robots.Internal qualified as Internal (activeRobots, waitingRobots)
+import Swarm.Game.State.ViewCenter.Internal (ViewCenterRule (..))
 import Swarm.Game.State.ViewCenter.Internal qualified as VCInternal
 import Swarm.Game.Tick
 import Swarm.Game.Universe as U
-import Swarm.ResourceLoading (NameGenerator)
-import Swarm.Util ((<+=), (<<.=))
-import Swarm.Util.Lens (makeLensesExcluding)
-
-data RobotNaming = RobotNaming
-  { _nameGenerator :: NameGenerator
-  , _gensym :: Int
-  }
-
-makeLensesExcluding ['_nameGenerator] ''RobotNaming
-
---- | Read-only list of words, for use in building random robot names.
-nameGenerator :: Getter RobotNaming NameGenerator
-nameGenerator = to _nameGenerator
-
--- | A counter used to generate globally unique IDs.
-gensym :: Lens' RobotNaming Int
-
-data Robots = Robots
-  { _robotMap :: IntMap Robot
-  , -- A set of robots to consider for the next game tick. It is guaranteed to
-    -- be a subset of the keys of 'robotMap'. It may contain waiting or idle
-    -- robots. But robots that are present in 'robotMap' and not in 'activeRobots'
-    -- are guaranteed to be either waiting or idle.
-    _activeRobots :: IntSet
-  , -- A set of probably waiting robots, indexed by probable wake-up time. It
-    -- may contain robots that are in fact active or idle, as well as robots
-    -- that do not exist anymore. Its only guarantee is that once a robot name
-    -- with its wake up time is inserted in it, it will remain there until the
-    -- wake-up time is reached, at which point it is removed via
-    -- 'wakeUpRobotsDoneSleeping'.
-    -- Waiting robots for a given time are a list because it is cheaper to
-    -- prepend to a list than insert into a 'Set'.
-    _waitingRobots :: MonoidMap TickNumber [RID]
-  , _currentTickWakeableBots :: [RID]
-  , _robotsByLocation :: MonoidMap SubworldName (MonoidMap Location IntSet)
-  , -- This member exists as an optimization so
-    -- that we do not have to iterate over all "waiting" robots,
-    -- since there may be many.
-    _robotsWatching :: MonoidMap (Cosmic Location) IntSet
-  , _robotNaming :: RobotNaming
-  , _viewCenterState :: ViewCenter
-  }
-
--- We want to access active and waiting robots via lenses inside
--- this module but to expose it as a Getter to protect invariants.
-makeLensesFor
-  [ ("_activeRobots", "internalActiveRobots")
-  , ("_waitingRobots", "internalWaitingRobots")
-  ]
-  ''Robots
-
-makeLensesExcluding ['_activeRobots, '_waitingRobots] ''Robots
-
--- | All the robots that currently exist in the game, indexed by ID.
-robotMap :: Lens' Robots (IntMap Robot)
+import Swarm.Util ((<+=), (<<.=), (<>=))
 
 -- | The names of the robots that are currently not sleeping.
 activeRobots :: Getter Robots IntSet
-activeRobots = internalActiveRobots
+activeRobots = Internal.activeRobots
 
 -- | The names of the robots that are currently sleeping, indexed by wake up
 --   time. Note that this may not include all sleeping robots, particularly
 --   those that are only taking a short nap (e.g. @wait 1@).
 waitingRobots :: Getter Robots (MonoidMap TickNumber [RID])
-waitingRobots = internalWaitingRobots
-
--- | Get a list of all the robots that are \"watching\" by location.
-currentTickWakeableBots :: Lens' Robots [RID]
-
--- | The names of all robots that currently exist in the game, indexed by
---   location (which we need both for /e.g./ the @salvage@ command as
---   well as for actually drawing the world).  Unfortunately there is
---   no good way to automatically keep this up to date, since we don't
---   just want to completely rebuild it every time the 'robotMap'
---   changes.  Instead, we just make sure to update it every time the
---   location of a robot changes, or a robot is created or destroyed.
---   Fortunately, there are relatively few ways for these things to
---   happen.
-robotsByLocation :: Lens' Robots (MonoidMap SubworldName (MonoidMap Location IntSet))
-
--- | Get a list of all the robots that are \"watching\" by location.
-robotsWatching :: Lens' Robots (MonoidMap (Cosmic Location) IntSet)
-
--- | State and data for assigning identifiers to robots
-robotNaming :: Lens' Robots RobotNaming
-
--- | The current view center location, focused robot and the rule for which to follow.
-viewCenterState :: Lens' Robots ViewCenter
+waitingRobots = Internal.waitingRobots
 
 -- | The current center of the world view. Note that this cannot be
 --   modified directly, since it is calculated automatically from the
@@ -201,25 +124,6 @@ viewCenterRule = lens getter setter
       & viewCenterState . VCInternal.viewCenterRule .~ rule
       & viewCenterState %~ VCInternal.syncViewCenter (getLocationFromRID rInfo)
 
--- * Utilities
-
-initRobots :: GameStateConfig -> Robots
-initRobots gsc =
-  Robots
-    { _robotMap = IM.empty
-    , _activeRobots = IS.empty
-    , _waitingRobots = mempty
-    , _currentTickWakeableBots = mempty
-    , _robotsByLocation = mempty
-    , _robotsWatching = mempty
-    , _robotNaming =
-        RobotNaming
-          { _nameGenerator = nameParts gsc
-          , _gensym = 0
-          }
-    , _viewCenterState = defaultViewCenter
-    }
-
 -- | Add a concrete instance of a robot template to the game state:
 --   First, generate a unique ID number for it.  Then, add it to the
 --   main robot map, the active robot set, and to to the index of
@@ -242,7 +146,7 @@ addRobot :: (Has (State Robots) sig m) => Robot -> m ()
 addRobot r = do
   robotMap %= IM.insert rid r
   addRobotToLocation rid $ r ^. robotLocation
-  internalActiveRobots %= IS.insert rid
+  Internal.activeRobots %= IS.insert rid
  where
   rid = r ^. robotID
 
@@ -256,16 +160,16 @@ addRobotToLocation rid rLoc =
 --   queue.
 sleepUntil :: (Has (State Robots) sig m) => RID -> TickNumber -> m ()
 sleepUntil rid time = do
-  internalActiveRobots %= IS.delete rid
-  internalWaitingRobots %= MM.adjust (rid :) time
+  Internal.activeRobots %= IS.delete rid
+  Internal.waitingRobots %= MM.adjust (rid :) time
 
 -- | Takes a robot out of the 'activeRobots' set.
 sleepForever :: (Has (State Robots) sig m) => RID -> m ()
-sleepForever rid = internalActiveRobots %= IS.delete rid
+sleepForever rid = Internal.activeRobots %= IS.delete rid
 
 -- | Adds a robot to the 'activeRobots' set.
 activateRobot :: (Has (State Robots) sig m) => RID -> m ()
-activateRobot rid = internalActiveRobots %= IS.insert rid
+activateRobot rid = Internal.activeRobots %= IS.insert rid
 
 -- | Removes robots whose wake up time matches the current game ticks count
 --   from the 'waitingRobots' queue and put them back in the 'activeRobots' set
@@ -277,18 +181,18 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 --
 -- * 'wakeLog'
 -- * 'robotsWatching'
--- * 'internalWaitingRobots'
--- * 'internalActiveRobots' (aka 'activeRobots')
+-- * 'waitingRobots'
+-- * 'activeRobots'
 wakeUpRobotsDoneSleeping :: (Has (State Robots) sig m) => TickNumber -> m ()
 wakeUpRobotsDoneSleeping time = do
   robotIdSet <- IM.keysSet <$> use robotMap
-  wakeableRIDsSet <- IS.fromList . MM.get time <$> use internalWaitingRobots
-  internalWaitingRobots %= MM.nullify time
+  wakeableRIDsSet <- IS.fromList . MM.get time <$> use Internal.waitingRobots
+  Internal.waitingRobots %= MM.nullify time
 
   -- Limit ourselves to the robots that have not expired in their sleep
   let newlyAlive = IS.intersection robotIdSet wakeableRIDsSet
 
-  internalActiveRobots %= IS.union newlyAlive
+  Internal.activeRobots %= IS.union newlyAlive
 
   -- These robots' wake times may have been moved "forward"
   -- by 'wakeWatchingRobots'.
@@ -306,7 +210,7 @@ clearWatchingRobots rids = do
 -- | Iterates through all of the currently @wait@-ing robots,
 -- and moves forward the wake time of the ones that are @watch@-ing this location.
 --
--- NOTE: Clearing 'TickNumber' map entries from 'internalWaitingRobots'
+-- NOTE: Clearing 'TickNumber' map entries from 'Internal.waitingRobots'
 -- upon wakeup is handled by 'wakeUpRobotsDoneSleeping'
 wakeWatchingRobots :: (Has (State Robots) sig m) => RID -> TickNumber -> Cosmic Location -> m ()
 wakeWatchingRobots myID currentTick loc = do
@@ -353,16 +257,16 @@ wakeWatchingRobots myID currentTick loc = do
         ]
       newInsertions = MM.fromList wakeTimeGroups
 
-  -- Contract: This must be emptied immediately
-  -- in 'iterateRobots'
-  currentTickWakeableBots .= currTickWakeable
+  -- Contract: This must be emptied immediately in 'iterateRobots'
+  -- after this robot finishes its step
+  currentTickWakeableBots <>= IS.fromList currTickWakeable
 
   -- NOTE: There are two "sources of truth" for the waiting state of robots:
-  -- 1. In the GameState via "internalWaitingRobots"
+  -- 1. In the GameState via "Internal.waitingRobots"
   -- 2. In each robot, via the CESK machine state
 
   -- 1. Update the game state
-  internalWaitingRobots .= filteredWaiting <> newInsertions
+  Internal.waitingRobots .= filteredWaiting <> newInsertions
 
   -- 2. Update the machine of each robot
   forM_ wakeTimeGroups $ \(newWakeTime, wakeableBots) ->
@@ -373,7 +277,7 @@ wakeWatchingRobots myID currentTick loc = do
 
 deleteRobot :: (Has (State Robots) sig m) => RID -> m (Maybe (Cosmic Location))
 deleteRobot rn = do
-  internalActiveRobots %= IS.delete rn
+  Internal.activeRobots %= IS.delete rn
   mrobot <- robotMap . at rn <<.= Nothing
   mrobot `forM_` \robot -> do
     -- Delete the robot from the index of robots by location.
@@ -404,7 +308,7 @@ setRobotList robotList rState =
   rState
     & robotMap .~ IM.fromList (map (view robotID &&& id) robotList)
     & robotsByLocation .~ groupRobotsByLocation robotList
-    & internalActiveRobots .~ setOf (traverse . robotID) robotList
+    & Internal.activeRobots .~ setOf (traverse . robotID) robotList
     & robotNaming . gensym .~ initGensym
  where
   initGensym = length robotList - 1

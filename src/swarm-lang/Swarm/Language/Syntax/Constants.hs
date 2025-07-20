@@ -744,8 +744,8 @@ constInfo c = case c of
       , T.unwords ["Has a max range of", T.pack $ show maxSniffRange, "units."]
       ]
   Watch ->
-    command 1 short . doc (Set.singleton $ Query $ Sensing EntitySensing) "Interrupt `wait` upon location changes." $
-      [ "Place seismic detectors to alert upon entity changes to the specified location."
+    command 1 short . doc (Set.fromList [Query $ Sensing EntitySensing, Query $ Sensing RobotSensing]) "Interrupt `wait` upon location changes." $
+      [ "Place seismic detectors to alert upon changes to the specified location."
       , "Supply a direction, as with the `scan` command, to specify a nearby location."
       , "Can be invoked more than once until the next `wait` command, at which time the only the registered locations that are currently nearby are preserved."
       , "Any change to entities at the monitored locations will cause the robot to wake up before the `wait` timeout."
