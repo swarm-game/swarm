@@ -10,6 +10,7 @@ import Data.Aeson
 import Data.Data (Data, Typeable)
 import GHC.Generics (Generic)
 import Swarm.Language.Syntax
+import Swarm.Language.Phase (ImportPhaseFor)
 
 data CodeSizeDeterminators = CodeSizeDeterminators
   { initialCode :: Maybe (Syntax Raw)
@@ -24,7 +25,7 @@ data ScenarioCodeMetrics = ScenarioCodeMetrics
   deriving (Eq, Ord, Show, Read, Generic, ToJSON, FromJSON)
 
 codeMetricsFromSyntax ::
-  (Data (SwarmType phase), Typeable phase, Data (ResolvedDir phase), Data (ResolvedFile phase)) =>
+  (Data (SwarmType phase), Typeable phase, Typeable (ImportPhaseFor phase)) =>
   Syntax phase ->
   ScenarioCodeMetrics
 codeMetricsFromSyntax s@(Syntax srcLoc _ _ _) =
@@ -32,7 +33,7 @@ codeMetricsFromSyntax s@(Syntax srcLoc _ _ _) =
  where
   charCount :: SrcLoc -> Int
   charCount NoLoc = 0
-  charCount (SrcLoc start end) = end - start
+  charCount (SrcLoc _ start end) = end - start
 
 codeSizeFromDeterminator :: CodeSizeDeterminators -> Maybe ScenarioCodeMetrics
 codeSizeFromDeterminator (CodeSizeDeterminators maybeInitialCode usedRepl) = do
