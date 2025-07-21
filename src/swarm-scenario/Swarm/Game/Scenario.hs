@@ -106,7 +106,7 @@ import Swarm.Game.World.Gen (Seed)
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Pipeline (Processable (..))
-import Swarm.Language.Syntax (ResolvedDir, ResolvedFile, Phase (..), SwarmType, Syntax)
+import Swarm.Language.Syntax (Phase (..), SwarmType, Syntax)
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Pretty (prettyText)
 import Swarm.ResourceLoading (getDataFileNameSafe)
@@ -162,7 +162,7 @@ data ScenarioOperation (phase :: Phase) = ScenarioOperation
   , _scenarioStepsPerTick :: Maybe Int
   }
 
-deriving instance (Show (SwarmType phase), Show (ResolvedDir phase), Show (ResolvedFile phase)) => Show (ScenarioOperation phase)
+deriving instance (Show (SwarmType phase)) => Show (ScenarioOperation phase)
 
 instance Processable ScenarioOperation where
   process (ScenarioOperation c d o s r st) =

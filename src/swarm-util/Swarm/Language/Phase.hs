@@ -1,12 +1,17 @@
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeData #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Phases in the processing pipeline for language terms + robot records.
 module Swarm.Language.Phase (
-  Phase (..)
+  Phase (..),
+  ImportPhaseFor,
 ) where
+
+import Swarm.Language.Syntax.Import qualified as Import
 
 -- | XXX
 type data Phase where
@@ -24,3 +29,8 @@ type data Phase where
 
 -- XXX note: no separate Elaborated phase, having elaboration be
 -- type-changing would be annoying.
+
+-- XXX
+type family ImportPhaseFor (p :: Phase) :: Import.ImportPhase where
+  ImportPhaseFor Raw = Import.Raw
+  ImportPhaseFor p = Import.Resolved

@@ -10,7 +10,6 @@ import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
-import Swarm.Language.Syntax (Phase (..))
 import Text.Dot
 
 renderGoalsGraph :: ObjectiveCompletion phase -> String

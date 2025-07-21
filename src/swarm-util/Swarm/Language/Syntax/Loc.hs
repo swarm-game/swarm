@@ -17,8 +17,7 @@ import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Data (Data)
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
-import Swarm.Language.Syntax.Import (ImportLoc)
-import Swarm.Language.Phase (Resolved)
+import Swarm.Language.Syntax.Import (ImportLoc, Resolved)
 import Swarm.Util.JSON (optionsUntagged)
 
 ------------------------------------------------------------
@@ -32,7 +31,7 @@ data SrcLoc
   = NoLoc
   | -- | Half-open interval from start (inclusive) to end (exclusive)
     SrcLoc (Maybe (ImportLoc Resolved)) Int Int
-  deriving (Eq, Ord, Show, Data, Generic, Hashable)
+  deriving (Eq, Ord, Show, Generic, Data, Hashable)
 
 instance ToJSON SrcLoc where
   toJSON = genericToJSON optionsUntagged
@@ -71,4 +70,4 @@ srcLocEndsBefore _ _ = False
 --   binding sites. (Variable occurrences are a bare TVar which gets
 --   wrapped in a Syntax node, so we don't need Located for those.)
 data Located v = LV {lvSrcLoc :: SrcLoc, lvVar :: v}
-  deriving (Eq, Ord, Functor, Show, Data, Generic, Hashable, ToJSON)
+  deriving (Eq, Ord, Functor, Show, Generic, Data, Hashable, ToJSON)
