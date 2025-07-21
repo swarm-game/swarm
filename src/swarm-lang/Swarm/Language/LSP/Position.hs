@@ -164,5 +164,5 @@ pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
       Just iss -> s1 : iss
 
 withinBound :: Int -> SrcLoc -> Bool
-withinBound pos (SrcLoc s e) = pos >= s && pos < e
+withinBound pos (SrcLoc _ s e) = pos >= s && pos < e
 withinBound _ NoLoc = False

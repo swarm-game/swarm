@@ -45,7 +45,7 @@ import Data.Tree
 import Swarm.Language.Phase
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Constants
-import Swarm.Language.Syntax.Import
+import Swarm.Language.Syntax.Import (ImportLoc, unresolveImportLoc)
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern
 import Swarm.Language.Var (LocVar, Var)
@@ -119,7 +119,7 @@ locVarToSyntax (Loc s v) = Syntax s (TVar v) Empty
 termSyntax ::
   Applicative f =>
   (SwarmType a -> f (SwarmType b)) ->
-  (ImportLoc a -> f (ImportLoc b)) ->
+  (ImportLoc (ImportPhaseFor a) -> f (ImportLoc (ImportPhaseFor b))) ->
   (Syntax a -> f (Syntax b)) ->
   Term a ->
   f (Term b)
@@ -165,7 +165,7 @@ termSyntax fty floc fsyn = \case
 traverseSyntax ::
   Applicative f =>
   (SwarmType a -> f (SwarmType b)) ->
-  (ImportLoc a -> f (ImportLoc b)) ->
+  (ImportLoc (ImportPhaseFor a) -> f (ImportLoc (ImportPhaseFor b))) ->
   Syntax a ->
   f (Syntax b)
 traverseSyntax f g (Syntax loc t com ty) =
@@ -180,17 +180,13 @@ class Erasable t where
   erase :: t Typed -> t Resolved
   eraseRaw :: t phase -> t Raw
 
-instance Erasable ImportLoc where
-  erase (ImportLoc f d ff dd) = ImportLoc f d ff dd
-  eraseRaw (ImportLoc f d _ _) = ImportLoc f d () ()
-
 instance Erasable Syntax where
-  erase = runIdentity . traverseSyntax (const (pure ())) (pure . erase)
-  eraseRaw = runIdentity . traverseSyntax (const (pure ())) (pure . eraseRaw)
+  erase = runIdentity . traverseSyntax (const (pure ())) pure
+  eraseRaw = runIdentity . traverseSyntax (const (pure ())) (pure . unresolveImportLoc)
 
 instance Erasable Term where
-  erase = runIdentity . termSyntax (const (pure ())) (pure . erase) (pure . erase)
-  eraseRaw = runIdentity . termSyntax (const (pure ())) (pure . eraseRaw) (pure . eraseRaw)
+  erase = runIdentity . termSyntax (const (pure ())) pure (pure . erase)
+  eraseRaw = runIdentity . termSyntax (const (pure ())) (pure . unresolveImportLoc) (pure . eraseRaw)
 
 ------------------------------------------------------------
 -- Free variable traversals
@@ -270,12 +266,12 @@ mapFreeS x f = freeVarsS %~ (\t -> case t ^. sTerm of TVar y | y == x -> f t; _ 
 
 -- | Transform the AST into a Tree datatype.  Useful for
 --   pretty-printing (e.g. via "Data.Tree.drawTree").
-asTree :: (Typeable phase, Data (SwarmType phase), Data (ResolvedDir phase), Data (ResolvedFile phase)) => Syntax phase -> Tree (Syntax phase)
+asTree :: (Typeable phase, Typeable (ImportPhaseFor phase), Data (SwarmType phase)) => Syntax phase -> Tree (Syntax phase)
 asTree = para Node
 
 -- | Each constructor is a assigned a value of 1, plus
 --   any recursive syntax it entails.
-measureAstSize :: (Typeable phase, Data (SwarmType phase), Data (ResolvedDir phase), Data (ResolvedFile phase)) => Syntax phase -> Int
+measureAstSize :: (Typeable phase, Typeable (ImportPhaseFor phase), Data (SwarmType phase)) => Syntax phase -> Int
 measureAstSize = length . filter (not . isNoop) . universe
 
 -- | Don't count "noop" nodes towards the code size.  They are usually

@@ -149,7 +149,7 @@ srcLocToPos l code = (minusOne start, minusOne end)
   minusOne (x, y) = (x - 1, y - 1)
 
   (start, end) = case l of
-    SrcLoc s e -> getLocRange code (s, e)
+    SrcLoc _ s e -> getLocRange code (s, e)
     NoLoc -> ((1, 1), (65535, 65535)) -- unknown loc spans the whole document
 
 handlers :: Handlers (LspM ())

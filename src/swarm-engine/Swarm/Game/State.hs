@@ -171,7 +171,7 @@ parseCodeFile filepath = do
   return $ CodeToRun (PlayerAuthored filepath $ Sha1 sha1Hash) pt
  where
   stripSrc :: SrcLoc -> Text -> Text
-  stripSrc (SrcLoc start end) txt = T.drop start $ T.take end txt
+  stripSrc (SrcLoc _ start end) txt = T.drop start $ T.take end txt
   stripSrc NoLoc txt = txt
 
 ------------------------------------------------------------

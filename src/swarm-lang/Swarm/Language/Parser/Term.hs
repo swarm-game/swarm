@@ -28,6 +28,7 @@ import Swarm.Language.Parser.Type
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Syntax.Import (Anchor (..), mkImportDir)
+import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Language.Types
 import Swarm.Util (failT, findDup)
 import Text.Megaparsec hiding (runParser, sepBy1)
@@ -124,12 +125,12 @@ parseStock =
     <*> (textLiteral <?> "entity name in double quotes")
 
 -- XXX move this to a dedicated module??
-parseImportLocation :: Parser (ImportLoc Raw)
+parseImportLocation :: Parser (ImportLoc Import.Raw)
 parseImportLocation =
   lexeme . between (char '"') (char '"') $ do
     anchor <- parseAnchor
     cs <- importComponent `sepBy1` separator
-    pure $ ImportLoc (mkImportDir anchor (NE.init cs)) (NE.last cs) () ()
+    pure $ ImportLoc (mkImportDir anchor (NE.init cs)) (NE.last cs)
  where
   importComponent :: Parser Text
   importComponent = into @Text <$> someTill L.charLiteral (lookAhead (oneOf ("\"/\\" :: [Char])))
@@ -137,7 +138,7 @@ parseImportLocation =
   separator :: Parser Char
   separator = oneOf ['/', '\\']
 
-  parseAnchor :: Parser Anchor
+  parseAnchor :: Parser (Anchor Import.Raw)
   parseAnchor =
     (Absolute <$ separator)
       <|> (Home <$ (char '~' *> separator))
