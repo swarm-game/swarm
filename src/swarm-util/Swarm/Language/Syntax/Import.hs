@@ -3,6 +3,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TypeData #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -12,6 +14,9 @@
 --
 -- Data types to represent Swarm-lang import locations.
 module Swarm.Language.Syntax.Import (
+  -- * Import phase
+  ImportPhase (..),
+
   -- * Anchors
   Anchor (..),
 
@@ -26,20 +31,27 @@ module Swarm.Language.Syntax.Import (
 
   -- * ImportLoc
   ImportLoc (..),
+  importAnchor,
 
   -- ** Utilities
   anchorToFilePath,
   dirToFilePath,
   locToFilePath,
+  (<//>),
+  unresolveImportDir,
+  unresolveImportLoc,
 
   -- ** Resolution
   -- unsafeResolveImportLoc,
+  resolveImportDir,
   resolveImportLoc,
 ) where
 
 import Control.Algebra (Has)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Aeson (FromJSON (..), ToJSON (..))
+import Data.Data (Data (..), Typeable)
+import Data.Data qualified as Data
 import Data.Hashable (Hashable (..))
 import Data.Text (Text)
 import GHC.Generics (Generic)
@@ -47,6 +59,7 @@ import Prettyprinter (hcat, pretty, punctuate, slash)
 import Swarm.Pretty
 import System.Directory (doesFileExist, getCurrentDirectory, getHomeDirectory)
 import System.FilePath (joinPath, splitDirectories, (</>))
+import Unsafe.Coerce (unsafeCoerce)
 import Witch (into)
 
 ------------------------------------------------------------
@@ -77,11 +90,44 @@ data Anchor (phase :: ImportPhase) where
   -- | Relative to the home directory, /i.e./ "~".  Home anchor can
   --   only be raw; it will get resolved into an Absolute path.
   Home :: Anchor Raw
-  --  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON, Hashable)
 
 deriving instance Eq (Anchor phase)
 deriving instance Ord (Anchor phase)
 deriving instance Show (Anchor phase)
+
+instance Typeable phase => Data (Anchor phase) where
+  gfoldl _ z Absolute = z Absolute
+  gfoldl k z (Web t) = k (z Web) t
+  gfoldl k z (Local n) = k (z Local) n
+  gfoldl _ z Home = z Home
+
+  gunfold k z c = case Data.constrIndex c of
+    1 -> z Absolute
+    2 -> k (z Web)
+    3 -> k (z (unsafeCoerce Local :: Int -> Anchor phase))
+    4 -> z (unsafeCoerce Home :: Anchor phase)   -- XXX ???
+    _ -> error "impossible"
+
+  toConstr Absolute = constrAbsolute
+  toConstr (Web _) = constrWeb
+  toConstr (Local _) = constrLocal
+  toConstr Home = constrHome
+  dataTypeOf _ = dataTypeAnchor
+
+constrAbsolute :: Data.Constr
+constrAbsolute = Data.mkConstrTag dataTypeAnchor "Absolute" 1 [] Data.Prefix
+
+constrWeb :: Data.Constr
+constrWeb = Data.mkConstrTag dataTypeAnchor "Web" 2 [] Data.Prefix
+
+constrLocal :: Data.Constr
+constrLocal = Data.mkConstrTag dataTypeAnchor "Local" 3 [] Data.Prefix
+
+constrHome :: Data.Constr
+constrHome = Data.mkConstrTag dataTypeAnchor "Home" 4 [] Data.Prefix
+
+dataTypeAnchor :: Data.DataType
+dataTypeAnchor = Data.mkDataType "Swarm.Language.Syntax.Import.Anchor" [constrAbsolute, constrWeb, constrLocal, constrHome]
 
 instance FromJSON (Anchor phase) where
   parseJSON = undefined -- XXX can't auto-derive due to GADT; implement by hand?
@@ -103,6 +149,14 @@ anchorToFilePath = \case
   Absolute -> "/"
   Web w -> into @FilePath w
 
+-- XXX
+unresolveAnchor :: Anchor phase -> Anchor Raw
+unresolveAnchor = \case
+  Absolute -> Absolute
+  Web t -> Web t
+  Local n -> Local n
+  Home -> Home
+
 ------------------------------------------------------------
 -- ImportDir
 
@@ -123,7 +177,7 @@ anchorToFilePath = \case
 --   use the 'mkImportDir' smart constructor. To extract information,
 --   use 'withImportDir'.
 data ImportDir (phase :: ImportPhase) = ImportDir (Anchor phase) [Text]
-  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON, Hashable)
+  deriving (Eq, Ord, Show, Generic, Data, FromJSON, ToJSON, Hashable)
 
 instance PrettyPrec (ImportDir phase) where
   prettyPrec _ (ImportDir anchor ps) = hcat $ punctuate slash (ppr anchor : map pretty ps)
@@ -171,16 +225,14 @@ instance Semigroup (ImportDir phase) where
 instance Monoid (ImportDir Raw) where
   mempty = ImportDir (Local 0) []
 
--- appendImportDir :: ImportDir Resolved -> ImportDir phase -> ImportDir Resolved
--- appendImportDir _ d@(ImportDir (Web {}) _) = d
--- appendImportDir _ d@(ImportDir Home _) = d
--- appendImportDir _ d@(ImportDir Absolute _) = d
--- appendImportDir (ImportDir a p1) (ImportDir (Local n) p2) = mkImportDir a (p1 ++ replicate n ".." ++ p2)
-
 -- | Turn an 'ImportDir' into a concrete 'FilePath' (or URL).
 dirToFilePath :: ImportDir Resolved -> FilePath
 dirToFilePath = withImportDir $ \a p ->
   anchorToFilePath a </> joinPath (map (into @FilePath) p)
+
+-- XXX
+unresolveImportDir :: ImportDir phase -> ImportDir Raw
+unresolveImportDir (ImportDir a p) = ImportDir (unresolveAnchor a) p
 
 ------------------------------------------------------------
 -- Canonicalization
@@ -233,7 +285,7 @@ data ImportLoc (phase :: ImportPhase) = ImportLoc
   { importDir :: ImportDir phase
   , importFile :: Text
   }
-  deriving (Generic, Eq, Ord, Show, Hashable, ToJSON)
+  deriving (Generic, Data, Eq, Ord, Show, Hashable, ToJSON)
 
 instance PrettyPrec (ImportLoc phase) where
   prettyPrec _ (ImportLoc d f) = ppr d <> "/" <> pretty f
@@ -245,6 +297,10 @@ importAnchor = withImportDir const . importDir
 -- | Turn an 'ImportLoc' into a concrete 'FilePath' (or URL).
 locToFilePath :: ImportLoc Resolved -> FilePath
 locToFilePath (ImportLoc d f) = dirToFilePath d </> into @FilePath f
+
+-- XXX
+(<//>) :: ImportDir phase -> ImportLoc phase -> ImportLoc phase
+d1 <//> ImportLoc d2 f = ImportLoc (d1 <> d2) f
 
 ------------------------------------------------------------
 -- Import resolution
@@ -291,3 +347,8 @@ resolveImportLoc (ImportLoc d f) = do
     -- does not exist, but the location with .sw appended does
     (False, True) -> pure loc'sw
     _ -> pure loc'
+
+-- XXX
+unresolveImportLoc :: ImportLoc a -> ImportLoc Raw
+unresolveImportLoc (ImportLoc d f) = ImportLoc (unresolveImportDir d) f
+  

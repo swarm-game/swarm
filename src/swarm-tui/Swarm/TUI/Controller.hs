@@ -85,7 +85,6 @@ import Swarm.Language.Parser.Lex (reservedWords)
 import Swarm.Language.Parser.Util (showErrorPos)
 import Swarm.Language.Pipeline (processParsedTerm')
 import Swarm.Language.Syntax hiding (Key)
-import Swarm.Language.Types (Polytype)
 import Swarm.Language.Value (Value (VKey), emptyEnv, envTypes)
 import Swarm.Log
 import Swarm.Pretty (prettyString)
@@ -893,7 +892,7 @@ validateREPLForm s =
           (theType, errSrcLoc) <- case readTerm' defaultParserConfig uinput of
             Left err ->
               let (((_y1, x1), (_y2, x2)), _msg) = showErrorPos err
-               in pure (Nothing, Left (SrcLoc x1 x2))
+               in pure (Nothing, Left (SrcLoc Nothing x1 x2))
             Right Nothing -> pure (Nothing, Right ())
             Right (Just theTerm) -> do
               -- XXX cache SrcMap, so we don't do disk access on each keystroke!

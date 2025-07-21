@@ -51,8 +51,6 @@ module Swarm.Language.Syntax (
   -- * Imports
   ImportDir,
   ImportLoc (..),
-  ResolvedDir,
-  ResolvedFile,
   locToFilePath,
 
   -- * Syntax

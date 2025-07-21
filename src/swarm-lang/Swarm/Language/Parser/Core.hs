@@ -40,7 +40,8 @@ import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Void (Void)
 import Language.Haskell.TH qualified as TH
-import Swarm.Language.Syntax (Comment, ImportLoc, Phase (Resolved), locToFilePath)
+import Swarm.Language.Syntax (Comment, ImportLoc, locToFilePath)
+import Swarm.Language.Syntax.Import (ImportPhase (Resolved))
 import Text.Megaparsec hiding (runParser, runParser')
 import Text.Megaparsec qualified as MP
 import Text.Megaparsec.State (initialPosState, initialState)
