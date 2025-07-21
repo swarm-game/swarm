@@ -42,7 +42,7 @@ import Swarm.Pretty (prettyText, prettyTextLine)
 import Swarm.Util qualified as U
 
 withinBound :: Int -> SrcLoc -> Bool
-withinBound pos (SrcLoc s e) = pos >= s && pos < e
+withinBound pos (SrcLoc _ s e) = pos >= s && pos < e
 withinBound _ NoLoc = False
 
 ropeToLspPosition :: R.Position -> J.Position
@@ -80,7 +80,7 @@ showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
 posToRange :: R.Rope -> SrcLoc -> Maybe J.Range
 posToRange myRope foundSloc = do
   (s, e) <- case foundSloc of
-    SrcLoc s e -> Just (s, e)
+    SrcLoc _ s e -> Just (s, e)
     _ -> Nothing
   let (startRope, _) = R.charSplitAt (fromIntegral s) myRope
       (endRope, _) = R.charSplitAt (fromIntegral e) myRope

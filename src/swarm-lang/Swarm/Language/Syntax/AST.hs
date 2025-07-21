@@ -29,7 +29,7 @@ import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Direction
-import Swarm.Language.Syntax.Import
+import Swarm.Language.Syntax.Import (ImportLoc)
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.TDVar (TDVar)
 import Swarm.Language.Types
@@ -55,11 +55,12 @@ data Syntax phase = Syntax
   }
   deriving (Generic)
 
-deriving instance (Eq (SwarmType phase), Eq (ResolvedDir phase), Eq (ResolvedFile phase)) => Eq (Syntax phase)
-deriving instance (Show (SwarmType phase), Show (ResolvedDir phase), Show (ResolvedFile phase)) => Show (Syntax phase)
-deriving instance (Data (SwarmType phase), Typeable phase, Data (ResolvedDir phase), Data (ResolvedFile phase)) => Data (Syntax phase)
-deriving instance (Hashable (SwarmType phase), Hashable (ResolvedDir phase), Hashable (ResolvedFile phase)) => Hashable (Syntax phase)
-instance (Data (SwarmType phase), Typeable phase, Data (ResolvedDir phase), Data (ResolvedFile phase)) => Plated (Syntax phase) where
+deriving instance (Eq (SwarmType phase)) => Eq (Syntax phase)
+deriving instance (Show (SwarmType phase)) => Show (Syntax phase)
+deriving instance (Data (SwarmType phase), Typeable phase, Typeable (ImportPhaseFor phase)) => Data (Syntax phase)
+deriving instance (Hashable (SwarmType phase)) => Hashable (Syntax phase)
+
+instance (Data (SwarmType phase), Typeable phase, Typeable (ImportPhaseFor phase)) => Plated (Syntax phase) where
   plate = uniplate
 
 -- | A @let@ expression can be written either as @let x = e1 in e2@ or
@@ -173,25 +174,13 @@ data Term phase
     TType Type
   | -- | Import a term containing definitions, which will be in scope
     --   in the following term.
-    SImportIn (ImportLoc phase) (Syntax phase)
-  deriving ( Generic )
+    SImportIn (ImportLoc (ImportPhaseFor phase)) (Syntax phase)
+  deriving (Generic)
 
-deriving instance (Eq (SwarmType phase), Eq (ResolvedDir phase), Eq (ResolvedFile phase)) => Eq (Term phase)
-deriving instance (Show (SwarmType phase), Show (ResolvedDir phase), Show (ResolvedFile phase)) => Show (Term phase)
-deriving instance (Data (SwarmType phase), Typeable phase, Data (ResolvedDir phase), Data (ResolvedFile phase)) => Data (Term phase)
-deriving instance (Hashable (SwarmType phase), Hashable (ResolvedDir phase), Hashable (ResolvedFile phase)) => Hashable (Term phase)
+deriving instance (Eq (SwarmType phase)) => Eq (Term phase)
+deriving instance (Show (SwarmType phase)) => Show (Term phase)
+deriving instance (Data (SwarmType phase), Typeable phase, Typeable (ImportPhaseFor phase)) => Data (Term phase)
+deriving instance (Hashable (SwarmType phase)) => Hashable (Term phase)
 
-    -- XXX
-    -- , -- | The Traversable instance for Term (and for Syntax) is used during
-    --   -- typechecking: during intermediate type inference, many of the type
-    --   -- annotations placed on AST nodes will have unification variables in
-    --   -- them. Once we have finished solving everything we need to do a
-    --   -- final traversal over all the types in the AST to substitute away
-    --   -- all the unification variables (and generalize, i.e. stick 'forall'
-    --   -- on, as appropriate).  See the call to 'mapM' in
-    --   -- Swarm.Language.Typecheck.runInfer.
-    --   Traversable
-
-
-instance (Data (SwarmType phase), Typeable phase, Data (ResolvedDir phase), Data (ResolvedFile phase)) => Plated (Term phase) where
+instance (Data (SwarmType phase), Typeable phase, Typeable (ImportPhaseFor phase)) => Plated (Term phase) where
   plate = uniplate
