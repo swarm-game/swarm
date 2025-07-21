@@ -36,6 +36,7 @@ module Swarm.Language.Syntax.Pattern (
 import Control.Lens (makeLenses, pattern Empty)
 import Data.Map.Strict (Map)
 import Data.Text (Text)
+import Swarm.Language.Phase (ImportPhaseFor)
 import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
@@ -133,7 +134,7 @@ pattern TSuspend :: (SwarmType phase ~ ()) => Term phase -> Term phase
 pattern TSuspend t = SSuspend (RTerm t)
 
 -- | Match a TImportIn without annotations.
-pattern TImportIn :: (SwarmType phase ~ ()) => ImportLoc phase -> Term phase -> Term phase
+pattern TImportIn :: (SwarmType phase ~ ()) => ImportLoc (ImportPhaseFor phase) -> Term phase -> Term phase
 pattern TImportIn loc t = SImportIn loc (RTerm t)
 
 -- | Match a TParens without annotations.
