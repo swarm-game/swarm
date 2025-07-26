@@ -162,7 +162,7 @@ parseCodeFile ::
 parseCodeFile filepath = do
   contents <- sendIO (readFileMayT SystemLocale filepath) ??? throwError (AssetNotLoaded (Data Script) filepath (DoesNotExist File))
   mpt <- sendIO $ processTermEither contents
-  pt <- either throwError pure mpt
+  pt <- either throwError (pure . snd) mpt  -- XXX need SourceMap?
 
   let srcLoc = pt ^. sLoc
       strippedText = stripSrc srcLoc contents

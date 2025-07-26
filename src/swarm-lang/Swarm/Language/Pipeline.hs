@@ -50,7 +50,7 @@ import Swarm.Language.Types (TCtx, emptyTDCtx)
 import Swarm.Language.Value (Env, emptyEnv, envReqs, envTydefs, envTypes)
 import Swarm.Util.Effect (withError, withThrow)
 
-processTermEither :: Text -> IO (Either SystemFailure (Syntax Typed))
+processTermEither :: Text -> IO (Either SystemFailure (SourceMap Typed, Syntax Typed))
 processTermEither t = do
   res <- processTerm t
   pure $ case res of
@@ -66,20 +66,20 @@ processTermEither t = do
 --
 --   Return either the end result (or @Nothing@ if the input was only
 --   whitespace) or a pretty-printed error message.
-processTerm :: Text -> IO (Either SystemFailure (Maybe (Syntax Typed)))
+processTerm :: Text -> IO (Either SystemFailure (Maybe (SourceMap Typed, Syntax Typed)))
 processTerm = runError . processTerm' emptyEnv
 
 -- | Like 'processTerm', but use a term that has already been parsed.
 --   (along with the original unparsed concrete syntax, for use in
 --   generating error messages).
-processParsedTerm :: (Text, Syntax Raw) -> IO (Either SystemFailure (Syntax Typed))
+processParsedTerm :: (Text, Syntax Raw) -> IO (Either SystemFailure (SourceMap Typed, Syntax Typed))
 processParsedTerm = runError . processParsedTerm' emptyEnv
 
 -- | Like 'processParsedTerm', but don't allow any imports (and hence
 --   don't require IO).  XXX this currently just crashes if any
 --   imports are encountered; needs to be fixed.  Do we want imports
 --   to be an error, or just ignored/not properly resolved?
-processParsedTermNoImports :: (Text, Syntax Raw) -> Either SystemFailure (Syntax Typed)
+processParsedTermNoImports :: (Text, Syntax Raw) -> Either SystemFailure (SourceMap Typed, Syntax Typed)
 processParsedTermNoImports =
   run . runError . processParsedTermWithSrcMap mempty emptyEnv .
   second (runIdentity . traverseSyntax pure undefined)
@@ -87,7 +87,7 @@ processParsedTermNoImports =
 -- | Like 'processTerm', but use explicit starting contexts.
 processTerm' ::
   (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
-  Env -> Text -> m (Maybe (Syntax Typed))
+  Env -> Text -> m (Maybe (SourceMap Typed, Syntax Typed))
 processTerm' e txt = do
   mt <- withThrow CanNotParseMegaparsec . liftEither $ readTerm' defaultParserConfig txt
   withError (typeErrToSystemFailure txt) $ traverse (processParsedTerm' e . (txt,)) mt
@@ -97,7 +97,7 @@ processTerm' e txt = do
 --   generating error messages).
 processParsedTerm' ::
   (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
-  Env -> (Text, Syntax Raw) -> m (Syntax Typed)
+  Env -> (Text, Syntax Raw) -> m (SourceMap Typed, Syntax Typed)
 processParsedTerm' e (s,t) = do
   (t', srcMap) <- buildSourceMap t
   processParsedTermWithSrcMap srcMap e (s,t')
@@ -108,11 +108,11 @@ processParsedTerm' e (s,t) = do
 --   any imports have already been loaded.
 processParsedTermWithSrcMap ::
   (Has (Error SystemFailure) sig m) =>
-  SourceMap Resolved -> Env -> (Text, Syntax Resolved) -> m (Syntax Typed)
+  SourceMap Resolved -> Env -> (Text, Syntax Resolved) -> m (SourceMap Typed, Syntax Typed)
 processParsedTermWithSrcMap srcMap e (s,t) = do
-  tt <- withError (typeErrToSystemFailure s) $
+  (srcMap', tt) <- withError (typeErrToSystemFailure s) $
     inferTop (e ^. envTypes) (e ^. envReqs) (e ^. envTydefs) srcMap t
-  return $ elaborate tt
+  pure $ (srcMap', elaborate tt)
 
 -- | Convert a 'ContextualTypeErr' into a 'SystemFailure', by
 --   pretty-printing it (given the original source code) and
@@ -161,14 +161,17 @@ extractReqCtx (Syntax _ t _ _) = extractReqCtxTerm t
 -- Generic processing of things that contain terms
 ------------------------------------------------------------
 
+
 class Processable t where
   process :: (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) => t Raw -> m (t Typed)
   -- XXX should m include effects to save resulting SrcMap ??
 
 instance Processable Syntax where
   process s = do
+    -- XXX should call processParsedTerm'.  Need to call elaborate!
     (s', srcMap) <- buildSourceMap s
-    withError (typeErrToSystemFailure "") . inferTop mempty mempty emptyTDCtx srcMap $ s'
+    r <- withError (typeErrToSystemFailure "") . inferTop mempty mempty emptyTDCtx srcMap $ s'
+    (pure . snd) r
 
-instance Processable Term where
-  process = error "process Term undefined"
+-- instance Processable Term where
+--   process = error "process Term undefined"

@@ -268,7 +268,7 @@ codeRenderHandler :: Text -> Handler Text
 codeRenderHandler contents = do
   res <- liftIO $ processTermEither contents
   pure $ case res of
-    Right t ->
+    Right (_, t) ->
       into @Text . drawTree . fmap (T.unpack . prettyTextLine) . para Node $ t
     Left x -> prettyText x
 

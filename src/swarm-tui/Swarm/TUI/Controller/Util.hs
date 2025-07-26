@@ -37,6 +37,7 @@ import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (CDebug))
+import Swarm.Language.Load (SourceMap)
 import Swarm.Language.Pipeline (processTerm')
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Value (emptyEnv)
@@ -263,13 +264,13 @@ allHandlers eEmbed f = map handleEvent1 enumerate
  where
   handleEvent1 e1 = let (n, a) = f e1 in onEvent (eEmbed e1) n a
 
-runBaseTerm :: (MonadState ScenarioState m) => Maybe (Syntax Typed) -> m ()
+runBaseTerm :: (MonadState ScenarioState m) => Maybe (SourceMap Typed, Syntax Typed) -> m ()
 runBaseTerm = mapM_ startBaseProgram
  where
   -- The player typed something at the REPL and hit Enter; this
   -- function takes the resulting term (if the REPL
   -- input is valid) and sets up the base robot to run it.
-  startBaseProgram t = do
+  startBaseProgram (srcMap, t) = do   -- XXX use srcMap!
     -- Set the REPL status to Working
     gameState . gameControls . replStatus .= REPLWorking (t ^. sType) Nothing
     -- Set up the robot's CESK machine to evaluate/execute the
@@ -300,9 +301,6 @@ runBaseCode uinput = do
   env <- fromMaybe emptyEnv <$> preuse (gameState . baseEnv)
 
   res <- liftIO $ Fused.runM . Fused.runError @SystemFailure $ processTerm' env uinput
--- processTerm' ::
---  (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
---  Env -> Text -> m (Maybe (Syntax Typed))
 
   case res of
     Right mt -> do

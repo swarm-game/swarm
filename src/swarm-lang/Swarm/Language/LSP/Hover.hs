@@ -53,7 +53,7 @@ showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
         let found = narrowToPosition stx $ fromIntegral absolutePos
             finalPos = posToRange myRope (found ^. sLoc)
          in (,finalPos) . treeToMarkdown 0 $ explain found
-      Right pt ->
+      Right (_, pt) ->
         let found =
               narrowToPosition pt $ fromIntegral absolutePos
             finalPos = posToRange myRope (found ^. sLoc)
