@@ -704,9 +704,8 @@ prettyTypeErr code (CTE l tcStack te) =
     ]
  where
   teLoc = case l of
-    -- XXX we should use the ImportLoc in printing the location!
-    -- Maybe factor out into pretty-printing for SrcLoc
-    SrcLoc _ s e -> (showLoc . fst $ getLocRange code (s, e)) <> ": "
+    -- XXX factor out into pretty-printing for SrcLoc?
+    SrcLoc loc s e -> maybe "" ((<> ": ") . ppr) loc <> (showLoc . fst $ getLocRange code (s, e)) <> ": "
     NoLoc -> emptyDoc
   showLoc (r, c) = pretty r <> ":" <> pretty c
 
