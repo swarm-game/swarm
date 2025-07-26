@@ -1,6 +1,8 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -39,20 +41,23 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import GHC.Generics (Generic)
 import Swarm.Failure (Asset (..), AssetData (..), Entry (..), LoadingFailure (..), SystemFailure (..))
-import Swarm.Language.Context (Ctx)
-import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig, importLoc)
-import Swarm.Language.Phase (ImportPhaseFor)
-import Swarm.Language.Syntax (Phase (..))
-import Swarm.Language.Syntax.AST (Syntax, SwarmType)
+import Swarm.Language.Syntax (ImportPhaseFor, Phase (..), Syntax, SwarmType)
 import Swarm.Language.Syntax.Import hiding (ImportPhase (..))
 import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Language.Syntax.Util (traverseSyntax)
-import Swarm.Language.Types (Poly, ImplicitQuantification (Quantified))
-import Swarm.Language.Var (Var)
+import Swarm.Language.Types (TCtx, UCtx)
 import Swarm.Util (readFileMayT)
 import Swarm.Util.Graph (findCycle)
+
+-- XXX
+type family ModuleCtx (phase :: Phase) where
+  ModuleCtx Raw = ()
+  ModuleCtx Resolved = ()
+  ModuleCtx Inferred = UCtx
+  ModuleCtx Typed = TCtx
+  ModuleCtx Instantiated = TCtx
 
 -- | A 'Module' is a (possibly empty) AST, along with a context for
 --   any definitions contained in it, and a list of transitive,
@@ -62,16 +67,14 @@ data Module phase = Module
     moduleTerm :: Maybe (Syntax phase)
 
     -- | The context of names defined in this module and their types.
-  , moduleCtx :: Ctx Var (Poly Quantified (SwarmType phase))
-    -- XXX moduleCtx should depend on phase with type family?
-    -- i.e. don't have a context at all before the typechecked phase, etc.
+  , moduleCtx :: ModuleCtx phase
 
     -- | The moduleImports are mostly for convenience, e.g. for checking modules for cycles.
   , moduleImports :: Set (ImportLoc (ImportPhaseFor phase))
   }
   deriving (Generic)
 
-deriving instance (Typeable phase, Typeable (ImportPhaseFor phase), Data (SwarmType phase)) => Data (Module phase)
+deriving instance (Typeable phase, Typeable (ImportPhaseFor phase), Data (ModuleCtx phase), Data (SwarmType phase)) => Data (Module phase)
 
 -- | A SourceMap associates canonical 'ImportLocation's to modules.
 type SourceMap phase = Map (ImportLoc (ImportPhaseFor phase)) (Module phase)
@@ -144,7 +147,7 @@ resolveImport parent loc = do
     Nothing -> do
       -- Record this import loc in the source map using a temporary, empty module,
       -- to prevent it from attempting to load itself recursively
-      modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module Nothing Ctx.empty mempty)
+      modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module Nothing () mempty)
 
       -- Read it from network/disk
       mt <- readLoc canonicalLoc
@@ -154,10 +157,8 @@ resolveImport parent loc = do
       -- sequence :: Maybe (Set a, b) -> (Set a, Maybe b)
       let (imps, mt') = sequence mres
 
-      -- Finally, record the loaded module in the SourceMap.  We use
-      -- Ctx.empty at this point since we have not yet typechecked the
-      -- module.
-      modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module mt' Ctx.empty imps)
+      -- Finally, record the loaded module in the SourceMap.
+      modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module mt' () imps)
 
   pure canonicalLoc
 
@@ -169,6 +170,7 @@ readLoc ::
   m (Maybe (Syntax Raw))
 readLoc loc = do
   let path = locToFilePath loc
+      badImport :: Has (Throw SystemFailure) sig m => LoadingFailure -> m a
       badImport = throwError . AssetNotLoaded (Data Script) path
 
   -- Try to read the file from network/disk
