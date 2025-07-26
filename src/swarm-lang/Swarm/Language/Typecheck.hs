@@ -49,7 +49,7 @@ module Swarm.Language.Typecheck (
 
 import Control.Arrow ((***))
 import Control.Carrier.Reader (ReaderC, runReader)
-import Control.Carrier.State.Strict (StateC, evalState)
+import Control.Carrier.State.Strict (StateC, runState)
 import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Category ((>>>))
 import Control.Effect.Catch (Catch, catchError)
@@ -63,7 +63,7 @@ import Control.Monad (forM, forM_, void, when, (<=<), (>=>))
 import Control.Monad.Free qualified as Free
 import Data.Bifunctor (first, second)
 import Data.Data (gmapM)
-import Data.Foldable (fold)
+import Data.Foldable (fold, traverse_)
 import Data.Generics (mkM)
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -191,6 +191,7 @@ getJoin (Join j) = (j Expected, j Actual)
 ------------------------------------------------------------
 -- Type checking
 
+-- XXX
 fromInferredSyntax ::
   ( Has Unification sig m
   , Has (Reader UCtx) sig m
@@ -200,17 +201,38 @@ fromInferredSyntax ::
   m (Syntax Typed)
 fromInferredSyntax = traverseSyntax (checkPredicative <=< (fmap fromU . generalize)) pure
 
-finalizeInferredSyntax ::
+fromInferredModule ::
   ( Has Unification sig m
   , Has (Reader UCtx) sig m
   , Has (Throw ContextualTypeErr) sig m
   ) =>
-  Syntax Inferred ->
-  m (Syntax Typed)
-finalizeInferredSyntax = applyBindings >=> fromInferredSyntax
+  Module Inferred ->
+  m (Module Typed)
+fromInferredModule (Module t ctx imps) =
+  Module
+    <$> traverse fromInferredSyntax t
+    <*> traverse (checkPredicative . fromU) ctx
+    <*> pure imps
+
+-- XXX
+finalizeInferred ::
+  ( Has Unification sig m
+  , Has (Reader UCtx) sig m
+  , Has (Throw ContextualTypeErr) sig m
+  ) =>
+  (SourceMap Inferred, Syntax Inferred) ->
+  m (SourceMap Typed, Syntax Typed)
+finalizeInferred = applyBindings >=> \(srcMap, s) ->
+  (,)
+    <$> traverse fromInferredModule srcMap
+    <*> fromInferredSyntax s
 
 -- | Run a top-level inference computation, either throwing a
---   'ContextualTypeErr' or returning a fully resolved 'Syntax Typed'.
+--   'ContextualTypeErr' or returning a fully resolved 'Syntax Typed',
+--   along with a type-checked 'SourceMap' containing any new modules
+--   recursively imported by the given term.  Note the returned
+--   SourceMap will NOT include anything contained in the given
+--   parameter SourceMap.
 runTC ::
   Has (Throw ContextualTypeErr) sig m =>
   TCtx ->
@@ -218,10 +240,11 @@ runTC ::
   TDCtx ->
   TVCtx ->
   SourceMap Resolved ->
-  ReaderC UCtx (ReaderC TCStack (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx (ReaderC (SourceMap Resolved) (StateC (SourceMap Inferred) m))))))) (Syntax Inferred) ->
-  m (Syntax Typed)
+  StateC (SourceMap Inferred) (ReaderC UCtx (ReaderC TCStack (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx (ReaderC (SourceMap Resolved) m))))))) (Syntax Inferred) ->
+  m (SourceMap Typed, Syntax Typed)
 runTC ctx reqCtx tdctx tvCtx srcMap =
-  (>>= finalizeInferredSyntax)
+        runState M.empty
+    >>> (>>= finalizeInferred)
     >>> runReader (toU ctx)
     >>> runReader []
     >>> U.runUnification
@@ -229,7 +252,6 @@ runTC ctx reqCtx tdctx tvCtx srcMap =
     >>> runReader tdctx
     >>> runReader tvCtx
     >>> runReader srcMap
-    >>> evalState M.empty
     >>> reportUnificationError
 
 checkPredicative :: Has (Throw ContextualTypeErr) sig m => Maybe a -> m a
@@ -290,7 +312,7 @@ instance (FreeUVars t) => FreeUVars (Poly q t) where
 
 -- | We can get the free variables in any polytype in a context.
 instance FreeUVars UCtx where
-  freeUVars = fmap S.unions . mapM freeUVars . M.elems . unCtx
+  freeUVars = fmap S.unions . traverse freeUVars . M.elems . unCtx
 
 -- | Generate a fresh unification variable.
 fresh :: Has Unification sig m => m UType
@@ -369,6 +391,15 @@ unify ms j = do
 class HasBindings u where
   applyBindings :: Has Unification sig m => u -> m u
 
+instance (HasBindings u, HasBindings v) => HasBindings (u, v) where
+  applyBindings (u, v) = (,) <$> applyBindings u <*> applyBindings v
+
+instance HasBindings u => HasBindings (Map k u) where
+  applyBindings = traverse applyBindings
+
+instance HasBindings u => HasBindings (Maybe u) where
+  applyBindings = traverse applyBindings
+
 instance HasBindings UType where
   applyBindings = U.applyBindings
 
@@ -376,13 +407,16 @@ instance HasBindings UPolytype where
   applyBindings = traverse applyBindings
 
 instance HasBindings UCtx where
-  applyBindings = mapM applyBindings
+  applyBindings = traverse applyBindings
 
 instance HasBindings (Term Inferred) where
   applyBindings = gmapM (mkM (applyBindings @(Syntax Inferred)))
 
 instance HasBindings (Syntax Inferred) where
   applyBindings (Syntax l t cs u) = Syntax l <$> applyBindings t <*> pure cs <*> applyBindings u
+
+instance HasBindings (Module Inferred) where
+  applyBindings (Module t ctx imps) = Module <$> applyBindings t <*> applyBindings ctx <*> pure imps
 
 ------------------------------------------------------------
 -- Converting between mono- and polytypes
@@ -392,7 +426,7 @@ instance HasBindings (Syntax Inferred) where
 --   substitute them throughout the type.
 instantiate :: (Has Unification sig m, Has (Reader TVCtx) sig m) => UPolytype -> m UType
 instantiate (unPoly -> (xs, uty)) = do
-  xs' <- mapM (const fresh) xs
+  xs' <- traverse (const fresh) xs
   boundSubst <- ask @TVCtx
   let s = M.mapKeys Left (M.fromList (zip xs xs') `M.union` unCtx boundSubst)
   return $ substU s uty
@@ -832,13 +866,13 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 --   fully type-annotated version of the term.
 inferTop ::
   Has (Error ContextualTypeErr) sig m =>
-  TCtx -> ReqCtx -> TDCtx -> SourceMap Resolved -> Syntax Resolved -> m (Syntax Typed)
+  TCtx -> ReqCtx -> TDCtx -> SourceMap Resolved -> Syntax Resolved -> m (SourceMap Typed, Syntax Typed)
 inferTop ctx reqCtx tdCtx srcMap = runTC ctx reqCtx tdCtx Ctx.empty srcMap . infer
 
 -- | Top level type checking function.
 checkTop ::
   Has (Error ContextualTypeErr) sig m =>
-  TCtx -> ReqCtx -> TDCtx -> SourceMap Resolved -> Syntax Resolved -> Type -> m (Syntax Typed)
+  TCtx -> ReqCtx -> TDCtx -> SourceMap Resolved -> Syntax Resolved -> Type -> m (SourceMap Typed, Syntax Typed)
 checkTop ctx reqCtx tdCtx srcMap t ty = runTC ctx reqCtx tdCtx Ctx.empty srcMap $ check t (toU ty)
 
 -- | Infer the type of a term, returning a type-annotated term.
@@ -1030,7 +1064,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     (skolemSubst, uty) <- skolemize upty
     _ <- check c uty
     -- Make sure no skolem variables have escaped.
-    ask @UCtx >>= mapM_ (noSkolems l (Ctx.vars skolemSubst))
+    ask @UCtx >>= traverse_ (noSkolems l (Ctx.vars skolemSubst))
     -- If check against skolemized polytype is successful,
     -- instantiate polytype with unification variables.
     -- Free variables should be able to unify with anything in
@@ -1098,7 +1132,7 @@ inferModule ::
   Module Resolved -> m (Module Inferred)
 inferModule (Module ms _ _imps) = do
   -- Infer the type of the term
-  mt <- mapM infer ms
+  mt <- traverse infer ms
 
   -- Now, if the term has top-level definitions, collect up their
   -- types and put them in the context.
@@ -1346,7 +1380,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
           check t2 expected
 
     -- Make sure none of the generated skolem variables have escaped.
-    ask @UCtx >>= mapM_ (noSkolems l skolems)
+    ask @UCtx >>= traverse_ (noSkolems l skolems)
 
     -- Annotate a 'def' with requirements, but not 'let'.  The reason
     -- is so that let introduces truly "local" bindings which never
@@ -1534,7 +1568,7 @@ analyzeAtomic locals (Syntax l t _ _) = case t of
   -- Bind is similarly simple except that we have to keep track of a local variable
   -- bound in the RHS.
   SBind mx _ _ _ s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id (S.insert . lvVar) mx locals) s2
-  SRcd m -> sum <$> mapM analyzeField m
+  SRcd m -> sum <$> traverse analyzeField m
    where
     analyzeField ::
       ( Has (Reader UCtx) sig m

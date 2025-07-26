@@ -714,8 +714,10 @@ stepCESK cesk = case cesk of
   -- If we see a primitive application of suspend, package it up as
   -- a value until it's time to execute.
   In (TSuspend t) e s k -> return $ Out (VSuspend t e) s k
-  -- Imports turn into no-ops at runtime
-  In (TImportIn _ t) e s k -> return $ In t e s k
+  -- XXX keep a map from imports to corresponding Env, don't re-evaluate if it's already
+  -- in the map.  To make this sound, need to disallow all but defs in an import.
+  -- XXX Evaluate the code corresponding to an import.
+  In (TImportIn loc t) e s k -> return $ In t e s k
   -- Ignore explicit parens.
   In (TParens t) e s k -> return $ In t e s k
   ------------------------------------------------------------
