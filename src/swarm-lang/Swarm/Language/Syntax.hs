@@ -46,6 +46,7 @@ module Swarm.Language.Syntax (
 
   -- * Phase
   Phase (..),
+  ImportPhaseFor,
   SwarmType,
 
   -- * Imports
