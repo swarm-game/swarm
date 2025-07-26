@@ -29,6 +29,7 @@ import Control.Effect.Accum (Accum)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.State (State, get, modify)
 import Control.Effect.Throw (Throw, throwError)
+import Control.Lens ((.~))
 import Control.Monad (forM_)
 import Data.Data (Data, Typeable)
 import Data.Function ((&))
@@ -41,7 +42,7 @@ import Swarm.Failure (Asset (..), AssetData (..), Entry (..), LoadingFailure (..
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Parser (readTerm')
-import Swarm.Language.Parser.Core (defaultParserConfig)
+import Swarm.Language.Parser.Core (defaultParserConfig, importLoc)
 import Swarm.Language.Phase (ImportPhaseFor)
 import Swarm.Language.Syntax (Phase (..))
 import Swarm.Language.Syntax.AST (Syntax, SwarmType)
@@ -169,4 +170,4 @@ readLoc loc = do
     _ -> sendIO (readFileMayT path) >>= maybe (badImport (DoesNotExist File)) pure
 
   -- Try to parse the contents
-  readTerm' defaultParserConfig src & either (badImport . SystemFailure . CanNotParseMegaparsec) pure
+  readTerm' (defaultParserConfig & importLoc .~ Just loc) src & either (badImport . SystemFailure . CanNotParseMegaparsec) pure
