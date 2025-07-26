@@ -83,7 +83,7 @@ validateSwarmCode doc version content = do
   res <- liftIO $ processTerm content
   let (errors, warnings) = case res of
         Right Nothing -> ([], [])
-        Right (Just term) -> ([], unusedWarnings)
+        Right (Just (_, term)) -> ([], unusedWarnings)
          where
           VU.Usage _ problems = VU.getUsage mempty (eraseRaw term)
           unusedWarnings = mapMaybe (VU.toErrPos content) problems

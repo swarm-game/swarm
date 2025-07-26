@@ -86,7 +86,7 @@ makeFocusedEntity = gets focusedEntity >>= maybe continueWithoutRedraw makeEntit
     let name = e ^. entityName
         mkT = [tmQ| make $str:name |]
     case isActive <$> (s ^? gameState . baseRobot) of
-      Just False -> runBaseTerm (Just mkT)
+      Just False -> runBaseTerm (Just (mempty, mkT))
       _ -> continueWithoutRedraw
 
 showZero :: EventM Name UIInventory ()

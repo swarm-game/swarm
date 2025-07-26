@@ -895,10 +895,10 @@ validateREPLForm s =
                in pure (Nothing, Left (SrcLoc Nothing x1 x2))
             Right Nothing -> pure (Nothing, Right ())
             Right (Just theTerm) -> do
-              -- XXX cache SrcMap, so we don't do disk access on each keystroke!
               res <- liftIO . runM . runError @SystemFailure $ processParsedTerm' env (uinput, theTerm)
               pure $ case res of
-                Right t -> (Just (t ^. sType), Right ())
+                -- XXX cache SrcMap, so we don't do disk access on each keystroke!
+                Right (_srcMap, t) -> (Just (t ^. sType), Right ())
                 Left (DoesNotTypecheck loc _) -> (Nothing, Left loc)
                 _ -> (Nothing, Right ())
           pure $ s
