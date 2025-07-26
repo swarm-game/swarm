@@ -25,7 +25,7 @@ module Swarm.Language.Load where
 import Control.Algebra (Has)
 import Control.Carrier.Accum.Strict (runAccum)
 import Control.Carrier.State.Strict (runState)
-import Control.Effect.Accum (Accum)
+import Control.Effect.Accum (Accum, add)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.State (State, get, modify)
 import Control.Effect.Throw (Throw, throwError)
@@ -64,6 +64,7 @@ data Module phase = Module
     -- | The context of names defined in this module and their types.
   , moduleCtx :: Ctx Var (Poly Quantified (SwarmType phase))
     -- XXX moduleCtx should depend on phase with type family?
+    -- i.e. don't have a context at all before the typechecked phase, etc.
 
     -- | The moduleImports are mostly for convenience, e.g. for checking modules for cycles.
   , moduleImports :: Set (ImportLoc (ImportPhaseFor phase))
@@ -132,27 +133,33 @@ resolveImport ::
   ImportLoc Import.Raw ->
   m (ImportLoc Import.Resolved)
 resolveImport parent loc = do
-   canonicalLoc <- resolveImportLoc (unresolveImportDir parent <//> loc)
-   srcMap <- get @(SourceMap Resolved)
-   case M.lookup canonicalLoc srcMap of
-     Just _ -> pure () -- Already loaded - do nothing
-     Nothing -> do
-       -- Record this import loc in the source map using a temporary, empty module,
-       -- to prevent it from attempting to load itself recursively
-       modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module Nothing Ctx.empty mempty)
 
-       -- Read it from network/disk
-       mt <- readLoc canonicalLoc
+  -- Compute the canonicalized location for the import, and record it
+  canonicalLoc <- resolveImportLoc (unresolveImportDir parent <//> loc)
+  add $ S.singleton canonicalLoc
 
-       -- Recursively resolve any imports it contains
-       mres <- traverse (resolveImports (importDir canonicalLoc)) mt
-       -- sequence :: Maybe (Set a, b) -> (Set a, Maybe b)
-       let (imps, mt') = sequence mres
+  srcMap <- get @(SourceMap Resolved)
+  case M.lookup canonicalLoc srcMap of
+    Just _ -> pure () -- Already loaded - do nothing
+    Nothing -> do
+      -- Record this import loc in the source map using a temporary, empty module,
+      -- to prevent it from attempting to load itself recursively
+      modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module Nothing Ctx.empty mempty)
 
-       -- Finally, record the loaded module in the SourceMap.
-       modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module mt' Ctx.empty imps)
+      -- Read it from network/disk
+      mt <- readLoc canonicalLoc
 
-   pure canonicalLoc
+      -- Recursively resolve any imports it contains
+      mres <- traverse (resolveImports (importDir canonicalLoc)) mt
+      -- sequence :: Maybe (Set a, b) -> (Set a, Maybe b)
+      let (imps, mt') = sequence mres
+
+      -- Finally, record the loaded module in the SourceMap.  We use
+      -- Ctx.empty at this point since we have not yet typechecked the
+      -- module.
+      modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module mt' Ctx.empty imps)
+
+  pure canonicalLoc
 
 -- | Try to read and parse a term from a specific import location,
 --   either over the network or on disk.
