@@ -120,6 +120,8 @@ data LocatedTCFrame = LocatedTCFrame SrcLoc TCFrame
   deriving (Show)
 
 instance PrettyPrec LocatedTCFrame where
+  -- TODO: print the SrcLoc somehow, need access to the original
+  -- source text though
   prettyPrec p (LocatedTCFrame _ f) = prettyPrec p f
 
 -- | A typechecking stack keeps track of what we are currently in the
@@ -698,7 +700,7 @@ prettyTypeErr :: Text -> ContextualTypeErr -> Doc ann
 prettyTypeErr code (CTE l tcStack te) =
   vcat
     [ teLoc <> ppr te
-    , ppr (BulletList "" (filterTCStack tcStack))
+    , ppr (BulletList "" tcStack)
     ]
  where
   teLoc = case l of
@@ -706,15 +708,6 @@ prettyTypeErr code (CTE l tcStack te) =
     SrcLoc loc s e -> maybe "" ((<> ": ") . ppr) loc <> (showLoc . fst $ getLocRange code (s, e)) <> ": "
     NoLoc -> emptyDoc
   showLoc (r, c) = pretty r <> ":" <> pretty c
-
--- | Filter the TCStack so we stop printing context outside of a def/let
-filterTCStack :: TCStack -> TCStack
-filterTCStack tcStack = case tcStack of
-  [] -> []
-  -- A def/let is enough context to locate something; don't keep
-  -- printing wider context after that
-  t@(LocatedTCFrame _ (TCLet _)) : _ -> [t]
-  t : xs -> t : filterTCStack xs
 
 ------------------------------------------------------------
 -- Type decomposition
