@@ -138,7 +138,7 @@ instance Hashable (Anchor phase) where
 
 instance PrettyPrec (Anchor phase) where
   prettyPrec _ = \case
-    Absolute -> slash
+    Absolute -> mempty
     Web w -> pretty w
     Local n -> hcat $ punctuate slash (replicate n "..")
     Home -> "~"
