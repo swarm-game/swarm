@@ -13,22 +13,30 @@ module Swarm.Language.Phase (
 
 import Swarm.Language.Syntax.Import qualified as Import
 
--- | XXX
+-- | Phases of the Swarm language processing pipeline.
 type data Phase where
   -- | Raw, parsed terms that have not yet been type checked.
   Raw :: Phase
-  -- | Imports have been resolved to canonical locations.
+  -- | Imports have been resolved to canonical locations; imports have
+  --   been recursively loaded and there are no import cycles.
   Resolved :: Phase
-  -- | Terms have inferred types.  XXX unification variables
+  -- | Terms have inferred types, containing unification variables.
   Inferred :: Phase
-  -- | Terms have been typechecked, but robot records
-  --   are still "templates", not yet instantiated to concrete robots.
+  -- | Inferred types have been properly quantified.  Terms have been
+  --   typechecked, but robot records are still "templates", not yet
+  --   instantiated to concrete robots.
   Typed :: Phase
-  -- | Robot records instantiated to concrete robots.
+  -- | Robot records have been instantiated to concrete robots.
   Instantiated :: Phase
 
--- XXX note: no separate Elaborated phase, having elaboration be
--- type-changing would be annoying.
+-- ~~~~ Note [Elaborated phase]
+--
+-- In some ways, it would make a lot of sense to have a separate
+-- Elaborated phase between Typed and Instantiated.  In particular
+-- this would help ensure that we cannot forget to run elaboration.
+-- However, we don't do this for an annoying technical reason: we use
+-- a generic traversal to implement elaboration which must have a type
+-- like `a -> a`, so we can't have it  XXX... use unsafeCoerce?
 
 -- XXX
 type family ImportPhaseFor (p :: Phase) :: Import.ImportPhase where

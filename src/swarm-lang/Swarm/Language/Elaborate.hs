@@ -23,9 +23,15 @@ import Unsafe.Coerce (unsafeCoerce)
 --   currently that sort of thing tends to make type inference fall
 --   over.
 --
---   XXX would be theoretically nicer to output Syntax Elaborated but
---   it would be very annoying to have to change the type.
---   `transform` would not work.
+--   It would be theoretically nicer to have
+--
+--     elaborate :: Syntax Typed -> Syntax Elaborated,
+--
+--   but it would be very annoying to have to change the type; we
+--   would not be able to use the generic `transform`.  See also Note
+--   [Elaborated phase] in Swarm.Language.Phase.  XXX use unsafeCoerce
+--   in elaborate???
+
 elaborate :: Syntax Typed -> Syntax Typed
 elaborate = transform rewrite
  where
@@ -61,7 +67,7 @@ elaborate = transform rewrite
     -- Rewrite @f $ x@ to @f x@.
     SApp (Syntax _ (SApp (Syntax _ (TConst AppF) _ _) l) _ _) r -> SApp l r
     -- Leave any other subterms alone.
-    t -> unsafeCoerce t
+    t -> t
 
 -- | Insert a special 'suspend' primitive at the very end of an erased
 --   term which must have a command type.
