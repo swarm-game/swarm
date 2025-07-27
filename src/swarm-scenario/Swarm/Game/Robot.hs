@@ -178,6 +178,12 @@ instance Processable Robot where
 
 makeLensesExcluding ['_robotCapabilities, '_equippedDevices, '_robotLog, '_robotLogUpdated, '_machine, '_activityCounts] ''Robot
 
+-- ~~~~ Note [Robot lens types]
+--
+-- Many lenses are used exclusively at type 'Robot Instantiated', so
+-- we give them that more specific type to cut down on the number of
+-- explicit type arguments we need to use.
+
 -- | Robots are not entities, but they have almost all the
 --   characteristics of one (or perhaps we could think of robots as
 --   very special sorts of entities), so for convenience each robot
@@ -188,19 +194,28 @@ makeLensesExcluding ['_robotCapabilities, '_equippedDevices, '_robotLog, '_robot
 --   directly reference fields inside this record; for example, one
 --   can use 'robotName' instead of writing @'robotEntity'
 --   . 'entityName'@.
+--
+--   This lens is actually used at multiple types; see Note [Robot
+--   lens types].
 robotEntity :: Lens' (Robot phase) Entity
 
 -- | Entities that the robot cannot move onto
-unwalkableEntities :: Lens' (Robot phase) (WalkabilityExceptions EntityName)
+unwalkableEntities :: Lens' (Robot Instantiated) (WalkabilityExceptions EntityName)
 
 -- | The creation date of the robot.
-robotCreatedAt :: Lens' (Robot phase) TimeSpec
+robotCreatedAt :: Lens' (Robot Instantiated) TimeSpec
 
 -- | The name of a robot.
+--
+--   This lens is actually used at multiple types; see Note [Robot
+--   lens types].
 robotName :: Lens' (Robot phase) Text
 robotName = robotEntity . entityName
 
 -- | The 'Display' of a robot.
+--
+--   This lens is actually used at multiple types; see Note [Robot
+--   lens types].
 robotDisplay :: Lens' (Robot phase) Display
 robotDisplay = robotEntity . entityDisplay
 
@@ -208,6 +223,9 @@ robotDisplay = robotEntity . entityDisplay
 --   a getter, since when changing a robot's location we must remember
 --   to update the 'Swarm.Game.State.robotsByLocation' map as well.  You can use the
 --   'Swarm.Game.Step.updateRobotLocation' function for this purpose.
+--
+--   This lens is actually used at multiple types; see Note [Robot
+--   lens types].
 robotLocation :: Getter (Robot phase) (RobotLocation phase)
 
 -- | Set a robot's location.  This is unsafe and should never be
@@ -224,10 +242,13 @@ trobotLocation :: Lens' (Robot Typed) (Maybe (Cosmic Location))
 trobotLocation = lens _robotLocation (\r l -> r {_robotLocation = l})
 
 -- | Which way the robot is currently facing.
-robotOrientation :: Lens' (Robot phase) (Maybe Heading)
+robotOrientation :: Lens' (Robot Instantiated) (Maybe Heading)
 robotOrientation = robotEntity . entityOrientation
 
 -- | The robot's inventory.
+--
+--   This lens is actually used at multiple types; see Note [Robot
+--   lens types].
 robotInventory :: Lens' (Robot phase) Inventory
 robotInventory = robotEntity . entityInventory
 
@@ -238,10 +259,10 @@ robotID :: Getter (Robot Instantiated) RID
 -- | The ID number of the robot's parent, that is, the robot that
 --   built (or most recently reprogrammed) this robot, if there is
 --   one.
-robotParentID :: Lens' (Robot phase) (Maybe RID)
+robotParentID :: Lens' (Robot Instantiated) (Maybe RID)
 
 -- | Is this robot extra heavy (thus requiring tank treads to move)?
-robotHeavy :: Lens' (Robot phase) Bool
+robotHeavy :: Lens' (Robot Instantiated) Bool
 
 -- | A separate inventory for equipped devices, which provide the
 --   robot with certain capabilities.
@@ -250,6 +271,9 @@ robotHeavy :: Lens' (Robot phase) Bool
 --   modified, this lens recomputes a cached set of the capabilities
 --   the equipped devices provide, to speed up subsequent lookups to
 --   see whether the robot has a certain capability (see 'robotCapabilities')
+--
+--   This lens is actually used at multiple types; see Note [Robot
+--   lens types].
 equippedDevices :: Lens' (Robot phase) Inventory
 equippedDevices = lens _equippedDevices setEquipped
  where
@@ -259,42 +283,38 @@ equippedDevices = lens _equippedDevices setEquipped
       , _robotCapabilities = inventoryCapabilities inst
       }
 
--- -- | A robot template's equipped devices.
--- tequippedDevices :: Getter TRobot Inventory
--- tequippedDevices = to _equippedDevices
-
 -- | A hash of a robot's entity record and equipped devices, to
 --   facilitate quickly deciding whether we need to redraw the robot
 --   info panel.
-inventoryHash :: Getter (Robot phase) Int
+inventoryHash :: Getter (Robot Instantiated) Int
 inventoryHash = to (\r -> 17 `hashWithSalt` (r ^. (robotEntity . entityHash)) `hashWithSalt` (r ^. equippedDevices))
 
 -- | Does a robot know of an entity's existence?
-robotKnows :: Robot phase -> Entity -> Bool
+robotKnows :: Robot Instantiated -> Entity -> Bool
 robotKnows r e = contains0plus e (r ^. robotInventory) || contains0plus e (r ^. equippedDevices)
 
-isInteractive :: Robot phase -> Bool
+isInteractive :: Robot Instantiated -> Bool
 isInteractive r = not $ r ^. robotDisplay . invisible && r ^. systemRobot
 
 -- | Get the set of capabilities this robot possesses.  This is only a
 --   getter, not a lens, because it is automatically generated from
 --   the 'equippedDevices'.  The only way to change a robot's
 --   capabilities is to modify its 'equippedDevices'.
-robotCapabilities :: Getter (Robot phase) (MultiEntityCapabilities Entity EntityName)
+robotCapabilities :: Getter (Robot Instantiated) (MultiEntityCapabilities Entity EntityName)
 robotCapabilities = to _robotCapabilities
 
 -- | Is this robot a "system robot"?  System robots are generated by
 --   the system (as opposed to created by the user) and are not
 --   subject to the usual capability restrictions.
-systemRobot :: Lens' (Robot phase) Bool
+systemRobot :: Lens' (Robot Instantiated) Bool
 
 -- | Does this robot wish to self destruct?
-selfDestruct :: Lens' (Robot phase) Bool
+selfDestruct :: Lens' (Robot Instantiated) Bool
 
 -- | Is the robot currently running an atomic block?
-runningAtomic :: Lens' (Robot phase) Bool
+runningAtomic :: Lens' (Robot Instantiated) Bool
 
-walkabilityContext :: Getter (Robot phase) WalkabilityContext
+walkabilityContext :: Getter (Robot Instantiated) WalkabilityContext
 walkabilityContext = to $
   \x -> WalkabilityContext (getCapabilitySet $ _robotCapabilities x) (_unwalkableEntities x)
 

@@ -12,17 +12,6 @@
 -- Loading Swarm modules from disk or network, recursively loading
 -- any imports.
 module Swarm.Language.Load where
--- XXX
--- (
---   dirToFilePath,
---   locToFilePath,
---   resolveImportLoc,
---   Module (..),
---   SourceMap,
---   buildSourceMap,
---   load,
---   loadWith,
--- ) where
 
 import Control.Algebra (Has)
 import Control.Carrier.Accum.Strict (runAccum)
@@ -51,7 +40,8 @@ import Swarm.Language.Types (TCtx, UCtx)
 import Swarm.Util (readFileMayT)
 import Swarm.Util.Graph (findCycle)
 
--- XXX
+-- | The context for a module, containing names and types of things
+--   defined in the module (once typechecking has run).
 type family ModuleCtx (phase :: Phase) where
   ModuleCtx Raw = ()
   ModuleCtx Resolved = ()
@@ -79,7 +69,9 @@ deriving instance (Typeable phase, Typeable (ImportPhaseFor phase), Data (Module
 -- | A SourceMap associates canonical 'ImportLocation's to modules.
 type SourceMap phase = Map (ImportLoc (ImportPhaseFor phase)) (Module phase)
 
--- | XXX
+-- | Recursively resolve and load all the imports contained in raw
+--   syntax, returning the same syntax with resolved/canonicalized
+--   imports as well as a SourceMap containing all the loaded imports.
 buildSourceMap ::
   (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) =>
   Syntax Raw -> m (Syntax Resolved, SourceMap Resolved)
