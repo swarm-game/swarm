@@ -119,9 +119,6 @@ type MoveFailureHandler = MoveFailureMode -> RobotFailure
 data GrabRemoval = DeferRemoval | PerformRemoval
   deriving (Eq)
 
--- XXX make special version of use that fixes Robot Instantiated?
--- XXX fix most robot lenses to Instantiated if we only use them at that type
-
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
 execConst ::
@@ -173,10 +170,10 @@ execConst runChildProg c vs s k = do
         return $ mkReturn ()
       _ -> badConst
     Move -> do
-      orientation <- use (robotOrientation @Instantiated)
+      orientation <- use robotOrientation
       moveInDirection $ orientation ? zero
     Backup -> do
-      orientation <- use (robotOrientation @Instantiated)
+      orientation <- use robotOrientation
       moveInDirection $ applyTurn (DRelative $ DPlanar DBack) $ orientation ? zero
     Volume -> case vs of
       [VInt limit] -> do
@@ -222,7 +219,7 @@ execConst runChildProg c vs s k = do
     Push -> do
       -- Figure out where we're going
       loc <- use (robotLocation @Instantiated)
-      orientation <- use (robotOrientation @Instantiated)
+      orientation <- use robotOrientation
       let applyHeading = (`offsetBy` (orientation ? zero))
           nextLoc = applyHeading loc
           placementLoc = applyHeading nextLoc
@@ -263,7 +260,7 @@ execConst runChildProg c vs s k = do
 
         -- Figure out where we're going
         loc <- use (robotLocation @Instantiated)
-        orientation <- use (robotOrientation @Instantiated)
+        orientation <- use robotOrientation
         let heading = orientation ? zero
 
         -- Excludes the base location.
@@ -343,7 +340,7 @@ execConst runChildProg c vs s k = do
     Turn -> case vs of
       [VDir d] -> do
         when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
-        robotOrientation @Instantiated . _Just %= applyTurn d
+        robotOrientation . _Just %= applyTurn d
         use robotLocation >>= markDirty
 
         inst <- use (equippedDevices @Instantiated)
@@ -482,7 +479,7 @@ execConst runChildProg c vs s k = do
             -- the middle of liquid results in drowning, EVEN for
             -- base!  This gives the `DestroyedBase` achievement,
             -- the other way is unequipping life support.
-            selfDestruct @Instantiated .= True
+            selfDestruct .= True
             when (myID == 0) $ grantAchievementForRobot DestroyedBase
 
         return $ mkReturn ()
@@ -686,7 +683,7 @@ execConst runChildProg c vs s k = do
     Chirp -> case vs of
       [VText name] -> do
         firstFound <- findNearest name
-        mh <- use (robotOrientation @Instantiated)
+        mh <- use robotOrientation
         inst <- use (equippedDevices @Instantiated)
         let processDirection entityDir =
               if countByName "compass" inst >= 1
@@ -702,7 +699,7 @@ execConst runChildProg c vs s k = do
         return $ mkReturn d
       _ -> badConst
     Heading -> do
-      mh <- use (robotOrientation @Instantiated)
+      mh <- use robotOrientation
       -- In general, (1) entities might not have an orientation, and
       -- (2) even if they do, orientation is a general vector, which
       -- might not correspond to a cardinal direction.  We could make
@@ -727,7 +724,7 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Blocked -> do
       loc <- use (robotLocation @Instantiated)
-      orientation <- use (robotOrientation @Instantiated)
+      orientation <- use robotOrientation
       let nextLoc = loc `offsetBy` (orientation ? zero)
       me <- entityAt nextLoc
       return $ mkReturn $ maybe False (`hasProperty` Unwalkable) me
@@ -969,7 +966,7 @@ execConst runChildProg c vs s k = do
       rid <- use robotID
       return $ Out (VRobot rid) s k
     Parent -> do
-      mp <- use (robotParentID @Instantiated)
+      mp <- use robotParentID
       rid <- use robotID
       return $ Out (VRobot (fromMaybe rid mp)) s k
     Base -> return $ Out (VRobot 0) s k
@@ -1123,7 +1120,7 @@ execConst runChildProg c vs s k = do
         -- Pick a random display name.
         displayName <- randomName
         createdAt <- getNow
-        isSystemRobot <- use (systemRobot @Instantiated)
+        isSystemRobot <- use systemRobot
 
         -- Construct the new robot and add it to the world.
         let newDisplay = case r ^. robotDisplay . childInheritance of
@@ -1219,31 +1216,6 @@ execConst runChildProg c vs s k = do
             time <- use $ temporal . ticks
             return $ Waiting (addTicks (numItems + 1) time) (mkReturn ())
       _ -> badConst
-
-    -- XXX DELETE ME
-    -- run can take both types of text inputs
-    -- with and without file extension as in
-    -- "./path/to/file.sw" and "./path/to/file"
-    -- Run -> case vs of
-    --   [VText fileName] -> do
-    --     let filePath = into @String fileName
-    --     sData <- throwToMaybe @SystemFailure $ getDataFileNameSafe Script filePath
-    --     sDataSW <- throwToMaybe @SystemFailure $ getDataFileNameSafe Script (filePath <> ".sw")
-    --     mf <- sendIO $ mapM readFileMay $ [filePath, filePath <> ".sw"] <> catMaybes [sData, sDataSW]
-
-    --     f <- msum mf `isJustOrFail` ["File not found:", fileName]
-
-    --     mt <-
-    --       processTerm (into @Text f) `isRightOr` \err ->
-    --         cmdExn Run ["Error in", fileName, "\n", err]
-
-    --     case mt of
-    --       Nothing -> return $ mkReturn ()
-    --       Just t -> do
-    --         void $ traceLog CmdStatus Info "run: OK."
-    --         cesk <- use machine
-    --         return $ continue t cesk
-    --   _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k
       _ -> badConst
@@ -1437,7 +1409,7 @@ execConst runChildProg c vs s k = do
     -- push an FFinishAtomic frame so that we unset the flag when done, and
     -- proceed to execute the argument.
     [VDelay cmd e] -> do
-      runningAtomic @Instantiated .= True
+      runningAtomic .= True
       return $ In cmd e s (FExec : FFinishAtomic : k)
     _ -> badConst
 
@@ -1706,7 +1678,7 @@ execConst runChildProg c vs s k = do
       ["You consider destroying your base, but decide not to do it after all."]
       (mAch False)
 
-    selfDestruct @Instantiated .= True
+    selfDestruct .= True
     forM_ (mAch True) grantAchievementForRobot
 
   -- Try to move the current robot once cell in a specific direction,

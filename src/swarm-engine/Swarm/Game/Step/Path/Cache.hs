@@ -226,7 +226,7 @@ revalidatePathCache entityLoc entityModification (rid, pc) = do
     Nothing -> Left NonexistentRobot
     Just bot ->
       perhapsInvalidateForRobot
-        (view (walkabilityContext @Instantiated) bot)
+        (view walkabilityContext bot)
         entityLoc
         entityModification
         pc
