@@ -22,13 +22,12 @@ import Data.Set.Lens (setOf)
 import Data.Text qualified as T
 import Data.Text (Text)
 import Swarm.Language.Parser.Core
+import Swarm.Language.Parser.Import
 import Swarm.Language.Parser.Lex
 import Swarm.Language.Parser.Record (parseRecord)
 import Swarm.Language.Parser.Type
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
-import Swarm.Language.Syntax.Import (Anchor (..), mkImportDir)
-import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Language.Types
 import Swarm.Util (failT, findDup)
 import Text.Megaparsec hiding (runParser, sepBy1)
@@ -134,35 +133,6 @@ parseStock :: Parser (Term Raw)
 parseStock =
   (TStock . fromIntegral <$> integer)
     <*> (textLiteral <?> "entity name in double quotes")
-
--- XXX move this to a dedicated module??
-parseImportLocation :: Parser (ImportLoc Import.Raw)
-parseImportLocation =
-  lexeme . between (char '"') (char '"') $ do
-    anchor <- parseAnchor
-    cs <- importComponent `sepBy1` separator
-    pure $ ImportLoc (mkImportDir anchor (NE.init cs)) (NE.last cs)
- where
-  importComponent :: Parser Text
-  importComponent = into @Text <$> someTill L.charLiteral (lookAhead (oneOf ("\"/\\" :: [Char])))
-
-  separator :: Parser Char
-  separator = oneOf ['/', '\\']
-
-  parseAnchor :: Parser (Anchor Import.Raw)
-  parseAnchor =
-    (Absolute <$ separator)
-      <|> (Home <$ (char '~' *> separator))
-      <|> (Web <$> parseWeb)
-      <|> pure (Local 0)
-
-  parseWeb :: Parser Text
-  parseWeb =
-    mconcat
-      <$> sequenceA [scheme, string "://", into @Text <$> manyTill L.charLiteral separator]
-
-  scheme :: Parser Text
-  scheme = string "https" <|> string "http"
 
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
