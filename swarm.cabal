@@ -470,6 +470,7 @@ library swarm-lang
     Swarm.Language.Parser
     Swarm.Language.Parser.Comment
     Swarm.Language.Parser.Core
+    Swarm.Language.Parser.Import
     Swarm.Language.Parser.Lex
     Swarm.Language.Parser.QQ
     Swarm.Language.Parser.Record
