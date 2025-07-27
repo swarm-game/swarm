@@ -103,7 +103,7 @@ ensureCanExecute c =
     -- of equipped devices, and without expending
     -- a capability's exercise cost.
     unless isPrivileged $ do
-      robotCaps <- use (robotCapabilities @Instantiated)
+      robotCaps <- use robotCapabilities
       let capProviders = M.lookup cap $ getMap robotCaps
       case capProviders of
         Nothing -> throwError $ Incapable FixByEquip (R.singletonCap cap) (TConst c)
@@ -198,7 +198,7 @@ updateRobotLocation oldLoc newLoc
         updatedLoc = maybe loc destination maybePortalInfo
         maybeTurn = reorientation <$> maybePortalInfo
     forM_ maybeTurn $ \d ->
-      robotOrientation @Instantiated . _Just %= applyTurn d
+      robotOrientation . _Just %= applyTurn d
     return updatedLoc
 
 -- | Execute a stateful action on a target robot --- whether the
@@ -227,7 +227,7 @@ grantAchievementForRobot ::
   GameplayAchievement ->
   m ()
 grantAchievementForRobot a = do
-  sys <- use (systemRobot @Instantiated)
+  sys <- use systemRobot
   let isValidRobotType = not sys || robotTypeRequired == ValidForSystemRobot
   when isValidRobotType $
     grantAchievement a
