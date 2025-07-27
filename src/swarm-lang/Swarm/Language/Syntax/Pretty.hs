@@ -143,7 +143,7 @@ instance PrettyPrec (Term phase) where
         "suspend" <+> prettyPrec 11 t
     SParens t -> pparens True (ppr t)
     TType ty -> "@" <> prettyPrec 11 ty
-    SImportIn _x _t -> error "XXX unimplemented: pretty SImportIn"
+    SImportIn loc t -> "import" <+> "\"" <> ppr loc <> "\";" <> line <> ppr t
 
 prettyDefinition :: Doc ann -> Var -> Maybe (Poly q Type) -> Syntax phase -> Doc ann
 prettyDefinition defName x mty t1 =

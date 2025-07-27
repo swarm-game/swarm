@@ -50,7 +50,7 @@ import Prelude hiding (lookup)
 
 deriveHeading :: HasRobotStepState sig m => Direction -> m Heading
 deriveHeading d = do
-  orient <- use (robotOrientation @Instantiated)
+  orient <- use robotOrientation
   when (isCardinal d) $ hasCapabilityFor COrient $ TDir d
   return $ applyTurn d $ orient ? zero
 
@@ -93,7 +93,7 @@ updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
 -- | Exempts the robot from various command constraints
 -- when it is either a system robot or playing in creative mode
 isPrivilegedBot :: (Has (State GameState) sig m, Has (State (Robot Instantiated)) sig m) => m Bool
-isPrivilegedBot = (||) <$> use (systemRobot @Instantiated) <*> use creativeMode
+isPrivilegedBot = (||) <$> use systemRobot <*> use creativeMode
 
 -- | Test whether the current robot has a given capability (either
 --   because it has a device which gives it that capability, or it is a
@@ -101,7 +101,7 @@ isPrivilegedBot = (||) <$> use (systemRobot @Instantiated) <*> use creativeMode
 hasCapability :: (Has (State (Robot Instantiated)) sig m, Has (State GameState) sig m) => Capability -> m Bool
 hasCapability cap = do
   isPrivileged <- isPrivilegedBot
-  caps <- use (robotCapabilities @Instantiated)
+  caps <- use robotCapabilities
   return (isPrivileged || cap `S.member` getCapabilitySet caps)
 
 -- | Ensure that either a robot has a given capability, OR we are in creative
@@ -172,7 +172,7 @@ checkMoveFailureUnprivileged ::
   m (Maybe MoveFailureMode)
 checkMoveFailureUnprivileged nextLoc = do
   me <- entityAt nextLoc
-  wc <- use (walkabilityContext @Instantiated)
+  wc <- use walkabilityContext
   return $ checkUnwalkable wc me
 
 -- | Check whether moving to the given location causes any kind of
@@ -181,7 +181,7 @@ checkMoveFailureUnprivileged nextLoc = do
 --   in creative mode.
 checkMoveFailure :: HasRobotStepState sig m => Cosmic Location -> m (Maybe MoveFailureMode)
 checkMoveFailure nextLoc = do
-  systemRob <- use (systemRobot @Instantiated)
+  systemRob <- use systemRobot
   runMaybeT $ do
     guard $ not systemRob
     maybeMoveFailure <- lift $ checkMoveFailureUnprivileged nextLoc

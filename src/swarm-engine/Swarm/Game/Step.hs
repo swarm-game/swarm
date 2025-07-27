@@ -776,7 +776,7 @@ stepCESK cesk = case cesk of
 
   -- Reset the runningAtomic flag when we encounter an FFinishAtomic frame.
   Out v s (FFinishAtomic : k) -> do
-    runningAtomic @Instantiated .= False
+    runningAtomic .= False
     return $ Out v s k
 
   -- To execute a bind expression, evaluate and execute the first
@@ -845,7 +845,7 @@ stepCESK cesk = case cesk of
   Up exn s (FRestoreEnv e : _) -> handleException exn s (Just e)
   -- If an atomic block threw an exception, we should terminate it.
   Up exn s (FFinishAtomic : k) -> do
-    runningAtomic @Instantiated .= False
+    runningAtomic .= False
     return $ Up exn s k
   -- If we are raising a catchable exception up the continuation
   -- stack and come to a Try frame, force and then execute the associated catch

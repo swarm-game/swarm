@@ -134,17 +134,16 @@ data Term phase
     STydef (Located TDVar) Polytype (Maybe TydefInfo) (Syntax phase)
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
     --
-    --   The @Maybe ty@ field is a place to stash the inferred type of
-    --   the variable (if any) during type inference.  Once type
-    --   inference is complete, during elaboration we will copy the
-    --   inferred type into the @Maybe Polytype@ field (since the
-    --   @Maybe ty@ field will be erased).
+    --   The @Maybe (SwarmType phase)@ field is a place to stash the
+    --   inferred type of the variable (if any) during type inference.
+    --   Once type inference is complete, during elaboration we will
+    --   copy the inferred type into the @Maybe Polytype@ field (since
+    --   the @Maybe (SwarmType phase)@ field will be erased).
     --
-    --   The @Maybe Polytype@ and @Maybe Requirements@ fields is only
+    --   The @Maybe Polytype@ and @Maybe Requirements@ fields are only
     --   for annotating the type of a bind after typechecking; there
     --   is no surface syntax that allows directly annotating a bind
     --   with either one.
-    -- XXX can we just keep (Maybe (SwarmType phase)) and get rid of (Maybe Polytype)??
     SBind (Maybe LocVar) (Maybe (SwarmType phase)) (Maybe Polytype) (Maybe Requirements) (Syntax phase) (Syntax phase)
   | -- | Delay evaluation of a term, written @{...}@.  Swarm is an
     --   eager language, but in some cases (e.g. for @if@ statements
