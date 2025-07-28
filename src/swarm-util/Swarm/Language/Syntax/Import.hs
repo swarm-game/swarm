@@ -101,18 +101,14 @@ instance Typeable phase => Data (Anchor phase) where
   gfoldl k z (Local n) = k (z Local) n
   gfoldl _ z Home = z Home
 
-  gunfold k z c = case Data.constrIndex c of
-    1 -> z Absolute
-    2 -> k (z Web)
-    3 -> k (z (unsafeCoerce Local :: Int -> Anchor phase))
-    4 -> z (unsafeCoerce Home :: Anchor phase)   -- XXX ???
-    _ -> error "impossible"
-
   toConstr Absolute = constrAbsolute
   toConstr (Web _) = constrWeb
   toConstr (Local _) = constrLocal
   toConstr Home = constrHome
   dataTypeOf _ = dataTypeAnchor
+
+  -- See Note [Data Anchor instance]
+  gunfold k z c = error "Can't implement gunfold for Anchor"
 
 constrAbsolute :: Data.Constr
 constrAbsolute = Data.mkConstrTag dataTypeAnchor "Absolute" 1 [] Data.Prefix
@@ -128,6 +124,42 @@ constrHome = Data.mkConstrTag dataTypeAnchor "Home" 4 [] Data.Prefix
 
 dataTypeAnchor :: Data.DataType
 dataTypeAnchor = Data.mkDataType "Swarm.Language.Syntax.Import.Anchor" [constrAbsolute, constrWeb, constrLocal, constrHome]
+
+-- ~~~~ Note [Data Anchor instance]
+--
+-- Anchor is a GADT to ensure that after import resolution, all import
+-- locations are resolved/canonicalized to have either Absolute or Web
+-- anchors.  The Local and Home constructors specifically construct an
+-- Anchor Raw, so they cannot be used to construct an Anchor Resolved.
+--
+-- However, making it a GADT in this way means we cannot auto-derive a
+-- Data Anchor instance.  Implementing one by hand, as above, reveals
+-- that the real problem is gunfold, which requires us to construct
+-- Anchor values using an arbitrary constructor. However, we can't
+-- really do that, since which constructors are valid depend on the
+-- type being constructed.
+--
+-- We could make two instances, one for Anchor Raw and one for Anchor
+-- Resolved, which would allow us to avoid the unsafeCoerce.  But then
+-- we would be committed to making separate instances for every type.
+--
+-- However, the Data instance is ultimately needed for things such as:
+--
+--   - Functions like `asTree` and `measureAstSize`, which take an
+--     existing syntax tree and analyze it generically
+--   - Populating syntax trees with comments, which generically
+--     traverses through a syntax tree and inserts comments in
+--     appropriate nodes
+--   - Syntax quasiquoters, which parse a string into a syntax tree
+--     and then generically turn the syntax tree into Haskell syntax,
+--     via `dataToExpQ`.
+--
+-- All of these applications *consume* syntax trees generically, which
+-- only needs `gfoldl` (which is unproblematic) rather than `gunfold`.
+-- We could implement `gunfold` using `unsafeCoerce` in a way that
+-- would probably work fine---but it seems safer to simply leave
+-- `gunfold` unimplemented, so that Swarm will fail loudly if we ever
+-- violate the assumption that we do not need it.
 
 instance FromJSON (Anchor phase) where
   parseJSON = undefined -- XXX can't auto-derive due to GADT; implement by hand?
