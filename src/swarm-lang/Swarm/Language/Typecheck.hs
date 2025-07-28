@@ -189,7 +189,9 @@ getJoin (Join j) = (j Expected, j Actual)
 ------------------------------------------------------------
 -- Type checking
 
--- XXX
+-- | Finalize the typechecking process by generalizing over free
+--   unification variables and ensuring that no bound unification
+--   variables remain.
 fromInferredSyntax ::
   ( Has Unification sig m
   , Has (Reader UCtx) sig m
@@ -212,7 +214,9 @@ fromInferredModule (Module t ctx imps) =
     <*> traverse (checkPredicative . fromU) ctx
     <*> pure imps
 
--- XXX
+-- | Finalize the typechecking process by generalizing over free
+--   unification variables and ensuring that no bound unification
+--   variables remain.
 finalizeInferred ::
   ( Has Unification sig m
   , Has (Reader UCtx) sig m
@@ -739,9 +743,14 @@ prettyTypeErr code (CTE l tcStack te) =
     ]
  where
   teLoc = case l of
-    -- XXX factor out into pretty-printing for SrcLoc?
-    SrcLoc loc s e -> maybe "" ((<> ": ") . ppr) loc <> (showLoc . fst $ getLocRange code (s, e)) <> ": "
+    SrcLoc {} -> prettySrcLoc code l <> ": "
     NoLoc -> emptyDoc
+
+prettySrcLoc :: Text -> SrcLoc -> Doc a
+prettySrcLoc _ NoLoc = emptyDoc
+prettySrcLoc code (SrcLoc loc s e) =
+  maybe "" ((<> ": ") . ppr) loc <> (showLoc . fst $ getLocRange code (s, e))
+ where
   showLoc (r, c) = pretty r <> ":" <> pretty c
 
 ------------------------------------------------------------
