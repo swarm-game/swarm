@@ -50,11 +50,11 @@ data GoalStatus
     Failed
   deriving (Show, Eq, Ord, Bounded, Enum, Generic, ToJSON, ToJSONKey)
 
-type CategorizedGoals = Map GoalStatus (NonEmpty (Objective Typed))
+type CategorizedGoals = Map GoalStatus (NonEmpty (Objective Elaborated))
 
 data GoalEntry
   = Header GoalStatus
-  | Goal GoalStatus (Objective Typed)
+  | Goal GoalStatus (Objective Elaborated)
   | Spacer
 
 shouldSkipSelection :: GoalEntry -> Bool
@@ -103,7 +103,7 @@ hasMultipleGoals gt =
  where
   goalCount = sum . M.elems . M.map NE.length . goals $ gt
 
-constructGoalMap :: Bool -> ObjectiveCompletion Typed -> CategorizedGoals
+constructGoalMap :: Bool -> ObjectiveCompletion Elaborated -> CategorizedGoals
 constructGoalMap showHidden oc =
   M.fromList $
     mapMaybe (traverse nonEmpty) categoryList

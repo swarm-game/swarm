@@ -317,7 +317,7 @@ data GameControls = GameControls
   , _replNextValueIndex :: Integer
   , _replListener :: Text -> IO ()
   , _inputHandler :: Maybe (Text, Value)
-  , _initiallyRunCode :: Maybe (Syntax Typed)
+  , _initiallyRunCode :: Maybe (Syntax Elaborated)
   }
 
 makeLensesNoSigs ''GameControls
@@ -337,7 +337,7 @@ inputHandler :: Lens' GameControls (Maybe (Text, Value))
 
 -- | Code that is run upon scenario start, before any
 -- REPL interaction.
-initiallyRunCode :: Lens' GameControls (Maybe (Syntax Typed))
+initiallyRunCode :: Lens' GameControls (Maybe (Syntax Elaborated))
 
 data Discovery = Discovery
   { _allDiscoveredEntities :: Inventory
@@ -346,7 +346,7 @@ data Discovery = Discovery
   , _knownEntities :: S.Set EntityName
   , _craftableDevices :: S.Set EntityName
   , _gameAchievements :: Map GameplayAchievement Attainment
-  , _structureRecognition :: RecognitionState Entity (RecognizableStructureContent Typed)
+  , _structureRecognition :: RecognitionState Entity (RecognizableStructureContent Elaborated)
   , _tagMembers :: Map Text (NonEmpty EntityName)
   }
 
@@ -373,7 +373,7 @@ craftableDevices :: Lens' Discovery (S.Set EntityName)
 gameAchievements :: Lens' Discovery (Map GameplayAchievement Attainment)
 
 -- | Recognizer for robot-constructed structures
-structureRecognition :: Lens' Discovery (RecognitionState Entity (RecognizableStructureContent Typed))
+structureRecognition :: Lens' Discovery (RecognitionState Entity (RecognizableStructureContent Elaborated))
 
 -- | Map from tags to entities that possess that tag
 tagMembers :: Lens' Discovery (Map Text (NonEmpty EntityName))

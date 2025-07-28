@@ -26,7 +26,6 @@ import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.State
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Syntax hiding (Key)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List

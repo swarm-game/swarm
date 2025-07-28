@@ -87,7 +87,7 @@ instance IsString ScenarioPath where
   fromString = ScenarioPath
 
 data ScenarioWith a = ScenarioWith
-  { _getScenario :: Scenario Typed
+  { _getScenario :: Scenario Elaborated
   , _getScenarioInfo :: a
   }
   deriving (Generic, Functor)

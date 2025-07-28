@@ -7,20 +7,17 @@
 -- Parser for terms of the Swarm language.
 module Swarm.Language.Parser.Term where
 
-import Control.Applicative.Combinators.NonEmpty (sepBy1)
 import Control.Lens (view, (^.))
 import Control.Monad (guard, join, void)
 import Control.Monad.Combinators.Expr
 import Data.Foldable (Foldable (..), asum)
 import Data.Functor (($>))
-import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
 import Data.Text qualified as T
-import Data.Text (Text)
 import Swarm.Language.Parser.Core
 import Swarm.Language.Parser.Import
 import Swarm.Language.Parser.Lex
@@ -32,8 +29,6 @@ import Swarm.Language.Types
 import Swarm.Util (failT, findDup)
 import Text.Megaparsec hiding (runParser, sepBy1)
 import Text.Megaparsec.Char
-import Text.Megaparsec.Char.Lexer qualified as L
-import Witch (into)
 import Prelude hiding (Foldable (..))
 
 -- Imports for doctests (cabal-docspec needs this)
