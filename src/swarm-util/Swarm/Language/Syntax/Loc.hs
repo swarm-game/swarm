@@ -33,6 +33,9 @@ data SrcLoc
     SrcLoc (Maybe (ImportLoc Resolved)) Int Int
   deriving (Eq, Ord, Show, Generic, Data, Hashable)
 
+instance FromJSON SrcLoc where
+  parseJSON = genericParseJSON optionsUntagged
+
 instance ToJSON SrcLoc where
   toJSON = genericToJSON optionsUntagged
   omitField = (== NoLoc)
@@ -70,4 +73,4 @@ srcLocEndsBefore _ _ = False
 --   binding sites. (Variable occurrences are a bare TVar which gets
 --   wrapped in a Syntax node, so we don't need Located for those.)
 data Located v = LV {lvSrcLoc :: SrcLoc, lvVar :: v}
-  deriving (Eq, Ord, Functor, Show, Generic, Data, Hashable, ToJSON)
+  deriving (Eq, Ord, Functor, Show, Generic, Data, Hashable, ToJSON, FromJSON)

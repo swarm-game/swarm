@@ -13,7 +13,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Swarm.Language.Parser.Core (Parser)
 import Swarm.Language.Parser.Lex (lexeme)
-import Swarm.Language.Syntax.Import (Anchor (..), ImportLoc (..), mkImportDir)
+import Swarm.Language.Syntax.Import (Anchor, ImportLoc (..), mkImportDir)
 import Swarm.Language.Syntax.Import qualified as Import
 import Text.Megaparsec hiding (sepBy1)
 import Text.Megaparsec.Char (char, string)
@@ -37,10 +37,10 @@ parseImportLocation =
 
   parseAnchor :: Parser (Anchor Import.Raw)
   parseAnchor =
-    (Absolute <$ separator)
-      <|> (Home <$ (char '~' *> separator))
-      <|> (Web <$> parseWeb)
-      <|> pure (Local 0)
+    (Import.Absolute <$ separator)
+      <|> (Import.Home <$ (char '~' *> separator))
+      <|> (Import.Web <$> parseWeb)
+      <|> pure (Import.Local 0)
 
   parseWeb :: Parser Text
   parseWeb =

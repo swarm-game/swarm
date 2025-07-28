@@ -45,7 +45,7 @@ import Data.Tree
 import Swarm.Language.Phase
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Constants
-import Swarm.Language.Syntax.Import (ImportLoc, unresolveImportLoc)
+import Swarm.Language.Syntax.Import (Anchor, ImportLoc, Unresolvable, unresolveImportLoc)
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern
 import Swarm.Language.Var (LocVar, Var)
@@ -176,7 +176,7 @@ traverseSyntax f g (Syntax loc t com ty) =
 -- | Erase type annotations.
 class Erasable t where
   erase :: t Elaborated -> t Resolved
-  eraseRaw :: t phase -> t Raw
+  eraseRaw :: Unresolvable (ImportPhaseFor phase) => t phase -> t Raw
 
 instance Erasable Syntax where
   erase = runIdentity . traverseSyntax (const (pure ())) pure
@@ -265,12 +265,12 @@ mapFreeS x f = freeVarsS %~ (\t -> case t ^. sTerm of TVar y | y == x -> f t; _ 
 
 -- | Transform the AST into a Tree datatype.  Useful for
 --   pretty-printing (e.g. via "Data.Tree.drawTree").
-asTree :: (Typeable phase, Typeable (ImportPhaseFor phase), Data (SwarmType phase)) => Syntax phase -> Tree (Syntax phase)
+asTree :: (Data (Anchor (ImportPhaseFor phase)), Typeable phase, Typeable (ImportPhaseFor phase), Data (SwarmType phase)) => Syntax phase -> Tree (Syntax phase)
 asTree = para Node
 
 -- | Each constructor is a assigned a value of 1, plus
 --   any recursive syntax it entails.
-measureAstSize :: (Typeable phase, Typeable (ImportPhaseFor phase), Data (SwarmType phase)) => Syntax phase -> Int
+measureAstSize :: (Data (Anchor (ImportPhaseFor phase)), Typeable phase, Typeable (ImportPhaseFor phase), Data (SwarmType phase)) => Syntax phase -> Int
 measureAstSize = length . filter (not . isNoop) . universe
 
 -- | Don't count "noop" nodes towards the code size.  They are usually
