@@ -50,6 +50,17 @@ type family ModuleCtx (phase :: Phase) where
   ModuleCtx Elaborated = TCtx
   ModuleCtx Instantiated = TCtx
 
+-- | A module only needs to record its imports during resolution, so
+--   we can do cyclic import detection.  After that we no longer
+--   require the information.
+type family ModuleImports (phase :: Phase) where
+  ModuleImports Raw = ()
+  ModuleImports Resolved = Set (ImportLoc Import.Resolved)
+  ModuleImports Inferred = ()
+  ModuleImports Typed = ()
+  ModuleImports Elaborated = ()
+  ModuleImports Instantiated = ()
+
 -- | A 'Module' is a (possibly empty) AST, along with a context for
 --   any definitions contained in it, and a list of transitive,
 --   canonicalized imports.
@@ -61,11 +72,11 @@ data Module phase = Module
   , moduleCtx :: ModuleCtx phase
 
     -- | The moduleImports are mostly for convenience, e.g. for checking modules for cycles.
-  , moduleImports :: Set (ImportLoc (ImportPhaseFor phase))
+  , moduleImports :: ModuleImports phase
   }
   deriving (Generic)
 
-deriving instance (Typeable phase, Typeable (ImportPhaseFor phase), Data (ModuleCtx phase), Data (SwarmType phase)) => Data (Module phase)
+deriving instance (Typeable phase, Typeable (ImportPhaseFor phase), Data (ModuleCtx phase), Data (ModuleImports phase), Data (SwarmType phase)) => Data (Module phase)
 
 -- | A SourceMap associates canonical 'ImportLocation's to modules.
 type SourceMap phase = Map (ImportLoc (ImportPhaseFor phase)) (Module phase)
