@@ -220,10 +220,11 @@ finalizeInferred ::
   ) =>
   (SourceMap Inferred, Syntax Inferred) ->
   m (SourceMap Typed, Syntax Typed)
-finalizeInferred = applyBindings >=> \(srcMap, s) ->
-  (,)
-    <$> traverse fromInferredModule srcMap
-    <*> fromInferredSyntax s
+finalizeInferred =
+  applyBindings >=> \(srcMap, s) ->
+    (,)
+      <$> traverse fromInferredModule srcMap
+      <*> fromInferredSyntax s
 
 -- | Run a top-level inference computation, either throwing a
 --   'ContextualTypeErr' or returning a fully resolved 'Syntax Typed',
@@ -241,7 +242,7 @@ runTC ::
   StateC (SourceMap Inferred) (ReaderC UCtx (ReaderC TCStack (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx (ReaderC (SourceMap Resolved) m))))))) (Syntax Inferred) ->
   m (SourceMap Typed, Syntax Typed)
 runTC ctx reqCtx tdctx tvCtx srcMap =
-        runState M.empty
+  runState M.empty
     >>> (>>= finalizeInferred)
     >>> runReader (toU ctx)
     >>> runReader []
@@ -1134,9 +1135,7 @@ inferModule (Module ms _ _imps) = do
   -- Now, if the term has top-level definitions, collect up their
   -- types and put them in the context.
   ctx <- maybe (pure Ctx.empty) collectDefs mt
-  pure $ Module mt ctx mempty
-
--- XXX mempty, since we don't care about list of imports any more?  Use phase?
+  pure $ Module mt ctx ()
 
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype
