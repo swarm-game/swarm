@@ -39,7 +39,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.TDVar (tdVarName)
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types
-import Swarm.Pretty (prettyText, prettyTextLine)
+import Swarm.Pretty (PrettyPrec, prettyText, prettyTextLine)
 import Swarm.Util qualified as U
 
 withinBound :: Int -> SrcLoc -> Bool
@@ -214,7 +214,7 @@ instance ExplainableType RawPolytype where
     t -> t
   eq r t = r == forgetQ t
 
-explain :: ExplainableType (SwarmType phase) => Syntax phase -> Tree Text
+explain :: (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase)) => ExplainableType (SwarmType phase) => Syntax phase -> Tree Text
 explain trm = case trm ^. sTerm of
   TUnit -> literal "The unit value."
   TConst c -> literal . constGenSig c $ briefDoc (constDoc $ constInfo c)
@@ -284,7 +284,7 @@ explain trm = case trm ^. sTerm of
 --
 -- Note that 'Force' is often inserted internally, so
 -- if it shows up here we drop it.
-explainFunction :: ExplainableType (SwarmType phase) => Syntax phase -> Tree Text
+explainFunction :: (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase)) => ExplainableType (SwarmType phase) => Syntax phase -> Tree Text
 explainFunction s =
   case unfoldApps s of
     (Syntax _ (TConst Force) _ _ :| [innerT]) -> explain innerT

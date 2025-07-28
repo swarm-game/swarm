@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -28,9 +29,11 @@ import Data.Map qualified as M
 import Data.Sequence qualified as Seq
 import Data.String (fromString)
 import Prettyprinter
+import Swarm.Language.Phase (ImportPhaseFor)
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
+import Swarm.Language.Syntax.Import (Anchor, Unresolvable)
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern (sComments, pattern RTerm)
 import Swarm.Language.Syntax.Util (eraseRaw, unTuple)
@@ -40,7 +43,7 @@ import Swarm.Pretty (PrettyPrec (..), encloseWithIndent, pparens, ppr, prettyEqu
 import Text.Show.Unicode (ushow)
 
 -- | Pretty-print a syntax node with comments.
-instance PrettyPrec (Syntax phase) where
+instance (Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => PrettyPrec (Syntax phase) where
   prettyPrec p (Syntax _ t (Comments before after) _) = case before of
     Empty -> t'
     _ ->
@@ -62,7 +65,7 @@ instance PrettyPrec (Syntax phase) where
       -- The pretty-printed node with suffix comments
       tWithComments = prettyPrec p t <+> hsep (map ppr (F.toList after))
 
-instance PrettyPrec (Term phase) where
+instance (Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => PrettyPrec (Term phase) where
   prettyPrec p = \case
     TUnit -> "()"
     TConst c -> prettyPrec p c
@@ -75,8 +78,8 @@ instance PrettyPrec (Term phase) where
     TBool b -> bool "false" "true" b
     TRobot r -> "<a" <> pretty r <> ">"
     TRef r -> "@" <> pretty r
-    TRequire d -> pparens (p > 10) $ "require" <+> ppr (TText d)
-    TStock n e -> pparens (p > 10) $ "stock" <+> pretty n <+> ppr (TText e)
+    TRequire d -> pparens (p > 10) $ "require" <+> ppr (TText @phase d)
+    TStock n e -> pparens (p > 10) $ "stock" <+> pretty n <+> ppr (TText @phase e)
     SRequirements _ e -> pparens (p > 10) $ "requirements" <+> ppr e
     TVar s -> ppr s
     SDelay (Syntax _ (TConst Noop) _ _) -> "{}"
@@ -145,7 +148,7 @@ instance PrettyPrec (Term phase) where
     TType ty -> "@" <> prettyPrec 11 ty
     SImportIn loc t -> "import" <+> "\"" <> ppr loc <> "\";" <> line <> ppr t
 
-prettyDefinition :: Doc ann -> Var -> Maybe (Poly q Type) -> Syntax phase -> Doc ann
+prettyDefinition :: (Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => Doc ann -> Var -> Maybe (Poly q Type) -> Syntax phase -> Doc ann
 prettyDefinition defName x mty t1 =
   nest 2 . sep $
     [ flatAlt
@@ -165,15 +168,15 @@ prettyTydef :: TDVar -> Polytype -> Doc ann
 prettyTydef x (unPoly -> ([], ty)) = "tydef" <+> ppr x <+> "=" <+> ppr ty <+> "end"
 prettyTydef x (unPoly -> (xs, ty)) = "tydef" <+> ppr x <+> hsep (map ppr xs) <+> "=" <+> ppr ty <+> "end"
 
-prettyPrecApp :: Int -> Syntax phase -> Syntax phase -> Doc a
+prettyPrecApp :: (Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => Int -> Syntax phase -> Syntax phase -> Doc a
 prettyPrecApp p t1 t2 =
   pparens (p > 10) $
     prettyPrec 10 t1 <+> prettyPrec 11 t2
 
-prettyTuple :: Term phase -> Doc a
+prettyTuple :: Unresolvable (ImportPhaseFor phase) => Term phase -> Doc a
 prettyTuple = tupled . map ppr . unTuple . RTerm . eraseRaw
 
-prettyLambdas :: Term phase -> Doc a
+prettyLambdas :: Unresolvable (ImportPhaseFor phase) => Term phase -> Doc a
 prettyLambdas t = hsep (prettyLambda <$> lms) <> softline <> ppr rest
  where
   (rest, lms) = unchainLambdas (RTerm (eraseRaw t))
