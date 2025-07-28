@@ -26,7 +26,7 @@ import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Logic as L
-import Swarm.Language.Syntax (SwarmType)
+import Swarm.Language.Syntax (Anchor, ImportPhaseFor, SwarmType)
 import Swarm.Util.Graph (isAcyclicGraph)
 
 -- | This is only needed for constructing a Graph,
@@ -45,9 +45,9 @@ data GraphInfo phase = GraphInfo
   }
   deriving (Generic)
 
-deriving instance (Show (SwarmType phase)) => ToJSON (GraphInfo phase)
+deriving instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase)) => ToJSON (GraphInfo phase)
 
-instance (Show (SwarmType phase)) => ToJSON (SCC (Objective phase)) where
+instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase)) => ToJSON (SCC (Objective phase)) where
   toJSON = String . T.pack . show
 
 instance ToJSON Graph where

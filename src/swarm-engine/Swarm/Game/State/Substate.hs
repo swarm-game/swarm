@@ -113,10 +113,11 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (emptyFound
 import Swarm.Game.State.Config
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World.Gen (Seed)
-import Swarm.Language.Syntax (Const, Phase (..), SwarmType, Syntax)
+import Swarm.Language.Syntax (Anchor, Const, ImportPhaseFor, Phase (..), SwarmType, Syntax, Unresolvable)
 import Swarm.Language.Types (Polytype)
 import Swarm.Language.Value (Value)
 import Swarm.Log
+import Swarm.Pretty (PrettyPrec)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import System.Random (StdGen, mkStdGen)
 
@@ -159,7 +160,7 @@ data WinCondition phase
   deriving (Generic)
 
 deriving instance FromJSON (WinCondition Raw)
-deriving instance (ToJSON (SwarmType phase)) => ToJSON (WinCondition phase)
+deriving instance (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase), Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase)) => ToJSON (WinCondition phase)
 
 makePrisms ''WinCondition
 

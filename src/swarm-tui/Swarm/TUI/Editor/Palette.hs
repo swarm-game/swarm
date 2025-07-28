@@ -32,7 +32,7 @@ import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainMap, TerrainType, getTerrainDefaultPaletteChar, terrainByName)
 import Swarm.Game.Universe
-import Swarm.Language.Syntax (eraseRaw)
+import Swarm.Language.Syntax (ImportPhaseFor, Unresolvable, eraseRaw)
 import Swarm.Language.Text.Markdown (fromText)
 import Swarm.TUI.Editor.Json (SkeletonScenario (SkeletonScenario))
 import Swarm.Util (binTuples, histogram)
@@ -119,7 +119,9 @@ makeSuggestedPalette tm originalScenarioPalette cellGrid =
     f x = ((x, ENothing), (getTerrainDefaultPaletteChar x, Cell x ENothing []))
 
 -- | Generate a \"skeleton\" scenario with placeholders for certain required fields
-constructScenario :: Maybe (Scenario phase) -> Grid (Maybe (CellPaintDisplay phase)) -> SkeletonScenario
+constructScenario ::
+  Unresolvable (ImportPhaseFor phase) =>
+  Maybe (Scenario phase) -> Grid (Maybe (CellPaintDisplay phase)) -> SkeletonScenario
 constructScenario maybeOriginalScenario cellGrid =
   SkeletonScenario
     (maybe 1 (^. scenarioMetadata . scenarioVersion) maybeOriginalScenario)
