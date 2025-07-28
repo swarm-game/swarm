@@ -181,7 +181,7 @@ anchorToFilePath = \case
   Absolute -> "/"
   Web w -> into @FilePath w
 
--- XXX
+-- | Turn any anchor into a raw anchor.
 unresolveAnchor :: Anchor phase -> Anchor Raw
 unresolveAnchor = \case
   Absolute -> Absolute
@@ -262,7 +262,7 @@ dirToFilePath :: ImportDir Resolved -> FilePath
 dirToFilePath = withImportDir $ \a p ->
   anchorToFilePath a </> joinPath (map (into @FilePath) p)
 
--- XXX
+-- | Turn any import dir back into a raw one.
 unresolveImportDir :: ImportDir phase -> ImportDir Raw
 unresolveImportDir (ImportDir a p) = ImportDir (unresolveAnchor a) p
 
@@ -330,7 +330,9 @@ importAnchor = withImportDir const . importDir
 locToFilePath :: ImportLoc Resolved -> FilePath
 locToFilePath (ImportLoc d f) = dirToFilePath d </> into @FilePath f
 
--- XXX
+-- | Append an import location to the end of an import dir, resulting
+--   in a new import location.  That is, interpret the import location
+--   in the context of the given dir.
 (<//>) :: ImportDir phase -> ImportLoc phase -> ImportLoc phase
 d1 <//> ImportLoc d2 f = ImportLoc (d1 <> d2) f
 
