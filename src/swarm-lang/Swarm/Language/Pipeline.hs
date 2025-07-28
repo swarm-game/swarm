@@ -167,10 +167,6 @@ class Processable t where
 
 instance Processable Syntax where
   process s = do
-    -- XXX should call processParsedTerm'.  Need to call elaborate!
     (s', srcMap) <- buildSourceMap s
     r <- withError (typeErrToSystemFailure "") . inferTop mempty mempty emptyTDCtx srcMap $ s'
     (pure . elaborate . snd) r
-
--- instance Processable Term where
---   process = error "process Term undefined"
