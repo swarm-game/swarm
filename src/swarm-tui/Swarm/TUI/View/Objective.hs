@@ -17,9 +17,10 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
 import Data.Vector qualified as V
 import Swarm.Game.Scenario.Objective
-import Swarm.Language.Syntax (Phase (..), Syntax)
+import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (..), Syntax, Unresolvable)
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Language.Text.Markdown qualified as Markdown
+import Swarm.Pretty (PrettyPrec)
 import Swarm.TUI.Model.Dialog.Goal
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Attribute.Attr
@@ -33,7 +34,9 @@ makeListWidget (GoalTracking _announcements categorizedObjs) =
   objList = intercalate [Spacer] $ map f $ M.toList categorizedObjs
   f (h, xs) = Header h : map (Goal h) (NE.toList xs)
 
-renderGoalsDisplay :: GoalDisplay -> Maybe (Document (Syntax phase)) -> Widget Name
+renderGoalsDisplay ::
+  (Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) =>
+  GoalDisplay -> Maybe (Document (Syntax phase)) -> Widget Name
 renderGoalsDisplay gd desc =
   vBox
     [ maybe emptyWidget (hCenter . padTop (Pad 1) . withAttr boldAttr . drawMarkdown) desc

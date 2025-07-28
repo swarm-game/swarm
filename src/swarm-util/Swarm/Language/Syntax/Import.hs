@@ -7,6 +7,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TypeData #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
@@ -18,7 +19,15 @@ module Swarm.Language.Syntax.Import (
   ImportPhase (..),
 
   -- * Anchors
-  Anchor (..),
+  Anchor,
+  RAnchor (..),
+  UAnchor (..),
+  Unresolvable,
+
+  pattern Absolute,
+  pattern Web,
+  pattern Local,
+  pattern Home,
 
   -- * ImportDir
   ImportDir,
@@ -51,10 +60,9 @@ import Control.Algebra (Has)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Aeson (FromJSON (..), ToJSON (..))
 import Data.Data (Data (..), Typeable)
-import Data.Data qualified as Data
 import Data.Hashable (Hashable (..))
 import Data.Text (Text)
-import GHC.Generics (Generic)
+import GHC.Generics
 import Prettyprinter (hcat, pretty, punctuate, slash)
 import Swarm.Pretty
 import System.Directory (doesFileExist, getCurrentDirectory, getHomeDirectory)
@@ -73,126 +81,82 @@ type data ImportPhase where
 ------------------------------------------------------------
 -- Anchor
 
--- | An "anchor" from which to interpret a path: an absolute path, a
---   web URL, a local path (i.e. relative to CWD), or the home
---   directory.
+-- | A fully resolved anchor can only be one of two things: 'Absolute'
+--   (the filesystem root), or 'Web', representing a site root like
+--   @https://github.com/@.
+data RAnchor where
+  -- | Absolute, /i.e./ relative to the filesystem root.
+  Absolute_ :: RAnchor
+  -- | A web address.  The text represents scheme + authority, /e.g./
+  -- "https://github.com"
+  Web_ :: Text -> RAnchor
+  deriving (Eq, Ord, Show, Generic, Data, FromJSON, ToJSON, Hashable)
+
+-- | An unresolved anchor is an anchor which is a convenient shorthand
+--   for a fully resolved path.  We can parse such anchors but will
+--   then fully resolve/canonicalize them to a 'RAnchor'.
+data UAnchor where
+  -- | Relative to local dir.  The @Int@ is the number of levels to go
+  --   up, *e.g.* 2 means "../..".  0 means the current dir, /i.e./
+  --   "."
+  Local_ :: Int -> UAnchor
+  -- | Relative to the home directory, /i.e./ "~".
+  Home_ :: UAnchor
+  deriving (Eq, Ord, Show, Generic, Data, FromJSON, ToJSON, Hashable)
+
+-- | An "anchor" is the root location from which to interpret a path:
+--   an absolute path, a web URL, a local path (i.e. relative to CWD),
+--   or the home directory.
 --
 --   In the future, if we wanted to have some kind of standard
 --   library, we could add a fifth kind of anchor which refers to the
 --   location of the stdlib files.
-data Anchor (phase :: ImportPhase) where
-  -- | Absolute, /i.e./ relative to the filesystem root.
-  Absolute :: Anchor phase
-  -- | Text represents scheme + authority, /e.g./ "https://github.com"
-  Web :: Text -> Anchor phase
-  -- | Relative to local dir.  The @Int@ is the number of levels to go
-  --   up, *e.g.* 2 means "../..".  0 means the current dir, /i.e./
-  --   "."
-  --
-  --   Local anchors can only be raw; they get resolved into an
-  --   Absolute path.
-  Local :: Int -> Anchor Raw
-  -- | Relative to the home directory, /i.e./ "~".  Home anchor can
-  --   only be raw; it will get resolved into an Absolute path.
-  Home :: Anchor Raw
+type family Anchor (phase :: ImportPhase) = result | result -> phase where
+  Anchor Raw = Either UAnchor RAnchor
+  Anchor Resolved = RAnchor
 
-deriving instance Eq (Anchor phase)
-deriving instance Ord (Anchor phase)
-deriving instance Show (Anchor phase)
+pattern Absolute :: Anchor Raw
+pattern Absolute = Right Absolute_
 
-instance Typeable phase => Data (Anchor phase) where
-  gfoldl _ z Absolute = z Absolute
-  gfoldl k z (Web t) = k (z Web) t
-  gfoldl k z (Local n) = k (z Local) n
-  gfoldl _ z Home = z Home
+pattern Web :: Text -> Anchor Raw
+pattern Web t = Right (Web_ t)
 
-  toConstr Absolute = constrAbsolute
-  toConstr (Web _) = constrWeb
-  toConstr (Local _) = constrLocal
-  toConstr Home = constrHome
-  dataTypeOf _ = dataTypeAnchor
+pattern Local :: Int -> Anchor Raw
+pattern Local n = Left (Local_ n)
 
-  -- See Note [Data Anchor instance]
-  gunfold _ _ _ = error "Can't implement gunfold for Anchor"
+pattern Home :: Anchor Raw
+pattern Home = Left Home_
 
-constrAbsolute :: Data.Constr
-constrAbsolute = Data.mkConstrTag dataTypeAnchor "Absolute" 1 [] Data.Prefix
+{-# COMPLETE Absolute, Web, Local, Home #-}
 
-constrWeb :: Data.Constr
-constrWeb = Data.mkConstrTag dataTypeAnchor "Web" 2 [] Data.Prefix
+instance PrettyPrec (Either UAnchor RAnchor) where
+  prettyPrec p = either (prettyPrec p) (prettyPrec p)
 
-constrLocal :: Data.Constr
-constrLocal = Data.mkConstrTag dataTypeAnchor "Local" 3 [] Data.Prefix
-
-constrHome :: Data.Constr
-constrHome = Data.mkConstrTag dataTypeAnchor "Home" 4 [] Data.Prefix
-
-dataTypeAnchor :: Data.DataType
-dataTypeAnchor = Data.mkDataType "Swarm.Language.Syntax.Import.Anchor" [constrAbsolute, constrWeb, constrLocal, constrHome]
-
--- ~~~~ Note [Data Anchor instance]
---
--- Anchor is a GADT to ensure that after import resolution, all import
--- locations are resolved/canonicalized to have either Absolute or Web
--- anchors.  The Local and Home constructors specifically construct an
--- Anchor Raw, so they cannot be used to construct an Anchor Resolved.
---
--- However, making it a GADT in this way means we cannot auto-derive a
--- Data Anchor instance.  Implementing one by hand, as above, reveals
--- that the real problem is gunfold, which requires us to construct
--- Anchor values using an arbitrary constructor. However, we can't
--- really do that, since which constructors are valid depend on the
--- type being constructed.
---
--- We could make two instances, one for Anchor Raw and one for Anchor
--- Resolved, which would allow us to avoid the unsafeCoerce.  But then
--- we would be committed to making separate instances for every type.
---
--- However, the Data instance is ultimately needed for things such as:
---
---   - Functions like `asTree` and `measureAstSize`, which take an
---     existing syntax tree and analyze it generically
---   - Populating syntax trees with comments, which generically
---     traverses through a syntax tree and inserts comments in
---     appropriate nodes
---   - Syntax quasiquoters, which parse a string into a syntax tree
---     and then generically turn the syntax tree into Haskell syntax,
---     via `dataToExpQ`.
---
--- All of these applications *consume* syntax trees generically, which
--- only needs `gfoldl` (which is unproblematic) rather than `gunfold`.
--- We could implement `gunfold` using `unsafeCoerce` in a way that
--- would probably work fine---but it seems safer to simply leave
--- `gunfold` unimplemented, so that Swarm will fail loudly if we ever
--- violate the assumption that we do not need it.
-
-instance FromJSON (Anchor phase) where
-  parseJSON = undefined -- XXX can't auto-derive due to GADT; implement by hand?
-instance ToJSON (Anchor phase) where
-  toJSON = undefined -- XXX
-instance Hashable (Anchor phase) where
-  hashWithSalt = undefined -- XXX
-
-instance PrettyPrec (Anchor phase) where
+instance PrettyPrec RAnchor where
   prettyPrec _ = \case
-    Absolute -> mempty
-    Web w -> pretty w
-    Local n -> hcat $ punctuate slash (replicate n "..")
-    Home -> "~"
+    Absolute_ -> mempty
+    Web_ w -> pretty w
+
+instance PrettyPrec UAnchor where
+  prettyPrec _ = \case
+    Local_ n -> hcat $ punctuate slash (replicate n "..")
+    Home_ -> "~"
 
 -- | Turn an 'Anchor' into a concrete 'FilePath' (or URL).
 anchorToFilePath :: Anchor Resolved -> FilePath
 anchorToFilePath = \case
-  Absolute -> "/"
-  Web w -> into @FilePath w
+  Absolute_ -> "/"
+  Web_ w -> into @FilePath w
 
 -- | Turn any anchor into a raw anchor.
-unresolveAnchor :: Anchor phase -> Anchor Raw
-unresolveAnchor = \case
-  Absolute -> Absolute
-  Web t -> Web t
-  Local n -> Local n
-  Home -> Home
+class Unresolvable (phase :: ImportPhase) where
+  unresolve :: Anchor phase -> Anchor Raw
+
+instance Unresolvable Raw where
+  unresolve = id
+
+instance Unresolvable Resolved where
+  unresolve = Right
 
 ------------------------------------------------------------
 -- ImportDir
@@ -214,9 +178,17 @@ unresolveAnchor = \case
 --   use the 'mkImportDir' smart constructor. To extract information,
 --   use 'withImportDir'.
 data ImportDir (phase :: ImportPhase) = ImportDir (Anchor phase) [Text]
-  deriving (Eq, Ord, Show, Generic, Data, FromJSON, ToJSON, Hashable)
 
-instance PrettyPrec (ImportDir phase) where
+deriving instance Eq (Anchor phase) => Eq (ImportDir phase)
+deriving instance Ord (Anchor phase) => Ord (ImportDir phase)
+deriving instance Show (Anchor phase) => Show (ImportDir phase)
+deriving instance Generic (Anchor phase) => Generic (ImportDir phase)
+deriving instance (Typeable phase, Data (Anchor phase)) => Data (ImportDir phase)
+deriving instance (Generic (Anchor phase), FromJSON (Anchor phase)) => FromJSON (ImportDir phase)
+deriving instance (Generic (Anchor phase), ToJSON (Anchor phase)) => ToJSON (ImportDir phase)
+deriving instance (Generic (Anchor phase), Hashable (Anchor phase)) => Hashable (ImportDir phase)
+
+instance PrettyPrec (Anchor phase) => PrettyPrec (ImportDir phase) where
   prettyPrec _ (ImportDir anchor ps) = hcat $ punctuate slash (ppr anchor : map pretty ps)
 
 -- | Convenient shortcut for the 'ImportDir' representing the user's
@@ -231,7 +203,7 @@ currentDir = ImportDir (Local 0) []
 
 -- | Smart constructor for 'ImportDir' which ensures that it is
 -- normalized.
-mkImportDir :: Anchor phase -> [Text] -> ImportDir phase
+mkImportDir :: Anchor Raw -> [Text] -> ImportDir Raw
 mkImportDir a p = canonicalizeImportDir $ ImportDir a p
 
 -- | Destructor/eliminator for 'ImportDir'.  Since the constructor for
@@ -251,7 +223,7 @@ withImportDir f (ImportDir a p) = f a p
 --   See
 --   https://github.com/dhall-lang/dhall-lang/blob/master/standard/imports.md#chaining-directories
 --   for inspiration.
-instance Semigroup (ImportDir phase) where
+instance Semigroup (ImportDir Raw) where
   _ <> d@(ImportDir Absolute _) = d
   _ <> d@(ImportDir (Web {}) _) = d
   _ <> d@(ImportDir Home _) = d
@@ -268,8 +240,8 @@ dirToFilePath = withImportDir $ \a p ->
   anchorToFilePath a </> joinPath (map (into @FilePath) p)
 
 -- | Turn any import dir back into a raw one.
-unresolveImportDir :: ImportDir phase -> ImportDir Raw
-unresolveImportDir (ImportDir a p) = ImportDir (unresolveAnchor a) p
+unresolveImportDir :: Unresolvable phase => ImportDir phase -> ImportDir Raw
+unresolveImportDir (ImportDir a p) = ImportDir (unresolve a) p
 
 ------------------------------------------------------------
 -- Canonicalization
@@ -297,7 +269,7 @@ unresolveImportDir (ImportDir a p) = ImportDir (unresolveAnchor a) p
 --  ImportDir {importAnchor = Local 1, importPath = ["b","c"]}
 --  >>> canonicalizeImportDir (ImportDir (Local 1) ["a", "..", "..", "b", "c", "..", "d", "..", "..", ".."])
 --  ImportDir {importAnchor = Local 3, importPath = []}
-canonicalizeImportDir :: ImportDir phase -> ImportDir phase
+canonicalizeImportDir :: ImportDir Raw -> ImportDir Raw
 canonicalizeImportDir (ImportDir a p) = case (a, canonicalizeDir (0, [], p)) of
   (Local n, (m, p')) -> ImportDir (Local (n + m)) p'
   (_, (_, p')) -> ImportDir a p'
@@ -322,9 +294,17 @@ data ImportLoc (phase :: ImportPhase) = ImportLoc
   { importDir :: ImportDir phase
   , importFile :: Text
   }
-  deriving (Generic, Data, Eq, Ord, Show, Hashable, ToJSON)
 
-instance PrettyPrec (ImportLoc phase) where
+deriving instance Eq (Anchor phase) => Eq (ImportLoc phase)
+deriving instance Ord (Anchor phase) => Ord (ImportLoc phase)
+deriving instance Show (Anchor phase) => Show (ImportLoc phase)
+deriving instance Generic (Anchor phase) => Generic (ImportLoc phase)
+deriving instance (Typeable phase, Data (Anchor phase)) => Data (ImportLoc phase)
+deriving instance (Generic (Anchor phase), FromJSON (Anchor phase)) => FromJSON (ImportLoc phase)
+deriving instance (Generic (Anchor phase), ToJSON (Anchor phase)) => ToJSON (ImportLoc phase)
+deriving instance (Generic (Anchor phase), Hashable (Anchor phase)) => Hashable (ImportLoc phase)
+
+instance PrettyPrec (Anchor phase) => PrettyPrec (ImportLoc phase) where
   prettyPrec _ (ImportLoc d f) = ppr d <> "/" <> pretty f
 
 -- | Get the 'Anchor' for an 'ImportLoc'.
@@ -338,7 +318,7 @@ locToFilePath (ImportLoc d f) = dirToFilePath d </> into @FilePath f
 -- | Append an import location to the end of an import dir, resulting
 --   in a new import location.  That is, interpret the import location
 --   in the context of the given dir.
-(<//>) :: ImportDir phase -> ImportLoc phase -> ImportLoc phase
+(<//>) :: ImportDir Raw -> ImportLoc Raw -> ImportLoc Raw
 d1 <//> ImportLoc d2 f = ImportLoc (d1 <> d2) f
 
 ------------------------------------------------------------
@@ -347,14 +327,14 @@ d1 <//> ImportLoc d2 f = ImportLoc (d1 <> d2) f
 -- | Resolve an import directory, turning it into an absolute path.
 resolveImportDir :: Has (Lift IO) sig m => ImportDir Raw -> m (ImportDir Resolved)
 resolveImportDir (ImportDir a p) = case a of
-  Web t -> pure $ ImportDir (Web t) p
+  Web t -> pure $ ImportDir (Web_ t) p
   Local n -> do
     cwd <- drop 1 . reverse . drop n . reverse . splitDirectories <$> sendIO getCurrentDirectory
-    pure $ ImportDir Absolute (map (into @Text) cwd ++ p)
+    pure $ ImportDir Absolute_ (map (into @Text) cwd ++ p)
   Home -> do
     home <- drop 1 . splitDirectories <$> sendIO getHomeDirectory
-    pure $ ImportDir Absolute (map (into @Text) home ++ p)
-  Absolute -> pure $ ImportDir Absolute p
+    pure $ ImportDir Absolute_ (map (into @Text) home ++ p)
+  Absolute -> pure $ ImportDir Absolute_ p
 
 -- | Check whether a given 'ImportLoc' in fact exists.  Note that, for
 --   the sake of efficiency, this simply assumes that any 'Web'
@@ -365,7 +345,7 @@ doesLocationExist :: (Has (Lift IO) sig m) => ImportLoc Resolved -> m Bool
 doesLocationExist loc = do
   let fp = locToFilePath loc
   case importAnchor loc of
-    Web {} -> pure True
+    Web_ {} -> pure True
     _ -> sendIO $ doesFileExist fp
 
 -- | Resolve an import location, by turning the path into an absolute
@@ -383,7 +363,7 @@ resolveImportLoc (ImportLoc d f) = do
     (False, True) -> pure loc'sw
     _ -> pure loc'
 
--- | Turn any import loc back into a raw one.
-unresolveImportLoc :: ImportLoc a -> ImportLoc Raw
+-- | Turn a resolved import loc back into a raw one.
+unresolveImportLoc :: Unresolvable phase => ImportLoc phase -> ImportLoc Raw
 unresolveImportLoc (ImportLoc d f) = ImportLoc (unresolveImportDir d) f
 

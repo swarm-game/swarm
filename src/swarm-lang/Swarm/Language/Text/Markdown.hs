@@ -2,6 +2,7 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -54,8 +55,9 @@ import Data.Vector (toList)
 import Data.Yaml
 import GHC.Exts qualified (IsList (..), IsString (..))
 import Swarm.Language.Parser (readTerm)
+import Swarm.Language.Phase (ImportPhaseFor)
 import Swarm.Language.Pipeline (processParsedTermNoImports)
-import Swarm.Language.Syntax (Phase (Raw), Syntax)
+import Swarm.Language.Syntax (Anchor, Phase (Raw), Syntax, Unresolvable)
 import Swarm.Pretty (PrettyPrec (..), prettyText, prettyTextLine)
 
 -- | The top-level markdown document.
@@ -187,10 +189,10 @@ findCode = concatMap (mapMaybe codeOnly . nodes) . paragraphs
     LeafCodeBlock _i s -> Just s
     _l -> Nothing
 
-instance ToJSON (Paragraph (Syntax phase)) where
+instance (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase)) => ToJSON (Paragraph (Syntax phase)) where
   toJSON = String . toText
 
-instance ToJSON (Document (Syntax phase)) where
+instance (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase)) => ToJSON (Document (Syntax phase)) where
   toJSON = String . docToMark
 
 instance FromJSON (Document (Syntax Raw)) where

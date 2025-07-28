@@ -48,6 +48,8 @@ module Swarm.Language.Syntax (
   Phase (..),
   ImportPhaseFor,
   SwarmType,
+  Anchor,
+  Unresolvable,
 
   -- * Imports
   ImportDir,

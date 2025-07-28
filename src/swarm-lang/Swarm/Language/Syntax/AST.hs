@@ -30,7 +30,7 @@ import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Direction
-import Swarm.Language.Syntax.Import (ImportLoc)
+import Swarm.Language.Syntax.Import (Anchor, ImportLoc)
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.TDVar (TDVar)
 import Swarm.Language.Types
@@ -57,12 +57,12 @@ data Syntax phase = Syntax
   }
   deriving (Generic)
 
-deriving instance (Eq (SwarmType phase)) => Eq (Syntax phase)
-deriving instance (Show (SwarmType phase)) => Show (Syntax phase)
-deriving instance (Data (SwarmType phase), Typeable phase, Typeable (ImportPhaseFor phase)) => Data (Syntax phase)
-deriving instance (Hashable (SwarmType phase)) => Hashable (Syntax phase)
+deriving instance (Eq (Anchor (ImportPhaseFor phase)), Eq (SwarmType phase)) => Eq (Syntax phase)
+deriving instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase)) => Show (Syntax phase)
+deriving instance (Data (Anchor (ImportPhaseFor phase)), Data (SwarmType phase), Typeable phase, Typeable (ImportPhaseFor phase)) => Data (Syntax phase)
+deriving instance (Hashable (Anchor (ImportPhaseFor phase)), Generic (Anchor (ImportPhaseFor phase)), Hashable (SwarmType phase)) => Hashable (Syntax phase)
 
-instance (Data (SwarmType phase), Typeable phase, Typeable (ImportPhaseFor phase)) => Plated (Syntax phase) where
+instance (Data (Anchor (ImportPhaseFor phase)), Data (SwarmType phase), Typeable phase, Typeable (ImportPhaseFor phase)) => Plated (Syntax phase) where
   plate = uniplate
 
 -- | A @let@ expression can be written either as @let x = e1 in e2@ or
@@ -178,10 +178,10 @@ data Term phase
     SImportIn (ImportLoc (ImportPhaseFor phase)) (Syntax phase)
   deriving (Generic)
 
-deriving instance (Eq (SwarmType phase)) => Eq (Term phase)
-deriving instance (Show (SwarmType phase)) => Show (Term phase)
-deriving instance (Data (SwarmType phase), Typeable phase, Typeable (ImportPhaseFor phase)) => Data (Term phase)
-deriving instance (Hashable (SwarmType phase)) => Hashable (Term phase)
+deriving instance (Eq (Anchor (ImportPhaseFor phase)), Eq (SwarmType phase)) => Eq (Term phase)
+deriving instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase)) => Show (Term phase)
+deriving instance (Data (Anchor (ImportPhaseFor phase)), Data (SwarmType phase), Typeable phase, Typeable (ImportPhaseFor phase)) => Data (Term phase)
+deriving instance (Generic (Anchor (ImportPhaseFor phase)), Hashable (Anchor (ImportPhaseFor phase)), Hashable (SwarmType phase)) => Hashable (Term phase)
 
-instance (Data (SwarmType phase), Typeable phase, Typeable (ImportPhaseFor phase)) => Plated (Term phase) where
+instance (Data (Anchor (ImportPhaseFor phase)), Data (SwarmType phase), Typeable phase, Typeable (ImportPhaseFor phase)) => Plated (Term phase) where
   plate = uniplate
