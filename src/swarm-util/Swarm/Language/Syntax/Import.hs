@@ -74,7 +74,13 @@ type data ImportPhase where
 ------------------------------------------------------------
 -- Anchor
 
--- | An "anchor" from which to interpret a path.
+-- | An "anchor" from which to interpret a path: an absolute path, a
+--   web URL, a local path (i.e. relative to CWD), or the home
+--   directory.
+--
+--   In the future, if we wanted to have some kind of standard
+--   library, we could add a fifth kind of anchor which refers to the
+--   location of the stdlib files.
 data Anchor (phase :: ImportPhase) where
   -- | Absolute, /i.e./ relative to the filesystem root.
   Absolute :: Anchor phase
@@ -339,8 +345,6 @@ d1 <//> ImportLoc d2 f = ImportLoc (d1 <> d2) f
 ------------------------------------------------------------
 -- Import resolution
 
--- XXX simply assume web resources exist without checking?  + require them to be fully named...?
-
 -- | Resolve an import directory, turning it into an absolute path.
 resolveImportDir :: Has (Lift IO) sig m => ImportDir Raw -> m (ImportDir Resolved)
 resolveImportDir (ImportDir a p) = case a of
@@ -356,16 +360,14 @@ resolveImportDir (ImportDir a p) = case a of
 -- | Check whether a given 'ImportLoc' in fact exists.  Note that, for
 --   the sake of efficiency, this simply assumes that any 'Web'
 --   resource exists without checking; all other locations will
---   actually be checked.
+--   actually be checked.  This means, for example, that web imports
+--   must have an `.sw` extension fully written out.
 doesLocationExist :: (Has (Lift IO) sig m) => ImportLoc Resolved -> m Bool
 doesLocationExist loc = do
   let fp = locToFilePath loc
   case importAnchor loc of
     Web {} -> pure True
     _ -> sendIO $ doesFileExist fp
-
--- XXX need to be able to resolve "local" to something in a standard
--- Swarm data location, instead of just looking up CWD??
 
 -- | Resolve an import location, by turning the path into an absolute
 --   path, and optionally adding a .sw suffix to the file name.
@@ -382,7 +384,7 @@ resolveImportLoc (ImportLoc d f) = do
     (False, True) -> pure loc'sw
     _ -> pure loc'
 
--- XXX
+-- | Turn any import loc back into a raw one.
 unresolveImportLoc :: ImportLoc a -> ImportLoc Raw
 unresolveImportLoc (ImportLoc d f) = ImportLoc (unresolveImportDir d) f
-  
+
