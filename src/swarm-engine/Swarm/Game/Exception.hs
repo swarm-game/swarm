@@ -30,9 +30,9 @@ import Swarm.Game.Entity (EntityMap, devicesForCap, entityName)
 import Swarm.Language.Capability (Capability (CGod), capabilityName)
 import Swarm.Language.JSON ()
 import Swarm.Language.Requirements.Type (Requirements (..))
-import Swarm.Language.Syntax (Const, Term, Phase (..))
+import Swarm.Language.Syntax (Anchor, Const, ImportPhaseFor, Term, Phase (..), Unresolvable)
 import Swarm.Log (Severity (..))
-import Swarm.Pretty (prettyText)
+import Swarm.Pretty (PrettyPrec, prettyText)
 import Swarm.Util
 import Witch (from)
 
@@ -168,7 +168,9 @@ formatIncapableFix = \case
 --   'noop'
 --   Please obtain:
 --   - tree (3)
-formatIncapable :: EntityMap -> IncapableFix -> Requirements -> Term phase -> Text
+formatIncapable ::
+  (Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) =>
+  EntityMap -> IncapableFix -> Requirements -> Term phase -> Text
 formatIncapable em f (Requirements caps _ inv) tm
   | CGod `S.member` caps =
       unlinesExText $

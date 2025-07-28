@@ -32,7 +32,7 @@ import Swarm.Language.Pipeline (processParsedTermNoImports)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types
-import Swarm.Pretty (prettyText)
+import Swarm.Pretty (PrettyPrec, prettyText)
 import Swarm.Util qualified as U
 
 showHoverInfo ::
@@ -154,7 +154,7 @@ treeToMarkdown :: Int -> Tree Text -> Text
 treeToMarkdown d (Node t children) =
   T.unlines $ renderDoc d t : map (treeToMarkdown $ d + 1) children
 
-explain :: ExplainableType (SwarmType phase) => Syntax phase -> Tree Text
+explain :: (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase)) => ExplainableType (SwarmType phase) => Syntax phase -> Tree Text
 explain trm = case trm ^. sTerm of
   TUnit -> literal "The unit value."
   TConst c -> literal . constGenSig c $ briefDoc (constDoc $ constInfo c)
@@ -224,7 +224,7 @@ explain trm = case trm ^. sTerm of
 --
 -- Note that 'Force' is often inserted internally, so
 -- if it shows up here we drop it.
-explainFunction :: ExplainableType (SwarmType phase) => Syntax phase -> Tree Text
+explainFunction :: (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase)) => ExplainableType (SwarmType phase) => Syntax phase -> Tree Text
 explainFunction s =
   case unfoldApps s of
     (Syntax _ (TConst Force) _ _ :| [innerT]) -> explain innerT

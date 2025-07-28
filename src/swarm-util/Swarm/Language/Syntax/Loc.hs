@@ -33,6 +33,9 @@ data SrcLoc
     SrcLoc (Maybe (ImportLoc Resolved)) Int Int
   deriving (Eq, Ord, Show, Generic, Data, Hashable)
 
+instance FromJSON SrcLoc where
+  parseJSON = genericParseJSON optionsUntagged
+
 instance ToJSON SrcLoc where
   toJSON = genericToJSON optionsUntagged
   omitField = (== NoLoc)
@@ -68,4 +71,4 @@ srcLocEndsBefore _ _ = False
 
 -- | A value with associated source location.
 data Located v = Loc {lvSrcLoc :: SrcLoc, locVal :: v}
-  deriving (Eq, Ord, Functor, Show, Generic, Data, Hashable, ToJSON)
+  deriving (Eq, Ord, Functor, Show, Generic, Data, Hashable, ToJSON, FromJSON)
