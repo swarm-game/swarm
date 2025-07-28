@@ -76,7 +76,7 @@ data Module phase = Module
   }
   deriving (Generic)
 
-deriving instance (Typeable phase, Typeable (ImportPhaseFor phase), Data (ModuleCtx phase), Data (ModuleImports phase), Data (SwarmType phase)) => Data (Module phase)
+deriving instance (Data (Anchor (ImportPhaseFor phase)), Typeable phase, Typeable (ImportPhaseFor phase), Data (ModuleCtx phase), Data (ModuleImports phase), Data (SwarmType phase)) => Data (Module phase)
 
 -- | A SourceMap associates canonical 'ImportLocation's to modules.
 type SourceMap phase = Map (ImportLoc (ImportPhaseFor phase)) (Module phase)
@@ -179,7 +179,7 @@ readLoc loc = do
 
   -- Try to read the file from network/disk
   src <- case importAnchor loc of
-    Web {} -> error "readLoc Web unimplemented" -- XXX load URL with some kind of HTTP library
+    Web_ {} -> error "readLoc Web unimplemented" -- XXX load URL with some kind of HTTP library
     _ -> sendIO (readFileMayT path) >>= maybe (badImport (DoesNotExist File)) pure
 
   -- Try to parse the contents
