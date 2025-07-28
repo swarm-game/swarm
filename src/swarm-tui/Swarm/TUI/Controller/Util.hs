@@ -264,7 +264,7 @@ allHandlers eEmbed f = map handleEvent1 enumerate
  where
   handleEvent1 e1 = let (n, a) = f e1 in onEvent (eEmbed e1) n a
 
-runBaseTerm :: (MonadState ScenarioState m) => Maybe (SourceMap Typed, Syntax Typed) -> m ()
+runBaseTerm :: (MonadState ScenarioState m) => Maybe (SourceMap Elaborated, Syntax Elaborated) -> m ()
 runBaseTerm = mapM_ startBaseProgram
  where
   -- The player typed something at the REPL and hit Enter; this
