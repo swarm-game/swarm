@@ -121,7 +121,7 @@ mkLandscape sLandscape worldTuples theSeed =
     , _worldMetrics = Nothing
     }
 
-buildWorldTuples :: ScenarioLandscape Typed -> NonEmpty (SubworldDescription Typed)
+buildWorldTuples :: ScenarioLandscape Elaborated -> NonEmpty (SubworldDescription Elaborated)
 buildWorldTuples sLandscape =
   NE.map (worldName &&& buildWorld (sLandscape ^. scenarioTerrainAndEntities)) $
     sLandscape ^. scenarioWorlds
@@ -139,8 +139,8 @@ genMultiWorld worldTuples s =
 --   it into a list of located robots and a world function.
 buildWorld ::
   TerrainEntityMaps ->
-  WorldDescription Typed ->
-  ([IndexedRobot Typed], Seed -> WorldFun Int Entity)
+  WorldDescription Elaborated ->
+  ([IndexedRobot Elaborated], Seed -> WorldFun Int Entity)
 buildWorld tem WorldDescription {..} =
   (robots worldName, first getTerrainIndex . wf)
  where
@@ -178,11 +178,11 @@ buildWorld tem WorldDescription {..} =
   wf = dslWF <> arrayWF
 
   -- Get all the robots described in cells and set their locations appropriately
-  robots :: SubworldName -> [IndexedRobot Typed]
+  robots :: SubworldName -> [IndexedRobot Elaborated]
   robots swName =
     concat $ mapWithCoords extractRobots g
    where
-    extractRobots :: Coords -> Maybe (PCell Entity Typed) -> [IndexedRobot Typed]
+    extractRobots :: Coords -> Maybe (PCell Entity Elaborated) -> [IndexedRobot Elaborated]
     extractRobots (Coords coordsTuple) maybeCell =
       let robotWithLoc = trobotLocation ?~ Cosmic swName (coordsToLoc (coords `addTuple` coordsTuple))
        in map (fmap robotWithLoc) (maybe [] cellRobots maybeCell)
@@ -221,7 +221,7 @@ buildWorld tem WorldDescription {..} =
 --        same subworld, then
 --        prefer the one closest to the upper-left of the screen, with higher
 --        rows given precedence over columns (i.e. first in row-major order).
-genRobotTemplates :: ScenarioLandscape Typed -> NonEmpty (a, ([(Int, Robot Typed)], b)) -> [Robot Typed]
+genRobotTemplates :: ScenarioLandscape Elaborated -> NonEmpty (a, ([(Int, Robot Elaborated)], b)) -> [Robot Elaborated]
 genRobotTemplates sLandscape worldTuples =
   locatedRobots ++ map snd (sortOn fst genRobots)
  where
@@ -233,5 +233,5 @@ genRobotTemplates sLandscape worldTuples =
   -- Subworld order as encountered in the scenario YAML file is preserved for
   -- the purpose of numbering robots, other than the "root" subworld
   -- guaranteed to be first.
-  genRobots :: [(Int, Robot Typed)]
+  genRobots :: [(Int, Robot Elaborated)]
   genRobots = concat $ NE.toList $ NE.map (fst . snd) worldTuples

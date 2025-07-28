@@ -47,6 +47,7 @@ type family ModuleCtx (phase :: Phase) where
   ModuleCtx Resolved = ()
   ModuleCtx Inferred = UCtx
   ModuleCtx Typed = TCtx
+  ModuleCtx Elaborated = TCtx
   ModuleCtx Instantiated = TCtx
 
 -- | A 'Module' is a (possibly empty) AST, along with a context for

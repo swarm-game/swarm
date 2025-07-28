@@ -20,8 +20,8 @@ import Swarm.Language.Syntax (Phase (..))
 -- without reference to a 'GameState'
 -- (i.e. outside the context of an active game)
 determineStaticViewCenter ::
-  ScenarioLandscape Typed ->
-  NonEmpty (SubworldDescription Typed) ->
+  ScenarioLandscape Elaborated ->
+  NonEmpty (SubworldDescription Elaborated) ->
   Cosmic Location
 determineStaticViewCenter sLandscape worldTuples =
   fromMaybe defaultVC baseRobotLoc

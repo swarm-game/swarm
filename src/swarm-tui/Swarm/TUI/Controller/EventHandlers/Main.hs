@@ -118,7 +118,7 @@ toggleGameModal m l = do
 
 toggleStructuresModal ::
   Foldable t =>
-  Lens' (Landscape Typed) (t a) ->
+  Lens' (Landscape Elaborated) (t a) ->
   EventM Name ScenarioState ()
 toggleStructuresModal l = void $ toggleGameModal StructuresModal (landscape . l)
 

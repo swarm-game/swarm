@@ -98,6 +98,7 @@ type family RobotLocation (phase :: Phase) :: Data.Kind.Type where
   RobotLocation Resolved = Maybe (Cosmic Location)
   RobotLocation Inferred = Maybe (Cosmic Location)
   RobotLocation Typed = Maybe (Cosmic Location)
+  RobotLocation Elaborated = Maybe (Cosmic Location)
   RobotLocation Instantiated = Cosmic Location
 
 -- | Robot templates have no ID; concrete robots definitely do.
@@ -106,6 +107,7 @@ type family RobotID (phase :: Phase) :: Data.Kind.Type where
   RobotID Resolved = ()
   RobotID Inferred = ()
   RobotID Typed = ()
+  RobotID Elaborated = ()
   RobotID Instantiated = RID
 
 type family RobotActivity (phase :: Phase) :: Data.Kind.Type
@@ -113,24 +115,28 @@ type instance RobotActivity Raw = ()
 type instance RobotActivity Resolved = ()
 type instance RobotActivity Inferred = ()
 type instance RobotActivity Typed = ()
+type instance RobotActivity Elaborated = ()
 
 type family RobotLogMember (phase :: Phase) :: Data.Kind.Type
 type instance RobotLogMember Raw = ()
 type instance RobotLogMember Resolved = ()
 type instance RobotLogMember Inferred = ()
 type instance RobotLogMember Typed = ()
+type instance RobotLogMember Elaborated = ()
 
 type family RobotLogUpdatedMember (phase :: Phase) :: Data.Kind.Type
 type instance RobotLogUpdatedMember Raw = ()
 type instance RobotLogUpdatedMember Resolved = ()
 type instance RobotLogUpdatedMember Inferred = ()
 type instance RobotLogUpdatedMember Typed = ()
+type instance RobotLogUpdatedMember Elaborated = ()
 
 type family RobotMachine (phase :: Phase) :: Data.Kind.Type
 type instance RobotMachine Raw = Maybe (Syntax Raw)
 type instance RobotMachine Resolved = Maybe (Syntax Resolved)
 type instance RobotMachine Inferred = Maybe (Syntax Inferred)
 type instance RobotMachine Typed = Maybe (Syntax Typed)
+type instance RobotMachine Elaborated = Maybe (Syntax Elaborated)
 
 -- | A value of type 'Robot' is a record representing the state of a
 --   single robot.
@@ -238,7 +244,7 @@ unsafeSetRobotLocation loc r = r {_robotLocation = loc}
 -- | A template robot's location.  Unlike 'robotLocation', this is a
 --   lens, since when dealing with robot templates there is as yet no
 --   'Swarm.Game.State.robotsByLocation' map to keep up-to-date.
-trobotLocation :: Lens' (Robot Typed) (Maybe (Cosmic Location))
+trobotLocation :: Lens' (Robot Elaborated) (Maybe (Cosmic Location))
 trobotLocation = lens _robotLocation (\r l -> r {_robotLocation = l})
 
 -- | Which way the robot is currently facing.

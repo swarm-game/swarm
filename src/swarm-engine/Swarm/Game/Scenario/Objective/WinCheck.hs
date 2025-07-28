@@ -62,7 +62,7 @@ getActiveObjectives =
 
 -- | For debugging only (via Web API)
 data PrereqSatisfaction = PrereqSatisfaction
-  { objective :: Objective Typed
+  { objective :: Objective Elaborated
   , deps :: Set (BE.Signed ObjectiveLabel)
   , prereqsSatisfied :: Bool
   }
@@ -72,7 +72,7 @@ instance ToSample PrereqSatisfaction where
   toSamples _ = SD.noSamples
 
 -- | Used only by the web interface for debugging
-getSatisfaction :: ObjectiveCompletion Typed -> [PrereqSatisfaction]
+getSatisfaction :: ObjectiveCompletion Elaborated -> [PrereqSatisfaction]
 getSatisfaction oc = map f $ oc ^.. allObjectives
  where
   f y =
