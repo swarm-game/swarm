@@ -1137,8 +1137,7 @@ inferModule (Module ms _ _imps) = do
   -- Now, if the term has top-level definitions, collect up their
   -- types and put them in the context.
   ctx <- maybe (pure Ctx.empty) collectDefs mt
-  pure $ Module mt ctx mempty
-    -- XXX mempty, since we don't care about list of imports any more?  Use phase?
+  pure $ Module mt ctx ()
 
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype
