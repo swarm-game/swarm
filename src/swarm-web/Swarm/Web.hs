@@ -86,7 +86,7 @@ import Swarm.Game.State.Substate
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Universe (SubworldName)
 import Swarm.Language.Pipeline (processTermEither)
-import Swarm.Language.Syntax (Phase (Instantiated, Typed))
+import Swarm.Language.Syntax (Phase (Instantiated, Elaborated))
 import Swarm.Log (LogEntry)
 import Swarm.Pretty (prettyTextLine, prettyText)
 import Swarm.TUI.Model hiding (SwarmKeyDispatchers (..))
@@ -113,11 +113,11 @@ type SwarmAPI =
     :<|> "robot" :> Capture "id" RobotID :> Get '[JSON] (Maybe (Robot Instantiated))
     :<|> "robot" :> Capture "id" RobotID :> "log" :> StreamGet NewlineFraming JSON (SourceIO LogEntry)
     :<|> "goals" :> "prereqs" :> Get '[JSON] [PrereqSatisfaction]
-    :<|> "goals" :> "active" :> Get '[JSON] [Objective Typed]
-    :<|> "goals" :> "graph" :> Get '[JSON] (Maybe (GraphInfo Typed))
+    :<|> "goals" :> "active" :> Get '[JSON] [Objective Elaborated]
+    :<|> "goals" :> "graph" :> Get '[JSON] (Maybe (GraphInfo Elaborated))
     :<|> "goals" :> "render" :> Get '[PlainText] T.Text
     :<|> "goals" :> "uigoal" :> Get '[JSON] GoalTracking
-    :<|> "goals" :> Get '[JSON] (WinCondition Typed)
+    :<|> "goals" :> Get '[JSON] (WinCondition Elaborated)
     :<|> "navigation" :> Get '[JSON] (Navigation (M.Map SubworldName) Location)
     :<|> "recognize" :> "log" :> Get '[JSON] [SearchLog EntityName]
     :<|> "recognize" :> "found" :> Get '[JSON] [StructureLocation]
@@ -207,14 +207,14 @@ prereqsHandler appStateRef = do
     WinConditions _winState oc -> return $ getSatisfaction oc
     _ -> return []
 
-activeGoalsHandler :: IO AppState -> Handler [Objective Typed]
+activeGoalsHandler :: IO AppState -> Handler [Objective Elaborated]
 activeGoalsHandler appStateRef = do
   appState <- liftIO appStateRef
   case appState ^. playState . scenarioState . gameState . winCondition of
     WinConditions _winState oc -> return $ getActiveObjectives oc
     _ -> return []
 
-goalsGraphHandler :: IO AppState -> Handler (Maybe (GraphInfo Typed))
+goalsGraphHandler :: IO AppState -> Handler (Maybe (GraphInfo Elaborated))
 goalsGraphHandler appStateRef = do
   appState <- liftIO appStateRef
   return $ case appState ^. playState . scenarioState . gameState . winCondition of
@@ -233,7 +233,7 @@ uiGoalHandler appStateRef = do
   appState <- liftIO appStateRef
   return $ appState ^. playState . scenarioState . uiGameplay . uiDialogs . uiGoal . goalsContent
 
-goalsHandler :: IO AppState -> Handler (WinCondition Typed)
+goalsHandler :: IO AppState -> Handler (WinCondition Elaborated)
 goalsHandler appStateRef = do
   appState <- liftIO appStateRef
   return $ appState ^. playState . scenarioState . gameState . winCondition

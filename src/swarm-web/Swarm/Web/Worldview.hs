@@ -30,7 +30,7 @@ data GridResponse = GridResponse
   deriving (Generic, ToJSON)
 
 getCellGrid ::
-  Scenario Typed ->
+  Scenario Elaborated ->
   GameState ->
   AreaDimensions ->
   CellGrid

@@ -45,6 +45,7 @@
       , TestLanguagePipeline
       ]
     }
+  - {name: Unsafe.Coerce.unsafeCoerce, within: [Swarm.Language.Elaborate.elaborate]}
 
 # Add custom hints for this project
 #

@@ -78,7 +78,7 @@ renderGoalsDisplay gd desc =
       . maybe emptyWidget (padAll 1 . padRight (Pad 1) . highlightIfFocused . singleGoalDetails . snd)
       $ BL.listSelectedElement lw
 
-getCompletionIcon :: Objective Typed -> GoalStatus -> Widget Name
+getCompletionIcon :: Objective Elaborated -> GoalStatus -> Widget Name
 getCompletionIcon obj = \case
   Upcoming -> withAttr yellowAttr $ txt " ○  "
   Active -> withAttr cyanAttr $ txt " ○  "

@@ -436,7 +436,7 @@ loadScenario ::
   (Has (Error SystemFailure) sig m, Has (Lift IO) sig m) =>
   FilePath ->
   ScenarioInputs ->
-  m (Scenario Typed, FilePath)
+  m (Scenario Elaborated, FilePath)
 loadScenario scenario scenarioInputs = do
   mfileName <- getScenarioPath scenario
   fileName <- maybe (throwError $ ScenarioNotFound scenario) return mfileName
@@ -447,7 +447,7 @@ loadScenarioFile ::
   (Has (Error SystemFailure) sig m, Has (Lift IO) sig m) =>
   ScenarioInputs ->
   FilePath ->
-  m (Scenario Typed)
+  m (Scenario Elaborated)
 loadScenarioFile scenarioInputs fileName = do
   raw <- withThrow adaptError . (liftEither <=< sendIO) $
     decodeFileEitherE scenarioInputs fileName
@@ -463,7 +463,7 @@ loadScenarioFile scenarioInputs fileName = do
 loadStandaloneScenario ::
   (Has (Error SystemFailure) sig m, Has (Lift IO) sig m) =>
   FilePath ->
-  m (Scenario Typed, GameStateInputs)
+  m (Scenario Elaborated, GameStateInputs)
 loadStandaloneScenario fp = do
   tem <- loadEntitiesAndTerrain
   worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds tem
