@@ -335,7 +335,7 @@ execConst runChildProg c vs s k = do
       [VDir d] -> do
         when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
         robotOrientation . _Just %= applyTurn d
-        use robotLocation >>= markDirty
+        use (robotLocation @Instantiated) >>= markDirty
 
         inst <- use (equippedDevices @Instantiated)
         when (d == DRelative DDown && countByName "compass" inst == 0) $ do
@@ -907,7 +907,7 @@ execConst runChildProg c vs s k = do
           (True, VText attr) -> robotDisplay @Instantiated . displayAttr .= readAttribute attr
           _ -> return ()
 
-        use robotLocation >>= markDirty
+        use (robotLocation @Instantiated) >>= markDirty
         return $ mkReturn ()
       _ -> badConst
     Create -> case vs of
@@ -1184,7 +1184,7 @@ execConst runChildProg c vs s k = do
             -- about some new entities, so flag the world to be
             -- redrawn.  This is slightly unnecessarily conservative;
             -- see #2527.
-            ourID <- use @Robot robotID
+            ourID <- use robotID
             focus <- use (robotInfo . focusedRobotID)
             when (focus == ourID) flagCompleteRedraw
 
@@ -1877,7 +1877,7 @@ execConst runChildProg c vs s k = do
         fromMaybe e <$> uses (landscape . terrainAndEntities . entityMap) (lookupEntityName yielded)
 
     -- See if the robot previously knew about this entity.
-    knew <- use $ robotInventory . to (contains0plus e')
+    knew <- use $ robotInventory @Instantiated . to (contains0plus e')
 
     -- Add the item to the inventory and update discovery tracking.
     robotInventory @Instantiated %= insert e'
