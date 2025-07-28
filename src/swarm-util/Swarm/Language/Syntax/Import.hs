@@ -59,7 +59,6 @@ import Prettyprinter (hcat, pretty, punctuate, slash)
 import Swarm.Pretty
 import System.Directory (doesFileExist, getCurrentDirectory, getHomeDirectory)
 import System.FilePath (joinPath, splitDirectories, (</>))
-import Unsafe.Coerce (unsafeCoerce)
 import Witch (into)
 
 ------------------------------------------------------------
@@ -114,7 +113,7 @@ instance Typeable phase => Data (Anchor phase) where
   dataTypeOf _ = dataTypeAnchor
 
   -- See Note [Data Anchor instance]
-  gunfold k z c = error "Can't implement gunfold for Anchor"
+  gunfold _ _ _ = error "Can't implement gunfold for Anchor"
 
 constrAbsolute :: Data.Constr
 constrAbsolute = Data.mkConstrTag dataTypeAnchor "Absolute" 1 [] Data.Prefix
