@@ -44,6 +44,7 @@ type family SwarmType (phase :: Phase) where
   SwarmType Resolved = ()
   SwarmType Inferred = UType
   SwarmType Typed = Polytype
+  SwarmType Elaborated = Polytype
   SwarmType Instantiated = Polytype
 
 -- | The surface syntax for the language, with location and type annotations.

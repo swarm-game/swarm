@@ -516,7 +516,7 @@ seedProgram ::
   Integer ->
   -- | entity to place
   EntityName ->
-  Syntax Typed
+  Syntax Elaborated
 seedProgram minTime randTime seedlingCount seedlingRadius thing =
   [tmQ|
     def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
@@ -586,7 +586,7 @@ addAsphyxiateBot ts loc =
 --   we detect that the base has the life support system re-equipped,
 --   stop the countdown and self-destruct.  Otherwise, at the end of
 --   the countdown, destroy the base.
-asphyxiateProg :: Syntax Typed
+asphyxiateProg :: Syntax Elaborated
 asphyxiateProg =
   [tmQ|
     def countdown : Int -> Cmd Unit = \n.

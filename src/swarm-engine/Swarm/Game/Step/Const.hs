@@ -15,7 +15,7 @@ import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (filterM, forM, forM_, guard, msum, unless, when)
+import Control.Monad (filterM, forM, forM_, guard, unless, when)
 import Data.Bifunctor (second)
 import Data.Bool (bool)
 import Data.Char (chr, ord)
@@ -33,7 +33,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Map.NonEmpty qualified as NEM
 import Data.Map.Strict qualified as MS
-import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
 import Data.MonoidMap qualified as MM
 import Data.Ord (Down (Down))
 import Data.Sequence qualified as Seq
@@ -44,7 +44,6 @@ import Data.Text qualified as T
 import Data.Tuple (swap)
 import Linear (V2 (..), perp, zero)
 import Swarm.Effect as Effect (Time, getNow)
-import Swarm.Failure
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
 import Swarm.Game.Cosmetic.Attribute (readAttribute)
@@ -88,7 +87,6 @@ import Swarm.Game.Value
 import Swarm.Language.Capability
 import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Parser.Value (readValue)
-import Swarm.Language.Pipeline
 import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
@@ -96,9 +94,7 @@ import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Value
 import Swarm.Log
 import Swarm.Pretty (prettyText)
-import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util hiding (both)
-import Swarm.Util.Effect (throwToMaybe)
 import Swarm.Util.Lens (inherit)
 import Text.Megaparsec (runParser)
 import Witch (From (from), into)
@@ -613,7 +609,7 @@ execConst runChildProg c vs s k = do
       [VText name] -> do
         registry <- use $ discovery . structureRecognition . foundStructures
         let maybeFoundStructures = M.lookup (StructureName name) $ foundByName registry
-            structures :: [((Cosmic Location, AbsoluteDir), StructureWithGrid Entity (RecognizableStructureContent Typed))]
+            structures :: [((Cosmic Location, AbsoluteDir), StructureWithGrid Entity (RecognizableStructureContent Elaborated))]
             structures = maybe [] (NE.toList . NEM.toList) maybeFoundStructures
 
             bottomLeftCorner ((pos, _), struc) = topLeftCorner .+^ offsetHeight

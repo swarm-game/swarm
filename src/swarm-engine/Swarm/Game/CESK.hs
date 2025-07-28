@@ -326,7 +326,7 @@ cont = lens get set
 --   store, to evaluate a given term.  We always initialize the
 --   machine with a single FExec frame as the continuation; if the
 --   given term does not have a command type, we wrap it in @pure@.
-initMachine :: Syntax Typed -> CESK
+initMachine :: Syntax Elaborated -> CESK
 initMachine t = In (prepareTerm V.emptyEnv t) V.emptyEnv emptyStore [FExec]
 
 -- | Load a program into an existing robot CESK machine: either
@@ -335,7 +335,7 @@ initMachine t = In (prepareTerm V.emptyEnv t) V.emptyEnv emptyStore [FExec]
 --
 --   Also insert a @suspend@ primitive at the end, so the resulting
 --   term is suitable for execution by the base (REPL) robot.
-continue :: Syntax Typed -> CESK -> CESK
+continue :: Syntax Elaborated -> CESK -> CESK
 continue t = \case
   -- The normal case is when we are continuing from a suspended state. We:
   --
@@ -362,7 +362,7 @@ continue t = \case
 --   the environment might contain type aliases, we have to be careful
 --   to expand them before concluding whether the term has a command
 --   type or not.
-prepareTerm :: Env -> Syntax Typed -> Term Resolved
+prepareTerm :: Env -> Syntax Elaborated -> Term Resolved
 prepareTerm e t = case whnfType (e ^. envTydefs) (ptBody (t ^. sType)) of
   TyCmd _ -> t'
   _ -> TApp (TConst Pure) t'

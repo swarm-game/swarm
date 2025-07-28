@@ -111,7 +111,7 @@ instance ToSample (Robot Instantiated) where
           emptyExceptions
           0
 
-mkMachine :: Maybe (Syntax Typed) -> C.CESK
+mkMachine :: Maybe (Syntax Elaborated) -> C.CESK
 mkMachine Nothing = C.Out VUnit C.emptyStore []
 mkMachine (Just t) = C.initMachine t
 
@@ -123,7 +123,7 @@ mkMachine (Just t) = C.initMachine t
 --
 -- If a machine is not supplied (i.e. 'Nothing'), will fallback to any
 -- program specified in the template robot.
-instantiateRobot :: Maybe C.CESK -> RID -> Robot Typed -> Robot Instantiated
+instantiateRobot :: Maybe C.CESK -> RID -> Robot Elaborated -> Robot Instantiated
 instantiateRobot maybeMachine i r =
   r
     { _robotID = i

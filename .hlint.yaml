@@ -52,6 +52,7 @@
   - {name: Data.Text.IO.writeFile, within: [Swarm.Util.writeFileT]}
   - {name: Data.Text.IO.Utf8.readFile, within: [Swarm.Util.readFileMayT]}
   - {name: Data.Text.IO.Utf8.writeFile, within: [Swarm.Util.writeFileT]}
+  - {name: Unsafe.Coerce.unsafeCoerce, within: [Swarm.Language.Elaborate.elaborate]}
 
 # Add custom hints for this project
 #

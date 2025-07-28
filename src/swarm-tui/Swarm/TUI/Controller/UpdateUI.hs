@@ -357,7 +357,7 @@ doGoalUpdates dOpts menu = do
 
       return goalWasUpdated
  where
-  setFinishState :: ScenarioOutcome -> WinStatus -> ObjectiveCompletion Typed -> EventM Name PlayState Bool
+  setFinishState :: ScenarioOutcome -> WinStatus -> ObjectiveCompletion Elaborated -> EventM Name PlayState Bool
   setFinishState m result x = do
     -- This clears the "flag" that the Lose dialog needs to pop up
     scenarioState . gameState . winCondition .= WinConditions result x

@@ -177,7 +177,7 @@ traverseSyntax f g (Syntax loc t com ty) =
 
 -- | Erase type annotations.
 class Erasable t where
-  erase :: t Typed -> t Resolved
+  erase :: t Elaborated -> t Resolved
   eraseRaw :: t phase -> t Raw
 
 instance Erasable Syntax where

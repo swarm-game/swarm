@@ -156,7 +156,7 @@ getRenderableGridFromPath ::
   (Has (Error SystemFailure) sig m, Has (Lift IO) sig m) =>
   RenderOpts ->
   FilePath ->
-  m (ThumbnailRenderContext Typed)
+  m (ThumbnailRenderContext Elaborated)
 getRenderableGridFromPath (RenderOpts ctx _ _ _) fp = do
   (myScenario, _gsi) <- loadStandaloneScenario fp
   getRenderableGrid ctx myScenario
@@ -164,8 +164,8 @@ getRenderableGridFromPath (RenderOpts ctx _ _ _) fp = do
 getRenderableGrid ::
   Has (Lift IO) sig m =>
   RenderComputationContext ->
-  Scenario Typed ->
-  m (ThumbnailRenderContext Typed)
+  Scenario Elaborated ->
+  m (ThumbnailRenderContext Elaborated)
 getRenderableGrid (RenderComputationContext maybeSeed maybeSize) myScenario = do
   let sLandscape = myScenario ^. scenarioLandscape
   theSeed <- sendIO $ arbitrateSeed maybeSeed sLandscape

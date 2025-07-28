@@ -181,8 +181,8 @@ instance FromJSON (Objective Raw) where
 
 -- | TODO: #1044 Could also add an "ObjectiveFailed" constructor...
 newtype Announcement
-  = ObjectiveCompleted (Objective Typed)
-  deriving stock (Show)
+  = ObjectiveCompleted (Objective Elaborated)
+  deriving stock (Show, Generic)
   deriving newtype (ToJSON)
 
 ------------------------------------------------------------

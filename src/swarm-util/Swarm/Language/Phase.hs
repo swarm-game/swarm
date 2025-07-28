@@ -22,23 +22,24 @@ type data Phase where
   Resolved :: Phase
   -- | Terms have inferred types, containing unification variables.
   Inferred :: Phase
-  -- | Inferred types have been properly quantified.  Terms have been
-  --   typechecked, but robot records are still "templates", not yet
-  --   instantiated to concrete robots.
+  -- | All inferred types have been properly quantified.
   Typed :: Phase
+  -- | Typechecked terms have been typechecked and elaborated.
+  --   However, robot records are still "templates", i.e. not yet
+  --   instantiated to concrete robots.
+  --
+  --   Invariant: all type families taking 'Phase' as an argument must
+  --   return equal results on 'Typed' and 'Elaborated'; elaboration
+  --   is implemented via a type-fixing generic transformation
+  --   followed by 'unsafeCoerce'.
+  Elaborated :: Phase
   -- | Robot records have been instantiated to concrete robots.
   Instantiated :: Phase
 
--- ~~~~ Note [Elaborated phase]
---
--- In some ways, it would make a lot of sense to have a separate
--- Elaborated phase between Typed and Instantiated.  In particular
--- this would help ensure that we cannot forget to run elaboration.
--- However, we don't do this for an annoying technical reason: we use
--- a generic traversal to implement elaboration which must have a type
--- like `a -> a`, so we can't have it  XXX... use unsafeCoerce?
-
--- XXX
+-- | Map each 'Phase' to the corresponding
+--   'Swarm.Language.Syntax.ImportPhase'.  In particular 'Raw' maps to
+--   'Swarm.Language.Syntax.Raw', and everything else maps to
+--   'Swarm.Language.Syntax.Resolved'.
 type family ImportPhaseFor (p :: Phase) :: Import.ImportPhase where
   ImportPhaseFor Raw = Import.Raw
   ImportPhaseFor p = Import.Resolved

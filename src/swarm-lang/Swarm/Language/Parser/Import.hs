@@ -16,7 +16,6 @@ import Swarm.Language.Parser.Lex (lexeme)
 import Swarm.Language.Syntax.Import (Anchor (..), ImportLoc (..), mkImportDir)
 import Swarm.Language.Syntax.Import qualified as Import
 import Text.Megaparsec hiding (sepBy1)
-import Text.Megaparsec ((<|>), lookAhead, manyTill, someTill, oneOf)
 import Text.Megaparsec.Char (char, string)
 import Text.Megaparsec.Char.Lexer qualified as L
 import Witch (into)
