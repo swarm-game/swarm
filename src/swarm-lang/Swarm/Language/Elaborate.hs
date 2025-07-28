@@ -8,9 +8,13 @@
 module Swarm.Language.Elaborate where
 
 import Control.Lens (transform, (^.))
+import Swarm.Language.Load (Module (..))
 import Swarm.Language.Phase
 import Swarm.Language.Syntax
 import Unsafe.Coerce (unsafeCoerce)
+
+elaborateModule :: Module Typed -> Module Elaborated
+elaborateModule (Module t ctx imps) = Module (fmap elaborate t) ctx imps
 
 -- | Perform some elaboration / rewriting on a fully type-annotated
 --   term.  This currently performs such operations as rewriting @if@
@@ -22,18 +26,12 @@ import Unsafe.Coerce (unsafeCoerce)
 --   constants depending on the actual type they are used at, but
 --   currently that sort of thing tends to make type inference fall
 --   over.
---
---   It would be theoretically nicer to have
---
---     elaborate :: Syntax Typed -> Syntax Elaborated,
---
---   but it would be very annoying to have to change the type; we
---   would not be able to use the generic `transform`.  See also Note
---   [Elaborated phase] in Swarm.Language.Phase.  XXX use unsafeCoerce
---   in elaborate???
-
-elaborate :: Syntax Typed -> Syntax Typed
-elaborate = transform rewrite
+elaborate :: Syntax Typed -> Syntax Elaborated
+elaborate = unsafeCoerce $ transform rewrite
+ -- unsafeCoerce is safe here because of the invariant that type
+ -- families must yield equal results on 'Typed' and 'Elaborated'; the
+ -- distinction between 'Typed' and 'Elaborated' is ONLY to serve as a
+ -- type-level flag that we have performed elaboration.
  where
   rewrite :: Syntax Typed -> Syntax Typed
   rewrite (Syntax l t cs ty) = Syntax l (rewriteTerm t) cs ty

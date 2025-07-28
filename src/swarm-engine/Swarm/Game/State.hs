@@ -146,7 +146,7 @@ data SolutionSource
 
 data CodeToRun = CodeToRun
   { _toRunSource :: SolutionSource
-  , _toRunSyntax :: Syntax Typed
+  , _toRunSyntax :: Syntax Elaborated
   }
 
 makeLenses ''CodeToRun
@@ -201,15 +201,15 @@ parseCodeFile filepath = do
 data GameState = GameState
   { _creativeMode :: Bool
   , _temporal :: TemporalState
-  , _winCondition :: WinCondition Typed
-  , _winSolution :: Maybe (Syntax Typed)
+  , _winCondition :: WinCondition Elaborated
+  , _winSolution :: Maybe (Syntax Elaborated)
   , _robotInfo :: Robots
   , _pathCaching :: PathCaching
   , _discovery :: Discovery
   , _randomness :: Randomness
   , _recipesInfo :: Recipes
   , _currentScenarioPath :: Maybe ScenarioPath
-  , _landscape :: Landscape Typed
+  , _landscape :: Landscape Elaborated
   , _redraw :: Redraw
   , _gameControls :: GameControls
   , _messageInfo :: Messages
@@ -230,11 +230,11 @@ creativeMode :: Lens' GameState Bool
 temporal :: Lens' GameState TemporalState
 
 -- | How to determine whether the player has won.
-winCondition :: Lens' GameState (WinCondition Typed)
+winCondition :: Lens' GameState (WinCondition Elaborated)
 
 -- | How to win (if possible). This is useful for automated testing
 --   and to show help to cheaters (or testers).
-winSolution :: Lens' GameState (Maybe (Syntax Typed))
+winSolution :: Lens' GameState (Maybe (Syntax Elaborated))
 
 -- | Get a list of all the robots at a particular location.
 robotsAtLocation :: Cosmic Location -> GameState -> [Robot Instantiated]
@@ -301,7 +301,7 @@ recipesInfo :: Lens' GameState Recipes
 currentScenarioPath :: Lens' GameState (Maybe ScenarioPath)
 
 -- | Info about the lay of the land
-landscape :: Lens' GameState (Landscape Typed)
+landscape :: Lens' GameState (Landscape Elaborated)
 
 -- | Info about redrawing the world view
 redraw :: Lens' GameState Redraw

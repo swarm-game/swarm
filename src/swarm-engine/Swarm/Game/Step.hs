@@ -324,8 +324,8 @@ hypotheticalWinCheck' =
 -- objectives to evaluate for their completion
 data CompletionsWithExceptions = CompletionsWithExceptions
   { exceptions :: [Text]
-  , completions :: ObjectiveCompletion Typed
-  , completionAnnouncementQueue :: [OB.Objective Typed]
+  , completions :: ObjectiveCompletion Elaborated
+  , completionAnnouncementQueue :: [OB.Objective Elaborated]
   -- ^ Upon completion, an objective is enqueued.
   -- It is dequeued when displayed on the UI.
   }
@@ -350,7 +350,7 @@ data CompletionsWithExceptions = CompletionsWithExceptions
 hypotheticalWinCheck ::
   HasGameStepState sig m =>
   WinStatus ->
-  ObjectiveCompletion Typed ->
+  ObjectiveCompletion Elaborated ->
   m ()
 hypotheticalWinCheck ws oc = do
   em <- use $ landscape . terrainAndEntities . entityMap
@@ -446,7 +446,7 @@ evalT ::
   ( HasGameStepState sig m
   , Has (Throw Exn) sig m
   ) =>
-  Syntax Typed ->
+  Syntax Elaborated ->
   m Value
 evalT = evaluateCESK . initMachine
 

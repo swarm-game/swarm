@@ -10,7 +10,6 @@ import Data.Aeson
 import Data.Data (Data, Typeable)
 import GHC.Generics (Generic)
 import Swarm.Language.Syntax
-import Swarm.Language.Phase (ImportPhaseFor)
 
 data CodeSizeDeterminators = CodeSizeDeterminators
   { initialCode :: Maybe (Syntax Raw)
