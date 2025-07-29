@@ -21,8 +21,7 @@ module Swarm.Language.Syntax.Util (
   traverseSyntax,
 
   -- ** Erasure
-  erase,
-  eraseRaw,
+  Erasable (..),
 
   -- ** Free variable traversal
   freeVarsS,

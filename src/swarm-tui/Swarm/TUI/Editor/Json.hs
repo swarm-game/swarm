@@ -16,7 +16,7 @@ data SkeletonScenario = SkeletonScenario
   , description :: Document (Syntax Raw)
   , creative :: Bool
   , entities :: [Entity]
-  , world :: WorldDescriptionPaint Raw
+  , world :: WorldDescriptionPaint Elaborated
   , robots :: [String]
   }
   deriving (Generic)
