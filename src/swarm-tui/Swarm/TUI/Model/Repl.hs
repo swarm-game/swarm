@@ -40,6 +40,8 @@ module Swarm.TUI.Model.Repl (
   replPromptType,
   replPromptEditor,
   replPromptText,
+  replPromptZipper,
+  replPromptTextBeforeCursor,
   replValid,
   replLast,
   replType,
@@ -53,7 +55,7 @@ module Swarm.TUI.Model.Repl (
   lastEntry,
 ) where
 
-import Brick.Widgets.Edit (Editor, applyEdit, editorText, getEditContents)
+import Brick.Widgets.Edit (Editor, applyEdit, editContentsL, editorText, getEditContents)
 import Control.Applicative ((<|>))
 import Control.Lens hiding (from, (.=), (<.>))
 import Data.Aeson (FromJSON, ToJSON, Value (..), object, parseJSON, toJSON, (.:), (.=))
@@ -379,8 +381,17 @@ replPromptEditor :: Lens' REPLState (Editor Text Name)
 replPromptText :: Lens' REPLState Text
 replPromptText = lens g s
  where
-  g r = r ^. replPromptEditor . to getEditContents . to T.concat
+  g r = r ^. replPromptEditor . to getEditContents . to T.unlines
   s r t = r & replPromptEditor .~ newREPLEditor t
+
+-- | Lens to get a zipper into the REPL text.
+replPromptZipper :: Lens' REPLState (TZ.TextZipper Text)
+replPromptZipper = replPromptEditor . editContentsL
+
+-- | Get all the text currently entered at the REPL prior to the cursor.
+replPromptTextBeforeCursor :: REPLState -> Text
+replPromptTextBeforeCursor r =
+  r ^. replPromptEditor . editContentsL . to TZ.killToEOF . to TZ.getText . to T.unlines
 
 -- | Whether the prompt text is a valid 'Swarm.Language.Syntax.Term'.
 --   If it is invalid, the location of error. ('NoLoc' means the whole
