@@ -336,7 +336,7 @@ unsnocNE (x :| xs) = go x xs
 -- 32
 iterateN :: Int -> (a -> a) -> a -> a
 iterateN 0 _ = id
-iterateN n f = iterateN (n-1) f . f
+iterateN n f = iterateN (n - 1) f . f
 
 ------------------------------------------------------------
 -- Directory stuff
