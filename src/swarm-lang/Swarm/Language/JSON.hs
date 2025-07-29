@@ -12,6 +12,7 @@ module Swarm.Language.JSON where
 
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON, withText)
 import GHC.Generics (Generic)
+import Swarm.Language.Load (Module, ModuleCtx, ModuleImports)
 import Swarm.Language.Parser (readNonemptyTerm)
 import Swarm.Language.Syntax (Anchor, ImportPhaseFor, SwarmType, Syntax, Term, Phase (Raw))
 import Swarm.Language.Value (Env, Value (..))
@@ -29,6 +30,8 @@ instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFo
 
 instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase)) => ToJSON (Syntax phase) where
   toJSON = genericToJSON optionsMinimize
+
+deriving instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), ToJSON (ModuleCtx phase), ToJSON (ModuleImports phase)) => ToJSON (Module phase)
 
 instance ToJSON Value where
   toJSON = genericToJSON optionsMinimize
