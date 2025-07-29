@@ -58,7 +58,7 @@ module Swarm.Language.Syntax.Import (
 
 import Control.Algebra (Has)
 import Control.Effect.Lift (Lift, sendIO)
-import Data.Aeson (FromJSON (..), ToJSON (..))
+import Data.Aeson (FromJSON, ToJSON, ToJSONKey)
 import Data.Data (Data (..), Typeable)
 import Data.Hashable (Hashable (..))
 import Data.Text (Text)
@@ -302,6 +302,7 @@ deriving instance Generic (Anchor phase) => Generic (ImportLoc phase)
 deriving instance (Typeable phase, Data (Anchor phase)) => Data (ImportLoc phase)
 deriving instance (Generic (Anchor phase), FromJSON (Anchor phase)) => FromJSON (ImportLoc phase)
 deriving instance (Generic (Anchor phase), ToJSON (Anchor phase)) => ToJSON (ImportLoc phase)
+deriving instance (Generic (Anchor phase), ToJSON (Anchor phase)) => ToJSONKey (ImportLoc phase)
 deriving instance (Generic (Anchor phase), Hashable (Anchor phase)) => Hashable (ImportLoc phase)
 
 instance PrettyPrec (Anchor phase) => PrettyPrec (ImportLoc phase) where

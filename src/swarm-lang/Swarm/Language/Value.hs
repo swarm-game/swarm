@@ -22,6 +22,7 @@ module Swarm.Language.Value (
   envReqs,
   envVals,
   envTydefs,
+  envSourceMap,
   lookupValue,
   addBinding,
   addValueBinding,
@@ -42,6 +43,7 @@ import GHC.Generics (Generic)
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Key (KeyCombo, prettyKeyCombo)
+import Swarm.Language.Load (SourceMap)
 import Swarm.Language.Requirements.Type (ReqCtx, Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
@@ -150,6 +152,8 @@ data Env = Env
   -- ^ Map variables to their values.
   , _envTydefs :: TDCtx
   -- ^ Type synonym definitions.
+  , _envSourceMap :: SourceMap Elaborated
+  -- ^ A cache of typechecked + elaborated imports.
   }
   deriving (Hashable, Generic)
 
@@ -172,7 +176,7 @@ instance Eq Env where
 makeLenses ''Env
 
 emptyEnv :: Env
-emptyEnv = Env Ctx.empty Ctx.empty Ctx.empty emptyTDCtx
+emptyEnv = Env Ctx.empty Ctx.empty Ctx.empty emptyTDCtx M.empty
 
 lookupValue :: Var -> Env -> Maybe Value
 lookupValue x e = Ctx.lookup x (e ^. envVals)
