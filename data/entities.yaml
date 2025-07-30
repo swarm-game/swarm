@@ -1140,7 +1140,7 @@
     - "To prevent this situation, robot A can wrap the commands in `atomic`, like so:"
     - |
       ```
-      atomic (b <- ishere "rock"; if b {grab; pure ()} {})
+      atomic {b <- ishere "rock"; if b {grab; pure ()} {}}
       ```
   properties: [pickable]
   capabilities: [atomic]

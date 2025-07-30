@@ -247,7 +247,7 @@ def observeHives =
     end;
 
 def go =
-    instant $ observeHives;
+    instant {observeHives};
     end;
 
 go;

@@ -20,7 +20,7 @@ def goDir = \dist. \d1. \d2.
         turn d2;
     } {};
 
-    doN (abs dist) (instant (appear "" (inl ()); move; appear "o" (inl ())));
+    doN (abs dist) (instant {appear "" (inl ()); move; appear "o" (inl ())});
     end;
 
 def randSwap = \f. \g.

@@ -19,7 +19,7 @@ robots:
     dir: east
     system: true
     program: |
-      instant (
+      instant {
       def fib : Int -> Int = \n.
         if (n <= 1) {n} {fib (n-1) + fib (n-2)}
       end
@@ -27,7 +27,7 @@ robots:
       def x = fib 10 end
 
       create "rock"; place "rock"
-      )
+      }
 solution: |
   move; grab
 known: [rock]

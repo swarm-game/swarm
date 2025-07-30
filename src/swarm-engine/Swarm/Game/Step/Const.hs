@@ -1431,9 +1431,9 @@ execConst runChildProg c vs s k = do
     -- To execute an atomic block, set the runningAtomic flag,
     -- push an FFinishAtomic frame so that we unset the flag when done, and
     -- proceed to execute the argument.
-    [cmd] -> do
+    [VDelay cmd e] -> do
       runningAtomic .= True
-      return $ Out cmd s (FExec : FFinishAtomic : k)
+      return $ In cmd e s (FExec : FFinishAtomic : k)
     _ -> badConst
 
   -- Case-insensitive matching on entity names

@@ -293,7 +293,7 @@ def setupGame = \boardWidth. \boardHeight.
     end;
 
 def go = \boardWidth. \boardHeight.
-    instant $ setupGame boardWidth boardHeight;
+    instant {setupGame boardWidth boardHeight};
     end;
 
 go 3 3;

@@ -241,7 +241,7 @@ def waitForFirstPlacement =
     end;
 
 def go = \distinctCount.
-    exclusionValue <- instant $ setup distinctCount;
+    exclusionValue <- instant {setup distinctCount};
     give base "bell";
 
     waitForFirstPlacement;

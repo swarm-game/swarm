@@ -39,10 +39,10 @@ def watchSwitch = \lastState.
     end;
 
 def go =
-    instant $ (
+    instant {
         found <- scan down;
         case found pure watchSwitch;
-    );
+    };
     end;
 
 go;

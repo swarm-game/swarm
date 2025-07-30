@@ -216,64 +216,64 @@ testLanguagePipeline =
         "atomic - #479"
         [ testCase
             "atomic move"
-            (valid "atomic move")
+            (valid "atomic {move}")
         , testCase
             "grabif"
-            (valid "def grabif : Text -> Cmd Unit = \\x. atomic (b <- ishere x; if b {grab; pure ()} {}) end")
+            (valid "def grabif : Text -> Cmd Unit = \\x. atomic {b <- ishere x; if b {grab; pure ()} {}} end")
         , testCase
             "placeif"
-            (valid "def placeif : Text -> Cmd Bool = \\thing. atomic (res <- scan down; if (res == inl ()) {place thing; pure true} {pure false}) end")
+            (valid "def placeif : Text -> Cmd Bool = \\thing. atomic {res <- scan down; if (res == inl ()) {place thing; pure true} {pure false}} end")
         , testCase
             "atomic move+move"
             ( process
-                "atomic (move; move)"
-                "1:8: Invalid atomic block: block could take too many ticks (2): `(move; move)`"
+                "atomic {move; move}"
+                "1:8: Invalid atomic block: block could take too many ticks (2): `{move; move}`"
             )
         , testCase
             "atomic lambda"
             ( process
-                "atomic ((\\c. c;c) move)"
+                "atomic {(\\c. c;c) move}"
                 "1:10: Invalid atomic block: def, let, and lambda are not allowed: `\\c. c; c`"
             )
         , testCase
             "atomic non-simple"
             ( process
-                "def dup = \\c. c; c end; atomic (dup (dup move))"
+                "def dup = \\c. c; c end; atomic {dup (dup move)}"
                 "1:33: Invalid atomic block: reference to variable with non-simple type ∀ a. Cmd a -> Cmd a: `dup`"
             )
         , testCase
             "atomic nested"
             ( process
-                "atomic (move; atomic (if true {} {}))"
+                "atomic {move; atomic {if true {} {}}}"
                 "1:15: Invalid atomic block: nested atomic block"
             )
         , testCase
             "atomic wait"
             ( process
-                "atomic (wait 1)"
+                "atomic {wait 1}"
                 "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: `wait`"
             )
         , testCase
             "atomic make"
             ( process
-                "atomic (make \"PhD thesis\")"
+                "atomic {make \"PhD thesis\"}"
                 "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: `make`"
             )
         , testCase
             "atomic drill"
             ( process
-                "atomic (drill forward)"
+                "atomic {drill forward}"
                 "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: `drill`"
             )
         , testCase
             "atomic salvage"
             ( process
-                "atomic (salvage)"
+                "atomic {salvage}"
                 "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: `salvage`"
             )
         , testCase
             "atomic with comment #2412"
-            (valid "atomic (if true {c <- scan down; /* COMMENT */ noop } {})")
+            (valid "atomic {if true {c <- scan down; /* COMMENT */ noop } {}}")
         ]
     , testGroup
         "integer literals"

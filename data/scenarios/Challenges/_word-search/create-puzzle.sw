@@ -247,4 +247,4 @@ def createPuzzle = \width. \height.
     removeBoulder;
     end;
 
-instant $ createPuzzle 25 15;
+instant {createPuzzle 25 15};

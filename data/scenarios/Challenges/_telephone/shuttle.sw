@@ -26,11 +26,11 @@ def followTrack : Cmd Unit =
 end
 
 def pickup : Cmd Text =
-  atomic (b <- isempty; if b {pure ""} {grab});
+  atomic {b <- isempty; if b {pure ""} {grab}};
 end
 
 def dropoff : Text -> Cmd Bool = \thing.
-  atomic (b <- isempty; if b {place thing} {}; pure b)
+  atomic {b <- isempty; if b {place thing} {}; pure b}
 end
 
 def deliver : Text -> Cmd Unit = \thing.

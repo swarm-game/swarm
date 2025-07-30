@@ -20,15 +20,15 @@ def swapItem = \ent.
   end;
 
 def setRedPixel =
-  instant $ (
+  instant {
     swapItem "pixel (R)";
-  );
+  };
   end;
 
 def setGreenPixel =
-  instant $ (
+  instant {
     swapItem "pixel (G)";
-  );
+  };
   end;
 
 def changeToRed =

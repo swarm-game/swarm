@@ -2,7 +2,7 @@ version: 1
 name: Using wait with instant
 author: Karl Ostmo
 description: |
-  Observe timing of (instant $ wait 1)
+  Observe timing of (instant {wait 1})
   interspersed with other commands
 creative: false
 seed: 0
@@ -49,13 +49,13 @@ robots:
       attr: snow
     dir: [1, 0]
     program: |
-      instant (
+      instant {
         move; move;
         wait 1;
         move; move;
         wait 1;
         move; move;
-      );
+      };
 world:
   dsl: |
     {blank}

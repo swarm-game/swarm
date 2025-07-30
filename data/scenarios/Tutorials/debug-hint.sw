@@ -87,7 +87,7 @@ myLoc <- whereami;
 def tryGive: Text -> State -> Cmd State 
   = \msg. \state.
   if (state.can_wait) {watch down; wait 2048} {};
-  instant (
+  instant {
     rs <- meetall;
     foldM rs state (
       \stateAcc. \rob. let state = query rob stateAcc.list in
@@ -117,7 +117,7 @@ def tryGive: Text -> State -> Cmd State
         }
       }
     )
-  )
+  }
 end
 
 // -------------------------------------------------------------------------

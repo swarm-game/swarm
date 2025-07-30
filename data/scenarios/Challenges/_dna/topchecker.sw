@@ -97,7 +97,7 @@ def waitForReset =
     end;
 
 def go = \startingLoc.
-    instant $ waitUntilHere 32;
+    instant {waitUntilHere 32};
     waitForReset;
     teleport self startingLoc;
     go startingLoc;

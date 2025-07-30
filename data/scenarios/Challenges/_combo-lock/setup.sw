@@ -73,12 +73,12 @@ def createCombo = \colorString.
     end;
 
 def go =
-    comboString <- instant (      
+    comboString <- instant {
         move;
         createCombo "";
-    );
+    };
     // say comboString;
-    instant $ doUntilCorrect comboString;
+    instant {doUntilCorrect comboString};
     end;
 
 go;

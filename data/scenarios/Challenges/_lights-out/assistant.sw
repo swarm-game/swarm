@@ -85,10 +85,10 @@ def togglePending = \state.
     end;
 
 def observe =
-    instant (
+    instant {
         togglePending "on";
         togglePending "off";
-    );
+    };
 
     // Without this 'wait' call, we may end up doing the instant call
     // multiple times in one tick, until it uses up its step allotment.
@@ -266,7 +266,7 @@ def generateGame = \boardWidth. \boardHeight.
 def go =
     let boardWidth = 5 in
     let boardHeight = 5 in
-    instant $ generateGame boardWidth boardHeight;
+    instant {generateGame boardWidth boardHeight};
     observe;
     end;
 

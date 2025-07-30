@@ -63,7 +63,7 @@ def check : Rect -> Cmd Unit = \rect.
 end
 
 def judge =
-  instant (
+  instant {
     loc <- whereami;
     match loc \locx. \locy.
     for 4 (\y.
@@ -71,12 +71,12 @@ def judge =
         surveil (locx + x, locy + y)
       )
     );
-  );
+  };
   wait 1024;
-  instant (
+  instant {
     rect <- readRect;
     check rect;
-  )
+  }
 end
 
 forever {judge};
