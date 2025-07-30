@@ -270,12 +270,12 @@ runBaseTerm = mapM_ startBaseProgram
   -- The player typed something at the REPL and hit Enter; this
   -- function takes the resulting term (if the REPL
   -- input is valid) and sets up the base robot to run it.
-  startBaseProgram (srcMap, t) = do   -- XXX use srcMap!
+  startBaseProgram (srcMap, t) = do
     -- Set the REPL status to Working
     gameState . gameControls . replStatus .= REPLWorking (t ^. sType) Nothing
     -- Set up the robot's CESK machine to evaluate/execute the
     -- given term.
-    gameState . baseRobot . machine %= continue t
+    gameState . baseRobot . machine %= continue srcMap t
     -- Finally, be sure to activate the base robot.
     gameState %= execState (zoomRobots $ activateRobot 0)
 

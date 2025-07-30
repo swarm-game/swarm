@@ -163,7 +163,6 @@ extractReqCtx (Syntax _ t _ _) = extractReqCtxTerm t
 
 class Processable t where
   process :: (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) => t Raw -> m (t Elaborated)
-  -- XXX should m include effects to save resulting SrcMap ??
 
 instance Processable Syntax where
   process s = do
