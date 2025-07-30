@@ -127,11 +127,19 @@ recipeLevels emap recipeList start = levs
   levs = reverse $ go [start] start
    where
     isKnown known (i, _o) = null $ i Set.\\ known
+
     lookupYield e = case view entityYields e of
       Nothing -> e
       Just yn -> fromMaybe e (E.lookupEntityName yn emap)
     yielded = Set.map lookupYield
-    nextLevel known = Set.unions $ yielded known : map snd (filter (isKnown known) m)
+
+    lookupCombust e = case view E.entityCombustion e of
+      Just (E.Combustibility _ _ _ (Just productName)) ->
+        fromMaybe e (E.lookupEntityName productName emap)
+      _ -> e
+    combusted = Set.map lookupCombust
+
+    nextLevel known = Set.unions $ yielded known : combusted known : map snd (filter (isKnown known) m)
     go ls known =
       let n = nextLevel known Set.\\ known
        in if null n
