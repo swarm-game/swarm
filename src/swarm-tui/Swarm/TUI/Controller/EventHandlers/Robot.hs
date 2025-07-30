@@ -132,6 +132,8 @@ handleInventorySearchEvent = \case
   Key V.KEnter -> do
     zoomInventory $ uiInventorySearch .= Nothing
     Brick.zoom (playState . scenarioState) showEntityDescription
+  -- Tab: ignore (see #2550)
+  CharKey '\t' -> continueWithoutRedraw
   -- Any old character: append to the current search string
   CharKey c -> do
     resetViewport infoScroll
