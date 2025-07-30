@@ -46,7 +46,6 @@ module Swarm.Game.World (
 ) where
 
 import Control.Algebra (Has)
-import Control.Arrow ((&&&))
 import Control.Effect.State (State, get, modify, state)
 import Control.Lens
 import Data.Array qualified as A
@@ -72,6 +71,7 @@ import Swarm.Game.World.Coords
 import Swarm.Util ((?))
 import Swarm.Util.Erasable
 import Prelude hiding (Foldable (..), lookup)
+import Control.Parallel.Strategies ( parMap, rpar, evalTuple2, rseq ) 
 
 ------------------------------------------------------------
 -- World function
@@ -308,12 +308,9 @@ loadRegion ::
   World t e
 loadRegion reg (World f t m) = World f t' m
  where
-  tiles = range (over both tileCoords reg)
-  t' = foldl' (\hm (i, tile) -> maybeInsert i tile hm) t (map (id &&& loadTile) tiles)
-
-  maybeInsert k v tm
-    | k `M.member` tm = tm
-    | otherwise = M.insert k v tm
+  tileCs = filter (`M.notMember` t) $ range (over both tileCoords reg)
+  tiles = parMap (evalTuple2 rseq rpar) loadTile tileCs
+  t' = foldl' (\hm (i, tile) -> M.insert i tile hm) t (zip tileCs tiles)
 
   loadTile :: TileCoords -> (TerrainTile t, EntityTile e)
   loadTile tc = (listArray tileBounds terrain, listArray tileBounds entities)
