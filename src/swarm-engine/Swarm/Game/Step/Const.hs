@@ -880,10 +880,14 @@ execConst runChildProg c vs s k = do
       [VText app, VInj hasAttr mattr] -> do
         -- Set the robot's display character(s)
         case into @String app of
+          [] -> do
+            robotDisplay . invisible .= True
           [dc] -> do
+            robotDisplay . invisible .= False
             robotDisplay . defaultChar .= dc
             robotDisplay . orientationMap .= M.empty
           [dc, nc, ec, sc, wc] -> do
+            robotDisplay . invisible .= False
             robotDisplay . defaultChar .= dc
             robotDisplay
               . orientationMap
