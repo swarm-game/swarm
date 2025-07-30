@@ -107,12 +107,11 @@ worldFunFromArray arr = WF $ \(Coords (r, c)) ->
 --   the locations in a tile.  In other words, each tile has a size of
 --   @2^tileBits x 2^tileBits@.
 --
---   Currently, 'tileBits' is set to 6, giving us 64x64 tiles, with
---   4096 cells in each tile. That seems intuitively like a good size,
---   but I don't have a good sense for the tradeoffs here, and I don't
---   know how much the choice of tile size matters.
+--   Currently, 'tileBits' is set to 5, giving us 32x32 tiles, with
+--   1024 cells in each tile. This seems to result in more smooth
+--   scrolling of the world map.
 tileBits :: Int
-tileBits = 6
+tileBits = 5
 
 -- | The number consisting of 'tileBits' many 1 bits.  We can use this
 --   to mask out the tile offset of a coordinate.
