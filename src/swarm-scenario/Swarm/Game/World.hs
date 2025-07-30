@@ -48,6 +48,7 @@ module Swarm.Game.World (
 import Control.Algebra (Has)
 import Control.Effect.State (State, get, modify, state)
 import Control.Lens
+import Control.Parallel.Strategies (evalTuple2, parMap, rpar, rseq)
 import Data.Array qualified as A
 import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
@@ -71,7 +72,6 @@ import Swarm.Game.World.Coords
 import Swarm.Util ((?))
 import Swarm.Util.Erasable
 import Prelude hiding (Foldable (..), lookup)
-import Control.Parallel.Strategies ( parMap, rpar, evalTuple2, rseq ) 
 
 ------------------------------------------------------------
 -- World function
