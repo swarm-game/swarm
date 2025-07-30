@@ -738,6 +738,18 @@ handleREPLEventTyping m = \case
           CharKey c
             | c `elem` ("([{" :: String) -> insertMatchingPair c
             | c `elem` (")]}" :: String) -> insertOrMovePast c
+            | c == '"' -> do
+                tz <- use editContentsL
+                case TZ.currentChar tz of
+                  -- If currently on a quote, just move past it
+                  Just '"' -> modify . applyEdit $ TZ.moveRight
+                  _
+                    -- If there are an odd number of quotes prior to the cursor, add one
+                    | hasOpenQuotes (textBeforeCursor tz) ->
+                        modify . applyEdit $ TZ.insertChar '"'
+                    -- Otherwise, add a matching pair of quotes with the cursor
+                    -- in the middle
+                    | otherwise -> insertMatchingPair '"'
           _ -> handleEditorEvent ev
         scenarioState . uiGameplay . uiREPL . replPromptType %= \case
           CmdPrompt _ -> CmdPrompt [] -- reset completions on any event passed to editor
@@ -817,9 +829,6 @@ tabComplete CompletionContext {..} names em theRepl = case theRepl ^. replPrompt
         -- of the queue.
         (m : ms) -> theRepl & updateCmd (replaceWith m) (ms ++ [m])
  where
-  -- checks the "parity" of the number of quotes. If odd, then there is an open quote.
-  hasOpenQuotes = (== 1) . (`mod` 2) . T.count "\""
-
   -- To determine the completion type, count the number of double
   -- quotes before the cursor to see if there is currently an open
   -- quoted string.  Note, we can't just take characters prior to the
@@ -845,6 +854,10 @@ tabComplete CompletionContext {..} names em theRepl = case theRepl ^. replPrompt
     names <> (if ctxCreativeMode then S.toList reservedWords else S.toList $ reservedWords `S.difference` creativeWords)
 
   entityNames = M.keys $ entitiesByName em
+
+-- | Checks the "parity" of the number of quotes. If odd, then there is an open quote.
+hasOpenQuotes :: Text -> Bool
+hasOpenQuotes = (== 1) . (`mod` 2) . T.count "\""
 
 -- | Take characters before the zipper cursor until the first one that
 --   satisfies the predicate.

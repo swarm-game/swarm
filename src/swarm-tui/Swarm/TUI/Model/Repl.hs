@@ -41,6 +41,7 @@ module Swarm.TUI.Model.Repl (
   replPromptEditor,
   replPromptText,
   replPromptZipper,
+  textBeforeCursor,
   replPromptTextBeforeCursor,
   replValid,
   replLast,
@@ -391,7 +392,11 @@ replPromptZipper = replPromptEditor . editContentsL
 -- | Get all the text currently entered at the REPL prior to the cursor.
 replPromptTextBeforeCursor :: REPLState -> Text
 replPromptTextBeforeCursor r =
-  r ^. replPromptEditor . editContentsL . to TZ.killToEOF . to TZ.getText . to T.unlines
+  r ^. replPromptEditor . editContentsL . to textBeforeCursor
+
+-- | Get the text before the cursor in a text zipper.
+textBeforeCursor :: TZ.TextZipper Text -> Text
+textBeforeCursor = T.unlines . TZ.getText . TZ.killToEOF
 
 -- | Whether the prompt text is a valid 'Swarm.Language.Syntax.Term'.
 --   If it is invalid, the location of error. ('NoLoc' means the whole
