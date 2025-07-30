@@ -22,7 +22,6 @@ import Control.Effect.State (State, get, modify)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Lens ((.~))
 import Control.Monad (forM_)
-import Data.Aeson (ToJSON)
 import Data.Data (Data, Typeable)
 import Data.Function ((&))
 import Data.Hashable (Hashable)
@@ -78,6 +77,7 @@ data Module phase = Module
   }
   deriving (Generic)
 
+deriving instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase), Show (ModuleCtx phase), Show (ModuleImports phase)) => Show (Module phase)
 deriving instance (Eq (ModuleImports phase), Eq (ModuleCtx phase), Eq (SwarmType phase), Eq (Anchor (ImportPhaseFor phase))) => Eq (Module phase)
 deriving instance (Eq (Anchor (ImportPhaseFor phase)), Data (Anchor (ImportPhaseFor phase)), Typeable phase, Typeable (ImportPhaseFor phase), Data (ModuleCtx phase), Data (ModuleImports phase), Data (SwarmType phase)) => Data (Module phase)
 deriving instance (Hashable (ModuleImports phase), Hashable (ModuleCtx phase), Hashable (SwarmType phase), Hashable (Anchor (ImportPhaseFor phase)), Generic (Anchor (ImportPhaseFor phase))) => Hashable (Module phase)
@@ -168,7 +168,7 @@ resolveImport parent loc = do
       -- Finally, record the loaded module in the SourceMap.
       modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module mt' () imps)
 
-      -- XXX make sure imports contain ONLY defs?
+      -- XXX make sure imports contain ONLY defs + more imports?
       -- Otherwise we can't cache their values---we would have to
       -- re-execute them every time they are imported.
 
