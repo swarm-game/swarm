@@ -21,22 +21,22 @@ objectives:
         `3`
       - |
         `"tree"`
-      - Once you are done experimenting, execute `place "Win"` to finish this challenge and move on to the next.
+      - Once you are done experimenting, execute `place "win"` to finish this challenge and move on to the next.
     condition: |
       try {
-        w <- as base {has "Win"};
+        w <- as base {has "win"};
         pure (not w);
       } { pure false }
 entities:
-  - name: Win
+  - name: win
     display:
       attr: device
       char: 'W'
     description:
-      - Do `place "Win"` once you are done with this challenge.
+      - Do `place "win"` once you are done with this challenge.
     properties: [known, pickable]
 solution: |
-  place "Win"
+  place "win"
 robots:
   - name: base
     dir: east
@@ -46,7 +46,7 @@ robots:
       - logger
       - grabber
     inventory:
-      - [1, Win]
+      - [1, win]
 world:
   palette:
     '>': [grass, null, base]

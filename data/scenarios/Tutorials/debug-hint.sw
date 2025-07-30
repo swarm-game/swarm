@@ -43,7 +43,7 @@ def set_said_loc: (Int * Int) -> RobotState -> RobotState
   [gave_win = s.gave_win, said_loc = v, said_log_missing = s.said_log_missing]
 end
 
-// At the beginning each robot can be given Win.
+// At the beginning each robot can be given win.
 def defaultState: RobotState =
   [gave_win = false, said_loc = (-100, -100), said_log_missing = false]
 end
@@ -82,7 +82,7 @@ end
 // Running state
 myLoc <- whereami;
 
-// Try to give a robot a Win, filtering out those that were already given a Win.
+// Try to give a robot a `win`, filtering out those that were already given a `win`.
 // The robot will also receive instructions, so it **must have a logger!**
 def tryGive: Text -> State -> Cmd State 
   = \msg. \state.
@@ -108,8 +108,8 @@ def tryGive: Text -> State -> Cmd State
         try {
           reprogram rob {log msg};
           log ("successfully reprogrammed robot " ++ format rob);
-          give rob "Win";
-          log ("successfully gave Win to robot " ++ format rob);
+          give rob "win";
+          log ("successfully gave win to robot " ++ format rob);
           pure (updateList rob (set_gave_win true state) stateAcc)
         } {
           log ("the robot " ++ format rob ++ "is probably still active!");
@@ -126,10 +126,10 @@ end
 log "Hi, I am the system hint robot";
 iterate [can_wait=true, list=emptyList] (tryGive
   $ "Send a robot to `salvage` me and come back to"
-  ++ " `give base \"Win\"`.  When the rescue robot stands"
+  ++ " `give base \"win\"`.  When the rescue robot stands"
   ++ " where I am and executes `salvage`, all my inventory"
-  ++ " and logs will go to it, including the \"Win\". Once you"
-  ++ " have brought the \"Win\" to your base, you will win!\n\n"
+  ++ " and logs will go to it, including the \"win\". Once you"
+  ++ " have brought the \"win\" to your base, you will win!\n\n"
   ++ "NOTE: if you are still viewing me when I am salvaged,"
   ++ " you will be in for a surprise!  If this happens just"
   ++ " type `view base` to return to viewing your base."
