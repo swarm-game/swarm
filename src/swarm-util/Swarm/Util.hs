@@ -33,7 +33,7 @@ module Swarm.Util (
   applyWhen,
   applyJust,
   unsnocNE,
-  iterateN,
+  applyN,
 
   -- * Directory utilities
   readFileMay,
@@ -326,17 +326,17 @@ unsnocNE (x :| xs) = go x xs
   go y [] = ([], y)
   go y (z : zs) = let ~(ws, w) = go z zs in (y : ws, w)
 
--- | Iterate a function a specific number of times.
+-- | Iteratively apply a function a specific number of times.
 --
--- >>> iterateN 4 succ 'a'
+-- >>> applyN 4 succ 'a'
 -- 'e'
--- >>> iterateN 0 succ 'a'
+-- >>> applyN 0 succ 'a'
 -- 'a'
--- >>> iterateN 5 (*2) 1
+-- >>> applyN 5 (*2) 1
 -- 32
-iterateN :: Int -> (a -> a) -> a -> a
-iterateN 0 _ = id
-iterateN n f = iterateN (n - 1) f . f
+applyN :: Int -> (a -> a) -> a -> a
+applyN 0 _ = id
+applyN n f = applyN (n - 1) f . f
 
 ------------------------------------------------------------
 -- Directory stuff

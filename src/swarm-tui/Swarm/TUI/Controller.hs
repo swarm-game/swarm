@@ -831,7 +831,7 @@ tabComplete CompletionContext {..} names em theRepl = case theRepl ^. replPrompt
     | otherwise = FunctionName
 
   replaceWith :: Text -> TZ.TextZipper Text -> TZ.TextZipper Text
-  replaceWith cpl = TZ.insertMany cpl . iterateN (T.length lastWord) TZ.deletePrevChar
+  replaceWith cpl = TZ.insertMany cpl . applyN (T.length lastWord) TZ.deletePrevChar
 
   lastWord = takeUntilBeforeCursor replacementBoundaryPredicate (theRepl ^. replPromptZipper)
 
