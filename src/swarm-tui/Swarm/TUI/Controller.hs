@@ -738,6 +738,18 @@ handleREPLEventTyping m = \case
           CharKey c
             | c `elem` ("([{" :: String) -> insertMatchingPair c
             | c `elem` (")]}" :: String) -> insertOrMovePast c
+            | c == '"' -> do
+                tz <- use editContentsL
+                case TZ.currentChar tz of
+                  -- If currently on a quote, just move past it
+                  Just '"' -> modify . applyEdit $ TZ.moveRight
+                  _
+                    -- If there are an odd number of quotes prior to the cursor, add one
+                    | hasOpenQuotes (textBeforeCursor tz) ->
+                        modify . applyEdit $ TZ.insertChar '"'
+                    -- Otherwise, add a matching pair of quotes with the cursor
+                    -- in the middle
+                    | otherwise -> insertMatchingPair '"'
           _ -> handleEditorEvent ev
         scenarioState . uiGameplay . uiREPL . replPromptType %= \case
           CmdPrompt _ -> CmdPrompt [] -- reset completions on any event passed to editor
@@ -801,49 +813,67 @@ tabComplete CompletionContext {..} names em theRepl = case theRepl ^. replPrompt
     -- if the user subsequently presses a non-Tab key. Thus the current
     -- value of "t" is ignored for all Tab presses subsequent to the
     -- first.
-    | (m : ms) <- mms -> setCmd (replacementFunc m) (ms ++ [m])
+    | (m : ms) <- mms -> theRepl & updateCmd (replaceWith m) (ms ++ [m])
     -- Case 2: Require at least one letter to be typed in order to offer completions for
     -- function names.
     -- We allow suggestions for Entity Name strings without anything having been typed.
-    | T.null lastWord && completionType == FunctionName -> setCmd t []
+    | T.null lastWord && completionType == FunctionName -> theRepl & updateCmd id []
     -- Case 3: Typing another character in the REPL clears the completion candidates from
     -- the CmdPrompt, so when Tab is pressed again, this case then gets executed and
     -- repopulates them.
     | otherwise -> case candidateMatches of
-        [] -> setCmd t []
-        [m] -> setCmd (completeWith m) []
+        [] -> theRepl & updateCmd id []
+        [m] -> theRepl & updateCmd (replaceWith m) []
         -- Perform completion with the first candidate, then populate the list
         -- of all candidates with the current completion moved to the back
         -- of the queue.
-        (m : ms) -> setCmd (completeWith m) (ms ++ [m])
+        (m : ms) -> theRepl & updateCmd (replaceWith m) (ms ++ [m])
  where
-  -- checks the "parity" of the number of quotes. If odd, then there is an open quote.
-  hasOpenQuotes = (== 1) . (`mod` 2) . T.count "\""
+  -- To determine the completion type, count the number of double
+  -- quotes before the cursor to see if there is currently an open
+  -- quoted string.  Note, we can't just take characters prior to the
+  -- cursor until encountering either a double quote or a space,
+  -- because quoted strings (i.e. entity names) can legitimately have
+  -- spaces in them, and we should still be able to complete those.
+  completionType
+    | hasOpenQuotes (replPromptTextBeforeCursor theRepl) = EntityName
+    | otherwise = FunctionName
 
-  completionType =
-    if hasOpenQuotes t
-      then EntityName
-      else FunctionName
+  replaceWith :: Text -> TZ.TextZipper Text -> TZ.TextZipper Text
+  replaceWith cpl = TZ.insertMany cpl . applyN (T.length lastWord) TZ.deletePrevChar
 
-  replacementFunc = T.append $ T.dropWhileEnd replacementBoundaryPredicate t
-  completeWith m = T.append t $ T.drop (T.length lastWord) m
-  lastWord = T.takeWhileEnd replacementBoundaryPredicate t
+  lastWord = takeUntilBeforeCursor replacementBoundaryPredicate (theRepl ^. replPromptZipper)
+
   candidateMatches = filter (lastWord `T.isPrefixOf`) replacementCandidates
 
   (replacementCandidates, replacementBoundaryPredicate) = case completionType of
-    EntityName -> (entityNames, (/= '"'))
-    FunctionName -> (possibleWords, isIdentChar)
+    EntityName -> (entityNames, (== '"'))
+    FunctionName -> (possibleWords, not . isIdentChar)
 
   possibleWords =
     names <> (if ctxCreativeMode then S.toList reservedWords else S.toList $ reservedWords `S.difference` creativeWords)
 
   entityNames = M.keys $ entitiesByName em
 
-  t = theRepl ^. replPromptText
-  setCmd nt ms =
-    theRepl
-      & replPromptText .~ nt
-      & replPromptType .~ CmdPrompt ms
+-- | Checks the "parity" of the number of quotes. If odd, then there is an open quote.
+hasOpenQuotes :: Text -> Bool
+hasOpenQuotes = (== 1) . (`mod` 2) . T.count "\""
+
+-- | Take characters before the zipper cursor until the first one that
+--   satisfies the predicate.
+takeUntilBeforeCursor :: (Char -> Bool) -> TZ.TextZipper Text -> Text
+takeUntilBeforeCursor isBoundary = T.pack . reverse . go
+ where
+  go z = case TZ.previousChar z of
+    Nothing -> []
+    Just c
+      | isBoundary c -> []
+      | otherwise -> c : go (TZ.moveLeft z)
+
+-- | Update the REPL prompt via a zipper-editing function, and set the
+--   current active list of tab completions.
+updateCmd :: (TZ.TextZipper Text -> TZ.TextZipper Text) -> [Text] -> REPLState -> REPLState
+updateCmd zf ms = (replPromptZipper %~ zf) . (replPromptType .~ CmdPrompt ms)
 
 -- | Validate the REPL input when it changes: see if it parses and
 --   typechecks, and set the color accordingly.
