@@ -1117,8 +1117,8 @@ collectDefs ::
   (Has Unification sig m, Has (Reader UCtx) sig m) =>
   Syntax Inferred ->
   m UCtx
-collectDefs (Syntax _ (SLet LSDef _ x _ _ _ _ t) _ ty) = do
-  ty' <- generalize ty
+collectDefs (Syntax _ (SLet LSDef _ x _ _ _ body t) _ _) = do
+  ty' <- generalize (body ^. sType)
   (Ctx.singleton (lvVar x) ty' <>) <$> collectDefs t
 collectDefs _ = pure Ctx.empty
 
