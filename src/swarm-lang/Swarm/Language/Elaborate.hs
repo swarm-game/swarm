@@ -75,11 +75,12 @@ insertSuspend t = case t of
   TRequire {} -> thenSuspend
   TStock {} -> thenSuspend
   TRequirements {} -> thenSuspend
-  -- Recurse through def, tydef, bind, and annotate.
+  -- Recurse through def, tydef, bind, annotate, and import.
   TLet ls r x mty mpty mreq t1 t2 -> TLet ls r x mty mpty mreq t1 (insertSuspend t2)
   TTydef x pty mtd t1 -> TTydef x pty mtd (insertSuspend t1)
   TBind mx mty mreq c1 c2 -> TBind mx mty mreq c1 (insertSuspend c2)
   TAnnotate t1 ty -> TAnnotate (insertSuspend t1) ty
+  TImportIn loc t1 -> TImportIn loc (insertSuspend t1)
   -- Replace pure or noop with suspend
   TApp (TConst Pure) t1 -> TSuspend t1
   TConst Noop -> TSuspend TUnit

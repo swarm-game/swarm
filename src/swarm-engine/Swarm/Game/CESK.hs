@@ -73,6 +73,7 @@ module Swarm.Game.CESK (
   continue,
   cancel,
   prepareTerm,
+  insertSuspend,
 
   -- ** Extracting information
   finalValue,
@@ -81,10 +82,11 @@ module Swarm.Game.CESK (
   cont,
 ) where
 
-import Control.Lens (Lens', Traversal', lens, traversal, (^.))
+import Control.Lens (Lens', Traversal', lens, traversal, (^.), (&), (%~), (.~))
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
+import Data.Map qualified as M
 import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..), encloseSep, hsep, (<+>))
 import Swarm.Game.Entity (Entity)
@@ -93,6 +95,7 @@ import Swarm.Game.Ingredients (Count)
 import Swarm.Game.Tick
 import Swarm.Game.World (WorldUpdate (..))
 import Swarm.Language.Elaborate (insertSuspend)
+import Swarm.Language.Load (SourceMap)
 import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
@@ -336,8 +339,8 @@ initMachine t = In (prepareTerm V.emptyEnv t) V.emptyEnv emptyStore [FExec]
 --
 --   Also insert a @suspend@ primitive at the end, so the resulting
 --   term is suitable for execution by the base (REPL) robot.
-continue :: Syntax Elaborated -> CESK -> CESK
-continue t = \case
+continue :: SourceMap Elaborated -> Syntax Elaborated -> CESK -> CESK
+continue srcMap t = \case
   -- The normal case is when we are continuing from a suspended state. We:
   --
   --   (1) insert a suspend call at the end of the term, so that in
@@ -351,11 +354,15 @@ continue t = \case
   --   environment e (any names brought into scope by executing the
   --   term will be discarded).  If the term succeeds, the extra
   --   FRestoreEnv frame will be discarded.
-  Suspended _ e s k -> In (insertSuspend $ prepareTerm e t) e s (FExec : FRestoreEnv e : k)
+  Suspended _ e s k ->
+    let e' = e & envSourceMap %~ M.union srcMap
+    in In (insertSuspend $ prepareTerm e' t) e' s (FExec : FRestoreEnv e : k)
   -- In any other state, just start with an empty environment.  This
   -- happens e.g. when running a program on the base robot for the
   -- very first time.
-  cesk -> In (insertSuspend $ prepareTerm V.emptyEnv t) V.emptyEnv (cesk ^. store) (FExec : (cesk ^. cont))
+  cesk ->
+    let e = V.emptyEnv & envSourceMap .~ srcMap
+    in In (insertSuspend $ prepareTerm e t) e (cesk ^. store) (FExec : (cesk ^. cont))
 
 -- | Prepare a term for evaluation by a CESK machine in the given
 --   environment: erase all type annotations, and optionally wrap it
