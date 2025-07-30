@@ -382,7 +382,7 @@ replPromptEditor :: Lens' REPLState (Editor Text Name)
 replPromptText :: Lens' REPLState Text
 replPromptText = lens g s
  where
-  g r = r ^. replPromptEditor . to getEditContents . to T.unlines
+  g r = r ^. replPromptEditor . to getEditContents . to (T.intercalate "\n")
   s r t = r & replPromptEditor .~ newREPLEditor t
 
 -- | Lens to get a zipper into the REPL text.
