@@ -152,18 +152,21 @@ startMetricsThread mPort store = do
 createChannel :: IO (BChan AppEvent)
 createChannel = newBChan 5
 
--- | Send Frame events as at a reasonable rate for 30 fps.
+-- | Send Frame events as at a reasonable rate for 35 fps.
 --
 -- The game is responsible for figuring out how many steps to take
 -- each frame to achieve the desired speed, regardless of the
--- frame rate.  Note that if the game cannot keep up with 30
+-- frame rate.  Note that if the game cannot keep up with 35
 -- fps, it's not a problem: the channel will fill up and this
 -- thread will block.  So the force of the threadDelay is just
 -- to set a *maximum* possible frame rate.
+--
+-- We use 35 FPS so that even at double the default ticks/second
+-- (i.e. 32 t/s) we can run at over 1 frame per tick.
 sendFrameEvents :: BChan AppEvent -> IO ()
 sendFrameEvents chan = void . forkIO . forever $ do
   writeBChan chan Frame
-  threadDelay 33_333 -- cap maximum framerate at 30 FPS
+  threadDelay (1_000_000 `div` 35) -- cap maximum framerate at 35 FPS
 
 -- | Get newer upstream version and send event to channel.
 sendUpstreamVersion :: BChan AppEvent -> Maybe GitInfo -> IO ()
