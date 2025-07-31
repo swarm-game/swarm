@@ -16,10 +16,10 @@ objectives:
 solution: |
   def forever = \c. force c ; forever c end
   def tryharvest =
-    atomic (
+    atomic {
       b <- ishere "weed";
       if b {harvest; pure ()} {}
-    );
+    };
     n <- random 4; wait n
   end;
   forever {tryharvest}
@@ -43,10 +43,10 @@ robots:
     program: |
       def forever = \c. force c ; forever c end
       def tryplant =
-        atomic (
+        atomic {
           b <- ishere "weed";
           if b {} {place "weed"}
-        )
+        }
       end;
       forever {tryplant}
 entities:

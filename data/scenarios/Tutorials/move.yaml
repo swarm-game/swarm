@@ -142,7 +142,7 @@ robots:
   #################
   - name: check
     system: true
-    program: instant (run "scenarios/Tutorials/move_check.sw")
+    program: instant {run "scenarios/Tutorials/move_check.sw"}
   #################
   ## WALLS       ##
   #################
@@ -150,26 +150,26 @@ robots:
     system: true
     program: |
       def main = \a. pure noop end
-      instant (
+      instant {
         run "scenarios/Tutorials/move_surveil.sw";
         main [entity="wall", room=1]
-      )
+      }
   - name: 2P wall
     system: true
     program: |
       def main = \a. noop end
-      instant (
+      instant {
         run "scenarios/Tutorials/move_surveil.sw";
         main [entity="wall", room=2]
-      )
+      }
   - name: 3P wall
     system: true
     program: |
       def main = \a. noop end
-      instant (
+      instant {
         run "scenarios/Tutorials/move_surveil.sw";
         main [entity="wall", room=3]
-      )
+      }
   #################
   ## GARDENERS   ##
   #################
@@ -177,26 +177,26 @@ robots:
     system: true
     program: |
       def main = \a. noop end
-      instant (
+      instant {
         run "scenarios/Tutorials/move_surveil.sw";
         main [entity="flower", room=1]
-      )
+      }
   - name: 2P flower
     system: true
     program: |
       def main = \a. noop end
-      instant (
+      instant {
         run "scenarios/Tutorials/move_surveil.sw";
         main [entity="flower", room=2]
-      )
+      }
   - name: 3P flower
     system: true
     program: |
       def main = \a. noop end
-      instant (
+      instant {
         run "scenarios/Tutorials/move_surveil.sw";
         main [entity="flower", room=3]
-      )
+      }
 entities:
   - name: door
     display:

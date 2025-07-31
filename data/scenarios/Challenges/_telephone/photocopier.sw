@@ -23,7 +23,7 @@ end
 
 def copy : Cmd Unit =
   watch down; wait 1024;
-  p <- atomic (b <- isempty; if b {pure ""} {grab});
+  p <- atomic {b <- isempty; if b {pure ""} {grab}};
   if (p == "") {} {followInstructions p}
 end
 

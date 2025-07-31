@@ -60,14 +60,14 @@ def reWatch =
     end;
 
 def reWatchEntities = \instantCont.
-    s1 <- instant (
+    s1 <- instant {
         forDirs (\d. watch d; scan d)
-    );
+    };
     wait 10000;
-    instant (
+    instant {
         s2 <- forDirs scan;
         if (s1 != s2) {instantCont} {}
-    );
+    };
     reWatchEntities instantCont
     end
 

@@ -194,7 +194,7 @@ def watchBoard =
 def go = \boardWidth. \boardHeight.
 
     // Re-position at the bottom-left corner
-    instant $ atLocation (0, -(boardHeight - 1)) (
+    instant { atLocation (0, -(boardHeight - 1)) (
         handleMarker boardWidth boardHeight;
 
         // NOTE: I originally intended to use 'watch' as a performance optimization.
@@ -202,7 +202,7 @@ def go = \boardWidth. \boardHeight.
         // such that the player is not replentished with 'ink' by the time they might
         // want to perform their next 'drill' operation.
         // watchBoard;
-    );
+    )};
 
     // Throttle the recursion, otherwise it will max out the allowed operations per tick
     wait 1;

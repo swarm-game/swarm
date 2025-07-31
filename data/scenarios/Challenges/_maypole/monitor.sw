@@ -81,7 +81,7 @@ with the absolute quadrant index.
 */
 def monitorAngle : (Int * Int) -> Int -> Int -> Int -> Cmd Unit =
     \myLoc. \targetQuadrantCount. \prevQuadrant. \quadrantTraversalCount.
-  result <- instant $ checkNewQuadrant myLoc prevQuadrant quadrantTraversalCount;
+  result <- instant {checkNewQuadrant myLoc prevQuadrant quadrantTraversalCount};
   match result \currentQuadrant. \newQuadrantCount.
 
   if (newQuadrantCount < targetQuadrantCount) {

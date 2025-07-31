@@ -67,7 +67,7 @@ end
 def judge =
   let r = 6 in
   let c = 8 in
-  instant (
+  instant {
     loc <- whereami;
     match loc \locx. \locy.
     for r (\y.
@@ -75,16 +75,16 @@ def judge =
         surveil (locx + x, locy + y)
       )
     );
-  );
+  };
   wait 1024;
-  instant (
+  instant {
     origLoc <- whereami;
     teleport self (0, -5);
     rect <- readRect r c;
     teleport self origLoc; turn east;
     check r c rect;
     teleport self origLoc; turn east;
-  )
+  }
 end
 
 forever {judge};

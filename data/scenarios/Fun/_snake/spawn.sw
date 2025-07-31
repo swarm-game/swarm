@@ -28,7 +28,7 @@ def repeatedlyPlaceApple = \range.
   end;
 
 def go =
-  instant $ repeatedlyPlaceApple 20;
+  instant {repeatedlyPlaceApple 20};
   go;
   end;
 
