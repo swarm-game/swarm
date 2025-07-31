@@ -546,8 +546,12 @@
     attr: entity
     char: 'O'
   description:
-    - A polished, rounded piece of glass, capable of focusing rays of light.
+    - |
+      A polished, rounded piece of glass, capable of focusing rays of light.
+    - |
+      Focusing the sun's rays can set things on fire via `ignite : Dir -> Cmd Unit`.
   properties: [pickable]
+  capabilities: [ignite]
 - name: LaTeX
   display:
     attr: flower

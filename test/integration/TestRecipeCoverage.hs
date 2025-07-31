@@ -52,8 +52,7 @@ nonCoveredList :: [EntityName]
 nonCoveredList =
   map
     T.toCaseFold
-    [ "ash"
-    , "blueprint"
+    [ "blueprint"
     , "decoder ring"
     , "linotype"
     , "tape drive"
