@@ -114,7 +114,7 @@ def placeBase = \standbyFunc. \n.
         clonedOrganism <- placeBase standbyFunc $ n - 1;
 
         // Unwinds the stack; verifies the original placement order
-        placedEnt <- instant waitUntilSomethingExists;
+        placedEnt <- instant {waitUntilSomethingExists};
         let isGood = ent == placedEnt in
         move;
 
@@ -139,7 +139,7 @@ def makeDnaStrand = \receptacleLoc.
     case eitherClonedOrganism (\_.
         create "pixel (R)";
     ) (\clonedItem.
-        instant $ (
+        instant {
             teleport self (0, -11);
             waitUntilHere "switch (on)";
 
@@ -155,13 +155,13 @@ def makeDnaStrand = \receptacleLoc.
             create slideBox;
             give base slideBox;
             say $ "You got a new \"" ++ slideBox ++ "\"";
-        );
+        };
     );
     end;
 
 def waitForCloneableOrganism =
     let receptacleLoc = waypointByIndex "receiver" 0 in
-    organism <- instant (
+    organism <- instant {
         teleport self receptacleLoc;
 
         waitUntilOccupied;
@@ -170,7 +170,7 @@ def waitForCloneableOrganism =
         pure $ case thingHere (\x. inL x) (\item.
           if (hastag item "organism") {inR item} {inL ()}
         )
-    );
+    };
 
     case organism (\_.
         say "Not a cloneable organism!";

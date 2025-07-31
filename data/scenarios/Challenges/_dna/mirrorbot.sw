@@ -91,7 +91,7 @@ def waitUntilEmpty =
     end;
 
 def go =
-    instant waitUntilHere;
+    instant {waitUntilHere};
     waitUntilEmpty;
     go;
     end;

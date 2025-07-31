@@ -73,7 +73,7 @@ def countFlowers : Int * Int -> Int * Int -> Cmd Int = \size. \ll.
 end
 
 def acquire : Cmd Text =
-  thing <- atomic (b <- isempty; if b {pure ""} {grab});
+  thing <- atomic {b <- isempty; if b {pure ""} {grab}};
   if (thing == "") {acquire} {pure thing}
 end
 

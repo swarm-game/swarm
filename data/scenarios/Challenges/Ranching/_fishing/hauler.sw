@@ -51,7 +51,7 @@ def turnAround = \d.
 
 def waitUntilEnclosureFull =
 
-    isFull <- instant isEitherEnclosureFull;
+    isFull <- instant {isEitherEnclosureFull};
     if isFull {
         // Drive down the road
         turn south;

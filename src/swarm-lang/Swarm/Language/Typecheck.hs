@@ -1135,8 +1135,8 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   ToChar -> [tyQ| Int -> Text |]
   AppF -> [tyQ| (a -> b) -> a -> b |]
   Swap -> [tyQ| Text -> Cmd Text |]
-  Atomic -> [tyQ| Cmd a -> Cmd a |]
-  Instant -> [tyQ| Cmd a -> Cmd a |]
+  Atomic -> [tyQ| {Cmd a} -> Cmd a |]
+  Instant -> [tyQ| {Cmd a} -> Cmd a |]
   Key -> [tyQ| Text -> Key |]
   InstallKeyHandler -> [tyQ| Text -> (Key -> Cmd Unit) -> Cmd Unit |]
   Teleport -> [tyQ| Actor -> (Int * Int) -> Cmd Unit |]
@@ -1203,13 +1203,12 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
     return $ Syntax' l (SLam x mxTy' body') cs (UTyFun argTy resTy)
 
   -- Special case for checking the argument to 'atomic' (or
-  -- 'instant').  'atomic t' has the same type as 't', which must have
-  -- a type of the form 'Cmd a' for some 'a'.
+  -- 'instant').  Both have the type @{Cmd a} -> Cmd a@.
 
   TConst c :$: at
     | c `elem` [Atomic, Instant] -> do
         argTy <- decomposeCmdTy s (Expected, expected)
-        at' <- check at (UTyCmd argTy)
+        at' <- check at (UTyDelay (UTyCmd argTy))
         atomic' <- infer (Syntax l (TConst c))
         -- It's important that we typecheck the subterm @at@ *before* we
         -- check that it is a valid argument to @atomic@: this way we can

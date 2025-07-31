@@ -155,7 +155,7 @@ def moveToApple = \tailList.
   end;
 
 def go = \tailList.
-  newList <- instant $ moveToApple tailList;
+  newList <- instant {moveToApple tailList};
   go newList;
   end;
 

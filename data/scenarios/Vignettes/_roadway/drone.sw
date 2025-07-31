@@ -178,7 +178,7 @@ def advance :
 
     wait delayState.moveDelay;
 
-    result <- instant $ moveWithWrap stoplines extents isLongitudinal;
+    result <- instant {moveWithWrap stoplines extents isLongitudinal};
     match result \canGo. \wentThroughTunnel.
     if wentThroughTunnel {
         r <- random 50;
@@ -193,7 +193,7 @@ def go =
     let extents = [xMin = -12, xMax=53, yMin = -15, yMax = 26] in
     let lanes = [yWest = 7, yEast = 5, xSouth = 20, xNorth = 22] in
     let stoplines = [xWest = 24, xEast = 17, ySouth = 9, yNorth = 2] in
-    result <- instant $ init extents lanes;
+    result <- instant {init extents lanes};
     match result \isLongitudinal. \idx.
     advance idx isLongitudinal stoplines extents [moveDelay=5, transitionCountdown=2];
     end;

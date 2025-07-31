@@ -57,7 +57,7 @@ def atTerminal : Cmd a -> Cmd a = \c.
 end
 
 def waitToPlace : Text -> Cmd Unit = \t.
-  success <- atomic (b <- isempty; if b {place t} {}; pure b);
+  success <- atomic {b <- isempty; if b {place t} {}; pure b};
   if success {} { watch down; wait 1024; waitToPlace t }
 end
 
