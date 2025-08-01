@@ -41,6 +41,7 @@ import Swarm.Language.Load (SourceMap)
 import Swarm.Language.Pipeline (processTerm')
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Value (emptyEnv)
+import Swarm.Pretty
 import Swarm.TUI.Model (
   AppState,
   PlayState,
@@ -58,7 +59,6 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl (REPLEntryType (..), REPLHistItem (..), REPLHistItemType (..), REPLPrompt (..), REPLState, addREPLItem, replHasExecutedManualInput, replHistory, replPromptText, replPromptType)
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Util (ScenarioSeriesContext (..), curMenuName, generateModal, generateScenarioEndModal)
-import Swarm.Pretty
 import System.Clock (Clock (..), getTime)
 
 -- | Pattern synonyms to simplify brick event handler

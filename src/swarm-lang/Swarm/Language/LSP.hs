@@ -88,7 +88,7 @@ validateSwarmCode doc version content = do
           VU.Usage _ problems = VU.getUsage mempty (eraseRaw term)
           unusedWarnings = mapMaybe (VU.toErrPos content) problems
         Left (DoesNotTypecheck l t) -> ([(srcLocToPos l content, t)], [])
-        Left err -> ([(((0,0), (0,0)), prettyText err)], [])
+        Left err -> ([(((0, 0), (0, 0)), prettyText err)], [])
 
   publishDiags $
     map makeUnusedVarDiagnostic warnings

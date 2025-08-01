@@ -319,7 +319,6 @@ selfDestruct :: Lens' (Robot Instantiated) Bool
 
 -- | Is the robot currently running an atomic block?
 runningAtomic :: Lens' (Robot Instantiated) Bool
-
 walkabilityContext :: Getter (Robot Instantiated) WalkabilityContext
 walkabilityContext = to $
   \x -> WalkabilityContext (getCapabilitySet $ _robotCapabilities x) (_unwalkableEntities x)
@@ -332,8 +331,7 @@ mkRobot ::
   , RobotLogMember phase ~ ()
   , RobotLogUpdatedMember phase ~ ()
   , RobotMachine phase ~ Maybe (Syntax phase)
-  )
-  =>
+  ) =>
   Maybe Int ->
   -- | Name of the robot.
   Text ->
