@@ -460,12 +460,12 @@ library swarm-lang
     Swarm.Language.JSON
     Swarm.Language.Key
     Swarm.Language.Kindcheck
-    Swarm.Language.Load
     Swarm.Language.LSP
     Swarm.Language.LSP.Definition
     Swarm.Language.LSP.Hover
     Swarm.Language.LSP.Position
     Swarm.Language.LSP.VarUsage
+    Swarm.Language.Load
     Swarm.Language.Parser
     Swarm.Language.Parser.Comment
     Swarm.Language.Parser.Core
