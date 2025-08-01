@@ -11,6 +11,8 @@
 -- Facilities for stepping the robot CESK machines, /i.e./ the actual
 -- interpreter for the Swarm language.
 --
+-- TODO (#495): get rid of IO in Swarm.Game.Step
+--
 -- == Note on the IO:
 --
 -- The only reason we need @IO@ is so that robots can run programs
@@ -716,9 +718,20 @@ stepCESK cesk = case cesk of
   -- Evaluate the code corresponding to an import.
   In (TImportIn loc t) e s k -> do
     return $ case M.lookup loc (e ^. envSourceMap) of
+      -- The import should have already been typechecked at this point, so
+      -- if it's not found in the source map, there must be a bug somewhere.
       Nothing -> Up (Fatal (T.append "Import not found: " (into @Text (locToFilePath loc)))) s k
       Just mmod -> case moduleTerm mmod of
+        -- In theory there could be an import of an empty module
         Nothing -> In t e s k
+        -- To evaluate an import:
+        --   (1) stick a 'suspend' at the end of the term
+        --     corresponding to the imported module, so we can save the resulting environment
+        --   (2) push an FBind frame on the stack to continue with the
+        --     rest of the code once we're done processing the import.
+        --     Note that the environment in the FBind will be ignored
+        --     in favor of the environment resulting from the suspend.
+        --   (3) push an FExec frame to execute the import itself.
         Just m -> In (insertSuspend $ erase m ^. sTerm) e s (FExec : FBind Nothing Nothing t e : k)
         -- XXX keep a map from imports to corresponding Env, don't re-evaluate if it's already
         -- in the map.  To make this sound, need to disallow all but defs in an import.
