@@ -82,8 +82,8 @@ makeFocusedEntity = gets focusedEntity >>= maybe continueWithoutRedraw makeEntit
   makeEntity :: Entity -> EventM Name ScenarioState ()
   makeEntity e = do
     s <- get
-    let name = e ^. entityName
-        mkT = [tmQ| make $str:name |]
+    let _name = e ^. entityName
+        mkT = [tmQ| make $str:_name |]
     case isActive <$> (s ^? gameState . baseRobot) of
       Just False -> runBaseTerm (Just (mempty, mkT))
       _ -> continueWithoutRedraw
