@@ -1,10 +1,7 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -20,7 +17,7 @@ import Control.Effect.Accum (Accum, add)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.State (State, get, modify)
 import Control.Effect.Throw (Throw, throwError)
-import Control.Lens ((.~))
+import Control.Lens ((?~))
 import Control.Monad (forM_)
 import Data.Data (Data, Typeable)
 import Data.Function ((&))
@@ -191,4 +188,4 @@ readLoc loc = do
     _ -> sendIO (readFileMayT path) >>= maybe (badImport (DoesNotExist File)) pure
 
   -- Try to parse the contents
-  readTerm' (defaultParserConfig & importLoc .~ Just loc) src & either (badImport . SystemFailure . CanNotParseMegaparsec) pure
+  readTerm' (defaultParserConfig & importLoc ?~ loc) src & either (badImport . SystemFailure . CanNotParseMegaparsec) pure
