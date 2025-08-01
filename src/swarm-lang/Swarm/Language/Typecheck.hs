@@ -27,6 +27,7 @@ module Swarm.Language.Typecheck (
   LocatedTCFrame (..),
   TCStack,
   withFrame,
+  popFrame,
 
   -- * Typechecking monad
   fresh,
@@ -131,6 +132,13 @@ type TCStack = [LocatedTCFrame]
 -- | Push a frame on the typechecking stack.
 withFrame :: Has (Reader TCStack) sig m => SrcLoc -> TCFrame -> m a -> m a
 withFrame l f = local (LocatedTCFrame l f :)
+
+-- | Locally pop a frame from the typechecking stack.
+popFrame :: Has (Reader TCStack) sig m => m a -> m a
+popFrame = local @TCStack pop
+ where
+  pop (_ : fs) = fs
+  pop [] = []
 
 ------------------------------------------------------------
 -- Type source
@@ -1214,6 +1222,7 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Whoami -> [tyQ| Cmd Text |]
   Setname -> [tyQ| Text -> Cmd Unit |]
   Random -> [tyQ| Int -> Cmd Int |]
+  Run -> [tyQ| Text -> Cmd Unit |]
   If -> [tyQ| Bool -> {a} -> {a} -> a |]
   Inl -> [tyQ| a -> a + b |]
   Inr -> [tyQ| b -> a + b |]
@@ -1369,52 +1378,57 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
     let Syntax _ tt1 _ _ = t1
         reqs = requirements tdCtx reqCtx tt1
 
-    -- If we are checking a 'def', ensure t2 has a command type.  This ensures that
-    -- something like 'def ... end; x + 3' is not allowed, since this
-    -- would result in the whole thing being wrapped in pure, like
-    -- 'pure (def ... end; x + 3)', which means the def would be local and
-    -- not persist to the next REPL input, which could be surprising.
-    --
-    -- On the other hand, 'let x = y in x + 3' is perfectly fine.
-    when (ls == LSDef) $ void $ decomposeCmdTy t2 (Expected, expected)
+    -- Locally pop the typechecking frame that said we were checking
+    -- the definition of a let while typechecking the body.  Even
+    -- though the body is a syntactic subterm of the let, we don't
+    -- want to see a bunch of nested typechecking frames.
+    popFrame $ do
+      -- If we are checking a 'def', ensure t2 has a command type.  This ensures that
+      -- something like 'def ... end; x + 3' is not allowed, since this
+      -- would result in the whole thing being wrapped in pure, like
+      -- 'pure (def ... end; x + 3)', which means the def would be local and
+      -- not persist to the next REPL input, which could be surprising.
+      --
+      -- On the other hand, 'let x = y in x + 3' is perfectly fine.
+      when (ls == LSDef) $ void $ decomposeCmdTy t2 (Expected, expected)
 
-    -- Now check the type of the body, under a context extended with
-    -- the type and requirements of the bound variable.
-    t2' <-
-      withBinding (locVal x) upty $
-        withBinding (locVal x) reqs $
-          check t2 expected
+      -- Now check the type of the body, under a context extended with
+      -- the type and requirements of the bound variable.
+      t2' <-
+        withBinding (locVal x) upty $
+          withBinding (locVal x) reqs $
+            check t2 expected
 
-    -- Make sure none of the generated skolem variables have escaped.
-    ask @UCtx >>= traverse_ (noSkolems l skolems)
+      -- Make sure none of the generated skolem variables have escaped.
+      ask @UCtx >>= traverse_ (noSkolems l skolems)
 
-    -- Annotate a 'def' with requirements, but not 'let'.  The reason
-    -- is so that let introduces truly "local" bindings which never
-    -- persist, but def introduces "global" bindings.  Variables bound
-    -- in the environment can only be used to typecheck future REPL
-    -- terms if the environment holds not only a value but also a type
-    -- + requirements for them.  For example:
-    --
-    -- > def x : Int = 3 end; pure (x + 2)
-    -- 5
-    -- > x
-    -- 3
-    -- > let y : Int = 3 in y + 2
-    -- 5
-    -- > y
-    -- 1:1: Undefined variable y
-    -- > let y = 3 in def x = 5 end; pure (x + y)
-    -- 8
-    -- > y
-    -- 1:1: Undefined variable y
-    -- > x
-    -- 5
-    let mreqs = case ls of
-          LSDef -> Just reqs
-          LSLet -> Nothing
+      -- Annotate a 'def' with requirements, but not 'let'.  The reason
+      -- is so that let introduces truly "local" bindings which never
+      -- persist, but def introduces "global" bindings.  Variables bound
+      -- in the environment can only be used to typecheck future REPL
+      -- terms if the environment holds not only a value but also a type
+      -- + requirements for them.  For example:
+      --
+      -- > def x : Int = 3 end; pure (x + 2)
+      -- 5
+      -- > x
+      -- 3
+      -- > let y : Int = 3 in y + 2
+      -- 5
+      -- > y
+      -- 1:1: Undefined variable y
+      -- > let y = 3 in def x = 5 end; pure (x + y)
+      -- 8
+      -- > y
+      -- 1:1: Undefined variable y
+      -- > x
+      -- 5
+      let mreqs = case ls of
+            LSDef -> Just reqs
+            LSLet -> Nothing
 
-    -- Return the annotated let.
-    return $ Syntax l (SLet ls r x mxTy mqxTy mreqs t1' t2') cs expected
+      -- Return the annotated let.
+      return $ Syntax l (SLet ls r x mxTy mqxTy mreqs t1' t2') cs expected
 
   -- Kind-check a type definition and then check the body under an
   -- extended context.

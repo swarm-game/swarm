@@ -125,6 +125,10 @@ constCaps = \case
   Undefined -> Nothing
   Use -> Nothing -- Recipes alone shall dictate whether things can be "used"
   View -> Nothing -- TODO: #17 should require equipping an antenna
+  -- TODO: #495
+  --   the require command will be inlined once the Issue is fixed
+  --   so the capabilities of the run commands will be checked instead
+  Run -> Nothing
   -- Some God-like abilities.
   As -> Just CGod
   Create -> Just CGod
