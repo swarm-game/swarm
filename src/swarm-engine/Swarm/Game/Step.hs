@@ -827,12 +827,12 @@ stepCESK cesk = case cesk of
   --
   -- x; z <- y; q; r
   --
-  Suspended _ e s (FBind Nothing _ t2 _ : k) -> return $ In t2 e s k
+  Suspended _ e s (FBind Nothing _ t2 _ : k) -> return $ In t2 e s (FExec : k)
   Suspended v e s (FBind (Just x) mtr t2 _ : k) -> do
     let e' = case mtr of
           Nothing -> addValueBinding x v e
           Just (ty, reqs) -> addBinding x (WithType v ty reqs) e
-    return $ In t2 e' s k
+    return $ In t2 e' s (FExec : k)
   -- Otherwise, if we're suspended with nothing else left to do,
   -- return the machine unchanged (but throw away the rest of the
   -- continuation stack).
