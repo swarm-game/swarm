@@ -204,6 +204,10 @@ data Const
     Setname
   | -- | Get a uniformly random integer.
     Random
+  | -- Modules
+
+    -- | Run a program loaded from a file.
+    Run
   | -- Language built-ins
 
     -- | If-expressions.
@@ -778,6 +782,7 @@ constInfo c = case c of
   Random ->
     command 1 Intangible . doc (Set.singleton $ Query PRNG) "Get a uniformly random integer." $
       ["The random integer will be chosen from the range 0 to n-1, exclusive of the argument."]
+  Run -> command 1 long $ shortDoc (Set.singleton $ Mutation $ RobotChange BehaviorChange) "Run a program loaded from a file."
   Pure -> command 1 Intangible $ shortDoc Set.empty "Create a pure `Cmd a`{=type} computation that yields the given value."
   Try -> command 2 Intangible $ shortDoc Set.empty "Execute a command, catching errors."
   Undefined -> function 0 $ shortDoc Set.empty "A value of any type, that is evaluated as error."

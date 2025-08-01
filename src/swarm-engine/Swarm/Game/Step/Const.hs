@@ -17,7 +17,7 @@ import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (filterM, forM, forM_, guard, unless, when)
+import Control.Monad (filterM, forM, forM_, guard, msum, unless, when)
 import Data.Bifunctor (second)
 import Data.Bool (bool)
 import Data.Char (chr, ord)
@@ -35,7 +35,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Map.NonEmpty qualified as NEM
 import Data.Map.Strict qualified as MS
-import Data.Maybe (fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
 import Data.MonoidMap qualified as MM
 import Data.Ord (Down (Down))
 import Data.Sequence qualified as Seq
@@ -46,6 +46,7 @@ import Data.Text qualified as T
 import Data.Tuple (swap)
 import Linear (V2 (..), perp, zero)
 import Swarm.Effect as Effect (Time, getNow)
+import Swarm.Failure (SystemFailure, AssetData(Script))
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
 import Swarm.Game.Cosmetic.Attribute (readAttribute)
@@ -89,6 +90,7 @@ import Swarm.Game.Value
 import Swarm.Language.Capability
 import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Parser.Value (readValue)
+import Swarm.Language.Pipeline (processTerm)
 import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
@@ -96,7 +98,9 @@ import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Value
 import Swarm.Log
 import Swarm.Pretty (prettyText)
+import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util hiding (both)
+import Swarm.Util.Effect (throwToMaybe)
 import Swarm.Util.Lens (inherit)
 import Text.Megaparsec (runParser)
 import Witch (From (from), into)
@@ -1211,6 +1215,28 @@ execConst runChildProg c vs s k = do
             -- Now wait the right amount of time for it to finish.
             time <- use $ temporal . ticks
             return $ Waiting (addTicks (numItems + 1) time) (mkReturn ())
+      _ -> badConst
+    -- run can take both types of text inputs
+    -- with and without file extension as in
+    -- "./path/to/file.sw" and "./path/to/file"
+    Run -> case vs of
+      [VText fileName] -> do
+        let filePath = into @String fileName
+        sData <- throwToMaybe @SystemFailure $ getDataFileNameSafe Script filePath
+        sDataSW <- throwToMaybe @SystemFailure $ getDataFileNameSafe Script (filePath <> ".sw")
+        mf <- sendIO $ mapM readFileMay $ [filePath, filePath <> ".sw"] <> catMaybes [sData, sDataSW]
+
+        f <- msum mf `isJustOrFail` ["File not found:", fileName]
+
+        res <- sendIO $ processTerm (into @Text f)
+        mt <- res `isRightOr` \err -> cmdExn Run ["Error in", fileName, "\n", prettyText err]
+
+        case mt of
+          Nothing -> return $ mkReturn ()
+          Just (_, t) -> do
+            void $ traceLog CmdStatus Info "run: OK."
+            cesk <- use machine
+            return $ continue M.empty t cesk
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k
