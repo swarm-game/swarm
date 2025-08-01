@@ -37,6 +37,7 @@ import Swarm.Game.State.RobotNaming
 import Swarm.Game.State.ViewCenter.Internal (ViewCenter, defaultViewCenter)
 import Swarm.Game.Tick
 import Swarm.Game.Universe as U
+import Swarm.Language.Phase (Instantiated)
 import Swarm.Util.Lens (makeLensesNoSigs)
 
 -- | Robots specific part of the game state.
