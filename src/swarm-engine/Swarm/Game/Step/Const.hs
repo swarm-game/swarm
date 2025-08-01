@@ -884,7 +884,7 @@ execConst runChildProg c vs s k = do
         -- Set the robot's display character(s)
         case into @String app of
           [] -> do
-            robotDisplay . invisible .= True
+            robotDisplay @Instantiated . invisible .= True
           [dc] -> do
             robotDisplay @Instantiated . invisible .= False
             robotDisplay @Instantiated . defaultChar .= dc

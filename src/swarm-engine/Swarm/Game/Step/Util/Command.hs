@@ -183,7 +183,7 @@ updateRobotLocation oldLoc newLoc
       newlocWithPortal <- applyPortal newLoc
       rid <- use robotID
       t <- use $ temporal . ticks
-      invis <- use $ robotDisplay . invisible
+      invis <- use $ robotDisplay @Instantiated . invisible
       zoomRobots $ do
         unless invis $ wakeWatchingRobots rid t newLoc
         unless invis $ wakeWatchingRobots rid t oldLoc
