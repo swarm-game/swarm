@@ -5,10 +5,10 @@
 module Swarm.TUI.View.Robot.Details (renderRobotDetails) where
 
 import Brick
+import Brick.Focus
 import Brick.Widgets.Border
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
-import Brick.Focus
 import Control.Lens hiding (from, (<.>))
 import Data.Map.Strict qualified as M
 import Prettyprinter (pretty)

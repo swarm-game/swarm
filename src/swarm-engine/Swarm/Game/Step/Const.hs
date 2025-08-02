@@ -46,7 +46,7 @@ import Data.Text qualified as T
 import Data.Tuple (swap)
 import Linear (V2 (..), perp, zero)
 import Swarm.Effect as Effect (Time, getNow)
-import Swarm.Failure (SystemFailure, AssetData(Script))
+import Swarm.Failure (AssetData (Script), SystemFailure)
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
 import Swarm.Game.Cosmetic.Attribute (readAttribute)

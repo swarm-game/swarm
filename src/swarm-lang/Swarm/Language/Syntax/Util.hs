@@ -15,8 +15,8 @@ module Swarm.Language.Syntax.Util (
   locVarToSyntax,
 
   -- * Traversals
-  -- ** Term + type traversal
 
+  -- ** Term + type traversal
   termSyntax,
   traverseSyntax,
 
@@ -120,7 +120,8 @@ termSyntax ::
   (SwarmType a -> f (SwarmType b)) ->
   (ImportLoc (ImportPhaseFor a) -> f (ImportLoc (ImportPhaseFor b))) ->
   (Syntax a -> f (Syntax b)) ->
-  Term a -> f (Term b)
+  Term a ->
+  f (Term b)
 termSyntax fty floc fsyn = \case
   TUnit -> pure TUnit
   TConst c -> pure $ TConst c
@@ -164,7 +165,8 @@ traverseSyntax ::
   Applicative f =>
   (SwarmType a -> f (SwarmType b)) ->
   (ImportLoc (ImportPhaseFor a) -> f (ImportLoc (ImportPhaseFor b))) ->
-  Syntax a -> f (Syntax b)
+  Syntax a ->
+  f (Syntax b)
 traverseSyntax f g (Syntax loc t com ty) =
   Syntax loc <$> termSyntax f g (traverseSyntax f g) t <*> pure com <*> f ty
 
@@ -256,7 +258,6 @@ freeVarsV = freeVarsT . (\f -> \case TVar x -> TVar <$> f x; t -> pure t)
 --   variable.
 mapFreeS :: Var -> (Syntax phase -> Syntax phase) -> Syntax phase -> Syntax phase
 mapFreeS x f = freeVarsS %~ (\t -> case t ^. sTerm of TVar y | y == x -> f t; _ -> t)
-
 
 ------------------------------------------------------------
 -- Other traversals

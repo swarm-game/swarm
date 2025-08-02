@@ -23,7 +23,6 @@ module Swarm.Language.Syntax.Import (
   RAnchor (..),
   UAnchor (..),
   Unresolvable,
-
   pattern Absolute,
   pattern Web,
   pattern Local,
@@ -51,6 +50,7 @@ module Swarm.Language.Syntax.Import (
   unresolveImportLoc,
 
   -- ** Resolution
+
   -- unsafeResolveImportLoc,
   resolveImportDir,
   resolveImportLoc,
@@ -367,4 +367,3 @@ resolveImportLoc (ImportLoc d f) = do
 -- | Turn a resolved import loc back into a raw one.
 unresolveImportLoc :: Unresolvable phase => ImportLoc phase -> ImportLoc Raw
 unresolveImportLoc (ImportLoc d f) = ImportLoc (unresolveImportDir d) f
-

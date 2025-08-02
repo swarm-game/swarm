@@ -38,7 +38,8 @@ import Swarm.TUI.Editor.Json (SkeletonScenario (SkeletonScenario))
 import Swarm.Util (binTuples, histogram)
 import Swarm.Util.Erasable
 
-makeSuggestedPalette :: forall phase.
+makeSuggestedPalette ::
+  forall phase.
   TerrainMap ->
   Map Char (AugmentedCell Entity phase) ->
   Grid (Maybe (CellPaintDisplay phase)) ->

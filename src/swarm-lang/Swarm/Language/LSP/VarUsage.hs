@@ -1,5 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -14,8 +14,8 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Language.LSP.Protocol.Types qualified as J
-import Swarm.Language.Phase
 import Swarm.Language.Parser.Util qualified as P
+import Swarm.Language.Phase
 import Swarm.Language.Syntax
 import Swarm.Util qualified as U
 
