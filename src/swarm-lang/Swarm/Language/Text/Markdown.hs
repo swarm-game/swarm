@@ -181,7 +181,7 @@ parseSyntax s = case readTerm s of
     -- (*unelaborated*) AST.  See #1496.
     Right _ -> Right t
 
-findCode :: Document (Syntax Raw) -> [Syntax Raw]
+findCode :: Document (Syntax phase) -> [Syntax phase]
 findCode = concatMap (mapMaybe codeOnly . nodes) . paragraphs
  where
   codeOnly = \case
