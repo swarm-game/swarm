@@ -807,6 +807,7 @@ library swarm-web
     colour,
     commonmark,
     containers,
+    fused-effects,
     http-types,
     lens,
     nonempty-containers,

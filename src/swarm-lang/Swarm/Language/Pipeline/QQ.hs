@@ -7,10 +7,12 @@
 -- A quasiquoter for Swarm terms.
 module Swarm.Language.Pipeline.QQ (tmQ) where
 
+import Control.Carrier.Error.Either (runError)
 import Data.Generics
 import Data.Text (Text)
 import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Quote
+import Swarm.Failure (SystemFailure)
 import Swarm.Language.Parser.Core (runParserTH)
 import Swarm.Language.Parser.Lex (sc)
 import Swarm.Language.Parser.Term (parseTerm)
@@ -42,7 +44,7 @@ quoteTermExp :: String -> TH.ExpQ
 quoteTermExp (into @Text -> s) = do
   loc <- TH.location
   parsed <- runParserTH loc (fully sc parseTerm) s
-  processed <- TH.runIO $ processParsedTerm (s, parsed)
+  processed <- TH.runIO . runError @SystemFailure $ processTerm s parsed Nothing
   case processed of
     Left err -> failT [prettyText err]
     Right (_, ptm) -> dataToExpQ ((fmap liftText . cast) `extQ` antiTermExp) ptm

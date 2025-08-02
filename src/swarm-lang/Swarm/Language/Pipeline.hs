@@ -11,111 +11,118 @@
 -- probably the module you want.
 module Swarm.Language.Pipeline (
   -- * Pipeline functions
+  processSource,
   processTerm,
-  processParsedTerm,
-  processParsedTermNoImports,
-  processTerm',
-  processParsedTerm',
-  processParsedTermWithSrcMap,
-  processTermEither,
+  processTermNoImports,
 
   -- * Utilities
-  extractTCtx,
-  extractReqCtx,
   typeErrToSystemFailure,
+  requireNonEmptyTerm,
 
   -- * Generic processing
   Processable (..),
 ) where
 
-import Control.Algebra (Has, run)
-import Control.Carrier.Error.Either (runError)
-import Control.Effect.Error (Error)
+import Control.Algebra (Has)
+import Control.Effect.Error (Error, throwError)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Throw (liftEither)
 import Control.Lens ((^.))
-import Data.Bifunctor (second)
-import Data.Functor.Identity
+import Data.Map qualified as M
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
+import Data.Traversable (for)
 import Swarm.Failure (SystemFailure (..))
-import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Elaborate
-import Swarm.Language.Load (SourceMap, buildSourceMap)
+import Swarm.Language.Load (SourceMap, resolve, resolve')
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
-import Swarm.Language.Requirements.Type (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
-import Swarm.Language.Types (TCtx, emptyTDCtx)
+import Swarm.Language.Types (emptyTDCtx)
 import Swarm.Language.Value (Env, emptyEnv, envReqs, envTydefs, envTypes)
 import Swarm.Util.Effect (withError, withThrow)
 
-processTermEither :: Text -> IO (Either SystemFailure (SourceMap Elaborated, Syntax Elaborated))
-processTermEither t = do
-  res <- processTerm t
-  pure $ case res of
-    Left err -> Left err
-    Right Nothing -> Left (CustomFailure "Term was only whitespace")
-    Right (Just pt) -> Right pt
-
--- | Given a 'Text' value representing a Swarm program,
+-- | Given raw 'Text' representing swarm-lang source code:
 --
 --   1. Parse it (see "Swarm.Language.Parse")
---   2. Typecheck it (see "Swarm.Language.Typecheck")
---   3. Elaborate it (see "Swarm.Language.Elaborate")
+--   2. Recursively load imports (see "Swarm.Language.Load")
+--   3. Typecheck the term and all imports (see "Swarm.Language.Typecheck")
+--   4. Elaborate the term and all imports (see "Swarm.Language.Elaborate")
 --
---   Return either the end result (or @Nothing@ if the input was only
---   whitespace) or a pretty-printed error message.
-processTerm :: Text -> IO (Either SystemFailure (Maybe (SourceMap Elaborated, Syntax Elaborated)))
-processTerm = runError . processTerm' emptyEnv
-
--- | Like 'processTerm', but use a term that has already been parsed.
---   (along with the original unparsed concrete syntax, for use in
---   generating error messages).
-processParsedTerm :: (Text, Syntax Raw) -> IO (Either SystemFailure (SourceMap Elaborated, Syntax Elaborated))
-processParsedTerm = runError . processParsedTerm' emptyEnv
-
--- | Like 'processParsedTerm', but don't allow any imports (and hence
---   don't require IO).  XXX this currently just crashes if any
---   imports are encountered; needs to be fixed.  Do we want imports
---   to be an error, or just ignored/not properly resolved?
-processParsedTermNoImports :: (Text, Syntax Raw) -> Either SystemFailure (SourceMap Elaborated, Syntax Elaborated)
-processParsedTermNoImports =
-  run
-    . runError
-    . processParsedTermWithSrcMap mempty emptyEnv
-    . second (runIdentity . traverseSyntax pure undefined)
-
--- | Like 'processTerm', but use explicit starting contexts.
-processTerm' ::
+--   Return the end result (an elaborated term + source map for
+--   imports), or @Nothing@ if the input was only whitespace.
+processSource ::
   (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
-  Env -> Text -> m (Maybe (SourceMap Elaborated, Syntax Elaborated))
-processTerm' e txt = do
+  -- | Text of the source code
+  Text ->
+  -- | Possible Env to use while typechecking.  If Nothing, use a
+  --   default empty Env.
+  Maybe Env ->
+  m (Maybe (SourceMap Elaborated, Syntax Elaborated))
+processSource txt menv = do
   mt <- withThrow CanNotParseMegaparsec . liftEither $ readTerm' defaultParserConfig txt
-  withError (typeErrToSystemFailure txt) $ traverse (processParsedTerm' e . (txt,)) mt
+  for mt $ \t -> processTerm txt t menv
 
--- | Like 'processTerm'', but use a term that has already been parsed
---   (along with the original unparsed concrete syntax, for use in
---   generating error messages).
-processParsedTerm' ::
+-- | Like 'processSource', but start with an already-parsed raw AST.
+processTerm ::
+  forall sig m.
   (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
-  Env -> (Text, Syntax Raw) -> m (SourceMap Elaborated, Syntax Elaborated)
-processParsedTerm' e (s, t) = do
-  (t', srcMap) <- buildSourceMap t
-  processParsedTermWithSrcMap srcMap e (s, t')
+  -- | Text of the source code, used to generate error messages
+  Text ->
+  -- | Raw AST.
+  Syntax Raw ->
+  -- | Possible Env to use while typechecking.  If Nothing, use a
+  --   default empty Env.
+  Maybe Env ->
+  m (SourceMap Elaborated, Syntax Elaborated)
+processTerm txt t menv = do
+  let e = fromMaybe emptyEnv menv
+  -- XXX use sourcemap from e?
+  (tRes, srcMapRes) <- resolve t
+  (srcMapTy, tTy) <-
+    withError (typeErrToSystemFailure txt) $
+      inferTop
+        (e ^. envTypes)
+        (e ^. envReqs)
+        (e ^. envTydefs)
+        srcMapRes
+        tRes
+  -- XXX what srcMap to use here?  Make sure, and write a note about it
+  pure (fmap elaborateModule srcMapTy, elaborate tTy)
 
--- | Process an already-parsed term with an explicit SourceMap.
---
---   Note that this no longer requires IO, since it is assumed that
---   any imports have already been loaded.
-processParsedTermWithSrcMap ::
+-- | Like 'processTerm', but don't allow any imports that need to be
+--   loaded (and hence would require IO).  XXX this currently just
+--   crashes if any imports are encountered; needs to be fixed.  Do we
+--   want imports to be an error, or just ignored/not properly
+--   resolved?
+processTermNoImports ::
+  forall sig m.
   (Has (Error SystemFailure) sig m) =>
-  SourceMap Resolved -> Env -> (Text, Syntax Resolved) -> m (SourceMap Elaborated, Syntax Elaborated)
-processParsedTermWithSrcMap srcMap e (s, t) = do
-  (srcMap', tt) <-
-    withError (typeErrToSystemFailure s) $
-      inferTop (e ^. envTypes) (e ^. envReqs) (e ^. envTydefs) srcMap t
-  pure (fmap elaborateModule srcMap', elaborate tt)
+  -- | Text of the source code, used to generate error messages
+  Text ->
+  -- | Raw AST.
+  Syntax Raw ->
+  -- | Possible Env to use while typechecking.  If Nothing, use a
+  --   default empty Env.
+  Maybe Env ->
+  m (Syntax Elaborated)
+processTermNoImports txt t menv = do
+  let e = fromMaybe emptyEnv menv
+  tRes <- resolve' t
+  (_, tTy) <-
+    withError (typeErrToSystemFailure txt) $
+      inferTop
+        (e ^. envTypes)
+        (e ^. envReqs)
+        (e ^. envTydefs)
+        M.empty
+        tRes
+  pure $ elaborate tTy
+
+------------------------------------------------------------
+-- Utility adapters for processTerm
+------------------------------------------------------------
 
 -- | Convert a 'ContextualTypeErr' into a 'SystemFailure', by
 --   pretty-printing it (given the original source code) and
@@ -123,42 +130,11 @@ processParsedTermWithSrcMap srcMap e (s, t) = do
 typeErrToSystemFailure :: Text -> ContextualTypeErr -> SystemFailure
 typeErrToSystemFailure s cte@(CTE loc _ _) = DoesNotTypecheck loc (prettyTypeErrText s cte)
 
-------------------------------------------------------------
--- Some utility functions
-------------------------------------------------------------
-
--- | Extract a type context from type annotations on definitions
---   contained in a term.  Should probably only be used for testing.
-extractTCtx :: Syntax phase -> TCtx
-extractTCtx (Syntax _ t _ _) = extractTCtxTerm t
- where
-  extractTCtxTerm = \case
-    SLet _ _ (Loc _ x) _ mty _ _ t2 -> maybe id (Ctx.addBinding x) mty (extractTCtx t2)
-    SBind mx _ mty _ c1 c2 ->
-      maybe
-        id
-        (uncurry Ctx.addBinding)
-        ((,) . locVal <$> mx <*> mty)
-        (extractTCtx c1 <> extractTCtx c2)
-    SAnnotate t1 _ -> extractTCtx t1
-    _ -> mempty
-
--- | Extract a requirements context from requirements annotations on
---   definitions contained in a term.  Should probably only be used
---   for testing.
-extractReqCtx :: Syntax phase -> ReqCtx
-extractReqCtx (Syntax _ t _ _) = extractReqCtxTerm t
- where
-  extractReqCtxTerm = \case
-    SLet _ _ (Loc _ x) _ _ mreq _ t2 -> maybe id (Ctx.addBinding x) mreq (extractReqCtx t2)
-    SBind mx _ _ mreq c1 c2 ->
-      maybe
-        id
-        (uncurry Ctx.addBinding)
-        ((,) . locVal <$> mx <*> mreq)
-        (extractReqCtx c1 <> extractReqCtx c2)
-    SAnnotate t1 _ -> extractReqCtx t1
-    _ -> mempty
+-- | Require a term to be non-empty, throwing an error about the term
+--   consisting only of whitespace otherwise.  Appropriate for use
+--   with the output of 'processTerm'.
+requireNonEmptyTerm :: Has (Error SystemFailure) sig m => Maybe t -> m t
+requireNonEmptyTerm = maybe (throwError EmptyTerm) pure
 
 ------------------------------------------------------------
 -- Generic processing of things that contain terms
@@ -169,6 +145,6 @@ class Processable t where
 
 instance Processable Syntax where
   process s = do
-    (s', srcMap) <- buildSourceMap s
+    (s', srcMap) <- resolve s
     r <- withError (typeErrToSystemFailure "") . inferTop mempty mempty emptyTDCtx srcMap $ s'
     (pure . elaborate . snd) r
