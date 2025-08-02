@@ -81,6 +81,7 @@ module Swarm.Game.State (
   module Robots,
 ) where
 
+import Control.Carrier.Error.Either (runError)
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Effect.Lens
 import Control.Effect.Lift
@@ -129,7 +130,7 @@ import Swarm.Game.Tick (addTicks)
 import Swarm.Game.Universe as U
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
-import Swarm.Language.Pipeline (processTermEither)
+import Swarm.Language.Pipeline (processSource, requireNonEmptyTerm)
 import Swarm.Language.Syntax (Phase (..), SrcLoc (..), Syntax, sLoc)
 import Swarm.Language.Value (Env)
 import Swarm.Log
@@ -164,8 +165,8 @@ parseCodeFile ::
   m CodeToRun
 parseCodeFile filepath = do
   contents <- sendIO $ TIO.readFile filepath
-  mpt <- sendIO $ processTermEither contents
-  pt <- either throwError (pure . snd) mpt -- XXX need SourceMap?
+  mpt <- sendIO . runError $ requireNonEmptyTerm =<< processSource contents Nothing
+  pt <- either (throwError @SystemFailure) (pure . snd) mpt -- XXX need SourceMap?
   let srcLoc = pt ^. sLoc
       strippedText = stripSrc srcLoc contents
       programBytestring = TL.encodeUtf8 $ TL.fromStrict strippedText
