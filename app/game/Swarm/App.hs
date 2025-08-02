@@ -24,8 +24,8 @@ module Swarm.App (
 
 import Brick
 import Brick.BChan
-import Control.Carrier.Lift (runM)
 import Control.Carrier.Error.Either (runError)
+import Control.Carrier.Lift (runM)
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Exception (bracket, try)
 import Control.Lens (Setter', view, (%~), (?~), (^.))

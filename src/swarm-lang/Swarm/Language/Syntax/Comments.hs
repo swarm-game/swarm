@@ -56,7 +56,7 @@ data Comment = Comment
   , commentSituation :: CommentSituation
   , commentText :: Text
   }
-             deriving (Eq, Show, Generic, Data, ToJSON, FromJSON, Hashable)
+  deriving (Eq, Show, Generic, Data, ToJSON, FromJSON, Hashable)
 
 instance PrettyPrec Comment where
   prettyPrec _ (Comment _ LineComment _ txt) = "//" <> pretty txt

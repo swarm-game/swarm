@@ -80,7 +80,7 @@ import Swarm.Effect.Unify.Fast qualified as U
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Kindcheck (KindError (..), processPolytype, processType)
-import Swarm.Language.Load (SourceMap, Module (..))
+import Swarm.Language.Load (Module (..), SourceMap)
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Requirements.Analysis (requirements)
@@ -138,9 +138,9 @@ withFrame l f = local (LocatedTCFrame l f :)
 -- | Locally pop a frame from the typechecking stack.
 popFrame :: Has (Reader TCStack) sig m => m a -> m a
 popFrame = local @TCStack pop
-  where
-    pop (_ : fs) = fs
-    pop [] = []
+ where
+  pop (_ : fs) = fs
+  pop [] = []
 
 ------------------------------------------------------------
 -- Type source
@@ -234,10 +234,11 @@ finalizeInferred ::
   ) =>
   (SourceMap Inferred, Syntax Inferred) ->
   m (SourceMap Typed, Syntax Typed)
-finalizeInferred = applyBindings >=> \(srcMap, s) ->
-  (,)
-    <$> traverse fromInferredModule srcMap
-    <*> fromInferredSyntax s
+finalizeInferred =
+  applyBindings >=> \(srcMap, s) ->
+    (,)
+      <$> traverse fromInferredModule srcMap
+      <*> fromInferredSyntax s
 
 -- | Run a top-level inference computation, either throwing a
 --   'ContextualTypeErr' or returning a fully resolved 'Syntax Typed',
@@ -255,7 +256,7 @@ runTC ::
   StateC (SourceMap Inferred) (ReaderC UCtx (ReaderC TCStack (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx (ReaderC (SourceMap Resolved) m))))))) (Syntax Inferred) ->
   m (SourceMap Typed, Syntax Typed)
 runTC ctx reqCtx tdctx tvCtx srcMap =
-        runState M.empty
+  runState M.empty
     >>> (>>= finalizeInferred)
     >>> runReader (toU ctx)
     >>> runReader []
@@ -1113,7 +1114,6 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     -- Now infer t1 with the import's exports added to the context.
     t1' <- withBindings (moduleCtx umod) $ infer t1
     return $ Syntax l (SImportIn loc t1') cs (t1' ^. sType)
-
   TType ty -> pure $ Syntax l (TType ty) cs UTyType
   -- Fallback: to infer the type of anything else, make up a fresh unification
   -- variable for its type and check against it.
