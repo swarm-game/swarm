@@ -9,6 +9,7 @@ import Linear (V2)
 import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.Universe (Cosmic, planar)
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.Language.Syntax.Direction
 
 -- |
@@ -34,7 +35,7 @@ import Swarm.Language.Syntax.Direction
 -- * negative @x'@-coordinate represents @left@
 -- * positive @y'@-coordinate represents @forward@
 -- * negative @y'@-coordinate represents @back@
-orientationBasedRelativePosition :: Robot -> Cosmic Location -> Maybe (V2 Int32)
+orientationBasedRelativePosition :: Robot Instantiated -> Cosmic Location -> Maybe (V2 Int32)
 orientationBasedRelativePosition selfRobot otherLocation =
   (`applyTurn` relativeCoords) <$> maybeSelfDirRelativeToNorth
  where

@@ -15,6 +15,7 @@ import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.State
 import Swarm.Game.Universe
+import Swarm.Language.Syntax (Phase (Instantiated))
 import Swarm.Language.Syntax.Direction
 
 -- * World queries
@@ -23,9 +24,9 @@ getNeighborLocs :: Cosmic Location -> [Cosmic Location]
 getNeighborLocs loc = map (offsetBy loc . flip applyTurn north . DRelative . DPlanar) enumerate
 
 -- | Get the robot with a given ID.
-robotWithID :: (Has (State GameState) sig m) => RID -> m (Maybe Robot)
+robotWithID :: (Has (State GameState) sig m) => RID -> m (Maybe (Robot Instantiated))
 robotWithID rid = use (robotInfo . robotMap . at rid)
 
 -- | Get the robot with a given name.
-robotWithName :: (Has (State GameState) sig m) => Text -> m (Maybe Robot)
+robotWithName :: (Has (State GameState) sig m) => Text -> m (Maybe (Robot Instantiated))
 robotWithName rname = use (robotInfo . robotMap . to IM.elems . to (find $ \r -> r ^. robotName == rname))

@@ -142,20 +142,20 @@ addCombustionBot inputEntity combustibility ts loc = do
 -- 3. Spawn more robots whose sole purpose is to observe for changes to neighbor
 --    cells. This would avoid polluting the logic of the currently burning cell
 --    with logic to manage probabilities of combustion propagation.
-combustionProgram :: Integer -> Combustibility -> TSyntax
-combustionProgram combustionDuration (Combustibility _ _ _ maybeCombustionProduct) =
+combustionProgram :: Integer -> Combustibility -> Syntax Elaborated
+combustionProgram _combustionDuration (Combustibility _ _ _ maybeCombustionProduct) =
   [tmQ|
-    wait $int:combustionDuration;
-    if ($int:invQuantity > 0) {
+    wait $int:_combustionDuration;
+    if ($int:_invQuantity > 0) {
       try {
-        place $str:combustionProduct;
+        place $str:_combustionProduct;
       } {};
     } {};
     selfdestruct
   |]
  where
-  (invQuantity, combustionProduct) = case maybeCombustionProduct of
-    Nothing -> (0, "")
+  (_invQuantity, _combustionProduct) = case maybeCombustionProduct of
+    Nothing -> (0 :: Integer, "")
     Just p -> (1, p)
 
 -- | Possibly ignite a neighbor of a source entity that is combusting.
@@ -227,10 +227,10 @@ addIgnitionBot ignitionDelay inputEntity ts loc =
       ts
 
 -- Triggers the ignition of the entity underfoot with some delay.
-ignitionProgram :: Integer -> TSyntax
-ignitionProgram waitTime =
+ignitionProgram :: Integer -> Syntax Elaborated
+ignitionProgram _waitTime =
   [tmQ|
-    wait $int:waitTime;
+    wait $int:_waitTime;
     try {
       ignite down;
       noop;

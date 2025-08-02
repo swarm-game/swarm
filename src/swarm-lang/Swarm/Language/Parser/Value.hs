@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -8,15 +9,17 @@
 -- of the proper type.
 module Swarm.Language.Parser.Value (readValue) where
 
+import Control.Carrier.Error.Either (runError)
 import Control.Lens ((^.))
 import Data.Either.Extra (eitherToMaybe)
+import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Parser (readNonemptyTerm)
 import Swarm.Language.Syntax
-import Swarm.Language.Typecheck (checkTop)
+import Swarm.Language.Typecheck (ContextualTypeErr, checkTop)
 import Swarm.Language.Types (Type, emptyTDCtx)
 import Swarm.Language.Value
 import Text.Megaparsec qualified as MP
@@ -41,10 +44,12 @@ readValue ty txt = do
         Just (':', t) -> t
         _ -> txt
   s <- eitherToMaybe $ readNonemptyTerm txt'
-  _ <- eitherToMaybe $ checkTop Ctx.empty Ctx.empty emptyTDCtx s ty
+  -- XXX have to explicitly account for the fact that we don't resolve imports here!
+  let sResolved = error "readValue unimplemented"
+  _ <- eitherToMaybe . runError @ContextualTypeErr $ checkTop Ctx.empty Ctx.empty emptyTDCtx M.empty sResolved ty
   toValue $ s ^. sTerm
 
-toValue :: Term -> Maybe Value
+toValue :: (SwarmType phase ~ ()) => Term phase -> Maybe Value
 toValue = \case
   TUnit -> Just VUnit
   TDir d -> Just $ VDir d
@@ -81,6 +86,7 @@ toValue = \case
   TProj {} -> Nothing
   TAnnotate {} -> Nothing
   TSuspend {} -> Nothing
+  TImportIn {} -> Nothing
 
 -- TODO(#2232): in order to get `read` to work for delay, function,
 -- and/or command types, we will need to handle a few more of the

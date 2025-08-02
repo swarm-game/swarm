@@ -36,6 +36,8 @@ import Brick.Widgets.List (handleListEvent, listElements)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.TabularList.Grid qualified as BG
 import Control.Applicative ((<|>))
+import Control.Carrier.Error.Either (runError)
+import Control.Carrier.Lift (runM)
 import Control.Category ((>>>))
 import Control.Lens as Lens
 import Control.Monad (forM_, unless, void, when)
@@ -56,6 +58,7 @@ import Data.Text.Zipper qualified as TZ
 import Data.Text.Zipper.Generic.Words qualified as TZ
 import Data.Vector qualified as V
 import Graphics.Vty qualified as V
+import Swarm.Failure (SystemFailure (..))
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec, FSuspend))
 import Swarm.Game.Entity hiding (empty)
@@ -82,11 +85,9 @@ import Swarm.Language.Parser.Lex (reservedWords)
 import Swarm.Language.Parser.Util (showErrorPos)
 import Swarm.Language.Pipeline (processParsedTerm')
 import Swarm.Language.Syntax hiding (Key)
-import Swarm.Language.Typecheck (
-  ContextualTypeErr (..),
- )
 import Swarm.Language.Value (Value (VKey), emptyEnv, envTypes)
 import Swarm.Log
+import Swarm.Pretty (prettyString)
 import Swarm.ResourceLoading (getSwarmHistoryPath)
 import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Controller.EventHandlers.Robot (showEntityDescription)
@@ -111,6 +112,7 @@ import Swarm.TUI.View.Popup (startPopupAnimation)
 import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Robot.Type
 import Swarm.Util hiding (both, (<<.=))
+import Swarm.Util.Effect (modifyM)
 
 -- | The top-level event handler for the TUI.
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -639,7 +641,7 @@ handleREPLEventPiloting m x = case x of
  where
   inputCmd cmdText = do
     scenarioState . uiGameplay . uiREPL %= setCmd (cmdText <> ";")
-    Brick.zoom scenarioState $ modify validateREPLForm
+    Brick.zoom scenarioState $ modifyM validateREPLForm
     handleREPLEventTyping m $ Key V.KEnter
 
   setCmd nt theRepl =
@@ -656,7 +658,7 @@ runBaseWebCode uinput ureply = do
       gameState . gameControls . replListener .= ureply . Complete . T.unpack
       runBaseCode uinput
         >>= liftIO . ureply . \case
-          Left err -> Rejected . ParseError $ T.unpack err
+          Left err -> Rejected . ParseError $ prettyString err
           Right () -> InProgress
 
 -- | Handle a user input event for the REPL.
@@ -688,9 +690,9 @@ handleREPLEventTyping m = \case
                   | T.null uinput -> resetREPL "" (CmdPrompt [])
                   | otherwise -> do
                       resetREPL found (CmdPrompt [])
-                      modify validateREPLForm
+                      modifyM validateREPLForm
           else continueWithoutRedraw
-      Key V.KUp -> Brick.zoom scenarioState $ modify $ adjReplHistIndex Older
+      Key V.KUp -> Brick.zoom scenarioState $ modifyM $ adjReplHistIndex Older
       Key V.KDown -> Brick.zoom scenarioState $ do
         repl <- use $ uiGameplay . uiREPL
         let hist = repl ^. replHistory
@@ -703,9 +705,9 @@ handleREPLEventTyping m = \case
                 do
                   addREPLHistItem (REPLEntry Stashed) uinput
                   resetREPL "" (CmdPrompt [])
-                  modify validateREPLForm
+                  modifyM validateREPLForm
           -- Otherwise, just move around in the history as normal.
-          _ -> modify $ adjReplHistIndex Newer
+          _ -> modifyM $ adjReplHistIndex Newer
       ControlChar 'r' ->
         Brick.zoom (scenarioState . uiGameplay . uiREPL) $ do
           uir <- get
@@ -718,7 +720,7 @@ handleREPLEventTyping m = \case
         s <- get
         let names = s ^.. gameState . baseEnv . envTypes . to assocs . traverse . _1
         uiGameplay . uiREPL %= tabComplete (CompletionContext (s ^. gameState . creativeMode)) names (s ^. gameState . landscape . terrainAndEntities . entityMap)
-        modify validateREPLForm
+        modifyM validateREPLForm
       EscapeKey -> Brick.zoom scenarioState $ do
         formSt <- use $ uiGameplay . uiREPL . replPromptType
         case formSt of
@@ -759,7 +761,7 @@ handleREPLEventTyping m = \case
         case ev of
           Key V.KLeft -> pure ()
           Key V.KRight -> pure ()
-          _ -> Brick.zoom scenarioState $ modify validateREPLForm
+          _ -> Brick.zoom scenarioState $ modifyM validateREPLForm
 
 insertMatchingPair :: Char -> EventM Name (Editor Text Name) ()
 insertMatchingPair c = modify . applyEdit $ TZ.insertChar c >>> TZ.insertChar (close c) >>> TZ.moveLeft
@@ -877,38 +879,40 @@ updateCmd zf ms = (replPromptZipper %~ zf) . (replPromptType .~ CmdPrompt ms)
 
 -- | Validate the REPL input when it changes: see if it parses and
 --   typechecks, and set the color accordingly.
-validateREPLForm :: ScenarioState -> ScenarioState
+validateREPLForm :: MonadIO m => ScenarioState -> m ScenarioState
 validateREPLForm s =
   case replPrompt of
     CmdPrompt _
       | T.null uinput ->
           let theType = s ^. gameState . gameControls . replStatus . replActiveType
-           in s & uiGameplay . uiREPL . replType .~ theType
+           in pure $ s & uiGameplay . uiREPL . replType .~ theType
     CmdPrompt _
-      | otherwise ->
+      | otherwise -> do
           let env = fromMaybe emptyEnv $ s ^? gameState . baseEnv
-              (theType, errSrcLoc) = case readTerm' defaultParserConfig uinput of
-                Left err ->
-                  let ((_y1, x1), (_y2, x2), _msg) = showErrorPos err
-                   in (Nothing, Left (SrcLoc x1 x2))
-                Right Nothing -> (Nothing, Right ())
-                Right (Just theTerm) -> case processParsedTerm' env theTerm of
-                  Right t -> (Just (t ^. sType), Right ())
-                  Left err -> (Nothing, Left (cteSrcLoc err))
-           in s
-                & uiGameplay . uiREPL . replValid .~ errSrcLoc
-                & uiGameplay . uiREPL . replType .~ theType
-    SearchPrompt _ -> s
+          (theType, errSrcLoc) <- case readTerm' defaultParserConfig uinput of
+            Left err ->
+              let (((_y1, x1), (_y2, x2)), _msg) = showErrorPos err
+               in pure (Nothing, Left (SrcLoc Nothing x1 x2))
+            Right Nothing -> pure (Nothing, Right ())
+            Right (Just theTerm) -> do
+              res <- liftIO . runM . runError @SystemFailure $ processParsedTerm' env (uinput, theTerm)
+              pure $ case res of
+                -- XXX cache SrcMap, so we don't do disk access on each keystroke!
+                Right (_srcMap, t) -> (Just (t ^. sType), Right ())
+                Left (DoesNotTypecheck loc _) -> (Nothing, Left loc)
+                _ -> (Nothing, Right ())
+          pure $
+            s
+              & uiGameplay . uiREPL . replValid .~ errSrcLoc
+              & uiGameplay . uiREPL . replType .~ theType
+    SearchPrompt _ -> pure s
  where
   uinput = s ^. uiGameplay . uiREPL . replPromptText
   replPrompt = s ^. uiGameplay . uiREPL . replPromptType
 
 -- | Update our current position in the REPL history.
-adjReplHistIndex :: TimeDir -> ScenarioState -> ScenarioState
-adjReplHistIndex d s =
-  s
-    & uiGameplay . uiREPL %~ moveREPL
-    & validateREPLForm
+adjReplHistIndex :: MonadIO m => TimeDir -> ScenarioState -> m ScenarioState
+adjReplHistIndex d s = validateREPLForm (s & uiGameplay . uiREPL %~ moveREPL)
  where
   moveREPL :: REPLState -> REPLState
   moveREPL theRepl =
