@@ -38,7 +38,7 @@ import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (CDebug))
 import Swarm.Language.Load (SourceMap)
-import Swarm.Language.Pipeline (processTerm')
+import Swarm.Language.Pipeline (processSource)
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Value (emptyEnv)
 import Swarm.Pretty
@@ -300,7 +300,7 @@ runBaseCode uinput = do
   resetREPL T.empty (CmdPrompt [])
   env <- fromMaybe emptyEnv <$> preuse (gameState . baseEnv)
 
-  res <- liftIO $ Fused.runM . Fused.runError @SystemFailure $ processTerm' env uinput
+  res <- liftIO $ Fused.runError @SystemFailure $ processSource uinput (Just env)
 
   case res of
     Right mt -> do

@@ -18,6 +18,7 @@ module Swarm.Language.LSP.Hover (
 ) where
 
 import Control.Applicative ((<|>))
+import Control.Carrier.Error.Either (run, runError)
 import Control.Lens ((^.))
 import Control.Monad (guard)
 import Data.Foldable (asum)
@@ -32,9 +33,10 @@ import Data.Text.Lines qualified as R
 import Data.Text.Utf16.Rope.Mixed qualified as R
 import Language.LSP.Protocol.Types qualified as J
 import Language.LSP.VFS
+import Swarm.Failure (SystemFailure)
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
-import Swarm.Language.Pipeline (processParsedTermNoImports)
+import Swarm.Language.Pipeline (processTermNoImports)
 import Swarm.Language.Syntax
 import Swarm.Language.TDVar (tdVarName)
 import Swarm.Language.Typecheck (inferConst)
@@ -67,12 +69,12 @@ showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
     R.charLength . fst $ R.charSplitAtPosition (lspToRopePosition p) myRope
 
   genHoverInfo stx =
-    case processParsedTermNoImports (content, stx) of
-      Left _e ->
+    case run (runError @SystemFailure (processTermNoImports content stx Nothing)) of
+      Left (_e :: SystemFailure) ->
         let found = narrowToPosition stx $ fromIntegral absolutePos
             finalPos = posToRange myRope (found ^. sLoc)
          in (,finalPos) . treeToMarkdown 0 $ explain found
-      Right (_, pt) ->
+      Right (pt :: Syntax Elaborated) ->
         let found =
               narrowToPosition pt $ fromIntegral absolutePos
             finalPos = posToRange myRope (found ^. sLoc)
