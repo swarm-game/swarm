@@ -115,7 +115,7 @@ processParsedTermWithSrcMap srcMap e (s, t) = do
   (srcMap', tt) <-
     withError (typeErrToSystemFailure s) $
       inferTop (e ^. envTypes) (e ^. envReqs) (e ^. envTydefs) srcMap t
-  pure $ (fmap elaborateModule srcMap', elaborate tt)
+  pure (fmap elaborateModule srcMap', elaborate tt)
 
 -- | Convert a 'ContextualTypeErr' into a 'SystemFailure', by
 --   pretty-printing it (given the original source code) and
