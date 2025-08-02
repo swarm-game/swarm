@@ -12,6 +12,7 @@
 module Swarm.Game.Step.Const where
 
 import Control.Arrow ((&&&))
+import Control.Carrier.Error.Either (runError)
 import Control.Carrier.State.Lazy
 import Control.Effect.Error
 import Control.Effect.Lens
@@ -90,7 +91,7 @@ import Swarm.Game.Value
 import Swarm.Language.Capability
 import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Parser.Value (readValue)
-import Swarm.Language.Pipeline (processTerm)
+import Swarm.Language.Pipeline (processSource)
 import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
@@ -1231,7 +1232,7 @@ execConst runChildProg c vs s k = do
 
         f <- msum mf `isJustOrFail` ["File not found:", fileName]
 
-        res <- sendIO $ processTerm (into @Text f)
+        res <- sendIO . runError @SystemFailure $ processSource (into @Text f) Nothing
         mt <- res `isRightOr` \err -> cmdExn Run ["Error in", fileName, "\n", prettyText err]
 
         case mt of

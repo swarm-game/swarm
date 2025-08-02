@@ -83,14 +83,20 @@ type SourceMap phase = Map (ImportLoc (ImportPhaseFor phase)) (Module phase)
 -- | Recursively resolve and load all the imports contained in raw
 --   syntax, returning the same syntax with resolved/canonicalized
 --   imports as well as a SourceMap containing all the loaded imports.
-buildSourceMap ::
+resolve ::
   (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) =>
   Syntax Raw -> m (Syntax Resolved, SourceMap Resolved)
-buildSourceMap s = do
+resolve s = do
   cur <- sendIO $ resolveImportDir currentDir
   (resMap, (_, s')) <- runState mempty . resolveImports cur $ s
   checkImportCycles resMap
   pure (s', resMap)
+
+-- | Resolve a term without requiring any I/O, throwing an error if
+--   any 'import' statements are encountered.
+resolve' ::
+  (Has (Throw SystemFailure) sig m) => Syntax Raw -> m (Syntax Resolved)
+resolve' = traverseSyntax pure (throwError . DisallowedImport)
 
 type ResLoc = ImportLoc Import.Resolved
 

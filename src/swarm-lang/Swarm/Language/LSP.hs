@@ -7,6 +7,7 @@
 -- See the docs/EDITORS.md to learn how to use it.
 module Swarm.Language.LSP where
 
+import Control.Carrier.Error.Either (runError)
 import Control.Lens (to, (^.))
 import Control.Monad (void)
 import Control.Monad.IO.Class
@@ -24,7 +25,7 @@ import Swarm.Failure (SystemFailure (..))
 import Swarm.Language.LSP.Hover qualified as H
 import Swarm.Language.LSP.VarUsage qualified as VU
 import Swarm.Language.Parser.Util (getLocRange)
-import Swarm.Language.Pipeline (processTerm)
+import Swarm.Language.Pipeline (processSource)
 import Swarm.Language.Syntax (SrcLoc (..), eraseRaw)
 import Swarm.Pretty (prettyText)
 import System.IO (stderr)
@@ -80,7 +81,7 @@ validateSwarmCode doc version content = do
   -- However, getting rid of this seems to break error highlighting.
   flushDiagnosticsBySource 0 (Just diagnosticSourcePrefix)
 
-  res <- liftIO $ processTerm content
+  res <- liftIO . runError $ processSource content Nothing
   let (errors, warnings) = case res of
         Right Nothing -> ([], [])
         Right (Just (_, term)) -> ([], unusedWarnings)
