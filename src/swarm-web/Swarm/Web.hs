@@ -86,9 +86,9 @@ import Swarm.Game.State.Substate
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Universe (SubworldName)
 import Swarm.Language.Pipeline (processTermEither)
-import Swarm.Language.Syntax (Phase (Instantiated, Elaborated))
+import Swarm.Language.Syntax (Phase (Elaborated, Instantiated))
 import Swarm.Log (LogEntry)
-import Swarm.Pretty (prettyTextLine, prettyText)
+import Swarm.Pretty (prettyText, prettyTextLine)
 import Swarm.TUI.Model hiding (SwarmKeyDispatchers (..))
 import Swarm.TUI.Model.Dialog.Goal
 import Swarm.TUI.Model.Repl (REPLHistItem, getSessionREPLHistoryItems, replHistory, replSeq)

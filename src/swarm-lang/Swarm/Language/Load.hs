@@ -30,7 +30,7 @@ import GHC.Generics (Generic)
 import Swarm.Failure (Asset (..), AssetData (..), Entry (..), LoadingFailure (..), SystemFailure (..))
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig, importLoc)
-import Swarm.Language.Syntax (ImportPhaseFor, Phase (..), Syntax, SwarmType)
+import Swarm.Language.Syntax (ImportPhaseFor, Phase (..), SwarmType, Syntax)
 import Swarm.Language.Syntax.Import hiding (ImportPhase (..))
 import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Language.Syntax.Util (traverseSyntax)
@@ -63,14 +63,12 @@ type family ModuleImports (phase :: Phase) where
 --   any definitions contained in it, and a list of transitive,
 --   canonicalized imports.
 data Module phase = Module
-  { -- | The contents of the module.
-    moduleTerm :: Maybe (Syntax phase)
-
-    -- | The context of names defined in this module and their types.
+  { moduleTerm :: Maybe (Syntax phase)
+  -- ^ The contents of the module.
   , moduleCtx :: ModuleCtx phase
-
-    -- | The moduleImports are mostly for convenience, e.g. for checking modules for cycles.
+  -- ^ The context of names defined in this module and their types.
   , moduleImports :: ModuleImports phase
+  -- ^ The moduleImports are mostly for convenience, e.g. for checking modules for cycles.
   }
   deriving (Generic)
 
@@ -141,7 +139,6 @@ resolveImport ::
   ImportLoc Import.Raw ->
   m (ImportLoc Import.Resolved)
 resolveImport parent loc = do
-
   -- Compute the canonicalized location for the import, and record it
   canonicalLoc <- resolveImportLoc (unresolveImportDir parent <//> loc)
   add $ S.singleton canonicalLoc
@@ -165,9 +162,9 @@ resolveImport parent loc = do
       -- Finally, record the loaded module in the SourceMap.
       modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module mt' () imps)
 
-      -- XXX make sure imports contain ONLY defs + more imports?
-      -- Otherwise we can't cache their values---we would have to
-      -- re-execute them every time they are imported.
+  -- XXX make sure imports contain ONLY defs + more imports?
+  -- Otherwise we can't cache their values---we would have to
+  -- re-execute them every time they are imported.
 
   pure canonicalLoc
 

@@ -89,7 +89,6 @@ import Swarm.Language.Value (Value (VKey), emptyEnv, envTypes)
 import Swarm.Log
 import Swarm.Pretty (prettyString)
 import Swarm.ResourceLoading (getSwarmHistoryPath)
-import Swarm.Util.Effect (modifyM)
 import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Controller.EventHandlers.Robot (showEntityDescription)
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
@@ -113,6 +112,7 @@ import Swarm.TUI.View.Popup (startPopupAnimation)
 import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Robot.Type
 import Swarm.Util hiding (both, (<<.=))
+import Swarm.Util.Effect (modifyM)
 
 -- | The top-level event handler for the TUI.
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -901,9 +901,10 @@ validateREPLForm s =
                 Right (_srcMap, t) -> (Just (t ^. sType), Right ())
                 Left (DoesNotTypecheck loc _) -> (Nothing, Left loc)
                 _ -> (Nothing, Right ())
-          pure $ s
-            & uiGameplay . uiREPL . replValid .~ errSrcLoc
-            & uiGameplay . uiREPL . replType .~ theType
+          pure $
+            s
+              & uiGameplay . uiREPL . replValid .~ errSrcLoc
+              & uiGameplay . uiREPL . replType .~ theType
     SearchPrompt _ -> pure s
  where
   uinput = s ^. uiGameplay . uiREPL . replPromptText

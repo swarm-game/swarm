@@ -95,8 +95,8 @@ module Swarm.Language.Syntax (
   locVarToSyntax,
 
   -- * Traversals
-  -- ** Term + type traversal
 
+  -- ** Term + type traversal
   termSyntax,
   traverseSyntax,
 
@@ -113,7 +113,6 @@ module Swarm.Language.Syntax (
   -- ** Miscellaneous traversals
   asTree,
   measureAstSize,
-
 ) where
 
 import Swarm.Language.Phase

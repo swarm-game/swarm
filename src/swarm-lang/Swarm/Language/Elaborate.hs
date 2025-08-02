@@ -28,6 +28,7 @@ elaborateModule (Module t ctx imps) = Module (fmap elaborate t) ctx imps
 --   over.
 elaborate :: Syntax Typed -> Syntax Elaborated
 elaborate = unsafeCoerce $ transform rewrite
+ where
   -- unsafeCoerce is safe here because of the invariant that type
   -- families must yield equal results on 'Typed' and 'Elaborated'; the
   -- distinction between 'Typed' and 'Elaborated' is ONLY to serve as a
@@ -39,7 +40,7 @@ elaborate = unsafeCoerce $ transform rewrite
   -- through the entire 'Syntax', applying a type-changing 'rewrite'
   -- everywhere it is applicable and reconstructing the AST everywhere
   -- else in order to change the type.  But that would be a huge pain.
- where
+
   rewrite :: Syntax Typed -> Syntax Typed
   rewrite (Syntax l t cs ty) = Syntax l (rewriteTerm t) cs ty
 

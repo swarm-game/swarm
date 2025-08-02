@@ -31,7 +31,7 @@ import Swarm.Game.Entity (EntityMap, devicesForCap, entityName)
 import Swarm.Language.Capability (Capability (CGod), capabilityName)
 import Swarm.Language.JSON ()
 import Swarm.Language.Requirements.Type (Requirements (..))
-import Swarm.Language.Syntax (Anchor, Const, ImportPhaseFor, Term, Phase (..), Unresolvable)
+import Swarm.Language.Syntax (Anchor, Const, ImportPhaseFor, Phase (..), Term, Unresolvable)
 import Swarm.Log (Severity (..))
 import Swarm.Pretty (PrettyPrec, prettyText)
 import Swarm.Util

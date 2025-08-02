@@ -26,7 +26,7 @@ import Swarm.Language.Parser.Core (ParserConfig, ParserError, defaultParserConfi
 import Swarm.Language.Parser.Lex (sc)
 import Swarm.Language.Parser.Term (parseTerm)
 import Swarm.Language.Parser.Util (fullyMaybe)
-import Swarm.Language.Syntax (Comment, Syntax, Phase (Raw))
+import Swarm.Language.Syntax (Comment, Phase (Raw), Syntax)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Witch (from)
 
