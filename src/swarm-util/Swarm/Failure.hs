@@ -27,6 +27,7 @@ import Data.Text qualified as T
 import Data.Void
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Prettyprinter (Pretty (pretty), nest, squotes, vcat, (<+>))
+import Swarm.Language.Syntax.Import (ImportLoc, ImportPhase (Raw))
 import Swarm.Language.Syntax.Loc (SrcLoc)
 import Swarm.Pretty (BulletList (..), PrettyPrec (..), ppr, prettyShowLow, prettyString)
 import Swarm.Util (showLowT)
@@ -83,6 +84,8 @@ data SystemFailure
   | CanNotParseMegaparsec (ParseErrorBundle Text Void)
   | DoesNotTypecheck SrcLoc Text -- See Note [Pretty-printing typechecking errors]
   | ImportCycle [FilePath]
+  | EmptyTerm
+  | DisallowedImport (ImportLoc Raw)
   | CustomFailure Text
   deriving (Show)
 
@@ -153,4 +156,5 @@ instance PrettyPrec SystemFailure where
           : map pretty (T.lines t)
     ImportCycle imps ->
       ppr $ BulletList "Imports form a cycle:" (map (into @Text) imps)
+    EmptyTerm -> "Term was only whitespace"
     CustomFailure m -> pretty m
