@@ -164,14 +164,8 @@ data Robot (phase :: Phase) = Robot
 
 instance Processable Robot where
   process (Robot e d c l upd loc i p h m s sd a ra u ca) =
-    Robot e d c
-      <$> pure l
-      <*> pure upd
-      <*> pure loc
-      <*> pure i
-      <*> pure p
-      <*> pure h
-      <*> traverse process m
+    Robot e d c l upd loc i p h
+      <$> traverse process m
       <*> pure s
       <*> pure sd
       <*> pure a
