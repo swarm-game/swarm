@@ -35,6 +35,7 @@ module Swarm.Web (
 
 import Commonmark qualified as Mark (commonmark, renderHtml)
 import Control.Arrow (left)
+import Control.Carrier.Error.Either (runError)
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Concurrent.MVar
 import Control.Exception (Exception (displayException), IOException, catch, throwIO)
@@ -66,6 +67,7 @@ import Servant.Docs (ToCapture)
 import Servant.Docs qualified as SD
 import Servant.Docs.Internal qualified as SD (renderCurlBasePath)
 import Servant.Types.SourceT qualified as S
+import Swarm.Failure (SystemFailure)
 import Swarm.Game.Entity (EntityName, entityName)
 import Swarm.Game.Location (Location)
 import Swarm.Game.Robot
@@ -85,7 +87,7 @@ import Swarm.Game.State.Runtime (eventLog)
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Universe (SubworldName)
-import Swarm.Language.Pipeline (processTermEither)
+import Swarm.Language.Pipeline (processSource, requireNonEmptyTerm)
 import Swarm.Language.Syntax (Phase (Elaborated, Instantiated))
 import Swarm.Log (LogEntry)
 import Swarm.Pretty (prettyText, prettyTextLine)
@@ -268,7 +270,7 @@ recogFoundHandler appStateRef = do
 
 codeRenderHandler :: Text -> Handler Text
 codeRenderHandler contents = do
-  res <- liftIO $ processTermEither contents
+  res <- liftIO . runError @SystemFailure $ requireNonEmptyTerm =<< processSource contents Nothing
   pure $ case res of
     Right (_, t) ->
       into @Text . drawTree . fmap (T.unpack . prettyTextLine) . para Node $ t

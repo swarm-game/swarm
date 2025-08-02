@@ -37,7 +37,6 @@ import Brick.Widgets.List qualified as BL
 import Brick.Widgets.TabularList.Grid qualified as BG
 import Control.Applicative ((<|>))
 import Control.Carrier.Error.Either (runError)
-import Control.Carrier.Lift (runM)
 import Control.Category ((>>>))
 import Control.Lens as Lens
 import Control.Monad (forM_, unless, void, when)
@@ -83,7 +82,7 @@ import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Parser.Lex (reservedWords)
 import Swarm.Language.Parser.Util (showErrorPos)
-import Swarm.Language.Pipeline (processParsedTerm')
+import Swarm.Language.Pipeline (processTerm)
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Value (Value (VKey), emptyEnv, envTypes)
 import Swarm.Log
@@ -895,7 +894,7 @@ validateREPLForm s =
                in pure (Nothing, Left (SrcLoc Nothing x1 x2))
             Right Nothing -> pure (Nothing, Right ())
             Right (Just theTerm) -> do
-              res <- liftIO . runM . runError @SystemFailure $ processParsedTerm' env (uinput, theTerm)
+              res <- liftIO . runError @SystemFailure $ processTerm uinput theTerm (Just env)
               pure $ case res of
                 -- XXX cache SrcMap, so we don't do disk access on each keystroke!
                 Right (_srcMap, t) -> (Just (t ^. sType), Right ())
