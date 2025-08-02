@@ -20,6 +20,7 @@ module Swarm.Doc.Pedagogy (
 
 import Control.Lens (universe, view, (^.))
 import Control.Monad (guard)
+import Data.Data (Data, Typeable)
 import Data.Foldable (Foldable (..))
 import Data.List (intercalate, sort, sortOn)
 import Data.List.Extra (zipFrom)
@@ -57,7 +58,6 @@ import Swarm.Game.ScenarioInfo (
 import Swarm.Game.World.DSL (loadWorlds)
 import Swarm.Language.Syntax
 import Swarm.Language.Text.Markdown (docToText, findCode)
-import Swarm.Language.Types (Polytype)
 import Swarm.Util.Effect (ignoreWarnings)
 import Prelude hiding (Foldable (..))
 
@@ -105,14 +105,22 @@ extractCommandUsages idx siPair@(ScenarioWith s _si) =
 
 -- | Obtain the set of all commands mentioned by
 -- name in the tutorial's goal descriptions.
-getDescCommands :: Scenario -> Set Const
+getDescCommands ::
+  forall phase.
+  ( Data (Anchor (ImportPhaseFor phase))
+  , Data (SwarmType phase)
+  , Typeable phase
+  , Typeable (ImportPhaseFor phase)
+  ) =>
+  Scenario phase ->
+  Set Const
 getDescCommands s = S.fromList $ concatMap filterConst allCode
  where
   goalTextParagraphs = view objectiveGoal <$> view (scenarioOperation . scenarioObjectives) s
   allCode = concatMap findCode goalTextParagraphs
-  filterConst :: Syntax -> [Const]
+  filterConst :: Syntax phase -> [Const]
   filterConst sx = mapMaybe toConst $ universe (sx ^. sTerm)
-  toConst :: Term -> Maybe Const
+  toConst :: Term phase -> Maybe Const
   toConst = \case
     TConst c -> Just c
     _ -> Nothing
@@ -129,14 +137,20 @@ isConsidered c = isUserFunc c && c `S.notMember` ignoredCommands
 -- the player did not write it explicitly in their code.
 --
 -- Also, the code from `run` is not parsed transitively yet.
-getCommands :: Maybe TSyntax -> Map Const [SrcLoc]
+getCommands :: forall phase.
+  ( Data (Anchor (ImportPhaseFor phase))
+  , Data (SwarmType phase)
+  , Typeable phase
+  , Typeable (ImportPhaseFor phase)
+  ) =>
+  Maybe (Syntax phase) ->
+  Map Const [SrcLoc]
 getCommands Nothing = mempty
 getCommands (Just tsyn) =
   M.fromListWith (<>) $ mapMaybe isCommand nodelist
  where
-  nodelist :: [Syntax' Polytype]
   nodelist = universe tsyn
-  isCommand (Syntax' sloc t _ _) = case t of
+  isCommand (Syntax sloc t _ _) = case t of
     TConst c -> guard (isConsidered c) >> Just (c, [sloc])
     _ -> Nothing
 
@@ -208,7 +222,7 @@ renderUsagesMarkdown (CoverageInfo (TutorialInfo (ScenarioWith s (ScenarioPath s
       , renderTutorialTitle idx s
       ]
 
-renderTutorialTitle :: (Show a) => a -> Scenario -> Text
+renderTutorialTitle :: (Show a) => a -> Scenario Elaborated -> Text
 renderTutorialTitle idx s =
   T.unwords
     [ T.pack $ show idx <> ":"
