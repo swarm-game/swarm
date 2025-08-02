@@ -174,9 +174,10 @@ initScenarioObject ::
   ExceptT ScenarioInstantiationFailure IO (Scenario Elaborated)
 initScenarioObject scenarioInputs content = do
   rawYaml <- withExceptT YamlDecodeError . except . decodeEither' $ LBS.toStrict content
-  rawScenario <- withExceptT ScenarioParseFailure $
-    except $
-      parseEither (parseJSONE' scenarioInputs) rawYaml
+  rawScenario <-
+    withExceptT ScenarioParseFailure $
+      except $
+        parseEither (parseJSONE' scenarioInputs) rawYaml
   res <- runError @SystemFailure $ process (rawScenario :: Scenario Raw)
   withExceptT (ScenarioParseFailure . prettyString) (except res)
 
