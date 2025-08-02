@@ -60,8 +60,8 @@ module Swarm.Game.Scenario (
 import Control.Applicative ((<|>))
 import Control.Arrow ((&&&))
 import Control.Carrier.Throw.Either (runThrow)
-import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Error
+import Control.Effect.Lift (Lift, sendIO)
 import Control.Lens hiding (from, (.=), (<.>))
 import Control.Monad (filterM, forM_, unless, (<=<))
 import Data.Aeson
@@ -446,8 +446,9 @@ loadScenarioFile ::
   FilePath ->
   m (Scenario Elaborated)
 loadScenarioFile scenarioInputs fileName = do
-  raw <- withThrow adaptError . (liftEither <=< sendIO) $
-    decodeFileEitherE scenarioInputs fileName
+  raw <-
+    withThrow adaptError . (liftEither <=< sendIO) $
+      decodeFileEitherE scenarioInputs fileName
   process raw
  where
   adaptError = AssetNotLoaded (Data Scenarios) fileName . CanNotParseYaml

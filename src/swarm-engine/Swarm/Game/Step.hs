@@ -84,8 +84,8 @@ import Swarm.Language.Load (moduleTerm)
 import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.TDVar (tdVarName)
-import Swarm.Language.WithType (WithType (..))
 import Swarm.Language.Value
+import Swarm.Language.WithType (WithType (..))
 import Swarm.Log
 import Swarm.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Util hiding (both)
@@ -737,8 +737,8 @@ stepCESK cesk = case cesk of
         --     in favor of the environment resulting from the suspend.
         --   (3) push an FExec frame to execute the import itself.
         Just m -> In (insertSuspend $ erase m ^. sTerm) e s (FExec : FBind Nothing Nothing t e : k)
-        -- XXX keep a map from imports to corresponding Env, don't re-evaluate if it's already
-        -- in the map.  To make this sound, need to disallow all but defs in an import.
+  -- XXX keep a map from imports to corresponding Env, don't re-evaluate if it's already
+  -- in the map.  To make this sound, need to disallow all but defs in an import.
   -- Ignore explicit parens.
   In (TParens t) e s k -> return $ In t e s k
   ------------------------------------------------------------

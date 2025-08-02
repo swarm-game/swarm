@@ -14,7 +14,7 @@ import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON, 
 import GHC.Generics (Generic)
 import Swarm.Language.Load (Module, ModuleCtx, ModuleImports)
 import Swarm.Language.Parser (readNonemptyTerm)
-import Swarm.Language.Syntax (Anchor, ImportPhaseFor, SwarmType, Syntax, Term, Phase (Raw))
+import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (Raw), SwarmType, Syntax, Term)
 import Swarm.Language.Value (Env, Value (..))
 import Swarm.Util.JSON (optionsMinimize)
 import Witch (into)

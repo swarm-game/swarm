@@ -170,7 +170,8 @@ verbedGrabbingCmd = \case
 --   location.  This should be the /only/ way to update the location
 --   of a robot.
 -- Also implements teleportation by portals.
-updateRobotLocation :: forall sig m.
+updateRobotLocation ::
+  forall sig m.
   (HasRobotStepState sig m) =>
   Cosmic Location ->
   Cosmic Location ->

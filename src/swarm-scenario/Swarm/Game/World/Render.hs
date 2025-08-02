@@ -17,8 +17,8 @@ module Swarm.Game.World.Render (
 import Codec.Picture
 import Control.Applicative ((<|>))
 import Control.Carrier.Error.Either (runError)
-import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Error
+import Control.Effect.Lift (Lift, sendIO)
 import Control.Lens (view, (^.))
 import Control.Monad.Extra (guarded)
 import Control.Monad.Logger

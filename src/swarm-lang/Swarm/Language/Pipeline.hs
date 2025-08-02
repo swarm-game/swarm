@@ -29,10 +29,10 @@ module Swarm.Language.Pipeline (
 ) where
 
 import Control.Algebra (Has, run)
-import Control.Effect.Lift (Lift)
-import Control.Effect.Error (Error)
-import Control.Effect.Throw (liftEither)
 import Control.Carrier.Error.Either (runError)
+import Control.Effect.Error (Error)
+import Control.Effect.Lift (Lift)
+import Control.Effect.Throw (liftEither)
 import Control.Lens ((^.))
 import Data.Bifunctor (second)
 import Data.Functor.Identity
@@ -40,7 +40,7 @@ import Data.Text (Text)
 import Swarm.Failure (SystemFailure (..))
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Elaborate
-import Swarm.Language.Load (buildSourceMap, SourceMap)
+import Swarm.Language.Load (SourceMap, buildSourceMap)
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Requirements.Type (ReqCtx)
@@ -81,8 +81,10 @@ processParsedTerm = runError . processParsedTerm' emptyEnv
 --   to be an error, or just ignored/not properly resolved?
 processParsedTermNoImports :: (Text, Syntax Raw) -> Either SystemFailure (SourceMap Elaborated, Syntax Elaborated)
 processParsedTermNoImports =
-  run . runError . processParsedTermWithSrcMap mempty emptyEnv .
-  second (runIdentity . traverseSyntax pure undefined)
+  run
+    . runError
+    . processParsedTermWithSrcMap mempty emptyEnv
+    . second (runIdentity . traverseSyntax pure undefined)
 
 -- | Like 'processTerm', but use explicit starting contexts.
 processTerm' ::
@@ -98,9 +100,9 @@ processTerm' e txt = do
 processParsedTerm' ::
   (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
   Env -> (Text, Syntax Raw) -> m (SourceMap Elaborated, Syntax Elaborated)
-processParsedTerm' e (s,t) = do
+processParsedTerm' e (s, t) = do
   (t', srcMap) <- buildSourceMap t
-  processParsedTermWithSrcMap srcMap e (s,t')
+  processParsedTermWithSrcMap srcMap e (s, t')
 
 -- | Process an already-parsed term with an explicit SourceMap.
 --
@@ -109,9 +111,10 @@ processParsedTerm' e (s,t) = do
 processParsedTermWithSrcMap ::
   (Has (Error SystemFailure) sig m) =>
   SourceMap Resolved -> Env -> (Text, Syntax Resolved) -> m (SourceMap Elaborated, Syntax Elaborated)
-processParsedTermWithSrcMap srcMap e (s,t) = do
-  (srcMap', tt) <- withError (typeErrToSystemFailure s) $
-    inferTop (e ^. envTypes) (e ^. envReqs) (e ^. envTydefs) srcMap t
+processParsedTermWithSrcMap srcMap e (s, t) = do
+  (srcMap', tt) <-
+    withError (typeErrToSystemFailure s) $
+      inferTop (e ^. envTypes) (e ^. envReqs) (e ^. envTydefs) srcMap t
   pure $ (fmap elaborateModule srcMap', elaborate tt)
 
 -- | Convert a 'ContextualTypeErr' into a 'SystemFailure', by

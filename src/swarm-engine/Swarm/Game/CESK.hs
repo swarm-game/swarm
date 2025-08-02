@@ -81,7 +81,7 @@ module Swarm.Game.CESK (
   cont,
 ) where
 
-import Control.Lens (Lens', Traversal', lens, traversal, (^.), (&), (%~), (.~))
+import Control.Lens (Lens', Traversal', lens, traversal, (%~), (&), (.~), (^.))
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
@@ -355,13 +355,13 @@ continue srcMap t = \case
   --   FRestoreEnv frame will be discarded.
   Suspended _ e s k ->
     let e' = e & envSourceMap %~ M.union srcMap
-    in In (insertSuspend $ prepareTerm e' t) e' s (FExec : FRestoreEnv e : k)
+     in In (insertSuspend $ prepareTerm e' t) e' s (FExec : FRestoreEnv e : k)
   -- In any other state, just start with an empty environment.  This
   -- happens e.g. when running a program on the base robot for the
   -- very first time.
   cesk ->
     let e = V.emptyEnv & envSourceMap .~ srcMap
-    in In (insertSuspend $ prepareTerm e t) e (cesk ^. store) (FExec : (cesk ^. cont))
+     in In (insertSuspend $ prepareTerm e t) e (cesk ^. store) (FExec : (cesk ^. cont))
 
 -- | Prepare a term for evaluation by a CESK machine in the given
 --   environment: erase all type annotations, and optionally wrap it
