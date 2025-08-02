@@ -174,7 +174,7 @@ parseSyntax :: Text -> Either String (Syntax Raw)
 parseSyntax s = case readTerm s of
   Left e -> Left (T.unpack e)
   Right Nothing -> Left "empty code"
-  Right (Just t) -> case processParsedTermNoImports (s,t) of
+  Right (Just t) -> case processParsedTermNoImports (s, t) of
     -- Just run the typechecker etc. to make sure the term typechecks
     Left e -> Left (T.unpack $ prettyText e)
     -- ...but if it does, we just go back to using the original parsed
