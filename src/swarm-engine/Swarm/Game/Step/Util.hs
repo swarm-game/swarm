@@ -80,6 +80,7 @@ updateEntityAt ::
   m ()
 updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
   someChange <-
+    -- TODO: metrics
     zoomWorld subworldName $
       W.updateM @Int (locToCoords loc) upd
 

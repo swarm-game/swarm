@@ -538,6 +538,7 @@ mtlEntityAt = TS.state . runGetEntity
 -- | Get the entity (if any) at a given location.
 entityAt :: (Has (State GameState) sig m) => Cosmic Location -> m (Maybe Entity)
 entityAt (Cosmic subworldName loc) =
+  -- TODO: metric
   join <$> zoomWorld subworldName (W.lookupEntityM @Int (locToCoords loc))
 
 contentAt ::

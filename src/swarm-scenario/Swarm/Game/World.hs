@@ -2,6 +2,8 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -40,14 +42,16 @@ module Swarm.Game.World (
   lookupEntityM,
   lookupContentM,
   updateM,
+  loadRegionM,
 
   -- ** Runtime updates
   WorldUpdate (..),
 ) where
 
 import Control.Algebra (Has)
+import Control.Effect.Lens (use)
 import Control.Effect.State (State, get, modify, state)
-import Control.Lens
+import Control.Lens hiding (use)
 import Control.Parallel.Strategies (evalTuple2, parMap, rpar, rseq)
 import Data.Array qualified as A
 import Data.Array.IArray
@@ -72,6 +76,8 @@ import Swarm.Game.World.Coords
 import Swarm.Util ((?))
 import Swarm.Util.Erasable
 import Prelude hiding (Foldable (..), lookup)
+import Swarm.Effect as Effect
+import Swarm.Game.World.WorldMetrics (WorldMetrics(..))
 
 ------------------------------------------------------------
 -- World function
@@ -190,6 +196,8 @@ data World t e = World
   , _changed :: M.Map Coords (Maybe e)
   }
 
+makeLenses 'World
+
 -- | Create a new 'World' from a 'WorldFun'.
 newWorld :: WorldFun t e -> World t e
 newWorld f = World f M.empty M.empty
@@ -297,6 +305,23 @@ updateM c g = do
 -- | Load the tile containing a specific cell.
 loadCell :: (IArray U.UArray t) => Coords -> World t e -> World t e
 loadCell c = loadRegion (c, c)
+
+loadRegionM ::
+  forall t e sig m.
+  -- (IArray U.UArray t, Has (State (World t e)) sig m, Has Effect.Metric sig m, Has Effect.Time sig m) =>
+  (IArray U.UArray t, Has (State (World t e)) sig m) =>
+  -- Maybe WorldMetrics ->
+  (Coords, Coords) ->
+  m ()
+loadRegionM {- wm -} = {- updateMetric . -} modify @(World t e) . loadRegion
+  -- where
+  --   updateMetric m = case wm of
+  --     Nothing -> m
+  --     Just wMetrics -> do
+  --       (loadTime, ()) <- Effect.measureCpuTimeInSec m
+  --       tileCount <- use @(World t e) $ tileCache . to M.size
+  --       Effect.gaugeSet wMetrics.loadedTiles tileCount
+  --       Effect.distributionAdd wMetrics.tileLoadTime loadTime
 
 -- | Load all the tiles which overlap the given rectangular region
 --   (specified as an upper-left and lower-right corner, inclusive).

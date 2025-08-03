@@ -14,6 +14,7 @@ module Swarm.Game.State.Landscape (
   worldScrollable,
   terrainAndEntities,
   recognizerAutomatons,
+  worldMetrics,
 
   -- ** Utilities
   initLandscape,
@@ -57,6 +58,7 @@ import Swarm.Game.World.Eval (runWorld)
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Util.Erasable
 import Swarm.Util.Lens (makeLensesNoSigs)
+import Swarm.Game.World.WorldMetrics (WorldMetrics)
 
 type SubworldDescription = (SubworldName, ([IndexedTRobot], Seed -> WorldFun Int Entity))
 
@@ -66,6 +68,7 @@ data Landscape = Landscape
   , _terrainAndEntities :: TerrainEntityMaps
   , _recognizerAutomatons :: RecognizerAutomatons RecognizableStructureContent Entity
   , _worldScrollable :: Bool
+  , _worldMetrics :: Maybe WorldMetrics
   }
 
 makeLensesNoSigs ''Landscape
@@ -99,6 +102,7 @@ initLandscape gsc =
     , _terrainAndEntities = initEntityTerrain $ gsiScenarioInputs $ initState gsc
     , _recognizerAutomatons = RecognizerAutomatons mempty mempty
     , _worldScrollable = True
+    , _worldMetrics = Nothing
     }
 
 mkLandscape :: ScenarioLandscape -> NonEmpty SubworldDescription -> Seed -> Landscape
@@ -112,6 +116,7 @@ mkLandscape sLandscape worldTuples theSeed =
       -- Leaning toward no, but for now just adopt the root world scrollability
       -- as being universal.
       _worldScrollable = NE.head (sLandscape ^. scenarioWorlds) ^. to scrollable
+    , _worldMetrics = Nothing
     }
 
 buildWorldTuples :: ScenarioLandscape -> NonEmpty SubworldDescription

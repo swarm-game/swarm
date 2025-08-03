@@ -23,6 +23,7 @@ import Swarm.Util.Erasable (erasableToMaybe, maybeToErasable)
 getContentAt :: TerrainMap -> MultiWorld Int e -> Cosmic Coords -> (TerrainType, Maybe e)
 getContentAt tm w coords = (underlyingCellTerrain, underlyingCellEntity)
  where
+  -- TODO: Are we SURE that the tile was already loaded?
   underlyingCellEntity = lookupCosmicEntity coords w
   underlyingCellTerrain = lookupCosmicTerrain tm coords w
 

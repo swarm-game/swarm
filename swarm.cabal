@@ -596,9 +596,11 @@ library swarm-scenario
     containers,
     directory,
     either,
+    ekg-core,
     extra,
     filepath,
     fused-effects,
+    fused-effects-lens,
     hashable,
     nonempty-containers,
     hsnoise,
@@ -669,6 +671,7 @@ library swarm-scenario
     Swarm.Game.World.Render
     Swarm.Game.World.Syntax
     Swarm.Game.World.Typecheck
+    Swarm.Game.World.WorldMetrics
     Swarm.Util.Content
 
   other-modules: Paths_swarm

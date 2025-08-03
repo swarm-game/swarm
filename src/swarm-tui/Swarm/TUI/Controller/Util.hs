@@ -22,7 +22,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Graphics.Vty qualified as V
-import Swarm.Effect (TimeIOC, runTimeIO)
+import Swarm.Effect (TimeIOC, runTimeIO, MetricIOC (runMetricIO))
 import Swarm.Game.CESK (continue)
 import Swarm.Game.Device
 import Swarm.Game.Robot (robotCapabilities)
@@ -56,6 +56,9 @@ import Swarm.TUI.Model.Repl (REPLEntryType (..), REPLHistItem (..), REPLHistItem
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Util (ScenarioSeriesContext (..), curMenuName, generateModal, generateScenarioEndModal)
 import System.Clock (Clock (..), getTime)
+import Swarm.Game.World (World)
+import Swarm.Game.Entity (Entity)
+import Data.Functor (void)
 
 -- | Pattern synonyms to simplify brick event handler
 pattern Key :: V.Key -> BrickEvent n e
@@ -185,7 +188,12 @@ loadVisibleRegion = do
   forM_ mext $ \(Extent _ _ size) -> do
     vc <- use $ robotInfo . viewCenter
     let vr = viewingRegion vc (over both fromIntegral size)
-    landscape . multiWorld %= M.adjust (W.loadRegion (vr ^. planar)) (vr ^. subworld)
+    let swName = vr ^. subworld
+    let f :: Fused.StateC GameState (Fused.LiftC IO) ()
+        f = void . zoomWorld swName $ W.loadRegionM @Int @Entity (vr ^. planar)
+    gs <- get
+    gs' <- liftIO . Fused.runM $ Fused.execState gs f
+    put gs'
 
 mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe (Cosmic Coords))
 mouseLocToWorldCoords (Brick.Location mouseLoc) = do
