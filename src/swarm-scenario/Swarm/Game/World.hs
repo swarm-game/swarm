@@ -308,6 +308,7 @@ loadRegion ::
   World t e
 loadRegion reg (World f t m) = World f t' m
  where
+  -- the range is applied to tile coordinates, so we are not loading a tile twice
   tileCs = filter (`M.notMember` t) $ range (over both tileCoords reg)
   tiles = parMap (evalTuple2 rseq rpar) loadTile tileCs
   t' = foldl' (\hm (i, tile) -> M.insert i tile hm) t (zip tileCs tiles)
