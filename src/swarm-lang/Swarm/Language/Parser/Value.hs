@@ -9,14 +9,16 @@
 -- of the proper type.
 module Swarm.Language.Parser.Value (readValue) where
 
-import Control.Carrier.Error.Either (runError)
+import Control.Carrier.Error.Either (run, runError)
 import Control.Lens ((^.))
 import Data.Either.Extra (eitherToMaybe)
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
+import Swarm.Failure (SystemFailure)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Key (parseKeyComboFull)
+import Swarm.Language.Load (resolve')
 import Swarm.Language.Parser (readNonemptyTerm)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (ContextualTypeErr, checkTop)
@@ -43,10 +45,15 @@ readValue ty txt = do
         Just ('"', _) -> txt
         Just (':', t) -> t
         _ -> txt
+  -- Try to parse the stripped text.
   s <- eitherToMaybe $ readNonemptyTerm txt'
-  -- XXX have to explicitly account for the fact that we don't resolve imports here!
-  let sResolved = error "readValue unimplemented"
-  _ <- eitherToMaybe . runError @ContextualTypeErr $ checkTop Ctx.empty Ctx.empty emptyTDCtx M.empty sResolved ty
+  -- Resolve the resulting term, but fail if any imports are
+  -- encountered; we can't read those anyway.
+  sResolved <- eitherToMaybe $ run . runError @SystemFailure $ resolve' s
+  -- Now, make sure the resolved term typechecks at the given type.
+  _ <- eitherToMaybe . runError @ContextualTypeErr $
+    checkTop Ctx.empty Ctx.empty emptyTDCtx M.empty sResolved ty
+  -- Finally, turn the term into a value.
   toValue $ s ^. sTerm
 
 toValue :: (SwarmType phase ~ ()) => Term phase -> Maybe Value
