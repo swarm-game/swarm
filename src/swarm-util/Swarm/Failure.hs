@@ -18,7 +18,7 @@ module Swarm.Failure (
   OrderFileWarning (..),
 ) where
 
-import Control.Carrier.Throw.Either (ThrowC (..), runThrow)
+import Control.Carrier.Error.Either (ErrorC (..), runError)
 import Control.Monad ((<=<))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -27,6 +27,8 @@ import Data.Text qualified as T
 import Data.Void
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Prettyprinter (Pretty (pretty), nest, squotes, vcat, (<+>))
+import Swarm.Language.Syntax.Import (ImportLoc, ImportPhase (Raw))
+import Swarm.Language.Syntax.Loc (SrcLoc)
 import Swarm.Pretty (BulletList (..), PrettyPrec (..), ppr, prettyShowLow, prettyString)
 import Swarm.Util (showLowT)
 import Text.Megaparsec (ParseErrorBundle, errorBundlePretty)
@@ -59,10 +61,12 @@ data LoadingFailure
 -- ~~~~ Note [Pretty-printing typechecking errors]
 --
 -- It would make sense to store a CheckErr in DoesNotTypecheck;
--- however, Swarm.Failure is imported in lots of places, and
--- CheckErr can contain high-level things like TTerms etc., so it
--- would lead to an import cycle.  Instead, we choose to just
--- pretty-print typechecking errors before storing them here.
+-- however, Swarm.Failure is imported in lots of places, and CheckErr
+-- can contain high-level things like TTerms etc., so it would lead to
+-- an import cycle.  Instead, we choose to just pretty-print
+-- typechecking errors before storing them here; we also store the
+-- SrcLoc for use in indicating the position of the error, e.g. in the
+-- LSP server.
 
 -- | A warning that arose while processing an @00-ORDER.txt@ file.
 data OrderFileWarning
@@ -78,15 +82,18 @@ data SystemFailure
   | ScenarioNotFound FilePath
   | OrderFileWarning FilePath OrderFileWarning
   | CanNotParseMegaparsec (ParseErrorBundle Text Void)
-  | DoesNotTypecheck Text -- See Note [Pretty-printing typechecking errors]
+  | DoesNotTypecheck SrcLoc Text -- See Note [Pretty-printing typechecking errors]
+  | ImportCycle [FilePath]
+  | EmptyTerm
+  | DisallowedImport (ImportLoc Raw)
   | CustomFailure Text
   deriving (Show)
 
 ------------------------------------------------------------
 -- Basic error handling
 
-simpleErrorHandle :: ThrowC SystemFailure IO a -> IO a
-simpleErrorHandle = either (fail . prettyString) pure <=< runThrow
+simpleErrorHandle :: ErrorC SystemFailure IO a -> IO a
+simpleErrorHandle = either (fail . prettyString) pure <=< runError
 
 ------------------------------------------------------------
 -- Pretty-printing
@@ -143,8 +150,12 @@ instance PrettyPrec SystemFailure where
       nest 2 . vcat $
         "Parse failure:"
           : map pretty (T.lines (into @Text (errorBundlePretty p)))
-    DoesNotTypecheck t ->
+    DoesNotTypecheck _ t ->
       nest 2 . vcat $
-        "Parse failure:"
+        "Typechecking failure:"
           : map pretty (T.lines t)
+    ImportCycle imps ->
+      ppr $ BulletList "Imports form a cycle:" (map (into @Text) imps)
+    EmptyTerm -> "Term was only whitespace"
+    DisallowedImport _imp -> "Import is not allowed here"
     CustomFailure m -> pretty m

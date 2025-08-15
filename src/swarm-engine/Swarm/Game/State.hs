@@ -81,6 +81,7 @@ module Swarm.Game.State (
   module Robots,
 ) where
 
+import Control.Carrier.Error.Either (runError)
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Effect.Lens
 import Control.Effect.Lift
@@ -129,8 +130,8 @@ import Swarm.Game.Tick (addTicks)
 import Swarm.Game.Universe as U
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
-import Swarm.Language.Pipeline (processTermEither)
-import Swarm.Language.Syntax (SrcLoc (..), TSyntax, sLoc)
+import Swarm.Language.Pipeline (processSource, requireNonEmptyTerm)
+import Swarm.Language.Syntax (Phase (..), SrcLoc (..), Syntax, sLoc)
 import Swarm.Language.Value (Env)
 import Swarm.Log
 import Swarm.Util (applyWhen, uniq)
@@ -148,7 +149,7 @@ data SolutionSource
 
 data CodeToRun = CodeToRun
   { _toRunSource :: SolutionSource
-  , _toRunSyntax :: TSyntax
+  , _toRunSyntax :: Syntax Elaborated
   }
 
 makeLenses ''CodeToRun
@@ -164,8 +165,8 @@ parseCodeFile ::
   m CodeToRun
 parseCodeFile filepath = do
   contents <- sendIO $ TIO.readFile filepath
-  pt <- either (throwError . CustomFailure) return (processTermEither contents)
-
+  mpt <- sendIO . runError $ requireNonEmptyTerm =<< processSource contents Nothing
+  pt <- either (throwError @SystemFailure) (pure . snd) mpt -- XXX need SourceMap?
   let srcLoc = pt ^. sLoc
       strippedText = stripSrc srcLoc contents
       programBytestring = TL.encodeUtf8 $ TL.fromStrict strippedText
@@ -173,7 +174,7 @@ parseCodeFile filepath = do
   return $ CodeToRun (PlayerAuthored filepath $ Sha1 sha1Hash) pt
  where
   stripSrc :: SrcLoc -> Text -> Text
-  stripSrc (SrcLoc start end) txt = T.drop start $ T.take end txt
+  stripSrc (SrcLoc _ start end) txt = T.drop start $ T.take end txt
   stripSrc NoLoc txt = txt
 
 ------------------------------------------------------------
@@ -202,15 +203,15 @@ parseCodeFile filepath = do
 data GameState = GameState
   { _creativeMode :: Bool
   , _temporal :: TemporalState
-  , _winCondition :: WinCondition
-  , _winSolution :: Maybe TSyntax
+  , _winCondition :: WinCondition Elaborated
+  , _winSolution :: Maybe (Syntax Elaborated)
   , _robotInfo :: Robots
   , _pathCaching :: PathCaching
   , _discovery :: Discovery
   , _randomness :: Randomness
   , _recipesInfo :: Recipes
   , _currentScenarioPath :: Maybe ScenarioPath
-  , _landscape :: Landscape
+  , _landscape :: Landscape Elaborated
   , _redraw :: Redraw
   , _gameControls :: GameControls
   , _messageInfo :: Messages
@@ -231,14 +232,14 @@ creativeMode :: Lens' GameState Bool
 temporal :: Lens' GameState TemporalState
 
 -- | How to determine whether the player has won.
-winCondition :: Lens' GameState WinCondition
+winCondition :: Lens' GameState (WinCondition Elaborated)
 
 -- | How to win (if possible). This is useful for automated testing
 --   and to show help to cheaters (or testers).
-winSolution :: Lens' GameState (Maybe TSyntax)
+winSolution :: Lens' GameState (Maybe (Syntax Elaborated))
 
 -- | Get a list of all the robots at a particular location.
-robotsAtLocation :: Cosmic Location -> GameState -> [Robot]
+robotsAtLocation :: Cosmic Location -> GameState -> [Robot Instantiated]
 robotsAtLocation loc gs =
   mapMaybe (`IM.lookup` (gs ^. robotInfo . robotMap))
     . IS.toList
@@ -252,7 +253,7 @@ pathCaching :: Lens' GameState PathCaching
 
 -- | Get all the robots within a given Manhattan distance from a
 --   location.
-robotsInArea :: Cosmic Location -> Int32 -> Robots -> [Robot]
+robotsInArea :: Cosmic Location -> Int32 -> Robots -> [Robot Instantiated]
 robotsInArea (Cosmic subworldName o) d rs = mapMaybe (rm IM.!?) rids
  where
   rm = rs ^. robotMap
@@ -264,7 +265,7 @@ robotsInArea (Cosmic subworldName o) d rs = mapMaybe (rm IM.!?) rids
       $ MM.get subworldName rl
 
 -- | The base robot, if it exists.
-baseRobot :: Traversal' GameState Robot
+baseRobot :: Traversal' GameState (Robot Instantiated)
 baseRobot = robotInfo . robotMap . ix 0
 
 -- | The base robot environment.
@@ -302,7 +303,7 @@ recipesInfo :: Lens' GameState Recipes
 currentScenarioPath :: Lens' GameState (Maybe ScenarioPath)
 
 -- | Info about the lay of the land
-landscape :: Lens' GameState Landscape
+landscape :: Lens' GameState (Landscape Elaborated)
 
 -- | Info about redrawing the world view
 redraw :: Lens' GameState Redraw
@@ -405,7 +406,7 @@ viewingRegion (Cosmic sw (Location cx cy)) (w, h) =
 
 -- | Find out which robot has been last specified by the
 --   'viewCenterRule', if any.
-focusedRobot :: GameState -> Maybe Robot
+focusedRobot :: GameState -> Maybe (Robot Instantiated)
 focusedRobot g = g ^. robotInfo . RobotsInternal.focusedRobot
 
 -- | Check how far away the focused robot is from the base.  @Nothing@
@@ -455,14 +456,14 @@ focusedRange g = checkRange <$ maybeFocusedRobot
   (minRadius, maxRadius) = getRadioRange maybeBaseRobot maybeFocusedRobot
 
 -- | Get the min/max communication radii given possible augmentations on each end
-getRadioRange :: Maybe Robot -> Maybe Robot -> (Double, Double)
+getRadioRange :: Maybe (Robot Instantiated) -> Maybe (Robot Instantiated) -> (Double, Double)
 getRadioRange maybeBaseRobot maybeTargetRobot =
   (minRadius, maxRadius)
  where
   -- See whether the base or focused robot have antennas installed.
   baseInv, focInv :: Maybe Inventory
-  baseInv = view equippedDevices <$> maybeBaseRobot
-  focInv = view equippedDevices <$> maybeTargetRobot
+  baseInv = view (equippedDevices @Instantiated) <$> maybeBaseRobot
+  focInv = view (equippedDevices @Instantiated) <$> maybeTargetRobot
 
   gain :: Maybe Inventory -> (Double -> Double)
   gain (Just inv)

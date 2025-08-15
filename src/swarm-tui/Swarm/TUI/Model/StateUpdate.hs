@@ -29,6 +29,7 @@ import Control.Arrow ((&&&))
 import Control.Carrier.Accum.Strict (runAccum)
 import Control.Carrier.State.Strict (State, execState)
 import Control.Effect.Accum
+import Control.Effect.Error (Error)
 import Control.Effect.Lens qualified as EL
 import Control.Effect.Lift
 import Control.Effect.Throw
@@ -107,7 +108,7 @@ import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
 import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.Util
-import Swarm.Util.Effect (asExceptT, withThrow)
+import Swarm.Util.Effect (asExceptT, withError)
 import System.Clock
 
 -- | The resolution at which the animation manager checks animations for updates, in miliseconds
@@ -116,7 +117,7 @@ animMgrTickDuration = 33
 
 -- | Initialize the 'AppState' from scratch.
 initAppState ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  (Has (Error SystemFailure) sig m, Has (Lift IO) sig m) =>
   AppOpts ->
   Maybe (BChan AppEvent) ->
   m AppState
@@ -199,7 +200,7 @@ getScenarioInfoFromPath ss path =
 -- | Construct an 'AppState' from an already-loaded 'RuntimeState' and
 --   'UIState', given the 'AppOpts' the app was started with.
 constructAppState ::
-  ( Has (Throw SystemFailure) sig m
+  ( Has (Error SystemFailure) sig m
   , Has (Lift IO) sig m
   ) =>
   PersistentState ->
@@ -478,7 +479,7 @@ initTestChan = newBChan 1
 --   to update it using 'scenarioToAppState'.
 initAppStateForScenario :: String -> Maybe Seed -> Maybe FilePath -> ExceptT Text IO AppState
 initAppStateForScenario sceneName userSeed toRun =
-  asExceptT . withThrow (prettyText @SystemFailure) . flip initAppState Nothing $
+  asExceptT . withError (prettyText @SystemFailure) . flip initAppState Nothing $
     defaultAppOpts
       { userScenario = Just sceneName
       , userSeed = userSeed

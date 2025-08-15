@@ -58,7 +58,7 @@ deriveHeading d = do
 lookInDirection :: HasRobotStepState sig m => Direction -> m (Cosmic Location, Maybe Entity)
 lookInDirection d = do
   newHeading <- deriveHeading d
-  loc <- use robotLocation
+  loc <- use (robotLocation @Instantiated)
   let nextLoc = loc `offsetBy` newHeading
   (nextLoc,) <$> entityAt nextLoc
 
@@ -74,7 +74,7 @@ adaptGameState f = do
 -- | Modify the entity (if any) at a given location, and mark the cell
 --   dirty (i.e. needing to be redrawn) if anything changes.
 updateEntityAt ::
-  (Has (State Robot) sig m, Has (State GameState) sig m) =>
+  (Has (State (Robot Instantiated)) sig m, Has (State GameState) sig m) =>
   Cosmic Location ->
   (Maybe Entity -> Maybe Entity) ->
   m ()
@@ -102,13 +102,13 @@ updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
 
 -- | Exempts the robot from various command constraints
 -- when it is either a system robot or playing in creative mode
-isPrivilegedBot :: (Has (State GameState) sig m, Has (State Robot) sig m) => m Bool
+isPrivilegedBot :: (Has (State GameState) sig m, Has (State (Robot Instantiated)) sig m) => m Bool
 isPrivilegedBot = (||) <$> use systemRobot <*> use creativeMode
 
 -- | Test whether the current robot has a given capability (either
 --   because it has a device which gives it that capability, or it is a
 --   system robot, or we are in creative mode).
-hasCapability :: (Has (State Robot) sig m, Has (State GameState) sig m) => Capability -> m Bool
+hasCapability :: (Has (State (Robot Instantiated)) sig m, Has (State GameState) sig m) => Capability -> m Bool
 hasCapability cap = do
   isPrivileged <- isPrivilegedBot
   caps <- use robotCapabilities
@@ -117,7 +117,7 @@ hasCapability cap = do
 -- | Ensure that either a robot has a given capability, OR we are in creative
 --   mode.
 hasCapabilityFor ::
-  (Has (State Robot) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) => Capability -> Term -> m ()
+  (Has (State (Robot Instantiated)) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) => Capability -> Term Resolved -> m ()
 hasCapabilityFor cap term = do
   h <- hasCapability cap
   h `holdsOr` Incapable FixByEquip (R.singletonCap cap) term

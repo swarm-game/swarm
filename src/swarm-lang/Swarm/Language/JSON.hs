@@ -1,4 +1,6 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -9,32 +11,27 @@
 module Swarm.Language.JSON where
 
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON, withText)
-import Data.Aeson qualified as Ae
-import Swarm.Language.Pipeline (processTermEither)
-import Swarm.Language.Syntax (Term)
-import Swarm.Language.Syntax.Pattern (Syntax, TSyntax)
+import GHC.Generics (Generic)
+import Swarm.Language.Load (Module, ModuleCtx, ModuleImports)
+import Swarm.Language.Parser (readNonemptyTerm)
+import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (Raw), SwarmType, Syntax, Term)
 import Swarm.Language.Value (Env, Value (..))
-import Swarm.Pretty (prettyText)
 import Swarm.Util.JSON (optionsMinimize)
 import Witch (into)
 
-instance FromJSON TSyntax where
-  parseJSON = withText "Term" $ either (fail . into @String) return . processTermEither
-
-instance ToJSON TSyntax where
-  toJSON = Ae.String . prettyText
-
-instance FromJSON Term where
+instance FromJSON (Term Raw) where
   parseJSON = genericParseJSON optionsMinimize
 
-instance FromJSON Syntax where
-  parseJSON = genericParseJSON optionsMinimize
+instance FromJSON (Syntax Raw) where
+  parseJSON = withText "Term" $ either (fail . into @String) pure . readNonemptyTerm
 
-instance ToJSON Term where
+instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase)) => ToJSON (Term phase) where
   toJSON = genericToJSON optionsMinimize
 
-instance ToJSON Syntax where
+instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase)) => ToJSON (Syntax phase) where
   toJSON = genericToJSON optionsMinimize
+
+deriving instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), ToJSON (ModuleCtx phase), ToJSON (ModuleImports phase)) => ToJSON (Module phase)
 
 instance ToJSON Value where
   toJSON = genericToJSON optionsMinimize

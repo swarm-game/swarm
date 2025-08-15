@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -21,6 +22,7 @@ module Swarm.Language.Value (
   envReqs,
   envVals,
   envTydefs,
+  envSourceMap,
   lookupValue,
   addBinding,
   addValueBinding,
@@ -41,11 +43,12 @@ import GHC.Generics (Generic)
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Key (KeyCombo, prettyKeyCombo)
+import Swarm.Language.Load (SourceMap)
 import Swarm.Language.Requirements.Type (ReqCtx, Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
-import Swarm.Language.Typed
 import Swarm.Language.Types (Polytype, TCtx, TDCtx, TydefInfo, Type, addBindingTD, emptyTDCtx)
+import Swarm.Language.WithType
 import Swarm.Pretty (prettyText)
 import Prelude hiding (Foldable (..))
 
@@ -71,7 +74,7 @@ data Value where
   -- | A /closure/, representing a lambda term along with an
   --   environment containing bindings for any free variables in the
   --   body of the lambda.
-  VClo :: Var -> Term -> Env -> Value
+  VClo :: Var -> Term Resolved -> Env -> Value
   -- | An application of a constant to some value arguments,
   --   potentially waiting for more arguments.  If a constant
   --   application is fully saturated (as defined by its 'arity'),
@@ -84,14 +87,14 @@ data Value where
   -- | An unevaluated bind expression, waiting to be executed, of the
   --   form /i.e./ @c1 ; c2@ or @x <- c1; c2@.  We also store an 'Env'
   --   in which to interpret the commands.
-  VBind :: Maybe Var -> Maybe Polytype -> Maybe Requirements -> Term -> Term -> Env -> Value
+  VBind :: Maybe Var -> Maybe Polytype -> Maybe Requirements -> Term Resolved -> Term Resolved -> Env -> Value
   -- | A (non-recursive) delayed term, along with its environment. If
   --   a term would otherwise be evaluated but we don't want it to be
   --   (/e.g./ as in the case of arguments to an 'if', or a recursive
   --   binding), we can stick a 'TDelay' on it, which turns it into a
   --   value.  Delayed terms won't be evaluated until 'Force' is
   --   applied to them.
-  VDelay :: Term -> Env -> Value
+  VDelay :: Term Resolved -> Env -> Value
   -- | A reference to a memory cell in the store.
   VRef :: Int -> Value
   -- | An indirection to a value stored in a memory cell.  The
@@ -106,9 +109,9 @@ data Value where
   -- | A keyboard input.
   VKey :: KeyCombo -> Value
   -- | A 'requirements' command awaiting execution.
-  VRequirements :: Text -> Term -> Env -> Value
+  VRequirements :: Text -> Term Resolved -> Env -> Value
   -- | A 'suspend' command awaiting execution.
-  VSuspend :: Term -> Env -> Value
+  VSuspend :: Term Resolved -> Env -> Value
   -- | A special value representing a program that terminated with
   --   an exception.
   VExc :: Value
@@ -149,6 +152,8 @@ data Env = Env
   -- ^ Map variables to their values.
   , _envTydefs :: TDCtx
   -- ^ Type synonym definitions.
+  , _envSourceMap :: SourceMap Elaborated
+  -- ^ A cache of typechecked + elaborated imports.
   }
   deriving (Hashable, Generic)
 
@@ -171,12 +176,12 @@ instance Eq Env where
 makeLenses ''Env
 
 emptyEnv :: Env
-emptyEnv = Env Ctx.empty Ctx.empty Ctx.empty emptyTDCtx
+emptyEnv = Env Ctx.empty Ctx.empty Ctx.empty emptyTDCtx M.empty
 
 lookupValue :: Var -> Env -> Maybe Value
 lookupValue x e = Ctx.lookup x (e ^. envVals)
 
-addBinding :: Var -> Typed Value -> Env -> Env
+addBinding :: Var -> WithType Value -> Env -> Env
 addBinding x v = at x ?~ v
 
 -- | Add a binding of a variable to a value *only* (no type and
@@ -190,7 +195,7 @@ addTydef :: Text -> TydefInfo -> Env -> Env
 addTydef x pty = envTydefs %~ addBindingTD x pty
 
 type instance Index Env = Var
-type instance IxValue Env = Typed Value
+type instance IxValue Env = WithType Value
 
 instance Ixed Env
 instance At Env where
@@ -201,7 +206,7 @@ instance At Env where
         typ <- Ctx.lookup name (ctx ^. envTypes)
         val <- Ctx.lookup name (ctx ^. envVals)
         req <- Ctx.lookup name (ctx ^. envReqs)
-        return $ Typed val typ req
+        return $ WithType val typ req
     setter ctx Nothing =
       ctx
         & envTypes
@@ -210,7 +215,7 @@ instance At Env where
           %~ Ctx.delete name
         & envReqs
           %~ Ctx.delete name
-    setter ctx (Just (Typed val typ req)) =
+    setter ctx (Just (WithType val typ req)) =
       ctx
         & envTypes
           %~ Ctx.addBinding name typ
@@ -228,7 +233,7 @@ prettyValue :: Value -> Text
 prettyValue = prettyText . valueToTerm
 
 -- | Inject a value back into a term.
-valueToTerm :: Value -> Term
+valueToTerm :: Value -> Term Resolved
 valueToTerm = \case
   VUnit -> TUnit
   VInt n -> TInt n
@@ -245,7 +250,7 @@ valueToTerm = \case
           _ -> TLet LSLet False y Nothing Nothing Nothing (valueToTerm v)
       )
       (TLam x Nothing t)
-      (M.restrictKeys (Ctx.unCtx (e ^. envVals)) (S.delete x (setOf freeVarsV (Syntax' NoLoc t Empty ()))))
+      (M.restrictKeys (Ctx.unCtx (e ^. envVals)) (S.delete x (setOf freeVarsV (Syntax NoLoc t Empty ()))))
   VCApp c vs -> foldl' TApp (TConst c) (reverse (map valueToTerm vs))
   VBind mx mty mreq c1 c2 _ -> TBind mx mty mreq c1 c2
   VDelay t _ -> TDelay t

@@ -76,28 +76,30 @@ type SymbolSequence a = [AtomicKeySymbol a]
 -- @
 --
 -- Its '_position' is @2@.
-data PositionWithinRow b a = PositionWithinRow
+data PositionWithinRow a b = PositionWithinRow
   { _position :: Int32
   -- ^ horizontal index of the entity within the row
-  , structureRow :: ConsolidatedRowReferences b a
+  , structureRow :: ConsolidatedRowReferences a b
   }
 
 -- | A chunkified version of a structure row.
 -- Each unique structure row will need to test one of these
 -- against the world row being examined.
-data RowChunkMatchingReference b a = RowChunkMatchingReference
-  { locatableRows :: ConsolidatedRowReferences b a
+data RowChunkMatchingReference a b = RowChunkMatchingReference
+  { locatableRows :: ConsolidatedRowReferences a b
   , confirmationMap :: HashMap (NonEmpty a) (NonEmpty Int)
   }
+  deriving (Functor, Foldable, Traversable)
 
-data PiecewiseRecognition b a = PiecewiseRecognition
+data PiecewiseRecognition a b = PiecewiseRecognition
   { piecewiseSM :: StateMachine (AtomicKeySymbol a) (NonEmpty a)
-  , picewiseLookup :: NonEmpty (RowChunkMatchingReference b a)
+  , picewiseLookup :: NonEmpty (RowChunkMatchingReference a b)
   -- ^ A lookup structure for use with results of the
   -- Aho-Corasick matcher. This lookup will determine whether
   -- the discontiguous "chunks" found by the matcher occur at
   -- the right positions with respect to the reference structure.
   }
+  deriving (Functor, Foldable, Traversable)
 
 data PositionedChunk a = PositionedChunk
   { chunkStartPos :: Int
@@ -115,8 +117,8 @@ data PositionedChunk a = PositionedChunk
 -- @
 --
 -- this record will contain two entries in its 'entityOccurrences' field.
-data SingleRowEntityOccurrences b a = SingleRowEntityOccurrences
-  { myRow :: ConsolidatedRowReferences b a
+data SingleRowEntityOccurrences a b = SingleRowEntityOccurrences
+  { myRow :: ConsolidatedRowReferences a b
   , myEntity :: a
   , contiguousChunks :: [PositionedChunk a]
   , expandedOffsets :: InspectionOffsets
@@ -140,45 +142,48 @@ newtype RowWidth = RowWidth Int32
 --
 -- The two type parameters, `b` and `a`, correspond
 -- to 'Cell' and 'Entity', respectively.
-data StructureRow b a = StructureRow
-  { wholeStructure :: StructureWithGrid b a
+data StructureRow a b = StructureRow
+  { wholeStructure :: StructureWithGrid a b
   , rowIndex :: Int32
   -- ^ vertical index of the row within the structure
   , rowContent :: NonEmpty (AtomicKeySymbol a)
   }
+  deriving (Functor, Foldable, Traversable)
 
 -- | Represents all rows across all structures that share
 -- a particular row content
-data ConsolidatedRowReferences b a = ConsolidatedRowReferences
+data ConsolidatedRowReferences a b = ConsolidatedRowReferences
   { sharedRowContent :: NonEmpty (AtomicKeySymbol a)
-  , referencingRows :: NonEmpty (StructureRow b a)
+  , referencingRows :: NonEmpty (StructureRow a b)
   , theRowWidth :: RowWidth
   }
+  deriving (Functor, Foldable, Traversable)
 
-data ExtractedArea b a = ExtractedArea
+data ExtractedArea a b = ExtractedArea
   { originalItem :: NamedArea b
   , extractedGrid :: NonEmptyGrid (AtomicKeySymbol a)
   }
-  deriving (Show, Eq)
+  deriving (Show, Eq, Functor, Foldable, Traversable)
 
 -- | The original definition of a structure, bundled
 -- with its grid of cells having been extracted for convenience.
 --
 -- The two type parameters, `b` and `a`, correspond
 -- to 'Cell' and 'Entity', respectively.
-data StructureWithGrid b a = StructureWithGrid
+data StructureWithGrid a b = StructureWithGrid
   { rotatedTo :: AbsoluteDir
   , gridWidth :: RowWidth
-  , entityGrid :: ExtractedArea b a
+  , entityGrid :: ExtractedArea a b
   }
-  deriving (Eq)
+  deriving (Eq, Functor, Foldable, Traversable)
 
 -- | Structure definitions with precomputed metadata for consumption by the UI
-data StructureInfo b a = StructureInfo
-  { annotatedGrid :: SymmetryAnnotatedGrid (ExtractedArea b a)
+data StructureInfo a b = StructureInfo
+  { annotatedGrid :: SymmetryAnnotatedGrid (ExtractedArea a b)
   , entityProcessedGrid :: NonEmptyGrid (AtomicKeySymbol a)
   , entityCounts :: Map a Int
   }
+  deriving (Functor, Foldable, Traversable)
 
 -- | For all of the rows that contain a given entity
 -- (and are recognized by a single automaton),
@@ -207,23 +212,23 @@ instance Semigroup InspectionOffsets where
   InspectionOffsets l1 r1 <> InspectionOffsets l2 r2 =
     InspectionOffsets (l1 <> l2) (r1 <> r2)
 
-data AutomatonInfo v k = AutomatonInfo
+data AutomatonInfo k v = AutomatonInfo
   { _inspectionOffsets :: InspectionOffsets
-  , _piecewiseRecognizer :: PiecewiseRecognition v k
+  , _piecewiseRecognizer :: PiecewiseRecognition k v
   }
-  deriving (Generic)
+  deriving (Generic, Functor, Foldable, Traversable)
 
 makeLenses ''AutomatonInfo
 
 -- | The complete set of data needed to identify applicable
 -- structures, based on a just-placed entity.
-data RecognizerAutomatons b a = RecognizerAutomatons
-  { _originalStructureDefinitions :: Map StructureName (StructureInfo b a)
+data RecognizerAutomatons a b = RecognizerAutomatons
+  { _originalStructureDefinitions :: Map StructureName (StructureInfo a b)
   -- ^ all of the structures that shall participate in automatic recognition.
   -- This list is used only by the UI and by the 'Floorplan' command.
-  , _automatonsByEntity :: HashMap a (AutomatonInfo b a)
+  , _automatonsByEntity :: HashMap a (AutomatonInfo a b)
   }
-  deriving (Generic)
+  deriving (Generic, Functor, Foldable, Traversable)
 
 makeLenses ''RecognizerAutomatons
 
@@ -232,7 +237,7 @@ makeLenses ''RecognizerAutomatons
 --
 -- The two type parameters, `b` and `a`, correspond
 -- to 'Cell' and 'Entity', respectively.
-type FoundStructure b a = PositionedStructure (StructureWithGrid b a)
+type FoundStructure a b = PositionedStructure (StructureWithGrid a b)
 
 -- | NOTE: A structure's name + orientation + position will uniquely
 -- identify it in the world.  Note that position alone is not sufficient;
@@ -282,7 +287,7 @@ data EntityDiscrepancy e = EntityDiscrepancy
   }
   deriving (Functor, Generic, ToJSON)
 
-distillLabel :: StructureWithGrid b a -> OrientedStructure
+distillLabel :: StructureWithGrid a b -> OrientedStructure
 distillLabel swg = OrientedStructure (name $ originalItem $ entityGrid swg) (rotatedTo swg)
 
 data IntactnessFailureReason e
@@ -306,35 +311,37 @@ data StructureIntactnessFailure e = StructureIntactnessFailure
 -- 1. Primarily, larger area.
 -- 2. Secondarily, lower X-Y coords (X is compared first)
 --
--- Since the natural order of coordinates increases as described,
--- we need to invert it with 'Down' so that this ordering is by
--- increasing preference.
-instance (Eq b, Eq a) => Ord (FoundStructure b a) where
-  compare = compare `on` (f1 &&& f2)
-   where
-    f1 = computeArea . getNEGridDimensions . extractedGrid . entityGrid . structureWithGrid
-    f2 = Down . upperLeftCorner
+-- We invert with 'Down' so that this ordering is by increasing preference.
+--
+-- We do NOT make this an actual Ord instance, since that would require
+-- an Eq instance on FoundStructure a b, which is too restrictive.
+compareFoundStructure :: FoundStructure a b -> FoundStructure a b -> Ordering
+compareFoundStructure = compare `on` (Down . (f1 &&& f2))
+ where
+  f1 = computeArea . getNEGridDimensions . extractedGrid . entityGrid . structureWithGrid
+  f2 = Down . upperLeftCorner
 
 -- | Yields coordinates that are occupied by an entity of a placed structure.
 -- Cells within the rectangular bounds of the structure that are unoccupied
 -- are not included.
-genOccupiedCoords :: FoundStructure b a -> [Cosmic Location]
+genOccupiedCoords :: FoundStructure a b -> [Cosmic Location]
 genOccupiedCoords (PositionedStructure loc swg) =
   catMaybes . NE.toList . mapWithCoordsNE f . extractedGrid $ entityGrid swg
  where
   -- replaces an "occupied" grid cell with its location
   f cellLoc maybeEnt = ((loc `offsetBy`) . asVector . coordsToLoc $ cellLoc) <$ maybeEnt
 
-data StaticStructureInfo b a = StaticStructureInfo
-  { _staticAutomatons :: RecognizerAutomatons b a
+data StaticStructureInfo a b = StaticStructureInfo
+  { _staticAutomatons :: RecognizerAutomatons a b
   , _staticPlacements :: Map SubworldName [LocatedStructure]
   }
+  deriving (Functor, Foldable, Traversable)
 
 makeLensesNoSigs ''StaticStructureInfo
 
 -- | Recognition engine for statically-defined structures
-staticAutomatons :: Lens' (StaticStructureInfo b a) (RecognizerAutomatons b a)
+staticAutomatons :: Lens' (StaticStructureInfo a b) (RecognizerAutomatons a b)
 
 -- | A record of the static placements of structures, so that they can be
 -- added to the "recognized" list upon scenario initialization
-staticPlacements :: Lens' (StaticStructureInfo b a) (Map SubworldName [LocatedStructure])
+staticPlacements :: Lens' (StaticStructureInfo a b) (Map SubworldName [LocatedStructure])
