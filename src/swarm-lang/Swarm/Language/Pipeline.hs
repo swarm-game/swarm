@@ -92,10 +92,8 @@ processTerm txt t menv = do
   pure (fmap elaborateModule srcMapTy, elaborate tTy)
 
 -- | Like 'processTerm', but don't allow any imports that need to be
---   loaded (and hence would require IO).  XXX this currently just
---   crashes if any imports are encountered; needs to be fixed.  Do we
---   want imports to be an error, or just ignored/not properly
---   resolved?
+--   loaded (and hence would require IO).  If any imports are
+--   encountered, throw an error.
 processTermNoImports ::
   forall sig m.
   (Has (Error SystemFailure) sig m) =>
