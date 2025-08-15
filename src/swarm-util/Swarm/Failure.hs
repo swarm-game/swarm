@@ -157,4 +157,5 @@ instance PrettyPrec SystemFailure where
     ImportCycle imps ->
       ppr $ BulletList "Imports form a cycle:" (map (into @Text) imps)
     EmptyTerm -> "Term was only whitespace"
+    DisallowedImport _imp -> "Import is not allowed here"
     CustomFailure m -> pretty m
