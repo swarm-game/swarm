@@ -5,7 +5,7 @@ Swarm
 [![GitHub release (latest by date)][release-img]][releases]
 [![Swarm release on Hackage][hackage-img]][hackage]
 [![Contributor Covenant][badge-covenant]](CODE_OF_CONDUCT.md)
-[![ircchat][badge-ircchat]][ircchat]
+[![Discord][badge-discord]][discord]
 [![All Contributors][contributors]](#contributors)
 
 [build-status]: https://github.com/swarm-game/swarm/actions/workflows/haskell-ci.yml/badge.svg
@@ -15,8 +15,8 @@ Swarm
 [hackage]: https://hackage.haskell.org/package/swarm
 [actions]: https://github.com/swarm-game/swarm/actions
 [badge-covenant]: https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg
-[badge-ircchat]: https://img.shields.io/badge/chat-on%20libera-brightgreen.svg
-[ircchat]: https://web.libera.chat/?channels=#swarm
+[badge-discord]: https://img.shields.io/discord/1260717118576525372.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2
+[discord]: https://discord.gg/kp8MuSgkPw
 [contributors]: https://img.shields.io/github/all-contributors/swarm-game/swarm?color=ee8449&style=flat-square
 
 Swarm is a 2D programming and resource gathering game. Program your
