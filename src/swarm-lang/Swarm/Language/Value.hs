@@ -18,6 +18,7 @@ module Swarm.Language.Value (
   -- * Environments
   Env,
   emptyEnv,
+  envFromSrcMap,
   envTypes,
   envReqs,
   envVals,
@@ -174,6 +175,10 @@ instance Eq Env where
 -- inefficient and there is no good reason to use it.  See #2197.
 
 makeLenses ''Env
+
+-- | Create an environment which is empty except for an initial SourceMap.
+envFromSrcMap :: SourceMap Elaborated -> Env
+envFromSrcMap srcMap = emptyEnv { _envSourceMap = srcMap }
 
 emptyEnv :: Env
 emptyEnv = Env Ctx.empty Ctx.empty Ctx.empty emptyTDCtx M.empty

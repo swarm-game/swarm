@@ -80,7 +80,7 @@ import Swarm.Effect.Unify.Fast qualified as U
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Kindcheck (KindError (..), processPolytype, processType)
-import Swarm.Language.Load (Module (..), SourceMap)
+import Swarm.Language.Load (Module (..), SourceMap, SyntaxWithImports (..))
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Requirements.Analysis (requirements)
@@ -884,14 +884,21 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 --   fully type-annotated version of the term.
 inferTop ::
   Has (Error ContextualTypeErr) sig m =>
-  TCtx -> ReqCtx -> TDCtx -> SourceMap Resolved -> Syntax Resolved -> m (SourceMap Typed, Syntax Typed)
-inferTop ctx reqCtx tdCtx srcMap = runTC ctx reqCtx tdCtx Ctx.empty srcMap . infer
+  TCtx -> ReqCtx -> TDCtx -> SourceMap Resolved -> Syntax Resolved -> m (SyntaxWithImports Typed)
+inferTop ctx reqCtx tdCtx srcMap =
+  fmap (uncurry SyntaxWithImports) .
+  runTC ctx reqCtx tdCtx Ctx.empty srcMap .
+  infer
 
 -- | Top level type checking function.
 checkTop ::
   Has (Error ContextualTypeErr) sig m =>
-  TCtx -> ReqCtx -> TDCtx -> SourceMap Resolved -> Syntax Resolved -> Type -> m (SourceMap Typed, Syntax Typed)
-checkTop ctx reqCtx tdCtx srcMap t ty = runTC ctx reqCtx tdCtx Ctx.empty srcMap $ check t (toU ty)
+  TCtx -> ReqCtx -> TDCtx -> SourceMap Resolved -> Syntax Resolved -> Type -> m (SyntaxWithImports Typed)
+checkTop ctx reqCtx tdCtx srcMap t =
+  fmap (uncurry SyntaxWithImports) .
+  runTC ctx reqCtx tdCtx Ctx.empty srcMap .
+  check t .
+  toU
 
 -- | Infer the type of a term, returning a type-annotated term.
 --
