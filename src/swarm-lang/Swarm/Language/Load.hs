@@ -33,7 +33,7 @@ import Swarm.Language.Parser.Core (defaultParserConfig, importLoc)
 import Swarm.Language.Syntax (ImportPhaseFor, Phase (..), SwarmType, Syntax)
 import Swarm.Language.Syntax.Import hiding (ImportPhase (..))
 import Swarm.Language.Syntax.Import qualified as Import
-import Swarm.Language.Syntax.Util (traverseSyntax)
+import Swarm.Language.Syntax.Util (Erasable(..), traverseSyntax)
 import Swarm.Language.Types (TCtx, UCtx)
 import Swarm.Util (readFileMayT)
 import Swarm.Util.Graph (findCycle)
@@ -77,26 +77,45 @@ deriving instance (Eq (ModuleImports phase), Eq (ModuleCtx phase), Eq (SwarmType
 deriving instance (Eq (Anchor (ImportPhaseFor phase)), Data (Anchor (ImportPhaseFor phase)), Typeable phase, Typeable (ImportPhaseFor phase), Data (ModuleCtx phase), Data (ModuleImports phase), Data (SwarmType phase)) => Data (Module phase)
 deriving instance (Hashable (ModuleImports phase), Hashable (ModuleCtx phase), Hashable (SwarmType phase), Hashable (Anchor (ImportPhaseFor phase)), Generic (Anchor (ImportPhaseFor phase))) => Hashable (Module phase)
 
+instance Erasable Module where
+  erase (Module t _ _) = Module (erase <$> t) () S.empty
+  eraseRaw (Module t _ _) = Module (eraseRaw <$> t) () ()
+
 -- | A SourceMap associates canonical 'ImportLocation's to modules.
 type SourceMap phase = Map (ImportLoc (ImportPhaseFor phase)) (Module phase)
+
+-- | XXX
+data SyntaxWithImports phase = SyntaxWithImports
+  { getSourceMap :: SourceMap phase
+  , getSyntax :: Syntax phase
+  }
+  deriving (Generic)
+
+deriving instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase), Show (ModuleCtx phase), Show (ModuleImports phase)) => Show (SyntaxWithImports phase)
+deriving instance (Eq (Anchor (ImportPhaseFor phase)), Eq (SwarmType phase), Eq (ModuleCtx phase), Eq (ModuleImports phase)) => Eq (SyntaxWithImports phase)
+deriving instance (Ord (Anchor (ImportPhaseFor phase)), Data (Anchor (ImportPhaseFor phase)), Typeable phase, Typeable (ImportPhaseFor phase), Data (ModuleCtx phase), Data (ModuleImports phase), Data (SwarmType phase)) => Data (SyntaxWithImports phase)
 
 -- | Recursively resolve and load all the imports contained in raw
 --   syntax, returning the same syntax with resolved/canonicalized
 --   imports as well as a SourceMap containing all the loaded imports.
 resolve ::
   (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) =>
-  Syntax Raw -> m (Syntax Resolved, SourceMap Resolved)
+  Syntax Raw -> m (SyntaxWithImports Resolved)
 resolve s = do
   cur <- sendIO $ resolveImportDir currentDir
   (resMap, (_, s')) <- runState mempty . resolveImports cur $ s
   checkImportCycles resMap
-  pure (s', resMap)
+  pure $ SyntaxWithImports resMap s'
 
 -- | Resolve a term without requiring any I/O, throwing an error if
 --   any 'import' statements are encountered.
 resolve' ::
   (Has (Throw SystemFailure) sig m) => Syntax Raw -> m (Syntax Resolved)
 resolve' = traverseSyntax pure (throwError . DisallowedImport)
+
+-- | Erase type annotations from a fully processed 'SourceMap'.
+eraseSourceMap :: SourceMap Elaborated -> SourceMap Resolved
+eraseSourceMap = M.map erase
 
 type ResLoc = ImportLoc Import.Resolved
 

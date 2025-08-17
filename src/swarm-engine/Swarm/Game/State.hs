@@ -130,6 +130,7 @@ import Swarm.Game.Tick (addTicks)
 import Swarm.Game.Universe as U
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
+import Swarm.Language.Load (SyntaxWithImports (..))
 import Swarm.Language.Pipeline (processSource, requireNonEmptyTerm)
 import Swarm.Language.Syntax (Phase (..), SrcLoc (..), Syntax, sLoc)
 import Swarm.Language.Value (Env)
@@ -149,7 +150,7 @@ data SolutionSource
 
 data CodeToRun = CodeToRun
   { _toRunSource :: SolutionSource
-  , _toRunSyntax :: Syntax Elaborated
+  , _toRunSyntax :: SyntaxWithImports Elaborated
   }
 
 makeLenses ''CodeToRun
@@ -166,8 +167,8 @@ parseCodeFile ::
 parseCodeFile filepath = do
   contents <- sendIO $ TIO.readFile filepath
   mpt <- sendIO . runError $ requireNonEmptyTerm =<< processSource contents Nothing
-  pt <- either (throwError @SystemFailure) (pure . snd) mpt -- XXX need SourceMap?
-  let srcLoc = pt ^. sLoc
+  pt <- either (throwError @SystemFailure) pure mpt
+  let srcLoc = getSyntax pt ^. sLoc
       strippedText = stripSrc srcLoc contents
       programBytestring = TL.encodeUtf8 $ TL.fromStrict strippedText
       sha1Hash = showDigest $ sha1 programBytestring
@@ -204,7 +205,7 @@ data GameState = GameState
   { _creativeMode :: Bool
   , _temporal :: TemporalState
   , _winCondition :: WinCondition Elaborated
-  , _winSolution :: Maybe (Syntax Elaborated)
+  , _winSolution :: Maybe (SyntaxWithImports Elaborated)
   , _robotInfo :: Robots
   , _pathCaching :: PathCaching
   , _discovery :: Discovery
@@ -236,7 +237,7 @@ winCondition :: Lens' GameState (WinCondition Elaborated)
 
 -- | How to win (if possible). This is useful for automated testing
 --   and to show help to cheaters (or testers).
-winSolution :: Lens' GameState (Maybe (Syntax Elaborated))
+winSolution :: Lens' GameState (Maybe (SyntaxWithImports Elaborated))
 
 -- | Get a list of all the robots at a particular location.
 robotsAtLocation :: Cosmic Location -> GameState -> [Robot Instantiated]

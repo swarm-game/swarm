@@ -95,7 +95,7 @@ import Swarm.Game.Ingredients (Count)
 import Swarm.Game.Tick
 import Swarm.Game.World (WorldUpdate (..))
 import Swarm.Language.Elaborate (insertSuspend)
-import Swarm.Language.Load (SourceMap)
+import Swarm.Language.Load (SourceMap, SyntaxWithImports (..))
 import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
@@ -326,12 +326,12 @@ cont = lens get set
     Waiting t c -> Waiting t (set c k)
     Suspended v e s _ -> Suspended v e s k
 
--- | Create a brand new CESK machine, with empty environment and
---   store, to evaluate a given term.  We always initialize the
---   machine with a single FExec frame as the continuation; if the
---   given term does not have a command type, we wrap it in @pure@.
-initMachine :: Syntax Elaborated -> CESK
-initMachine t = In (prepareTerm V.emptyEnv t) V.emptyEnv emptyStore [FExec]
+-- | Create a brand new CESK machine to evaluate a given term.  We
+--   always initialize the machine with a single FExec frame as the
+--   continuation; if the given term does not have a command type, we
+--   wrap it in @pure@.
+initMachine :: SyntaxWithImports Elaborated -> CESK
+initMachine (SyntaxWithImports srcMap t) = In (prepareTerm V.emptyEnv t) (V.envFromSrcMap srcMap) emptyStore [FExec]
 
 -- | Load a program into an existing robot CESK machine: either
 --   continue from a suspended state, or, as a fallback, start from
@@ -339,8 +339,8 @@ initMachine t = In (prepareTerm V.emptyEnv t) V.emptyEnv emptyStore [FExec]
 --
 --   Also insert a @suspend@ primitive at the end, so the resulting
 --   term is suitable for execution by the base (REPL) robot.
-continue :: SourceMap Elaborated -> Syntax Elaborated -> CESK -> CESK
-continue srcMap t = \case
+continue :: SyntaxWithImports Elaborated -> CESK -> CESK
+continue (SyntaxWithImports srcMap t) = \case
   -- The normal case is when we are continuing from a suspended state. We:
   --
   --   (1) insert a suspend call at the end of the term, so that in
