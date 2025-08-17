@@ -22,6 +22,7 @@ import Language.LSP.Protocol.Types qualified as LSP
 import Language.LSP.Server
 import Language.LSP.VFS (VirtualFile (..), virtualFileText)
 import Swarm.Failure (SystemFailure (..))
+import Swarm.Language.Load (SyntaxWithImports (..))
 import Swarm.Language.LSP.Hover qualified as H
 import Swarm.Language.LSP.VarUsage qualified as VU
 import Swarm.Language.Parser.Util (getLocRange)
@@ -84,7 +85,7 @@ validateSwarmCode doc version content = do
   res <- liftIO . runError $ processSource content Nothing
   let (errors, warnings) = case res of
         Right Nothing -> ([], [])
-        Right (Just (_, term)) -> ([], unusedWarnings)
+        Right (Just (SyntaxWithImports _ term)) -> ([], unusedWarnings)
          where
           VU.Usage _ problems = VU.getUsage mempty (eraseRaw term)
           unusedWarnings = mapMaybe (VU.toErrPos content) problems

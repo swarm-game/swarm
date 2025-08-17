@@ -21,6 +21,7 @@ module Swarm.Language.Pipeline (
 
   -- * Generic processing
   Processable (..),
+  processSyntax,
 ) where
 
 import Control.Algebra (Has)
@@ -34,13 +35,13 @@ import Data.Text (Text)
 import Data.Traversable (for)
 import Swarm.Failure (SystemFailure (..))
 import Swarm.Language.Elaborate
-import Swarm.Language.Load (SourceMap, resolve, resolve')
+import Swarm.Language.Load (SyntaxWithImports (..), eraseSourceMap, resolve, resolve')
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types (emptyTDCtx)
-import Swarm.Language.Value (Env, emptyEnv, envReqs, envTydefs, envTypes)
+import Swarm.Language.Value (Env, emptyEnv, envReqs, envSourceMap, envTydefs, envTypes)
 import Swarm.Util.Effect (withError, withThrow)
 
 -- | Given raw 'Text' representing swarm-lang source code:
@@ -59,7 +60,7 @@ processSource ::
   -- | Possible Env to use while typechecking.  If Nothing, use a
   --   default empty Env.
   Maybe Env ->
-  m (Maybe (SourceMap Elaborated, Syntax Elaborated))
+  m (Maybe (SyntaxWithImports Elaborated))
 processSource txt menv = do
   mt <- withThrow CanNotParseMegaparsec . liftEither $ readTerm' defaultParserConfig txt
   for mt $ \t -> processTerm txt t menv
@@ -75,21 +76,20 @@ processTerm ::
   -- | Possible Env to use while typechecking.  If Nothing, use a
   --   default empty Env.
   Maybe Env ->
-  m (SourceMap Elaborated, Syntax Elaborated)
+  m (SyntaxWithImports Elaborated)
 processTerm txt t menv = do
   let e = fromMaybe emptyEnv menv
-  -- XXX use sourcemap from e?
-  (tRes, srcMapRes) <- resolve t
-  (srcMapTy, tTy) <-
+  SyntaxWithImports srcMapRes tRes <- resolve t
+  SyntaxWithImports srcMapTy tTy <-
     withError (typeErrToSystemFailure txt) $
       inferTop
         (e ^. envTypes)
         (e ^. envReqs)
         (e ^. envTydefs)
-        srcMapRes
+        (srcMapRes <> eraseSourceMap (e ^. envSourceMap))
         tRes
   -- XXX what srcMap to use here?  Make sure, and write a note about it
-  pure (fmap elaborateModule srcMapTy, elaborate tTy)
+  pure $ SyntaxWithImports (fmap elaborateModule srcMapTy) (elaborate tTy)
 
 -- | Like 'processTerm', but don't allow any imports that need to be
 --   loaded (and hence would require IO).  If any imports are
@@ -108,7 +108,7 @@ processTermNoImports ::
 processTermNoImports txt t menv = do
   let e = fromMaybe emptyEnv menv
   tRes <- resolve' t
-  (_, tTy) <-
+  SyntaxWithImports _ tTy <-
     withError (typeErrToSystemFailure txt) $
       inferTop
         (e ^. envTypes)
@@ -141,8 +141,13 @@ requireNonEmptyTerm = maybe (throwError EmptyTerm) pure
 class Processable t where
   process :: (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) => t Raw -> m (t Elaborated)
 
-instance Processable Syntax where
-  process s = do
-    (s', srcMap) <- resolve s
-    r <- withError (typeErrToSystemFailure "") . inferTop mempty mempty emptyTDCtx srcMap $ s'
-    (pure . elaborate . snd) r
+instance Processable SyntaxWithImports where
+  process (SyntaxWithImports _ t) = do
+    SyntaxWithImports srcMapRes tRes <- resolve t
+    SyntaxWithImports srcMapTy tTy <- withError (typeErrToSystemFailure "") . inferTop mempty mempty emptyTDCtx srcMapRes $ tRes
+    pure $ SyntaxWithImports (M.map elaborateModule srcMapTy) (elaborate tTy)
+
+-- | XXX process syntax but deliberately throw away information about
+--   imports.  Used e.g. for processing code embedded in markdown.
+processSyntax :: (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) => Syntax Raw -> m (Syntax Elaborated)
+processSyntax = fmap getSyntax . process . SyntaxWithImports mempty

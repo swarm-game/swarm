@@ -113,6 +113,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (emptyFound
 import Swarm.Game.State.Config
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World.Gen (Seed)
+import Swarm.Language.Load (ModuleCtx, ModuleImports, SyntaxWithImports)
 import Swarm.Language.Syntax (Anchor, Const, ImportPhaseFor, Phase (..), SwarmType, Syntax, Unresolvable)
 import Swarm.Language.Types (Polytype)
 import Swarm.Language.Value (Value)
@@ -160,7 +161,7 @@ data WinCondition phase
   deriving (Generic)
 
 deriving instance FromJSON (WinCondition Raw)
-deriving instance (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase), Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase)) => ToJSON (WinCondition phase)
+deriving instance (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase), Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), ToJSON (ModuleCtx phase), ToJSON (ModuleImports phase)) => ToJSON (WinCondition phase)
 
 makePrisms ''WinCondition
 
@@ -318,7 +319,7 @@ data GameControls = GameControls
   , _replNextValueIndex :: Integer
   , _replListener :: Text -> IO ()
   , _inputHandler :: Maybe (Text, Value)
-  , _initiallyRunCode :: Maybe (Syntax Elaborated)
+  , _initiallyRunCode :: Maybe (SyntaxWithImports Elaborated)
   }
 
 makeLensesNoSigs ''GameControls
@@ -338,7 +339,7 @@ inputHandler :: Lens' GameControls (Maybe (Text, Value))
 
 -- | Code that is run upon scenario start, before any
 -- REPL interaction.
-initiallyRunCode :: Lens' GameControls (Maybe (Syntax Elaborated))
+initiallyRunCode :: Lens' GameControls (Maybe (SyntaxWithImports Elaborated))
 
 data Discovery = Discovery
   { _allDiscoveredEntities :: Inventory

@@ -48,7 +48,8 @@ import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Definitions qualified as AD
 import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.JSON ()
-import Swarm.Language.Pipeline (Processable (..))
+import Swarm.Language.Load (ModuleCtx, ModuleImports, SyntaxWithImports)
+import Swarm.Language.Pipeline (Processable (..), processSyntax)
 import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (..), SwarmType, Syntax, Unresolvable)
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Pretty (PrettyPrec)
@@ -101,7 +102,7 @@ instance FromJSON PrerequisiteConfig where
 data Objective phase = Objective
   { _objectiveGoal :: Markdown.Document (Syntax phase)
   , _objectiveTeaser :: Maybe Text
-  , _objectiveCondition :: Syntax phase
+  , _objectiveCondition :: SyntaxWithImports phase
   , _objectiveId :: Maybe ObjectiveLabel
   , _objectiveOptional :: Bool
   , _objectivePrerequisite :: Maybe PrerequisiteConfig
@@ -112,9 +113,9 @@ data Objective phase = Objective
 
 makeLensesNoSigs ''Objective
 
-deriving instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase)) => Show (Objective phase)
-deriving instance (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase), Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase)) => ToJSON (Objective phase)
-deriving instance (Eq (Anchor (ImportPhaseFor phase)), Eq (SwarmType phase)) => Eq (Objective phase)
+deriving instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase), Show (ModuleCtx phase), Show (ModuleImports phase)) => Show (Objective phase)
+deriving instance (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase), Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), ToJSON (ModuleImports phase), ToJSON (ModuleCtx phase)) => ToJSON (Objective phase)
+deriving instance (Eq (Anchor (ImportPhaseFor phase)), Eq (SwarmType phase), Eq (ModuleCtx phase), Eq (ModuleImports phase)) => Eq (Objective phase)
 
 instance ToSample (Objective phase) where
   toSamples _ = SD.noSamples
@@ -122,7 +123,7 @@ instance ToSample (Objective phase) where
 instance Processable Objective where
   process (Objective g t c i o p h a) =
     Objective
-      <$> traverse process g
+      <$> traverse processSyntax g
       <*> pure t
       <*> process c
       <*> pure i
@@ -143,7 +144,7 @@ objectiveTeaser :: Lens' (Objective phase) (Maybe Text)
 --   program of type @cmd bool@.  By default, this program will be
 --   run to completion every tick (the usual limits on the number
 --   of CESK steps per tick do not apply).
-objectiveCondition :: Lens' (Objective phase) (Syntax phase)
+objectiveCondition :: Lens' (Objective phase) (SyntaxWithImports phase)
 
 -- | Optional name by which this objective may be referenced
 -- as a prerequisite for other objectives.
@@ -198,9 +199,9 @@ data CompletionBuckets phase = CompletionBuckets
   }
   deriving (Generic)
 
-deriving instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase)) => Show (CompletionBuckets phase)
+deriving instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase), Show (ModuleCtx phase), Show (ModuleImports phase)) => Show (CompletionBuckets phase)
 deriving instance FromJSON (CompletionBuckets Raw)
-deriving instance (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase), Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase)) => ToJSON (CompletionBuckets phase)
+deriving instance (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase), Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), ToJSON (ModuleImports phase), ToJSON (ModuleCtx phase)) => ToJSON (CompletionBuckets phase)
 
 -- Note we derive these lenses for `CompletionBuckets` but we do NOT
 -- export them; they are used only internally to this module.  In
@@ -238,9 +239,9 @@ data ObjectiveCompletion phase = ObjectiveCompletion
 makeLensesFor [("_completedIDs", "internalCompletedIDs")] ''ObjectiveCompletion
 makeLensesExcluding ['_completedIDs] ''ObjectiveCompletion
 
-deriving instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase)) => Show (ObjectiveCompletion phase)
+deriving instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase), Show (ModuleCtx phase), Show (ModuleImports phase)) => Show (ObjectiveCompletion phase)
 deriving instance FromJSON (ObjectiveCompletion Raw)
-deriving instance (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase), Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase)) => ToJSON (ObjectiveCompletion phase)
+deriving instance (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase), Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), ToJSON (ModuleCtx phase), ToJSON (ModuleImports phase)) => ToJSON (ObjectiveCompletion phase)
 
 -- | Initialize an objective completion tracking record from a list of
 --   (initially incomplete) objectives.

@@ -105,7 +105,8 @@ import Swarm.Game.Universe
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (WorldMap)
-import Swarm.Language.Pipeline (Processable (..))
+import Swarm.Language.Load (ModuleCtx, ModuleImports, SyntaxWithImports)
+import Swarm.Language.Pipeline (Processable (..), processSyntax)
 import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (..), SwarmType, Syntax)
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Pretty (prettyText)
@@ -157,17 +158,17 @@ data ScenarioOperation (phase :: Phase) = ScenarioOperation
   -- ^ Note: the description is in this record instead of
   -- 'ScenarioMetadata' because it relates to the goals.
   , _scenarioObjectives :: [Objective phase]
-  , _scenarioSolution :: Maybe (Syntax phase)
+  , _scenarioSolution :: Maybe (SyntaxWithImports phase)
   , _scenarioRecipes :: [Recipe Entity]
   , _scenarioStepsPerTick :: Maybe Int
   }
 
-deriving instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase)) => Show (ScenarioOperation phase)
+deriving instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase), Show (ModuleCtx phase), Show (ModuleImports phase)) => Show (ScenarioOperation phase)
 
 instance Processable ScenarioOperation where
   process (ScenarioOperation c d o s r st) =
     ScenarioOperation c
-      <$> traverse process d
+      <$> traverse processSyntax d
       <*> traverse process o
       <*> traverse process s
       <*> pure r
@@ -191,7 +192,7 @@ scenarioObjectives :: Lens' (ScenarioOperation phase) [Objective phase]
 -- | An optional solution of the scenario, expressed as a
 --   program of type @cmd a@. This is useful for automated
 --   testing of the win condition.
-scenarioSolution :: Lens' (ScenarioOperation phase) (Maybe (Syntax phase))
+scenarioSolution :: Lens' (ScenarioOperation phase) (Maybe (SyntaxWithImports phase))
 
 -- | Optionally, specify the maximum number of steps each robot may
 --   take during a single tick.
