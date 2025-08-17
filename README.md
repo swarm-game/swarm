@@ -1,11 +1,11 @@
 Swarm
 =====
 
+[![Discord][badge-discord]][discord]
 [![Build Status][build-status]][actions]
 [![GitHub release (latest by date)][release-img]][releases]
 [![Swarm release on Hackage][hackage-img]][hackage]
 [![Contributor Covenant][badge-covenant]](CODE_OF_CONDUCT.md)
-[![Discord][badge-discord]][discord]
 [![All Contributors][contributors]](#contributors)
 
 [build-status]: https://github.com/swarm-game/swarm/actions/workflows/haskell-ci.yml/badge.svg
