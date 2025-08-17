@@ -726,7 +726,19 @@ stepCESK cesk = case cesk of
     return $ case M.lookup loc (e ^. envSourceMap) of
       -- The import should have already been typechecked at this point, so
       -- if it's not found in the source map, there must be a bug somewhere.
-      Nothing -> Up (Fatal (T.append "Import not found: " (into @Text (locToFilePath loc)))) s k
+      Nothing ->
+        let resolvedImports
+              | null (e ^. envSourceMap) = ["  (SourceMap is empty)"]
+              | otherwise =
+                  "  Resolved imports:"
+                    : map
+                      (T.append "  - " . into @Text . locToFilePath)
+                      (M.keys $ e ^. envSourceMap)
+
+            errMsg =
+              T.unlines $
+                T.append "Import not found: " (into @Text (locToFilePath loc)) : resolvedImports
+         in Up (Fatal errMsg) s k
       Just mmod -> case moduleTerm mmod of
         -- In theory there could be an import of an empty module
         Nothing -> In t e s k
