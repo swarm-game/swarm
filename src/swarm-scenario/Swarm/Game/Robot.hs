@@ -64,6 +64,8 @@ module Swarm.Game.Robot (
 
 import Control.Applicative ((<|>))
 import Control.Lens hiding (Const, contains)
+import Data.Aeson qualified as Ae
+import Data.Aeson.KeyMap qualified as KM
 import Data.Hashable (hashWithSalt)
 import Data.Kind qualified
 import Data.Text (Text)
@@ -81,7 +83,8 @@ import Swarm.Game.Location (Heading, Location, toHeading)
 import Swarm.Game.Robot.Walk
 import Swarm.Game.Universe
 import Swarm.Language.JSON ()
-import Swarm.Language.Pipeline (Processable (..))
+import Swarm.Language.Load (SyntaxWithImports)
+import Swarm.Language.Pipeline (Processable (..), processTerm)
 import Swarm.Language.Syntax (Phase (..), Syntax)
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Util.Lens (makeLensesExcluding)
@@ -132,11 +135,11 @@ type instance RobotLogUpdatedMember Typed = ()
 type instance RobotLogUpdatedMember Elaborated = ()
 
 type family RobotMachine (phase :: Phase) :: Data.Kind.Type
-type instance RobotMachine Raw = Maybe (Syntax Raw)
-type instance RobotMachine Resolved = Maybe (Syntax Resolved)
-type instance RobotMachine Inferred = Maybe (Syntax Inferred)
-type instance RobotMachine Typed = Maybe (Syntax Typed)
-type instance RobotMachine Elaborated = Maybe (Syntax Elaborated)
+type instance RobotMachine Raw = Maybe (Text, Syntax Raw)
+type instance RobotMachine Resolved = Maybe (SyntaxWithImports Resolved)
+type instance RobotMachine Inferred = Maybe (SyntaxWithImports Inferred)
+type instance RobotMachine Typed = Maybe (SyntaxWithImports Typed)
+type instance RobotMachine Elaborated = Maybe (SyntaxWithImports Elaborated)
 
 -- | A value of type 'Robot' is a record representing the state of a
 --   single robot.
@@ -165,7 +168,7 @@ data Robot (phase :: Phase) = Robot
 instance Processable Robot where
   process (Robot e d c l upd loc i p h m s sd a ra u ca) =
     Robot e d c l upd loc i p h
-      <$> traverse process m
+      <$> traverse (\(src, t) -> processTerm src t Nothing) m
       <*> pure s
       <*> pure sd
       <*> pure a
@@ -324,7 +327,6 @@ mkRobot ::
   , RobotLocation phase ~ Maybe (Cosmic Location)
   , RobotLogMember phase ~ ()
   , RobotLogUpdatedMember phase ~ ()
-  , RobotMachine phase ~ Maybe (Syntax phase)
   ) =>
   Maybe Int ->
   -- | Name of the robot.
@@ -338,7 +340,7 @@ mkRobot ::
   -- | Robot display.
   Display ->
   -- | Initial CESK machine.
-  Maybe (Syntax phase) ->
+  RobotMachine phase ->
   -- | Equipped devices.
   [Entity] ->
   -- | Initial inventory.
@@ -395,13 +397,19 @@ instance FromJSONE TerrainEntityMaps (Robot Raw) where
     sys <- liftE $ v .:? "system" .!= False
     let defDisplay = defaultRobotDisplay & invisible .~ sys
 
+    -- Parse the robot program but also store the original text, for
+    -- use in displaying error messages while typechecking
+    prog <- case KM.lookup "program" v of
+      Just progV -> liftE $ Ae.withText "program" (\txt -> ((fmap . fmap) (txt,)) (v .:? "program")) progV
+      _ -> pure Nothing
+
     mkRobot Nothing
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= mempty)
       <*> liftE (v .:? "loc")
       <*> liftE (fmap getHeading $ v .:? "dir" .!= HeadingSpec zero)
       <*> localE (const defDisplay) (v ..:? "display" ..!= defDisplay)
-      <*> liftE (v .:? "program")
+      <*> pure prog
       <*> localE (view entityMap) (v ..:? "devices" ..!= [])
       <*> localE (view entityMap) (v ..:? "inventory" ..!= [])
       <*> pure sys

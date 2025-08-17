@@ -47,7 +47,7 @@ quoteTermExp (into @Text -> s) = do
   processed <- TH.runIO . runError @SystemFailure $ processTerm s parsed Nothing
   case processed of
     Left err -> failT [prettyText err]
-    Right (_, ptm) -> dataToExpQ ((fmap liftText . cast) `extQ` antiTermExp) ptm
+    Right ptm -> dataToExpQ ((fmap liftText . cast) `extQ` antiTermExp) ptm
 
 antiTermExp :: Term Typed -> Maybe TH.ExpQ
 antiTermExp (TAntiText v) =

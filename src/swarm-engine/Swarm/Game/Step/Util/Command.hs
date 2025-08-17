@@ -56,6 +56,7 @@ import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability
+import Swarm.Language.Load (SyntaxWithImports)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Requirements.Type qualified as R
 import Swarm.Language.Syntax
@@ -517,7 +518,7 @@ seedProgram ::
   Integer ->
   -- | entity to place
   EntityName ->
-  Syntax Elaborated
+  SyntaxWithImports Elaborated
 seedProgram _minTime _randTime _seedlingCount _seedlingRadius _thing =
   [tmQ|
     def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
@@ -587,7 +588,7 @@ addAsphyxiateBot ts loc =
 --   we detect that the base has the life support system re-equipped,
 --   stop the countdown and self-destruct.  Otherwise, at the end of
 --   the countdown, destroy the base.
-asphyxiateProg :: Syntax Elaborated
+asphyxiateProg :: SyntaxWithImports Elaborated
 asphyxiateProg =
   [tmQ|
     def countdown : Int -> Cmd Unit = \n.
