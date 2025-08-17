@@ -1,6 +1,7 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -57,6 +58,7 @@ import Data.Text qualified as T
 import Linear (zero)
 import Prettyprinter (pretty)
 import Swarm.Effect as Effect (Time, getNow, measureCpuTimeInSec)
+import Swarm.Effect.Log qualified as Effect
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
 import Swarm.Game.Cosmetic.Display
@@ -95,7 +97,12 @@ import Witch (From (from))
 import Prelude hiding (lookup)
 
 -- | GameState with support for IO and Time effect
-type HasGameStepState sig m = (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m)
+type HasGameStepState sig m =
+  ( Has (State GameState) sig m
+  , Has Effect.Time sig m
+  , Has Effect.Log sig m
+  , Has (Lift IO) sig m
+  )
 
 -- | The main function to do one game tick.
 --
@@ -120,14 +127,17 @@ gameTick = measureCpuTimeInSec runTick >>= updateMetrics
   runTick :: m Bool
   runTick = do
     time <- use $ temporal . ticks
-    zoomRobots $ wakeUpRobotsDoneSleeping time
-    ticked <- runActiveRobots
-    updateBaseReplState
-    -- Possibly update the view center.
-    modify (robotInfo %~ recalcViewCenter)
-    -- On new tick see if the winning condition for the current objective is met
-    when ticked hypotheticalWinCheck'
-    return ticked
+    Effect.localData ["tick" Effect..= time] $ do
+      Effect.logTrace_ "Running tick"
+      zoomRobots $ wakeUpRobotsDoneSleeping time
+      ticked <- runActiveRobots
+      updateBaseReplState
+      -- Possibly update the view center.
+      modify (robotInfo %~ recalcViewCenter)
+      -- On new tick see if the winning condition for the current objective is met
+      when ticked hypotheticalWinCheck'
+      Effect.logTrace_ "Finished tick"
+      return ticked
 
 -- | Run active robots for this tick or just single step.
 runActiveRobots :: HasGameStepState sig m => m Bool
@@ -346,7 +356,8 @@ data CompletionsWithExceptions = CompletionsWithExceptions
 -- 3) The iteration needs to be a "fold", so that state is updated
 --    after each element.
 hypotheticalWinCheck ::
-  (Has (State GameState) sig m, Has Effect.Time sig m, Has (Lift IO) sig m) =>
+  forall m sig.
+  HasGameStepState sig m =>
   WinStatus ->
   ObjectiveCompletion ->
   m ()
@@ -377,7 +388,8 @@ hypotheticalWinCheck ws oc = do
 
   let gameFinished = newWinState /= Ongoing
   let finishedObjectives = notNull queue
-  when (finishedObjectives && (gameFinished || shouldPause == PauseOnAnyObjective)) $
+  when (finishedObjectives && (gameFinished || shouldPause == PauseOnAnyObjective)) $ do
+    Effect.logInfo "Objectives finished, pausing game" queue
     temporal . runStatus .= AutoPause
 
   mapM_ handleException $ exceptions finalAccumulator
