@@ -80,7 +80,7 @@ import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
 import Swarm.Game.Tick
 import Swarm.Language.Capability
-import Swarm.Language.Load (moduleTerm)
+import Swarm.Language.Load (SyntaxWithImports, moduleTerm)
 import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.TDVar (tdVarName)
@@ -449,7 +449,7 @@ evalT ::
   , Has (State GameState) sig m
   , Has (Lift IO) sig m
   ) =>
-  Syntax Elaborated ->
+  SyntaxWithImports Elaborated ->
   m Value
 evalT = evaluateCESK . initMachine
 

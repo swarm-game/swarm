@@ -1237,10 +1237,10 @@ execConst runChildProg c vs s k = do
 
         case mt of
           Nothing -> return $ mkReturn ()
-          Just (_, t) -> do
+          Just t -> do
             void $ traceLog CmdStatus Info "run: OK."
             cesk <- use machine
-            return $ continue M.empty t cesk
+            return $ continue t cesk
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k
