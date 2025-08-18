@@ -72,6 +72,7 @@ module Swarm.Game.State (
   mtlEntityAt,
   contentAt,
   zoomWorld,
+  zoomWorld2,
   zoomRobots,
 
   -- * Re-exports
@@ -108,6 +109,7 @@ import Data.Text.Lazy.Encoding qualified as TL
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
 import Swarm.Failure (SystemFailure (..))
+import Swarm.Effect qualified as Effect
 import Swarm.Game.CESK (Store, emptyStore, store, suspendedEnv)
 import Swarm.Game.Entity
 import Swarm.Game.Land
@@ -135,6 +137,7 @@ import Swarm.Language.Value (Env)
 import Swarm.Log
 import Swarm.Util (applyWhen, uniq)
 import Swarm.Util.Lens (makeLensesNoSigs)
+import Control.Carrier.Lift qualified as Fused
 
 newtype Sha1 = Sha1 String
   deriving (Show, Eq, Ord, Generic, ToJSON)
@@ -577,5 +580,19 @@ zoomWorld swName n = do
   mw <- use $ landscape . multiWorld
   forM (M.lookup swName mw) $ \w -> do
     let (w', a) = run (Fused.runState w n)
+    landscape . multiWorld %= M.insert swName w'
+    return a
+
+-- | Perform an action requiring a 'W.World' state component in a
+--   larger context with a 'GameState'.
+zoomWorld2 ::
+  (Has (State GameState) sig m, Has (Lift IO) sig m) =>
+  SubworldName ->
+  Effect.TimeIOC (Effect.MetricIOC (Fused.StateC (W.World Int Entity) (Fused.LiftC IO))) b ->
+  m (Maybe b)
+zoomWorld2 swName n = do
+  mw <- use $ landscape . multiWorld
+  forM (M.lookup swName mw) $ \w -> do
+    (w', a) <- Fused.sendIO . Fused.runM . Fused.runState w . Effect.runMetricIO $ Effect.runTimeIO n
     landscape . multiWorld %= M.insert swName w'
     return a

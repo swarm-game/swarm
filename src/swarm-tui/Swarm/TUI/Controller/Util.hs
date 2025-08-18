@@ -23,6 +23,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Graphics.Vty qualified as V
 import Swarm.Effect (TimeIOC, runTimeIO, MetricIOC (runMetricIO))
+import Swarm.Effect qualified as Effect
 import Swarm.Game.CESK (continue)
 import Swarm.Game.Device
 import Swarm.Game.Robot (robotCapabilities)
@@ -187,10 +188,11 @@ loadVisibleRegion = do
   mext <- lookupExtent WorldExtent
   forM_ mext $ \(Extent _ _ size) -> do
     vc <- use $ robotInfo . viewCenter
+    wMetric <- use $ landscape . worldMetrics
     let vr = viewingRegion vc (over both fromIntegral size)
     let swName = vr ^. subworld
     let f :: Fused.StateC GameState (Fused.LiftC IO) ()
-        f = void . zoomWorld swName $ W.loadRegionM @Int @Entity (vr ^. planar)
+        f = void . zoomWorld2 swName $ W.loadRegionM @Int @Entity wMetric (vr ^. planar)
     gs <- get
     gs' <- liftIO . Fused.runM $ Fused.execState gs f
     put gs'

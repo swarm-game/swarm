@@ -51,6 +51,7 @@ module Swarm.Game.World (
 import Control.Algebra (Has)
 import Control.Effect.Lens (use)
 import Control.Effect.State (State, get, modify, state)
+import Control.Carrier.Lift qualified as Fused
 import Control.Lens hiding (use)
 import Control.Parallel.Strategies (evalTuple2, parMap, rpar, rseq)
 import Data.Array qualified as A
@@ -308,20 +309,19 @@ loadCell c = loadRegion (c, c)
 
 loadRegionM ::
   forall t e sig m.
-  -- (IArray U.UArray t, Has (State (World t e)) sig m, Has Effect.Metric sig m, Has Effect.Time sig m) =>
-  (IArray U.UArray t, Has (State (World t e)) sig m) =>
-  -- Maybe WorldMetrics ->
+  (IArray U.UArray t, Has (State (World t e)) sig m, Has Effect.Metric sig m, Has Effect.Time sig m) =>
+  Maybe WorldMetrics ->
   (Coords, Coords) ->
   m ()
-loadRegionM {- wm -} = {- updateMetric . -} modify @(World t e) . loadRegion
-  -- where
-  --   updateMetric m = case wm of
-  --     Nothing -> m
-  --     Just wMetrics -> do
-  --       (loadTime, ()) <- Effect.measureCpuTimeInSec m
-  --       tileCount <- use @(World t e) $ tileCache . to M.size
-  --       Effect.gaugeSet wMetrics.loadedTiles tileCount
-  --       Effect.distributionAdd wMetrics.tileLoadTime loadTime
+loadRegionM wm = updateMetric . modify @(World t e) . loadRegion
+  where
+    updateMetric m = case wm of
+      Nothing -> m
+      Just wMetrics -> do
+        (loadTime, ()) <- Effect.measureCpuTimeInSec m
+        tileCount <- use @(World t e) $ tileCache . to M.size
+        Effect.gaugeSet wMetrics.loadedTiles tileCount
+        Effect.distributionAdd wMetrics.tileLoadTime loadTime
 
 -- | Load all the tiles which overlap the given rectangular region
 --   (specified as an upper-left and lower-right corner, inclusive).
