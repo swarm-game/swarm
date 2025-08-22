@@ -50,7 +50,7 @@ import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Util (adaptGameState)
 import Swarm.Game.World.DSL (Seed)
-import Swarm.Game.World.WorldMetrics (WorldMetrics, initWorldMetrics)
+import Swarm.Game.World.Metrics (WorldMetrics, initWorldMetrics)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Syntax (allConst, erase)
 import Swarm.Language.Types

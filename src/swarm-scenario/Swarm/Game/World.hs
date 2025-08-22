@@ -71,8 +71,8 @@ import Swarm.Game.Terrain (TerrainMap, TerrainType (BlankT), terrainByIndex, ter
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Function
+import Swarm.Game.World.Metrics (WorldMetrics (..))
 import Swarm.Game.World.Tile
-import Swarm.Game.World.WorldMetrics (WorldMetrics (..))
 import Swarm.Util ((?))
 import Prelude hiding (Foldable (..), lookup)
 

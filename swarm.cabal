@@ -672,9 +672,9 @@ library swarm-scenario
     Swarm.Game.World.DSL.Syntax
     Swarm.Game.World.DSL.Typecheck
     Swarm.Game.World.Function
+    Swarm.Game.World.Metrics
     Swarm.Game.World.Render
     Swarm.Game.World.Tile
-    Swarm.Game.World.WorldMetrics
     Swarm.Util.Content
 
   other-modules: Paths_swarm

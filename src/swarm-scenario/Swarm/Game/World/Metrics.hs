@@ -7,7 +7,7 @@
 -- Description: Game-related state and utilities
 --
 -- Definition of metrics tracked for world.
-module Swarm.Game.World.WorldMetrics (
+module Swarm.Game.World.Metrics (
   WorldMetrics (..),
   initWorldMetrics,
 ) where
