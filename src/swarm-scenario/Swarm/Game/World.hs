@@ -43,8 +43,12 @@ module Swarm.Game.World (
 
   -- ** Runtime updates
   WorldUpdate (..),
+
+  -- * Re-Exports
+  module Coords,
 ) where
 
+import Swarm.Game.World.Coords as Coords
 import Swarm.Game.World.Function
 import Swarm.Game.World.Multi
 import Swarm.Game.World.Pure
