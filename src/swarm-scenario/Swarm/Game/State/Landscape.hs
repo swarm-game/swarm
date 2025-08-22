@@ -91,7 +91,7 @@ recognizerAutomatons :: Lens' Landscape (RecognizerAutomatons RecognizableStruct
 worldScrollable :: Lens' Landscape Bool
 
 -- | TODO: ONDRA
-worldMetrics :: Lens' Landscape WorldMetrics
+worldMetrics :: Lens' Landscape (Maybe WorldMetrics)
 
 -- | Create an record that is empty except for
 -- system-provided entities.
