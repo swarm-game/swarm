@@ -23,7 +23,7 @@ import Control.Monad (forM_, when)
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Linear (zero)
-import Swarm.Effect as Effect (Time, getNow)
+import Swarm.Effect as Effect (Time, getNow, Metric)
 import Swarm.Game.CESK (initMachine)
 import Swarm.Game.Cosmetic.Attribute
 import Swarm.Game.Cosmetic.Display
@@ -47,7 +47,11 @@ import Swarm.Util hiding (both)
 import System.Clock (TimeSpec)
 import Prelude hiding (lookup)
 
-igniteCommand :: (HasRobotStepState sig m, Has Effect.Time sig m) => Const -> Direction -> m ()
+igniteCommand ::
+  (HasRobotStepState sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
+  Const ->
+  Direction ->
+  m ()
 igniteCommand c d = do
   (loc, me) <- lookInDirection d
   -- Ensure there is an entity here.

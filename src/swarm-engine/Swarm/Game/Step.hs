@@ -56,7 +56,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Linear (zero)
 import Prettyprinter (pretty)
-import Swarm.Effect as Effect (Time, getNow, measureCpuTimeInSec)
+import Swarm.Effect as Effect (Time, getNow, measureCpuTimeInSec, Metric)
+import Swarm.Effect qualified as Effect
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
 import Swarm.Game.Cosmetic.Display
@@ -95,7 +96,7 @@ import Witch (From (from))
 import Prelude hiding (lookup)
 
 -- | GameState with support for IO and Time effect
-type HasGameStepState sig m = (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m)
+type HasGameStepState sig m = (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m, Has Effect.Metric sig m)
 
 -- | The main function to do one game tick.
 --
@@ -346,7 +347,11 @@ data CompletionsWithExceptions = CompletionsWithExceptions
 -- 3) The iteration needs to be a "fold", so that state is updated
 --    after each element.
 hypotheticalWinCheck ::
-  (Has (State GameState) sig m, Has Effect.Time sig m, Has (Lift IO) sig m) =>
+  (Has (State GameState) sig m
+  , Has Effect.Time sig m
+  , Has Effect.Metric sig m
+  , Has (Lift IO) sig m
+  ) =>
   WinStatus ->
   ObjectiveCompletion ->
   m ()
@@ -442,6 +447,7 @@ hypotheticalWinCheck ws oc = do
 -- | Helper function to evaluate code in a fresh CESK machine.
 evalT ::
   ( Has Effect.Time sig m
+  , Has Effect.Metric sig m
   , Has (Throw Exn) sig m
   , Has (State GameState) sig m
   , Has (Lift IO) sig m
@@ -472,6 +478,7 @@ hypotheticalRobot m =
 
 evaluateCESK ::
   ( Has Effect.Time sig m
+  , Has Effect.Metric sig m
   , Has (Throw Exn) sig m
   , Has (State GameState) sig m
   , Has (Lift IO) sig m
@@ -486,6 +493,7 @@ evaluateCESK cesk = do
 
 runCESK ::
   ( Has Effect.Time sig m
+  , Has Effect.Metric sig m
   , Has (Lift IO) sig m
   , Has (Throw Exn) sig m
   , Has (State GameState) sig m
@@ -559,7 +567,7 @@ data SKpair = SKpair Store Cont
 --
 -- Compare to "withExceptions".
 processImmediateFrame ::
-  (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) =>
+  (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
   Value ->
   SKpair ->
   -- | the unreliable computation
@@ -573,7 +581,9 @@ processImmediateFrame v (SKpair s k) unreliableComputation = do
 
 -- | The main CESK machine workhorse.  Given a robot, look at its CESK
 --   machine state and figure out a single next step.
-stepCESK :: (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => CESK -> m CESK
+stepCESK ::
+  (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
+  CESK -> m CESK
 stepCESK cesk = case cesk of
   ------------------------------------------------------------
   -- Evaluation
@@ -918,7 +928,7 @@ stepCESK cesk = case cesk of
 -- capable of executing any commands; the As command
 -- already requires "God" capability.
 runChildProg ::
-  (HasRobotStepState sig m, Has Effect.Time sig m, Has (Lift IO) sig m) =>
+  (HasRobotStepState sig m, Has Effect.Time sig m, Has Effect.Metric sig m, Has (Lift IO) sig m) =>
   Store ->
   Robot ->
   Value ->
@@ -931,7 +941,13 @@ runChildProg s r prog = do
 -- | Execute a constant, catching any exception thrown and returning
 --   it via a CESK machine state.
 evalConst ::
-  (Has (State GameState) sig m, Has (State Robot) sig m, Has Effect.Time sig m, Has (Lift IO) sig m) => Const -> [Value] -> Store -> Cont -> m CESK
+  ( Has (State GameState) sig m
+  , Has (State Robot) sig m
+  , Has Effect.Time sig m
+  , Has Effect.Metric sig m
+  , Has (Lift IO) sig m
+  ) =>
+  Const -> [Value] -> Store -> Cont -> m CESK
 evalConst c vs s k = do
   res <- runError $ execConst runChildProg c vs s k
   case res of

@@ -2,6 +2,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -38,6 +39,13 @@ import Swarm.Game.World.Coords
 import Swarm.Game.World.Metrics (WorldMetrics (..))
 import Swarm.Game.World.Pure
 import Prelude hiding (Foldable (..), lookup)
+
+type HasWorldStateEffect t e sig m =
+  ( IArray U.UArray t
+  , Has (State (World t e)) sig m
+  , Has Effect.Metric sig m
+  , Has Effect.Time sig m
+  )
 
 -- | A stateful variant of 'lookupTerrain', which first loads the tile
 --   containing the given coordinates if it is not already loaded,
@@ -77,16 +85,18 @@ lookupEntityM c = do
 --   containing the given coordinates is loaded.
 updateM ::
   forall t sig m.
-  (Has (State (World t Entity)) sig m, IArray U.UArray t) =>
+  HasWorldStateEffect t Entity sig m =>
+  Maybe WorldMetrics ->
   Coords ->
   (Maybe Entity -> Maybe Entity) ->
   m (CellUpdate Entity)
-updateM c g = do
-  state @(World t Entity) $ update c g . loadCell c
+updateM wm c g = do
+  loadCellM @t @Entity wm c
+  state @(World t Entity) $ update c g
 
 loadCellM ::
   forall t e sig m.
-  (IArray U.UArray t, Has (State (World t e)) sig m, Has Effect.Metric sig m, Has Effect.Time sig m) =>
+  HasWorldStateEffect t e sig m =>
   Maybe WorldMetrics ->
   Coords ->
   m ()
@@ -94,7 +104,7 @@ loadCellM wm c = loadRegionM @t @e wm (c, c)
 
 loadRegionM ::
   forall t e sig m.
-  (IArray U.UArray t, Has (State (World t e)) sig m, Has Effect.Metric sig m, Has Effect.Time sig m) =>
+  HasWorldStateEffect t e sig m =>
   Maybe WorldMetrics ->
   (Coords, Coords) ->
   m ()

@@ -66,6 +66,7 @@ import Swarm.Log
 import Swarm.Util (applyWhen)
 import System.Clock (TimeSpec)
 import Prelude hiding (lookup)
+import Swarm.Effect qualified as Effect
 
 data GrabbingCmd
   = Grab'
@@ -399,7 +400,8 @@ traceLog source sev msg = do
   return m
 
 updateWorldAndRobots ::
-  (HasRobotStepState sig m) =>
+  forall sig m.
+  (HasRobotStepState sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
   Const ->
   [WorldUpdate Entity] ->
   [RobotUpdate] ->
@@ -437,7 +439,9 @@ createLogEntry source sev msg = do
 
 -- | replace some entity in the world with another entity
 updateWorld ::
-  HasRobotStepState sig m =>
+  forall sig m.
+  -- TODO: (Has (State GameState) sig m, Has (State Robot) sig m, Has (Throw Exn) sig m, Has (Lift IO) sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
+  (HasRobotStepState sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
   Const ->
   WorldUpdate Entity ->
   m ()

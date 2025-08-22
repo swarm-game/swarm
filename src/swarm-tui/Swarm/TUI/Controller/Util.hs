@@ -219,11 +219,11 @@ resetViewport n = do
 -- | Modifies the game state using a fused-effect state action.
 zoomGameStateFromAppState ::
   (MonadState AppState m, MonadIO m) =>
-  Fused.StateC GameState (Effect.TimeIOC (Fused.LiftC IO)) a ->
+  Fused.StateC GameState (Effect.MetricIOC (Effect.TimeIOC (Fused.LiftC IO))) a ->
   m a
 zoomGameStateFromAppState f = do
   gs <- use z
-  (gs', a) <- liftIO . Fused.runM . Effect.runTimeIO $ Fused.runState gs f
+  (gs', a) <- liftIO (Fused.runM . Effect.runTimeIO . Effect.runMetricIO $ Fused.runState gs f)
   z .= gs'
   return a
  where
@@ -233,22 +233,22 @@ zoomGameStateFromAppState f = do
 -- | Modifies the game state using a fused-effect state action.
 zoomGameStateFromScenarioState ::
   (MonadState ScenarioState m, MonadIO m) =>
-  Fused.StateC GameState (Effect.TimeIOC (Fused.LiftC IO)) a ->
+  Fused.StateC GameState (Effect.MetricIOC (Effect.TimeIOC (Fused.LiftC IO))) a ->
   m a
 zoomGameStateFromScenarioState f = do
   gs <- use gameState
-  (gs', a) <- liftIO (Fused.runM (Effect.runTimeIO (Fused.runState gs f)))
+  (gs', a) <- liftIO (Fused.runM . Effect.runTimeIO . Effect.runMetricIO $ Fused.runState gs f)
   gameState .= gs'
   return a
 
 -- | Modifies the game state using a fused-effect state action.
 zoomGameStateFromPlayState ::
   (MonadState PlayState m, MonadIO m) =>
-  Fused.StateC GameState (Effect.TimeIOC (Fused.LiftC IO)) a ->
+  Fused.StateC GameState (Effect.MetricIOC (Effect.TimeIOC (Fused.LiftC IO))) a ->
   m a
 zoomGameStateFromPlayState f = do
   gs <- use $ scenarioState . gameState
-  (gs', a) <- liftIO (Fused.runM (Effect.runTimeIO (Fused.runState gs f)))
+  (gs', a) <- liftIO (Fused.runM . Effect.runTimeIO . Effect.runMetricIO $ Fused.runState gs f)
   scenarioState . gameState .= gs'
   return a
 

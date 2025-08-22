@@ -73,6 +73,7 @@ module Swarm.Game.State (
   contentAt,
   zoomWorld,
   zoomWorld2,
+  zoomWorld3,
   zoomRobots,
 
   -- * Re-exports
@@ -594,5 +595,20 @@ zoomWorld2 swName n = do
   mw <- use $ landscape . multiWorld
   forM (M.lookup swName mw) $ \w -> do
     (w', a) <- Fused.sendIO . Fused.runM . Fused.runState w . Effect.runMetricIO $ Effect.runTimeIO n
+    landscape . multiWorld %= M.insert swName w'
+    return a
+
+-- | Perform an action requiring a 'W.World' state component in a
+--   larger context with a 'GameState'.
+zoomWorld3 ::
+  forall sig m b.
+  (Has (State GameState) sig m) =>
+  SubworldName ->
+  Fused.StateC (W.World Int Entity) m b ->
+  m (Maybe b)
+zoomWorld3 swName n = do
+  mw <- use $ landscape . multiWorld
+  forM (M.lookup swName mw) $ \w -> do
+    (w', a) <- Fused.runState w n
     landscape . multiWorld %= M.insert swName w'
     return a

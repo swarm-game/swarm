@@ -30,7 +30,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario.Topography.Modify qualified as WM
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking qualified as SRT
 import Swarm.Game.State
-import Swarm.Game.State.Landscape (recognizerAutomatons)
+import Swarm.Game.State.Landscape (recognizerAutomatons, worldMetrics)
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Path.Cache
@@ -48,6 +48,7 @@ import Swarm.ResourceLoading (NameGenerator (..))
 import Swarm.Util hiding (both)
 import System.Random (UniformRange, uniformR)
 import Prelude hiding (lookup)
+import Swarm.Effect qualified as Effect
 
 deriveHeading :: HasRobotStepState sig m => Direction -> m Heading
 deriveHeading d = do
@@ -74,15 +75,15 @@ adaptGameState f = do
 -- | Modify the entity (if any) at a given location, and mark the cell
 --   dirty (i.e. needing to be redrawn) if anything changes.
 updateEntityAt ::
-  (Has (State Robot) sig m, Has (State GameState) sig m) =>
+  (Has (State Robot) sig m, Has (State GameState) sig m, Has Effect.Metric sig m, Has Effect.Time sig m) =>
   Cosmic Location ->
   (Maybe Entity -> Maybe Entity) ->
   m ()
 updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
+  wMetric <- use $ landscape . worldMetrics
   someChange <-
-    -- TODO: metrics
-    zoomWorld subworldName $
-      W.updateM @Int (locToCoords loc) upd
+    zoomWorld3 subworldName $
+      W.updateM @Int wMetric (locToCoords loc) upd
 
   forM_ (WM.getModification =<< someChange) $ \modType -> do
     currentTick <- use $ temporal . ticks

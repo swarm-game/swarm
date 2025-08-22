@@ -45,7 +45,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Tuple (swap)
 import Linear (V2 (..), perp, zero)
-import Swarm.Effect as Effect (Time, getNow)
+import Swarm.Effect qualified as Effect
 import Swarm.Failure
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
@@ -122,7 +122,7 @@ data GrabRemoval = DeferRemoval | PerformRemoval
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
 execConst ::
-  (HasRobotStepState sig m, Has Effect.Time sig m, Has (Lift IO) sig m) =>
+  (HasRobotStepState sig m, Has Effect.Time sig m, Has Effect.Metric sig m, Has (Lift IO) sig m) =>
   -- | Need to pass this function as an argument to avoid module import cycle
   -- The supplied function invokes 'runCESK', which lives in "Swarm.Game.Step".
   (Store -> Robot -> Value -> m Value) ->
@@ -457,7 +457,7 @@ execConst runChildProg c vs s k = do
                   , "Please re-equip!"
                   ]
           void $ traceLog Logged Warning warnMsg
-          createdAt <- getNow
+          createdAt <- Effect.getNow
           loc <- use robotLocation
           addAsphyxiateBot createdAt loc
 
@@ -1119,7 +1119,7 @@ execConst runChildProg c vs s k = do
 
         -- Pick a random display name.
         displayName <- randomName
-        createdAt <- getNow
+        createdAt <- Effect.getNow
         isSystemRobot <- use systemRobot
 
         -- Construct the new robot and add it to the world.
@@ -1499,7 +1499,7 @@ execConst runChildProg c vs s k = do
       f d x = map (d,) . take 4 . iterate perp $ V2 x (d - x)
 
   finishCookingRecipe ::
-    HasRobotStepState sig m =>
+    (HasRobotStepState sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
     Recipe e ->
     Value ->
     [WorldUpdate Entity] ->
@@ -1815,7 +1815,7 @@ execConst runChildProg c vs s k = do
       em <- use $ landscape . terrainAndEntities . entityMap
       let seedEntity = fromMaybe e $ (`lookupEntityName` em) =<< maybeMaturesTo
 
-      createdAt <- getNow
+      createdAt <- Effect.getNow
       let radius = maybe 1 spreadRadius maybeSpread
           seedlingDensity = maybe 0 spreadDensity maybeSpread
           -- See https://en.wikipedia.org/wiki/Triangular_number#Formula
@@ -1840,7 +1840,9 @@ execConst runChildProg c vs s k = do
   -- The code for grab and harvest is almost identical, hence factored
   -- out here.
   -- Optionally defer removal from the world, for the case of the Swap command.
-  doGrab :: (HasRobotStepState sig m, Has Effect.Time sig m) => GrabbingCmd -> GrabRemoval -> m Entity
+  doGrab ::
+    (HasRobotStepState sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
+    GrabbingCmd -> GrabRemoval -> m Entity
   doGrab cmd removalDeferral = do
     let verb = verbGrabbingCmd cmd
         verbed = verbedGrabbingCmd cmd
