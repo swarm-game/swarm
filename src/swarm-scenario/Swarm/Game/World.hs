@@ -15,33 +15,32 @@
 -- indexed by 32-bit signed integers, so they correspond to a
 -- \( 2^{32} \times 2^{32} \) torus).
 module Swarm.Game.World (
-  -- * Worlds
+  -- * World function
   WorldFun (..),
   runWF,
   worldFunFromArray,
+
+  -- * Worlds
   World,
-  MultiWorld,
+  newWorld,
 
   -- ** Tile management
   loadCell,
   loadRegion,
 
-  -- ** World functions
-  newWorld,
-  lookupCosmicTerrain,
-  lookupTerrain,
-  lookupCosmicEntity,
-  lookupEntity,
-  update,
-
-  -- ** Monadic variants
+  -- ** Monadic functions
   lookupTerrainM,
   lookupEntityM,
   lookupContentM,
   updateM,
   loadRegionM,
 
-  -- ** Runtime updates
+  -- * Multi-Worlds
+  MultiWorld,
+  lookupCosmicTerrain,
+  lookupCosmicEntity,
+
+  -- * Runtime updates
   WorldUpdate (..),
 
   -- * Re-Exports
