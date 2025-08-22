@@ -10,7 +10,7 @@
 -- Description: Grid on which the game takes place
 --
 -- Function to produce world with entities and terrain.
-module Swarm.Game.World.WorldFunction (
+module Swarm.Game.World.Function (
   WorldFun (..),
   runWF,
   worldFunFromArray,

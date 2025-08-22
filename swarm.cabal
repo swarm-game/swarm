@@ -671,9 +671,9 @@ library swarm-scenario
     Swarm.Game.World.DSL.Parse
     Swarm.Game.World.DSL.Syntax
     Swarm.Game.World.DSL.Typecheck
+    Swarm.Game.World.Function
     Swarm.Game.World.Render
     Swarm.Game.World.Tile
-    Swarm.Game.World.WorldFunction
     Swarm.Game.World.WorldMetrics
     Swarm.Util.Content
 
