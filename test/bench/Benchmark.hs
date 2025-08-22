@@ -148,7 +148,7 @@ mkGameState prog robotMaker numRobots = do
       runAccum mempty . initRuntimeState $
         RuntimeOptions {startPaused = False, pauseOnObjectiveCompletion = False, loadTestScenarios = False}
     (scenario, _gsi) <- loadStandaloneScenario "classic"
-    return $ pureScenarioToGameState (ScenarioWith scenario Nothing) 0 0 Nothing Nothing $ view stdGameConfigInputs initRS
+    return $ pureScenarioToGameState (ScenarioWith scenario Nothing) 0 0 Nothing Nothing Nothing $ view stdGameConfigInputs initRS
 
   execStateT
     (zoomRobots $ mapM_ (addTRobot $ initMachine prog) robots)
