@@ -46,12 +46,14 @@ module Swarm.Game.World (
 
   -- * Re-Exports
   Seed,
+  WorldMetrics,
   module Coords,
 ) where
 
 import Swarm.Game.World.Coords as Coords
 import Swarm.Game.World.DSL.Gen (Seed)
 import Swarm.Game.World.Function
+import Swarm.Game.World.Metrics (WorldMetrics)
 import Swarm.Game.World.Multi
 import Swarm.Game.World.Pure
 import Swarm.Game.World.Stateful
