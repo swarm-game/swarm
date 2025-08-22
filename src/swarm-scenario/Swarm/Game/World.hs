@@ -1,9 +1,9 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -63,18 +63,18 @@ import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Yaml (FromJSON, ToJSON)
 import GHC.Generics (Generic)
+import Swarm.Effect as Effect
 import Swarm.Game.Entity (Entity, entityHash)
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Modify
 import Swarm.Game.Terrain (TerrainMap, TerrainType (BlankT), terrainByIndex, terrainName)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
-import Swarm.Util ((?))
-import Prelude hiding (Foldable (..), lookup)
-import Swarm.Effect as Effect
-import Swarm.Game.World.WorldMetrics (WorldMetrics(..))
 import Swarm.Game.World.Tile
 import Swarm.Game.World.WorldFunction
+import Swarm.Game.World.WorldMetrics (WorldMetrics (..))
+import Swarm.Util ((?))
+import Prelude hiding (Foldable (..), lookup)
 
 type MultiWorld t e = Map SubworldName (World t e)
 
@@ -213,14 +213,14 @@ loadRegionM ::
   (Coords, Coords) ->
   m ()
 loadRegionM wm = updateMetric . modify @(World t e) . loadRegion
-  where
-    updateMetric m = case wm of
-      Nothing -> m
-      Just wMetrics -> do
-        (loadTime, ()) <- Effect.measureCpuTimeInSec m
-        tileCount <- use @(World t e) $ tileCache . to M.size
-        Effect.gaugeSet wMetrics.loadedTiles tileCount
-        Effect.distributionAdd wMetrics.tileLoadTime loadTime
+ where
+  updateMetric m = case wm of
+    Nothing -> m
+    Just wMetrics -> do
+      (loadTime, ()) <- Effect.measureCpuTimeInSec m
+      tileCount <- use @(World t e) $ tileCache . to M.size
+      Effect.gaugeSet wMetrics.loadedTiles tileCount
+      Effect.distributionAdd wMetrics.tileLoadTime loadTime
 
 -- | Load all the tiles which overlap the given rectangular region
 --   (specified as an upper-left and lower-right corner, inclusive).

@@ -1,34 +1,35 @@
 {-# LANGUAGE PatternSynonyms #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 -- Description: Grid on which the game takes place
 --
 -- DSL for programming worlds.
 module Swarm.Game.World.DSL (
-    -- ** Syntax
-    World,
-    Seed,
-    CellVal,
-    TTerm (..),
+  -- ** Syntax
+  World,
+  Seed,
+  CellVal,
+  TTerm (..),
 
-    -- ** Typechecking
-    check,
-    WorldMap,
-    CheckErr (..),
-    Ctx (..),
-    TTy (..),
-    pattern TTyBool,
-    pattern TTyInt,
-    pattern TTyFloat,
-    pattern TTyCell,
+  -- ** Typechecking
+  check,
+  WorldMap,
+  CheckErr (..),
+  Ctx (..),
+  TTy (..),
+  pattern TTyBool,
+  pattern TTyInt,
+  pattern TTyFloat,
+  pattern TTyCell,
 
-    -- ** World function conversion
-    runWorld,
-    extractEntities,
+  -- ** World function conversion
+  runWorld,
+  extractEntities,
 
-    -- ** Loading files
-    loadWorld,
-    loadWorlds,
+  -- ** Loading files
+  loadWorld,
+  loadWorlds,
 ) where
 
 import Swarm.Game.World.DSL.Abstract

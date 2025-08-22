@@ -8,21 +8,21 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 -- Description: Metrics effects, to avoid unrestricted IO
 module Swarm.Effect.Metric (
-    Metric (..),
-    counterInc,
-    gaugeSet,
-    distributionAdd,
+  Metric (..),
+  counterInc,
+  gaugeSet,
+  distributionAdd,
 
-    -- * Metric Carrier
-    MetricIOC (..),
+  -- * Metric Carrier
+  MetricIOC (..),
 ) where
 
 import Control.Algebra
 import Control.Monad.Trans (MonadIO (liftIO))
 import Data.Kind (Type)
 import System.Metrics.Counter qualified as Counter
-import System.Metrics.Gauge qualified as Gauge
 import System.Metrics.Distribution qualified as Distribution
+import System.Metrics.Gauge qualified as Gauge
 
 data Metric (m :: Type -> Type) k where
   CounterInc :: Counter.Counter -> Metric m ()
@@ -38,7 +38,7 @@ gaugeSet g = send . GaugeSet g
 distributionAdd :: Has Metric sig m => Distribution.Distribution -> Double -> m ()
 distributionAdd d = send . DistributionAdd d
 
-newtype MetricIOC m a = MetricIOC { runMetricIO :: m a }
+newtype MetricIOC m a = MetricIOC {runMetricIO :: m a}
   deriving newtype (Applicative, Functor, Monad, MonadIO)
 
 instance (MonadIO m, Algebra sig m) => Algebra (Metric :+: sig) (MetricIOC m) where

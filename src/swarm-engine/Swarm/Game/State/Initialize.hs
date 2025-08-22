@@ -50,13 +50,13 @@ import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Util (adaptGameState)
 import Swarm.Game.World.DSL (Seed)
+import Swarm.Game.World.WorldMetrics (WorldMetrics, initWorldMetrics)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Syntax (allConst, erase)
 import Swarm.Language.Types
 import Swarm.Util (applyWhen, binTuples, (?))
 import System.Clock qualified as Clock
 import System.Random (mkStdGen)
-import Swarm.Game.World.WorldMetrics (initWorldMetrics, WorldMetrics)
 
 -- | Create an initial game state corresponding to the given scenario.
 scenarioToGameState ::

@@ -82,6 +82,7 @@ module Swarm.Game.State (
   module Robots,
 ) where
 
+import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Effect.Lens
 import Control.Effect.Lift
@@ -108,8 +109,8 @@ import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
-import Swarm.Failure (SystemFailure (..))
 import Swarm.Effect qualified as Effect
+import Swarm.Failure (SystemFailure (..))
 import Swarm.Game.CESK (Store, emptyStore, store, suspendedEnv)
 import Swarm.Game.Entity
 import Swarm.Game.Land
@@ -137,7 +138,6 @@ import Swarm.Language.Value (Env)
 import Swarm.Log
 import Swarm.Util (applyWhen, uniq)
 import Swarm.Util.Lens (makeLensesNoSigs)
-import Control.Carrier.Lift qualified as Fused
 
 newtype Sha1 = Sha1 String
   deriving (Show, Eq, Ord, Generic, ToJSON)

@@ -54,10 +54,10 @@ import Swarm.Game.Terrain (TerrainType (..), terrainIndexByName)
 import Swarm.Game.Universe as U
 import Swarm.Game.World
 import Swarm.Game.World.Coords
-import Swarm.Game.World.DSL (runWorld, Seed)
+import Swarm.Game.World.DSL (Seed, runWorld)
+import Swarm.Game.World.WorldMetrics (WorldMetrics)
 import Swarm.Util.Erasable
 import Swarm.Util.Lens (makeLensesNoSigs)
-import Swarm.Game.World.WorldMetrics (WorldMetrics)
 
 type SubworldDescription = (SubworldName, ([IndexedTRobot], Seed -> WorldFun Int Entity))
 

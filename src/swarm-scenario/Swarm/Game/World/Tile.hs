@@ -7,33 +7,33 @@
 -- neighboring cells faster, generate world cells
 -- in parallel batches, etc.
 module Swarm.Game.World.Tile (
-    -- * Tiles
-    TerrainTile,
-    EntityTile,
+  -- * Tiles
+  TerrainTile,
+  EntityTile,
 
-    -- ** Tile coordinates
-    TileCoords,
-    tileCoords,
-    tileOrigin,
-    tileBounds,
+  -- ** Tile coordinates
+  TileCoords,
+  tileCoords,
+  tileOrigin,
+  tileBounds,
 
-    -- ** Tile offsets
-    tileOffset,
-    plusOffset,
+  -- ** Tile offsets
+  tileOffset,
+  plusOffset,
 
-    -- ** Bitwise operations
-    tileBits,
-    tileMask,
+  -- ** Bitwise operations
+  tileBits,
+  tileMask,
 ) where
-    
+
 import Control.Lens hiding (use)
 import Data.Array.IArray
+import Data.Array.IArray qualified as A
+import Data.Array.Unboxed qualified as U
 import Data.Bits
 import Data.Int (Int32)
 import GHC.Generics (Generic)
 import Swarm.Game.World.Coords
-import Data.Array.Unboxed qualified as U
-import Data.Array.IArray qualified as A
 
 -- | A terrain tile is an unboxed array of terrain values.
 type TerrainTile t = U.UArray TileOffset t

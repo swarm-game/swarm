@@ -15,6 +15,7 @@ import Control.Lens as Lens
 import Control.Monad (forM, forM_, unless, when)
 import Control.Monad.IO.Class (MonadIO (liftIO), liftIO)
 import Control.Monad.State (MonadState, execState)
+import Data.Functor (void)
 import Data.List.Extra (enumerate)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
@@ -22,10 +23,11 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Graphics.Vty qualified as V
-import Swarm.Effect (TimeIOC, runTimeIO, MetricIOC (runMetricIO))
+import Swarm.Effect (MetricIOC (runMetricIO), TimeIOC, runTimeIO)
 import Swarm.Effect qualified as Effect
 import Swarm.Game.CESK (continue)
 import Swarm.Game.Device
+import Swarm.Game.Entity (Entity)
 import Swarm.Game.Robot (robotCapabilities)
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.State
@@ -33,6 +35,7 @@ import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
 import Swarm.Game.Step (finishGameTick)
 import Swarm.Game.Universe
+import Swarm.Game.World (World)
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (CDebug))
@@ -57,9 +60,6 @@ import Swarm.TUI.Model.Repl (REPLEntryType (..), REPLHistItem (..), REPLHistItem
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Util (ScenarioSeriesContext (..), curMenuName, generateModal, generateScenarioEndModal)
 import System.Clock (Clock (..), getTime)
-import Swarm.Game.World (World)
-import Swarm.Game.Entity (Entity)
-import Data.Functor (void)
 
 -- | Pattern synonyms to simplify brick event handler
 pattern Key :: V.Key -> BrickEvent n e

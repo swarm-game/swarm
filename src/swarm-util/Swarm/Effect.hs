@@ -7,5 +7,5 @@ module Swarm.Effect (
 )
 where
 
-import Swarm.Effect.Time as T
 import Swarm.Effect.Metric as M
+import Swarm.Effect.Time as T
