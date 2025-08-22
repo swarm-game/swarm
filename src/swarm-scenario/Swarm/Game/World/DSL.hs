@@ -32,12 +32,19 @@ module Swarm.Game.World.DSL (
   loadWorlds,
 ) where
 
-import Swarm.Game.World.DSL.Abstract
-import Swarm.Game.World.DSL.Compile
-import Swarm.Game.World.DSL.Eval
-import Swarm.Game.World.DSL.Gen
-import Swarm.Game.World.DSL.Interpret
-import Swarm.Game.World.DSL.Load
-import Swarm.Game.World.DSL.Parse
-import Swarm.Game.World.DSL.Syntax
-import Swarm.Game.World.DSL.Typecheck
+import Swarm.Game.World.DSL.Eval (runWorld)
+import Swarm.Game.World.DSL.Gen (Seed, extractEntities)
+import Swarm.Game.World.DSL.Load (loadWorld, loadWorlds)
+import Swarm.Game.World.DSL.Syntax (CellVal, World)
+import Swarm.Game.World.DSL.Typecheck (
+  CheckErr (..),
+  Ctx (..),
+  TTerm (..),
+  TTy (..),
+  TTyBool,
+  TTyCell,
+  TTyFloat,
+  TTyInt,
+  WorldMap,
+  check,
+ )
