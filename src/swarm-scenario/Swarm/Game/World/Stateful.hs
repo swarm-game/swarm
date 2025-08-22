@@ -38,7 +38,7 @@ import Swarm.Game.Scenario.Topography.Modify
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Metrics (WorldMetrics (..))
 import Swarm.Game.World.Pure
-import Prelude hiding (Foldable (..), lookup)
+import Control.Monad (void, when, unless)
 
 type HasWorldStateEffect t e sig m =
   ( IArray U.UArray t
@@ -56,7 +56,7 @@ lookupTerrainM ::
   Coords ->
   m t
 lookupTerrainM c = do
-  modify @(World t e) $ loadCell c
+  _ <- state @(World t e) $ loadCell c
   lookupTerrain c <$> get @(World t e)
 
 lookupContentM ::
@@ -65,7 +65,7 @@ lookupContentM ::
   Coords ->
   m (t, Maybe e)
 lookupContentM c = do
-  modify @(World t e) $ loadCell c
+  _ <- state @(World t e) $ loadCell c
   w <- get @(World t e)
   return (lookupTerrain c w, lookupEntity c w)
 
@@ -78,7 +78,7 @@ lookupEntityM ::
   Coords ->
   m (Maybe e)
 lookupEntityM c = do
-  modify @(World t e) $ loadCell c
+  _ <- state @(World t e) $ loadCell c
   lookupEntity c <$> get @(World t e)
 
 -- | A stateful variant of 'update', which also ensures the tile
@@ -108,12 +108,13 @@ loadRegionM ::
   Maybe WorldMetrics ->
   (Coords, Coords) ->
   m ()
-loadRegionM wm = updateMetric . modify @(World t e) . loadRegion
+loadRegionM wm = updateMetric . state @(World t e) . loadRegion
  where
   updateMetric m = case wm of
-    Nothing -> m
+    Nothing -> void m
     Just wMetrics -> do
-      (loadTime, ()) <- Effect.measureCpuTimeInSec m
-      tileCount <- use @(World t e) $ tileCache . to M.size
-      Effect.gaugeSet wMetrics.loadedTiles tileCount
-      Effect.distributionAdd wMetrics.tileLoadTime loadTime
+      (loadTime, loadedTiles) <- Effect.measureCpuTimeInSec m
+      unless (null loadedTiles) $ do
+        tileCount <- use @(World t e) $ tileCache . to M.size
+        Effect.gaugeSet wMetrics.loadedTiles tileCount
+        Effect.distributionAdd wMetrics.tileLoadTime loadTime

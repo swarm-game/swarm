@@ -56,6 +56,7 @@ import Swarm.Game.World.Function
 import Swarm.Game.World.Tile
 import Swarm.Util ((?))
 import Prelude hiding (Foldable (..), lookup)
+import Data.Maybe (listToMaybe)
 
 -- | A 'World' consists of a 'WorldFun' that specifies the initial
 --   world, a cache of loaded square tiles to make lookups faster, and
@@ -122,8 +123,12 @@ update i g w@(World f t m) =
   entityAfter = g entityBefore
 
 -- | Load the tile containing a specific cell.
-loadCell :: (IArray U.UArray t) => Coords -> World t e -> World t e
-loadCell c = loadRegion (c, c)
+loadCell ::
+  (IArray U.UArray t) =>
+  Coords ->
+  World t e ->
+  (World t e, Maybe TileCoords)
+loadCell c = over _2 listToMaybe . loadRegion (c, c)
 
 -- | Load all the tiles which overlap the given rectangular region
 --   (specified as an upper-left and lower-right corner, inclusive).
@@ -132,8 +137,8 @@ loadRegion ::
   (IArray U.UArray t) =>
   (Coords, Coords) ->
   World t e ->
-  World t e
-loadRegion reg (World f t m) = World f t' m
+  (World t e, [TileCoords])
+loadRegion reg (World f t m) = (World f t' m, tileCs)
  where
   -- the range is applied to tile coordinates, so we are not loading a tile twice
   tileCs = filter (`M.notMember` t) $ range (over both tileCoords reg)
