@@ -46,7 +46,7 @@ module Swarm.Game.World (
 ) where
 
 import Swarm.Game.World.Function
+import Swarm.Game.World.Multi
 import Swarm.Game.World.Pure
 import Swarm.Game.World.Stateful
-import Swarm.Game.World.Multi
 import Swarm.Game.World.Update

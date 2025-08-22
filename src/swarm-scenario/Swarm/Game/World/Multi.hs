@@ -23,16 +23,10 @@ import Data.IntMap qualified as IM
 import Data.Map (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
-import Data.Yaml (FromJSON, ToJSON)
-import GHC.Generics (Generic)
-import Swarm.Game.Location
 import Swarm.Game.Terrain (TerrainMap, TerrainType (BlankT), terrainByIndex, terrainName)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
-import Swarm.Game.World.Function
 import Swarm.Game.World.Pure
-import Swarm.Game.World.Stateful
-import Prelude hiding (Foldable (..), lookup)
 
 type MultiWorld t e = Map SubworldName (World t e)
 
