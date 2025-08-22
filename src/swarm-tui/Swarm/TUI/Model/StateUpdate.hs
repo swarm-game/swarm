@@ -388,8 +388,9 @@ scenarioToAppState ::
   m ()
 scenarioToAppState siPair@(ScenarioWith scene p) lp = do
   rs <- use runtimeState
-  prevMetric <- use $ playState . scenarioState . gameState . gameMetrics
-  gs <- liftIO $ scenarioToGameState (ScenarioWith scene $ Just p) lp prevMetric rs
+  prevGMetric <- use $ playState . scenarioState . gameState . gameMetrics
+  prevWMetric <- use $ playState . scenarioState . gameState . landscape . worldMetrics
+  gs <- liftIO $ scenarioToGameState (ScenarioWith scene $ Just p) lp prevGMetric prevWMetric rs
   playState . scenarioState . gameState .= gs
 
   curTime <- liftIO $ getTime Monotonic
