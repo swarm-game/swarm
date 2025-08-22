@@ -13,7 +13,7 @@ import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.World (WorldFun (..))
 import Swarm.Game.World.Coords (Coords)
 import Swarm.Game.World.DSL.Abstract (bracket)
-import Swarm.Game.World.DSL.Gen (Seed)
+import Swarm.Game.World (Seed)
 import Swarm.Game.World.DSL.Interpret (interpBTerm)
 import Swarm.Game.World.DSL.Syntax
 import Swarm.Game.World.DSL.Typecheck

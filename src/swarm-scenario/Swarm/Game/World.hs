@@ -45,10 +45,12 @@ module Swarm.Game.World (
   WorldUpdate (..),
 
   -- * Re-Exports
+  Seed,
   module Coords,
 ) where
 
 import Swarm.Game.World.Coords as Coords
+import Swarm.Game.World.DSL.Gen (Seed)
 import Swarm.Game.World.Function
 import Swarm.Game.World.Multi
 import Swarm.Game.World.Pure

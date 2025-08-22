@@ -20,7 +20,7 @@ import Servant.Docs qualified as SD
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.State (Sha1 (..))
 import Swarm.Game.Tick (TickNumber (..))
-import Swarm.Game.World.Gen (Seed)
+import Swarm.Game.World (Seed)
 import System.Time.Extra
 
 newtype UserAlias = UserAlias TL.Text
