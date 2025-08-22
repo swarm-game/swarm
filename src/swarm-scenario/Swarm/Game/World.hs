@@ -56,14 +56,11 @@ import Control.Parallel.Strategies (evalTuple2, parMap, rpar, rseq)
 import Data.Array qualified as A
 import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
-import Data.Bifunctor (second)
 import Data.Foldable (foldl')
-import Data.Int (Int32)
 import Data.IntMap qualified as IM
 import Data.Map (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
-import Data.Semigroup (Last (..))
 import Data.Yaml (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Swarm.Game.Entity (Entity, entityHash)
@@ -73,37 +70,11 @@ import Swarm.Game.Terrain (TerrainMap, TerrainType (BlankT), terrainByIndex, ter
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.Util ((?))
-import Swarm.Util.Erasable
 import Prelude hiding (Foldable (..), lookup)
 import Swarm.Effect as Effect
 import Swarm.Game.World.WorldMetrics (WorldMetrics(..))
 import Swarm.Game.World.Tile
-
-------------------------------------------------------------
--- World function
-------------------------------------------------------------
-
--- | A @WorldFun t e@ represents a 2D world with terrain of type @t@
--- (exactly one per cell) and entities of type @e@ (at most one per
--- cell).
-newtype WorldFun t e = WF {getWF :: Coords -> (t, Erasable (Last e))}
-  deriving stock (Functor)
-  deriving newtype (Semigroup, Monoid)
-
-runWF :: WorldFun t e -> Coords -> (t, Maybe e)
-runWF wf = second (erasableToMaybe . fmap getLast) . getWF wf
-
-instance Bifunctor WorldFun where
-  bimap g h (WF z) = WF (bimap g (fmap (fmap h)) . z)
-
--- | Create a world function from a finite array of specified cells.
-worldFunFromArray :: Monoid t => Array (Int32, Int32) (t, Erasable e) -> WorldFun t e
-worldFunFromArray arr = WF $ \(Coords (r, c)) ->
-  if inRange bnds (r, c)
-    then second (fmap Last) (arr ! (r, c))
-    else mempty
- where
-  bnds = bounds arr
+import Swarm.Game.World.WorldFunction
 
 type MultiWorld t e = Map SubworldName (World t e)
 

@@ -28,7 +28,7 @@ import Swarm.Game.ScenarioInfo (
   ScenarioWith,
   scenarioCollectionToList,
  )
-import Swarm.Game.World.Gen (Seed)
+import Swarm.Game.World.DSL (Seed)
 import Swarm.TUI.Model.Name
 
 ------------------------------------------------------------

@@ -8,7 +8,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Parser for the Swarm world description DSL.
-module Swarm.Game.World.Parse where
+module Swarm.Game.World.DSL.Parse where
 
 import Control.Monad (void)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
@@ -18,7 +18,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Void (Void)
 import Data.Yaml (FromJSON (parseJSON), withText)
-import Swarm.Game.World.Syntax
+import Swarm.Game.World.DSL.Syntax
 import Swarm.Language.Parser.Util (fully)
 import Swarm.Util (failT, showT, squote)
 import Text.Megaparsec hiding (runParser)

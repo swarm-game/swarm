@@ -30,7 +30,7 @@ import Swarm.Game.Scenario.Topography.Cell (PCell (..))
 import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Structure.Overlay (gridContent)
 import Swarm.Game.Scenario.Topography.WorldDescription
-import Swarm.Game.World.Gen (extractEntities)
+import Swarm.Game.World.DSL (extractEntities)
 import Swarm.Util (both)
 import Swarm.Util.Erasable (erasableToMaybe)
 
