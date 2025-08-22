@@ -15,6 +15,9 @@ module Swarm.Effect.Metric (
 
   -- * Metric Carrier
   MetricIOC (..),
+
+  -- ** Test Fake Carrier
+  FakeMetric (..),
 ) where
 
 import Control.Algebra
@@ -47,3 +50,13 @@ instance (MonadIO m, Algebra sig m) => Algebra (Metric :+: sig) (MetricIOC m) wh
     L (DistributionAdd d v) -> (<$ ctx) <$> liftIO (Distribution.add d v)
     L (GaugeSet g v) -> (<$ ctx) <$> liftIO (Gauge.set g $ fromIntegral v)
     R other -> MetricIOC (alg (runMetricIO . hdl) other ctx)
+
+newtype FakeMetric m a = FakeMetric {runFakeMetric :: m a}
+  deriving newtype (Applicative, Functor, Monad)
+
+instance (Algebra sig m) => Algebra (Metric :+: sig) (FakeMetric m) where
+  alg hdl sig ctx = case sig of
+    L (CounterInc {}) -> pure ctx
+    L (DistributionAdd {}) -> pure ctx
+    L (GaugeSet {}) -> pure ctx
+    R other -> FakeMetric (alg (runFakeMetric . hdl) other ctx)
