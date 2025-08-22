@@ -41,10 +41,10 @@ import Swarm.Game.World.DSL.Typecheck (
   Ctx (..),
   TTerm (..),
   TTy (..),
+  WorldMap,
+  check,
   pattern TTyBool,
   pattern TTyCell,
   pattern TTyFloat,
   pattern TTyInt,
-  WorldMap,
-  check,
  )
