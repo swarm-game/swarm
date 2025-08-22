@@ -193,7 +193,7 @@ gamestateFromScenarioText content = do
 
   let scenarioInputs = gsiScenarioInputs . initState $ rs ^. stdGameConfigInputs
   scenarioObject <- initScenarioObject scenarioInputs content
-  gs <- liftIO $ scenarioToGameState (ScenarioWith scenarioObject Nothing) emptyLaunchParams Nothing rs
+  gs <- liftIO $ scenarioToGameState (ScenarioWith scenarioObject Nothing) emptyLaunchParams Nothing Nothing rs
   return (gs, scenarioObject)
 
 verifySolution ::
