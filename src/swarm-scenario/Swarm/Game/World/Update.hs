@@ -7,7 +7,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 -- Description: Game-related state and utilities
 --
--- World update result record.
+-- World update request record.
 module Swarm.Game.World.Update (
   WorldUpdate (..),
 ) where
