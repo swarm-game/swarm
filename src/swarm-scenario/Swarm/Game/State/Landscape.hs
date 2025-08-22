@@ -90,6 +90,9 @@ recognizerAutomatons :: Lens' Landscape (RecognizerAutomatons RecognizableStruct
 -- | Whether the world map is supposed to be scrollable or not.
 worldScrollable :: Lens' Landscape Bool
 
+-- | TODO: ONDRA
+worldMetrics :: Lens' Landscape WorldMetrics
+
 -- | Create an record that is empty except for
 -- system-provided entities.
 initLandscape :: GameStateConfig -> Landscape
