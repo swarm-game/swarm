@@ -110,6 +110,13 @@ describe = \case
       "`equip` all craftable devices simultaneously."
       Gruelling
       True
+  GameplayAchievement UnequippedWelder ->
+    AchievementInfo
+      "Put That Back!"
+      (Just $ Freeform "Maybe... you should have thought that one through first.")
+      "`unequip` a welder."
+      Easy
+      True
 
 -- | Validity conditions are required if-and-only-if the achievement
 -- category is 'GameplayAchievement'.
@@ -124,3 +131,4 @@ getValidityRequirements = \case
   SwapSame -> ValidityConditions OnlyPlayerRobot ExcludesCreativeMode
   GaveToSelf -> ValidityConditions OnlyPlayerRobot ExcludesCreativeMode
   EquippedAllDevices -> ValidityConditions OnlyPlayerRobot ExcludesCreativeMode
+  UnequippedWelder -> ValidityConditions OnlyPlayerRobot ExcludesCreativeMode
