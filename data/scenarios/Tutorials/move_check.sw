@@ -55,5 +55,3 @@ def main =
    room2;
    room3;
 end
-
-main
