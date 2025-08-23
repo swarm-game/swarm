@@ -12,10 +12,12 @@ module Swarm.Game.Step.Flood (
   floodFill,
 ) where
 
+import Control.Algebra (Has)
 import Control.Effect.Lens
 import Control.Lens (makeLenses, (%~), (&))
 import Data.HashSet (HashSet)
 import Data.HashSet qualified as HashSet
+import Swarm.Effect qualified as Effect
 import Swarm.Game.Location
 import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util (checkMoveFailureUnprivileged)
@@ -57,7 +59,7 @@ makeLenses ''FloodPartition
 -- 3. Add all neighbors that aren't already visited, regardless of walkability, to the stack.
 --    But unwalkable cells shall not produce neighbors and shall be marked with a boundary/interior distinction.
 floodRecursive ::
-  HasRobotStepState sig m =>
+  (HasRobotStepState sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
   Tracking ->
   [Location] ->
   FloodParms ->
@@ -100,7 +102,7 @@ floodRecursive tracking pending params =
     cosmicLoc = Cosmic (theSubworld params) nextLoc
 
 floodFill ::
-  HasRobotStepState sig m =>
+  (HasRobotStepState sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
   Cosmic Location ->
   Int ->
   m (Maybe Int)

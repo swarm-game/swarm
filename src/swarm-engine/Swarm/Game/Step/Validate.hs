@@ -13,7 +13,7 @@ import Control.Lens (use, (^.))
 import Control.Monad.State (StateT, gets)
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
-import Swarm.Effect (runTimeIO, runMetricIO)
+import Swarm.Effect (runMetricIO, runTimeIO)
 import Swarm.Game.Robot.Concrete (robotLog)
 import Swarm.Game.State (GameState, messageInfo, robotInfo, winCondition)
 import Swarm.Game.State.Robot (robotMap)

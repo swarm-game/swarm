@@ -12,6 +12,7 @@ module Swarm.Game.Step.Util where
 import Control.Carrier.State.Lazy
 import Control.Effect.Error
 import Control.Effect.Lens
+import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad (forM_, guard, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Maybe (MaybeT (..), hoistMaybe, runMaybeT)
@@ -22,6 +23,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Linear (zero)
+import Swarm.Effect qualified as Effect
 import Swarm.Game.Device
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Exception
@@ -48,7 +50,6 @@ import Swarm.ResourceLoading (NameGenerator (..))
 import Swarm.Util hiding (both)
 import System.Random (UniformRange, uniformR)
 import Prelude hiding (lookup)
-import Swarm.Effect qualified as Effect
 
 deriveHeading :: HasRobotStepState sig m => Direction -> m Heading
 deriveHeading d = do
@@ -56,7 +57,9 @@ deriveHeading d = do
   when (isCardinal d) $ hasCapabilityFor COrient $ TDir d
   return $ applyTurn d $ orient ? zero
 
-lookInDirection :: HasRobotStepState sig m => Direction -> m (Cosmic Location, Maybe Entity)
+lookInDirection ::
+  (HasRobotStepState sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
+  Direction -> m (Cosmic Location, Maybe Entity)
 lookInDirection d = do
   newHeading <- deriveHeading d
   loc <- use robotLocation
@@ -64,18 +67,24 @@ lookInDirection d = do
   (nextLoc,) <$> entityAt nextLoc
 
 adaptGameState ::
-  Has (State GameState) sig m =>
-  TS.State GameState b ->
+  (Has (State GameState) sig m, Has (Lift IO) sig m) =>
+  TS.StateT GameState IO b ->
   m b
 adaptGameState f = do
-  (newRecognizer, newGS) <- TS.runState f <$> get
+  gs <- get @GameState
+  (newRecognizer, newGS) <- sendIO $ TS.runStateT f gs
   put newGS
   return newRecognizer
 
 -- | Modify the entity (if any) at a given location, and mark the cell
 --   dirty (i.e. needing to be redrawn) if anything changes.
 updateEntityAt ::
-  (Has (State Robot) sig m, Has (State GameState) sig m, Has Effect.Metric sig m, Has Effect.Time sig m) =>
+  ( Has (State Robot) sig m
+  , Has (State GameState) sig m
+  , Has (Lift IO) sig m
+  , Has Effect.Metric sig m
+  , Has Effect.Time sig m
+  ) =>
   Cosmic Location ->
   (Maybe Entity -> Maybe Entity) ->
   m ()
@@ -179,7 +188,7 @@ randomName = do
 --   failure, with no special checks for system robots (see also
 --   'checkMoveFailure').
 checkMoveFailureUnprivileged ::
-  HasRobotStepState sig m =>
+  (HasRobotStepState sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
   Cosmic Location ->
   m (Maybe MoveFailureMode)
 checkMoveFailureUnprivileged nextLoc = do
@@ -191,7 +200,9 @@ checkMoveFailureUnprivileged nextLoc = do
 --   failure.  Note that system robots have unrestricted movement and
 --   never fail, but non-system robots have restricted movement even
 --   in creative mode.
-checkMoveFailure :: HasRobotStepState sig m => Cosmic Location -> m (Maybe MoveFailureMode)
+checkMoveFailure ::
+  (HasRobotStepState sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
+  Cosmic Location -> m (Maybe MoveFailureMode)
 checkMoveFailure nextLoc = do
   systemRob <- use systemRobot
   runMaybeT $ do

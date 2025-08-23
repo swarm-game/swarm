@@ -18,12 +18,13 @@ module Swarm.Game.Step.Combustion where
 
 import Control.Carrier.State.Lazy
 import Control.Effect.Lens
+import Control.Effect.Lift (Lift)
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (forM_, when)
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Linear (zero)
-import Swarm.Effect as Effect (Time, getNow, Metric)
+import Swarm.Effect as Effect (Metric, Time, getNow)
 import Swarm.Game.CESK (initMachine)
 import Swarm.Game.Cosmetic.Attribute
 import Swarm.Game.Cosmetic.Display
@@ -48,7 +49,7 @@ import System.Clock (TimeSpec)
 import Prelude hiding (lookup)
 
 igniteCommand ::
-  (HasRobotStepState sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
+  (HasRobotStepState sig m, Has (Lift IO) sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
   Const ->
   Direction ->
   m ()
@@ -174,7 +175,7 @@ combustionProgram combustionDuration (Combustibility _ _ _ maybeCombustionProduc
 --   on that particular neighbor entity's combustion /rate/, but also
 --   on the @sourceDuration@ time that the current entity will burn.
 igniteNeighbor ::
-  Has (State GameState) sig m =>
+  (Has (State GameState) sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
   TimeSpec ->
   Integer ->
   Integer ->

@@ -32,6 +32,7 @@ import Data.Text qualified as T
 import Data.Time (getZonedTime)
 import Data.Tuple (swap)
 import Linear (zero)
+import Swarm.Effect qualified as Effect
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Description (getValidityRequirements)
@@ -66,7 +67,6 @@ import Swarm.Log
 import Swarm.Util (applyWhen)
 import System.Clock (TimeSpec)
 import Prelude hiding (lookup)
-import Swarm.Effect qualified as Effect
 
 data GrabbingCmd
   = Grab'
@@ -206,9 +206,9 @@ updateRobotLocation oldLoc newLoc
 -- | Execute a stateful action on a target robot --- whether the
 --   current one or another.
 onTarget ::
-  (HasRobotStepState sig m, Has (Lift IO) sig m) =>
+  (HasRobotStepState sig m, Has (Lift IO) sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
   RID ->
-  (forall sig' m'. (HasRobotStepState sig' m', Has (Lift IO) sig' m') => m' ()) ->
+  (forall sig' m'. (HasRobotStepState sig' m', Has (Lift IO) sig' m', Has Effect.Time sig' m', Has Effect.Metric sig' m') => m' ()) ->
   m ()
 onTarget rid act = do
   myID <- use robotID
@@ -401,7 +401,7 @@ traceLog source sev msg = do
 
 updateWorldAndRobots ::
   forall sig m.
-  (HasRobotStepState sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
+  (HasRobotStepState sig m, Has (Lift IO) sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
   Const ->
   [WorldUpdate Entity] ->
   [RobotUpdate] ->
@@ -441,7 +441,7 @@ createLogEntry source sev msg = do
 updateWorld ::
   forall sig m.
   -- TODO: (Has (State GameState) sig m, Has (State Robot) sig m, Has (Throw Exn) sig m, Has (Lift IO) sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
-  (HasRobotStepState sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
+  (HasRobotStepState sig m, Has (Lift IO) sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
   Const ->
   WorldUpdate Entity ->
   m ()

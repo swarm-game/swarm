@@ -36,6 +36,7 @@ import Data.HashSet (HashSet)
 import Data.HashSet qualified as HashSet
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty ((:|)))
+import Swarm.Effect qualified as Effect
 import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.Robot
@@ -62,7 +63,7 @@ import Swarm.Language.Syntax.Direction
 --
 -- See "Swarm.Game.Step.Path.Cache" for caching details.
 pathCommand ::
-  HasRobotStepState sig m =>
+  (HasRobotStepState sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
   PathfindingParameters (Cosmic Location) ->
   m (Maybe (Direction, Int))
 pathCommand parms = do
@@ -113,7 +114,7 @@ pathCommand parms = do
     (nextLoc : _) -> directionTo nextLoc
 
   neighborFunc ::
-    HasRobotStepState sig m =>
+    (HasRobotStepState sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
     (Location -> Bool) ->
     Cosmic Location ->
     m (HashSet Location)
@@ -141,7 +142,9 @@ pathCommand parms = do
     LocationTarget gLoc -> manhattan gLoc
     EntityTarget _eName -> const 0
 
-  goalReachedFunc :: Has (State GameState) sig m => Location -> m Bool
+  goalReachedFunc ::
+    (Has (State GameState) sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
+    Location -> m Bool
   goalReachedFunc loc = case target of
     LocationTarget gLoc -> return $ loc == gLoc
     EntityTarget eName -> do

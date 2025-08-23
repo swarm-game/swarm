@@ -70,6 +70,7 @@ module Swarm.Game.State (
   genRobotTemplates,
   entityAt,
   mtlEntityAt,
+  mtlEntityAtForTest,
   contentAt,
   zoomWorld,
   zoomWorld2,
@@ -532,27 +533,36 @@ initGameState gsc =
 
 -- | Provide an entity accessor via the MTL transformer State API.
 -- This is useful for the structure recognizer.
-mtlEntityAt :: Cosmic Location -> TS.State GameState (Maybe Entity)
-mtlEntityAt = TS.state . runGetEntity
+mtlEntityAt :: Cosmic Location -> TS.StateT GameState IO (Maybe Entity)
+mtlEntityAt = TS.StateT . runGetEntity
+ where
+  runGetEntity :: Cosmic Location -> GameState -> IO (Maybe Entity, GameState)
+  runGetEntity loc gs =
+    fmap swap . Fused.runM . Fused.runState gs . Effect.runMetricIO . Effect.runTimeIO $ entityAt loc
+
+-- | Provide an entity accessor like 'mtlEntityAt' but without running metrics.
+mtlEntityAtForTest :: Cosmic Location -> TS.State GameState (Maybe Entity)
+mtlEntityAtForTest = TS.state . runGetEntity
  where
   runGetEntity :: Cosmic Location -> GameState -> (Maybe Entity, GameState)
   runGetEntity loc gs =
-    swap . run . Fused.runState gs $ entityAt loc
+    swap . run . Fused.runState gs . Effect.runFakeMetric . Effect.runFakeTime 0 $ entityAt loc
 
 -- | Get the entity (if any) at a given location.
-entityAt :: (Has (State GameState) sig m) => Cosmic Location -> m (Maybe Entity)
-entityAt (Cosmic subworldName loc) =
-  -- TODO: metric
-  join <$> zoomWorld subworldName (W.lookupEntityM @Int (locToCoords loc))
+entityAt :: (Has (State GameState) sig m, Has Effect.Time sig m, Has Effect.Metric sig m) => Cosmic Location -> m (Maybe Entity)
+entityAt (Cosmic subworldName loc) = do
+  wm <- use $ landscape . worldMetrics
+  join <$> zoomWorld3 subworldName (W.lookupEntityM @Int wm (locToCoords loc))
 
 contentAt ::
-  (Has (State GameState) sig m) =>
+  (Has (State GameState) sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
   Cosmic Location ->
   m (TerrainType, Maybe Entity)
 contentAt (Cosmic subworldName loc) = do
   tm <- use $ landscape . terrainAndEntities . terrainMap
-  val <- zoomWorld subworldName $ do
-    (terrIdx, maybeEnt) <- W.lookupContentM (locToCoords loc)
+  wm <- use $ landscape . worldMetrics
+  val <- zoomWorld3 subworldName $ do
+    (terrIdx, maybeEnt) <- W.lookupContentM wm (locToCoords loc)
     let terrObj = terrIdx `IM.lookup` terrainByIndex tm
     return (maybe BlankT terrainName terrObj, maybeEnt)
   return $ fromMaybe (BlankT, Nothing) val
@@ -601,7 +611,6 @@ zoomWorld2 swName n = do
 -- | Perform an action requiring a 'W.World' state component in a
 --   larger context with a 'GameState'.
 zoomWorld3 ::
-  forall sig m b.
   (Has (State GameState) sig m) =>
   SubworldName ->
   Fused.StateC (W.World Int Entity) m b ->

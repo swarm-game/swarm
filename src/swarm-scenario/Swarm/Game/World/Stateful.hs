@@ -1,8 +1,8 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE ConstraintKinds #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -27,8 +27,9 @@ module Swarm.Game.World.Stateful (
 
 import Control.Algebra (Has)
 import Control.Effect.Lens (use)
-import Control.Effect.State (State, get, modify, state)
+import Control.Effect.State (State, get, state)
 import Control.Lens hiding (use)
+import Control.Monad (unless, void)
 import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
 import Data.Map.Strict qualified as M
@@ -38,7 +39,6 @@ import Swarm.Game.Scenario.Topography.Modify
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Metrics (WorldMetrics (..))
 import Swarm.Game.World.Pure
-import Control.Monad (void, when, unless)
 
 type HasWorldStateEffect t e sig m =
   ( IArray U.UArray t
@@ -52,20 +52,22 @@ type HasWorldStateEffect t e sig m =
 --   then looks up the terrain value.
 lookupTerrainM ::
   forall t e sig m.
-  (Has (State (World t e)) sig m, IArray U.UArray t) =>
+  HasWorldStateEffect t e sig m =>
+  Maybe WorldMetrics ->
   Coords ->
   m t
-lookupTerrainM c = do
-  _ <- state @(World t e) $ loadCell c
+lookupTerrainM wm c = do
+  loadCellM @t @e wm c
   lookupTerrain c <$> get @(World t e)
 
 lookupContentM ::
   forall t e sig m.
-  (Has (State (World t e)) sig m, IArray U.UArray t) =>
+  HasWorldStateEffect t e sig m =>
+  Maybe WorldMetrics ->
   Coords ->
   m (t, Maybe e)
-lookupContentM c = do
-  _ <- state @(World t e) $ loadCell c
+lookupContentM wm c = do
+  loadCellM @t @e wm c
   w <- get @(World t e)
   return (lookupTerrain c w, lookupEntity c w)
 
@@ -74,11 +76,12 @@ lookupContentM c = do
 --   then looks up the terrain value.
 lookupEntityM ::
   forall t e sig m.
-  (Has (State (World t e)) sig m, IArray U.UArray t) =>
+  HasWorldStateEffect t e sig m =>
+  Maybe WorldMetrics ->
   Coords ->
   m (Maybe e)
-lookupEntityM c = do
-  _ <- state @(World t e) $ loadCell c
+lookupEntityM wm c = do
+  loadCellM @t @e wm c
   lookupEntity c <$> get @(World t e)
 
 -- | A stateful variant of 'update', which also ensures the tile

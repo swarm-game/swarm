@@ -56,8 +56,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Linear (zero)
 import Prettyprinter (pretty)
-import Swarm.Effect as Effect (Time, getNow, measureCpuTimeInSec, Metric)
-import Swarm.Effect qualified as Effect
+import Swarm.Effect as Effect (Metric, Time, getNow, measureCpuTimeInSec)
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
 import Swarm.Game.Cosmetic.Display
@@ -347,7 +346,7 @@ data CompletionsWithExceptions = CompletionsWithExceptions
 -- 3) The iteration needs to be a "fold", so that state is updated
 --    after each element.
 hypotheticalWinCheck ::
-  (Has (State GameState) sig m
+  ( Has (State GameState) sig m
   , Has Effect.Time sig m
   , Has Effect.Metric sig m
   , Has (Lift IO) sig m

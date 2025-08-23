@@ -49,6 +49,7 @@ import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
 import Data.Foldable (foldl')
 import Data.Map.Strict qualified as M
+import Data.Maybe (listToMaybe)
 import Swarm.Game.Entity (Entity, entityHash)
 import Swarm.Game.Scenario.Topography.Modify
 import Swarm.Game.World.Coords
@@ -56,7 +57,6 @@ import Swarm.Game.World.Function
 import Swarm.Game.World.Tile
 import Swarm.Util ((?))
 import Prelude hiding (Foldable (..), lookup)
-import Data.Maybe (listToMaybe)
 
 -- | A 'World' consists of a 'WorldFun' that specifies the initial
 --   world, a cache of loaded square tiles to make lookups faster, and

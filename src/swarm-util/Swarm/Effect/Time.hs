@@ -22,10 +22,10 @@ module Swarm.Effect.Time (
 
 import Control.Algebra
 import Control.Monad.Trans (MonadIO (liftIO))
+import Data.Functor (($>))
 import Data.Kind (Type)
 import System.CPUTime
 import System.Clock (Clock (Monotonic), TimeSpec, getTime, toNanoSecs)
-import Data.Functor (($>))
 
 -- | Effect for things related to time
 data Time (m :: Type -> Type) k where
@@ -53,7 +53,7 @@ instance (MonadIO m, Algebra sig m) => Algebra (Time :+: sig) (TimeIOC m) where
     R other -> TimeIOC (alg (runTimeIO . hdl) other ctx)
 
 newtype FakeTime m a = FakeTime (TimeSpec -> m a)
-  deriving Functor
+  deriving (Functor)
 
 runFakeTime :: TimeSpec -> FakeTime m a -> m a
 runFakeTime t (FakeTime act) = act t
