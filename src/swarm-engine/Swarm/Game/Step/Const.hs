@@ -461,6 +461,9 @@ execConst runChildProg c vs s k = do
           loc <- use robotLocation
           addAsphyxiateBot createdAt loc
 
+        -- Grant an achievement for unequipping a welder.
+        when (itemName == "welder") $ grantAchievementForRobot UnequippedWelder
+
         -- Now check whether being on the current cell would still be
         -- allowed.
         loc <- use robotLocation

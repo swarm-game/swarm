@@ -127,6 +127,7 @@ data GameplayAchievement
   | SwapSame
   | GaveToSelf
   | EquippedAllDevices
+  | UnequippedWelder
   deriving (Eq, Ord, Show, Bounded, Enum, Generic)
 
 instance FromJSON GameplayAchievement
