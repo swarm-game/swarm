@@ -26,7 +26,9 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
+import Data.Text.Encoding qualified as T
 import GHC.Generics (Generic)
+import Network.HTTP.Simple (getResponseBody, httpBS, parseRequest)
 import Swarm.Failure (Asset (..), AssetData (..), Entry (..), LoadingFailure (..), SystemFailure (..))
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig, importLoc)
@@ -37,6 +39,7 @@ import Swarm.Language.Syntax.Util (Erasable(..), traverseSyntax)
 import Swarm.Language.Types (TCtx, UCtx)
 import Swarm.Util (readFileMayT)
 import Swarm.Util.Graph (findCycle)
+import Witch (into)
 
 -- | The context for a module, containing names and types of things
 --   defined in the module (once typechecking has run).
@@ -206,7 +209,12 @@ readLoc loc = do
 
   -- Try to read the file from network/disk
   src <- case importAnchor loc of
-    Web_ {} -> error "readLoc Web unimplemented" -- XXX load URL with some kind of HTTP library
+    Web_ {} -> sendIO $ do
+      case parseRequest (into @String path) of
+        Left err -> undefined
+        -- XXX use T.decodeUtf8'
+        -- XXX handle other encodings?
+        Right req -> httpBS req >>= (pure . T.decodeUtf8Lenient . getResponseBody)
     _ -> sendIO (readFileMayT path) >>= maybe (badImport (DoesNotExist File)) pure
 
   -- Try to parse the contents
