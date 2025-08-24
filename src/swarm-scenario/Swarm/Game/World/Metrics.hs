@@ -22,7 +22,6 @@ data WorldMetrics = WorldMetrics
   , inMemoryTiles :: Gauge
   , tilesBatchLoadTime :: Distribution
   , tileAverageLoadTime :: Distribution
-  , tilesExpectedLoadTime :: Distribution
   }
 
 -- | Create and register the metrics to metric store.
@@ -33,6 +32,5 @@ initWorldMetrics s = do
   loadedTiles <- createGauge "game.tile_loaded" s
   inMemoryTiles <- createGauge "game.tile_in_memory" s
   tileAverageLoadTime <- createDistribution "game.tile_average_load_time" s
-  tilesBatchLoadTime <- createDistribution "game.tiles_expected_load_time" s
-  tilesExpectedLoadTime <- createDistribution "game.tiles_batch_load_time" s
+  tilesBatchLoadTime <- createDistribution "game.tiles_batch_load_time" s
   pure WorldMetrics {..}
