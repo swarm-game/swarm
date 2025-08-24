@@ -237,6 +237,9 @@ common http-client
 common http-client-tls
   build-depends: http-client-tls >=0.3 && <0.4
 
+common http-conduit
+  build-depends: http-conduit >=2.3 && <2.4
+
 common http-types
   build-depends: http-types >=0.12 && <0.13
 
@@ -435,6 +438,7 @@ library swarm-lang
     fused-effects,
     generic-data,
     hashable,
+    http-conduit,
     lens,
     lsp,
     megaparsec,
