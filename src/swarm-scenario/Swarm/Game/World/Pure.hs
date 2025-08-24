@@ -24,7 +24,7 @@
 -- Prefer using the stateful versions for lookup in 'Swarm.Game.World.Stateful',
 -- which internally cache the loaded regions.
 module Swarm.Game.World.Pure (
-  World(..),
+  World (..),
   newWorld,
 
   -- ** Lookup
