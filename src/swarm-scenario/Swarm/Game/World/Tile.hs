@@ -18,6 +18,7 @@ module Swarm.Game.World.Tile (
   tileBounds,
 
   -- ** Tile offsets
+  TileOffset,
   tileOffset,
   plusOffset,
 
