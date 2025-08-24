@@ -70,8 +70,11 @@ module Swarm.Game.State (
   genRobotTemplates,
   entityAt,
   mtlEntityAt,
+  mtlEntityAtForTest,
   contentAt,
   zoomWorld,
+  zoomWorld2,
+  zoomWorld3,
   zoomRobots,
 
   -- * Re-exports
@@ -81,6 +84,7 @@ module Swarm.Game.State (
   module Robots,
 ) where
 
+import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Effect.Lens
 import Control.Effect.Lift
@@ -107,6 +111,7 @@ import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
+import Swarm.Effect qualified as Effect
 import Swarm.Failure (SystemFailure (..))
 import Swarm.Game.CESK (Store, emptyStore, store, suspendedEnv)
 import Swarm.Game.Entity
@@ -528,26 +533,36 @@ initGameState gsc =
 
 -- | Provide an entity accessor via the MTL transformer State API.
 -- This is useful for the structure recognizer.
-mtlEntityAt :: Cosmic Location -> TS.State GameState (Maybe Entity)
-mtlEntityAt = TS.state . runGetEntity
+mtlEntityAt :: Cosmic Location -> TS.StateT GameState IO (Maybe Entity)
+mtlEntityAt = TS.StateT . runGetEntity
+ where
+  runGetEntity :: Cosmic Location -> GameState -> IO (Maybe Entity, GameState)
+  runGetEntity loc gs =
+    fmap swap . Fused.runM . Fused.runState gs . Effect.runMetricIO . Effect.runTimeIO $ entityAt loc
+
+-- | Provide an entity accessor like 'mtlEntityAt' but without running metrics.
+mtlEntityAtForTest :: Cosmic Location -> TS.State GameState (Maybe Entity)
+mtlEntityAtForTest = TS.state . runGetEntity
  where
   runGetEntity :: Cosmic Location -> GameState -> (Maybe Entity, GameState)
   runGetEntity loc gs =
-    swap . run . Fused.runState gs $ entityAt loc
+    swap . run . Fused.runState gs . Effect.runFakeMetric . Effect.runFakeTime 0 $ entityAt loc
 
 -- | Get the entity (if any) at a given location.
-entityAt :: (Has (State GameState) sig m) => Cosmic Location -> m (Maybe Entity)
-entityAt (Cosmic subworldName loc) =
-  join <$> zoomWorld subworldName (W.lookupEntityM @Int (locToCoords loc))
+entityAt :: (Has (State GameState) sig m, Has Effect.Time sig m, Has Effect.Metric sig m) => Cosmic Location -> m (Maybe Entity)
+entityAt (Cosmic subworldName loc) = do
+  wm <- use $ landscape . worldMetrics
+  join <$> zoomWorld3 subworldName (W.lookupEntityM @Int wm (locToCoords loc))
 
 contentAt ::
-  (Has (State GameState) sig m) =>
+  (Has (State GameState) sig m, Has Effect.Time sig m, Has Effect.Metric sig m) =>
   Cosmic Location ->
   m (TerrainType, Maybe Entity)
 contentAt (Cosmic subworldName loc) = do
   tm <- use $ landscape . terrainAndEntities . terrainMap
-  val <- zoomWorld subworldName $ do
-    (terrIdx, maybeEnt) <- W.lookupContentM (locToCoords loc)
+  wm <- use $ landscape . worldMetrics
+  val <- zoomWorld3 subworldName $ do
+    (terrIdx, maybeEnt) <- W.lookupContentM wm (locToCoords loc)
     let terrObj = terrIdx `IM.lookup` terrainByIndex tm
     return (maybe BlankT terrainName terrObj, maybeEnt)
   return $ fromMaybe (BlankT, Nothing) val
@@ -576,5 +591,33 @@ zoomWorld swName n = do
   mw <- use $ landscape . multiWorld
   forM (M.lookup swName mw) $ \w -> do
     let (w', a) = run (Fused.runState w n)
+    landscape . multiWorld %= M.insert swName w'
+    return a
+
+-- | Perform an action requiring a 'W.World' state component in a
+--   larger context with a 'GameState'.
+zoomWorld2 ::
+  (Has (State GameState) sig m, Has (Lift IO) sig m) =>
+  SubworldName ->
+  Effect.TimeIOC (Effect.MetricIOC (Fused.StateC (W.World Int Entity) (Fused.LiftC IO))) b ->
+  m (Maybe b)
+zoomWorld2 swName n = do
+  mw <- use $ landscape . multiWorld
+  forM (M.lookup swName mw) $ \w -> do
+    (w', a) <- Fused.sendIO . Fused.runM . Fused.runState w . Effect.runMetricIO $ Effect.runTimeIO n
+    landscape . multiWorld %= M.insert swName w'
+    return a
+
+-- | Perform an action requiring a 'W.World' state component in a
+--   larger context with a 'GameState'.
+zoomWorld3 ::
+  (Has (State GameState) sig m) =>
+  SubworldName ->
+  Fused.StateC (W.World Int Entity) m b ->
+  m (Maybe b)
+zoomWorld3 swName n = do
+  mw <- use $ landscape . multiWorld
+  forM (M.lookup swName mw) $ \w -> do
+    (w', a) <- Fused.runState w n
     landscape . multiWorld %= M.insert swName w'
     return a

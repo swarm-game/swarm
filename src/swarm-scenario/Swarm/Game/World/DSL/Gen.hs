@@ -4,13 +4,13 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Utilities for working with procedurally generated worlds.
-module Swarm.Game.World.Gen where
+module Swarm.Game.World.DSL.Gen where
 
 import Data.Semigroup (Last (..))
 import Data.Set qualified as S
 import Swarm.Game.Entity
-import Swarm.Game.World.Syntax (CellVal (..))
-import Swarm.Game.World.Typecheck (Const (CCell), TTerm (..))
+import Swarm.Game.World.DSL.Syntax (CellVal (..))
+import Swarm.Game.World.DSL.Typecheck (Const (CCell), TTerm (..))
 import Swarm.Util.Erasable
 
 type Seed = Int

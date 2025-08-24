@@ -15,16 +15,17 @@ import Control.Lens as Lens
 import Control.Monad (forM, forM_, unless, when)
 import Control.Monad.IO.Class (MonadIO (liftIO), liftIO)
 import Control.Monad.State (MonadState, execState)
+import Data.Functor (void)
 import Data.List.Extra (enumerate)
-import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Graphics.Vty qualified as V
-import Swarm.Effect (TimeIOC, runTimeIO)
+import Swarm.Effect qualified as Effect
 import Swarm.Game.CESK (continue)
 import Swarm.Game.Device
+import Swarm.Game.Entity (Entity)
 import Swarm.Game.Robot (robotCapabilities)
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.State
@@ -184,8 +185,14 @@ loadVisibleRegion = do
   mext <- lookupExtent WorldExtent
   forM_ mext $ \(Extent _ _ size) -> do
     vc <- use $ robotInfo . viewCenter
+    wMetric <- use $ landscape . worldMetrics
     let vr = viewingRegion vc (over both fromIntegral size)
-    landscape . multiWorld %= M.adjust (W.loadRegion (vr ^. planar)) (vr ^. subworld)
+    let swName = vr ^. subworld
+    let f :: Fused.StateC GameState (Fused.LiftC IO) ()
+        f = void . zoomWorld2 swName $ W.loadRegionM @Int @Entity wMetric (vr ^. planar)
+    gs <- get
+    gs' <- liftIO . Fused.runM $ Fused.execState gs f
+    put gs'
 
 mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe (Cosmic Coords))
 mouseLocToWorldCoords (Brick.Location mouseLoc) = do
@@ -212,11 +219,11 @@ resetViewport n = do
 -- | Modifies the game state using a fused-effect state action.
 zoomGameStateFromAppState ::
   (MonadState AppState m, MonadIO m) =>
-  Fused.StateC GameState (TimeIOC (Fused.LiftC IO)) a ->
+  Fused.StateC GameState (Effect.MetricIOC (Effect.TimeIOC (Fused.LiftC IO))) a ->
   m a
 zoomGameStateFromAppState f = do
   gs <- use z
-  (gs', a) <- liftIO . Fused.runM . runTimeIO $ Fused.runState gs f
+  (gs', a) <- liftIO (Fused.runM . Effect.runTimeIO . Effect.runMetricIO $ Fused.runState gs f)
   z .= gs'
   return a
  where
@@ -226,22 +233,22 @@ zoomGameStateFromAppState f = do
 -- | Modifies the game state using a fused-effect state action.
 zoomGameStateFromScenarioState ::
   (MonadState ScenarioState m, MonadIO m) =>
-  Fused.StateC GameState (TimeIOC (Fused.LiftC IO)) a ->
+  Fused.StateC GameState (Effect.MetricIOC (Effect.TimeIOC (Fused.LiftC IO))) a ->
   m a
 zoomGameStateFromScenarioState f = do
   gs <- use gameState
-  (gs', a) <- liftIO (Fused.runM (runTimeIO (Fused.runState gs f)))
+  (gs', a) <- liftIO (Fused.runM . Effect.runTimeIO . Effect.runMetricIO $ Fused.runState gs f)
   gameState .= gs'
   return a
 
 -- | Modifies the game state using a fused-effect state action.
 zoomGameStateFromPlayState ::
   (MonadState PlayState m, MonadIO m) =>
-  Fused.StateC GameState (TimeIOC (Fused.LiftC IO)) a ->
+  Fused.StateC GameState (Effect.MetricIOC (Effect.TimeIOC (Fused.LiftC IO))) a ->
   m a
 zoomGameStateFromPlayState f = do
   gs <- use $ scenarioState . gameState
-  (gs', a) <- liftIO (Fused.runM (runTimeIO (Fused.runState gs f)))
+  (gs', a) <- liftIO (Fused.runM . Effect.runTimeIO . Effect.runMetricIO $ Fused.runState gs f)
   scenarioState . gameState .= gs'
   return a
 

@@ -294,6 +294,9 @@ common pandoc
 common pandoc-types
   build-depends: pandoc-types >=1.23 && <1.24
 
+common parallel
+  build-depends: parallel >=3.2 && <3.3
+
 common parser-combinators
   build-depends: parser-combinators >=1.2 && <1.4
 
@@ -593,6 +596,7 @@ library swarm-scenario
     containers,
     directory,
     either,
+    ekg-core,
     extra,
     filepath,
     fused-effects,
@@ -608,6 +612,7 @@ library swarm-scenario
     mtl,
     murmur3,
     palette,
+    parallel,
     parser-combinators,
     prettyprinter,
     random,
@@ -655,16 +660,24 @@ library swarm-scenario
     Swarm.Game.State.Landscape
     Swarm.Game.Terrain
     Swarm.Game.World
-    Swarm.Game.World.Abstract
-    Swarm.Game.World.Compile
-    Swarm.Game.World.Eval
-    Swarm.Game.World.Gen
-    Swarm.Game.World.Interpret
-    Swarm.Game.World.Load
-    Swarm.Game.World.Parse
+    Swarm.Game.World.DSL
+    Swarm.Game.World.DSL.Abstract
+    Swarm.Game.World.DSL.Compile
+    Swarm.Game.World.DSL.Eval
+    Swarm.Game.World.DSL.Gen
+    Swarm.Game.World.DSL.Interpret
+    Swarm.Game.World.DSL.Load
+    Swarm.Game.World.DSL.Parse
+    Swarm.Game.World.DSL.Syntax
+    Swarm.Game.World.DSL.Typecheck
+    Swarm.Game.World.Function
+    Swarm.Game.World.Metrics
+    Swarm.Game.World.Multi
+    Swarm.Game.World.Pure
     Swarm.Game.World.Render
-    Swarm.Game.World.Syntax
-    Swarm.Game.World.Typecheck
+    Swarm.Game.World.Stateful
+    Swarm.Game.World.Tile
+    Swarm.Game.World.Update
     Swarm.Util.Content
 
   other-modules: Paths_swarm
@@ -722,8 +735,6 @@ library swarm-engine
   visibility: public
   -- cabal-gild: discover src/swarm-engine
   exposed-modules:
-    Swarm.Effect
-    Swarm.Effect.Time
     Swarm.Game.Achievement.Attainment
     Swarm.Game.Achievement.Description
     Swarm.Game.Achievement.Persistence
@@ -909,6 +920,7 @@ library swarm-util
     data-fix,
     directory,
     either,
+    ekg-core,
     extra,
     filepath,
     free,
@@ -932,6 +944,9 @@ library swarm-util
   -- cabal-gild: discover src/swarm-util
   exposed-modules:
     Data.BoolExpr.Simplify
+    Swarm.Effect
+    Swarm.Effect.Metric
+    Swarm.Effect.Time
     Swarm.Failure
     Swarm.Language.Syntax.Direction
     Swarm.Pretty

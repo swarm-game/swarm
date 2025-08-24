@@ -16,13 +16,13 @@ import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Terrain (TerrainMap, TerrainType, getTerrainWord)
 import Swarm.Game.Universe
 import Swarm.Game.World
-import Swarm.Game.World.Coords
 import Swarm.Util.Erasable (erasableToMaybe, maybeToErasable)
 
 -- | Get the terrain and entity at a single cell
 getContentAt :: TerrainMap -> MultiWorld Int e -> Cosmic Coords -> (TerrainType, Maybe e)
 getContentAt tm w coords = (underlyingCellTerrain, underlyingCellEntity)
  where
+  -- TODO: Are we SURE that the tile was already loaded?
   underlyingCellEntity = lookupCosmicEntity coords w
   underlyingCellTerrain = lookupCosmicTerrain tm coords w
 

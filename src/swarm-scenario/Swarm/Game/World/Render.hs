@@ -46,8 +46,8 @@ import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.State.Landscape
 import Swarm.Game.Universe
+import Swarm.Game.World (Seed)
 import Swarm.Game.World.Coords
-import Swarm.Game.World.Gen (Seed)
 import Swarm.Pretty (prettyText)
 import Swarm.Util (failT)
 import Swarm.Util.Content

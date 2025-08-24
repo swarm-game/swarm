@@ -45,9 +45,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Static (LocatedStruc
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.Universe (SubworldName (DefaultRootSubworld))
-import Swarm.Game.World.Parse ()
-import Swarm.Game.World.Syntax
-import Swarm.Game.World.Typecheck
+import Swarm.Game.World.DSL
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown (Document, fromText)
 import Swarm.Pretty (prettyString)

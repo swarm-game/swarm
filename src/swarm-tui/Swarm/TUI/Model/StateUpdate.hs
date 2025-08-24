@@ -84,7 +84,7 @@ import Swarm.Game.State.Landscape
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Tick (TickNumber (TickNumber))
-import Swarm.Game.World.Gen (Seed)
+import Swarm.Game.World.DSL (Seed)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
 import Swarm.Pretty (prettyText)
 import Swarm.ResourceLoading (getSwarmHistoryPath)
@@ -388,8 +388,9 @@ scenarioToAppState ::
   m ()
 scenarioToAppState siPair@(ScenarioWith scene p) lp = do
   rs <- use runtimeState
-  prevMetric <- use $ playState . scenarioState . gameState . gameMetrics
-  gs <- liftIO $ scenarioToGameState (ScenarioWith scene $ Just p) lp prevMetric rs
+  prevGMetric <- use $ playState . scenarioState . gameState . gameMetrics
+  prevWMetric <- use $ playState . scenarioState . gameState . landscape . worldMetrics
+  gs <- liftIO $ scenarioToGameState (ScenarioWith scene $ Just p) lp prevGMetric prevWMetric rs
   playState . scenarioState . gameState .= gs
 
   curTime <- liftIO $ getTime Monotonic
