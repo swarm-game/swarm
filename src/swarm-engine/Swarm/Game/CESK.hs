@@ -95,7 +95,7 @@ import Swarm.Game.Ingredients (Count)
 import Swarm.Game.Tick
 import Swarm.Game.World (WorldUpdate (..))
 import Swarm.Language.Elaborate (insertSuspend)
-import Swarm.Language.Load (SourceMap, SyntaxWithImports (..))
+import Swarm.Language.Load (SyntaxWithImports (..))
 import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
@@ -153,6 +153,9 @@ data Frame
     --   in the given environment (extended by binding the variable,
     --   if there is one, to the output of the first command).
     FBind (Maybe Var) (Maybe (Polytype, Requirements)) (Term Resolved) Env
+  | -- | We are in the process of evaluating an import; once done, we
+    --   should proceed to evaluate the given body.
+    FImport (Term Resolved)
   | -- | Apply specific updates to the world and current robot.
     --
     -- The 'Const' is used to track the original command for error messages.
@@ -425,6 +428,7 @@ prettyFrame f (p, inner) = case f of
   FExec -> prettyPrefix "E·" (p, inner)
   FBind Nothing _ t _ -> (0, pparens (p < 1) inner <+> ";" <+> ppr t)
   FBind (Just x) _ t _ -> (0, hsep [ppr x, "<-", pparens (p < 1) inner, ";", ppr t])
+  FImport t -> (11, hsep ["import", inner, "in", ppr t])
   FImmediate c _worldUpds _robotUpds -> prettyPrefix ("I[" <> ppr c <> "]·") (p, inner)
   FUpdate {} -> (p, inner)
   FFinishAtomic -> prettyPrefix "A·" (p, inner)
