@@ -745,12 +745,9 @@ stepCESK cesk = case cesk of
         -- To evaluate an import:
         --   (1) stick a 'suspend' at the end of the term
         --     corresponding to the imported module, so we can save the resulting environment
-        --   (2) push an FBind frame on the stack to continue with the
-        --     rest of the code once we're done processing the import.
-        --     Note that the environment in the FBind will be ignored
-        --     in favor of the environment resulting from the suspend.
-        --   (3) push an FExec frame to execute the import itself.
-        Just m -> In (insertSuspend $ erase m ^. sTerm) e s (FExec : FBind Nothing Nothing t e : k)
+        --   (2) push an FImport frame on the stack to continue with the
+        --     body in the context of the input once we're done processing it.
+        Just m -> In (insertSuspend $ erase m ^. sTerm) e s (FImport t : k)
   -- XXX keep a map from imports to corresponding Env, don't re-evaluate if it's already
   -- in the map.  To make this sound, need to disallow all but defs in an import.
   -- Ignore explicit parens.
@@ -823,6 +820,16 @@ stepCESK cesk = case cesk of
           Nothing -> addValueBinding x v e
           Just (ty, reqs) -> addBinding x (WithType v ty reqs) e
     return $ In t2 e' s (FExec : k)
+  -- If we have suspended at the end of an import, go ahead and
+  -- evaluate the suspend without waiting for an FExec, since the body
+  -- of the import may or may not be something we need to execute
+  -- (e.g. "import blah in x + 1" vs "import blah in move; foo")
+  Out (VSuspend t e) s (FImport body : k) -> return $ In t e s (FSuspend e : FImport body : k)
+  -- This case shouldn't happen: we will always insert a call to
+  -- 'suspend' at the end of an import, so we will reach the 'FImport'
+  -- frame in a 'Suspended' state, so we can restore the suspended
+  -- environment.
+  Out _ s (FImport _ : _) -> badMachineState s "FImport frame in non-suspended state"
   -- To execute a suspend instruction, evaluate its argument and then
   -- suspend.
   Out (VSuspend t e) s (FExec : k) -> return $ In t e s (FSuspend e : k)
@@ -858,6 +865,10 @@ stepCESK cesk = case cesk of
           Nothing -> addValueBinding x v e
           Just (ty, reqs) -> addBinding x (WithType v ty reqs) e
     return $ In t2 e' s (FExec : k)
+  -- If we we're suspended after processing an import, resume by
+  -- evaluating the body of the import in the suspended context we got
+  -- after processing the import.
+  Suspended _ e s (FImport t : k) -> return $ In t e s k
   -- Otherwise, if we're suspended with nothing else left to do,
   -- return the machine unchanged (but throw away the rest of the
   -- continuation stack).
