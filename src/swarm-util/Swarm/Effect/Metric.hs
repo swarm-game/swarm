@@ -10,6 +10,7 @@
 module Swarm.Effect.Metric (
   Metric (..),
   counterInc,
+  gaugeAdd,
   gaugeSet,
   distributionAdd,
 
@@ -29,11 +30,15 @@ import System.Metrics.Gauge qualified as Gauge
 
 data Metric (m :: Type -> Type) k where
   CounterInc :: Counter.Counter -> Metric m ()
+  GaugeAdd :: Gauge.Gauge -> Int -> Metric m ()
   GaugeSet :: Gauge.Gauge -> Int -> Metric m ()
   DistributionAdd :: Distribution.Distribution -> Double -> Metric m ()
 
 counterInc :: Has Metric sig m => Counter.Counter -> m ()
 counterInc = send . CounterInc
+
+gaugeAdd :: Has Metric sig m => Gauge.Gauge -> Int -> m ()
+gaugeAdd g = send . GaugeAdd g
 
 gaugeSet :: Has Metric sig m => Gauge.Gauge -> Int -> m ()
 gaugeSet g = send . GaugeSet g
@@ -48,6 +53,7 @@ instance (MonadIO m, Algebra sig m) => Algebra (Metric :+: sig) (MetricIOC m) wh
   alg hdl sig ctx = case sig of
     L (CounterInc c) -> (<$ ctx) <$> liftIO (Counter.inc c)
     L (DistributionAdd d v) -> (<$ ctx) <$> liftIO (Distribution.add d v)
+    L (GaugeAdd g v) -> (<$ ctx) <$> liftIO (Gauge.add g $ fromIntegral v)
     L (GaugeSet g v) -> (<$ ctx) <$> liftIO (Gauge.set g $ fromIntegral v)
     R other -> MetricIOC (alg (runMetricIO . hdl) other ctx)
 
@@ -58,5 +64,6 @@ instance (Algebra sig m) => Algebra (Metric :+: sig) (FakeMetric m) where
   alg hdl sig ctx = case sig of
     L (CounterInc {}) -> pure ctx
     L (DistributionAdd {}) -> pure ctx
+    L (GaugeAdd {}) -> pure ctx
     L (GaugeSet {}) -> pure ctx
     R other -> FakeMetric (alg (runFakeMetric . hdl) other ctx)

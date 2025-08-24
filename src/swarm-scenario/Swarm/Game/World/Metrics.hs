@@ -19,7 +19,10 @@ import System.Metrics.Gauge (Gauge)
 -- | Metrics tracked in Swarm game engine.
 data WorldMetrics = WorldMetrics
   { loadedTiles :: Gauge
-  , tileLoadTime :: Distribution
+  , inMemoryTiles :: Gauge
+  , tilesBatchLoadTime :: Distribution
+  , tileAverageLoadTime :: Distribution
+  , tilesExpectedLoadTime :: Distribution
   }
 
 -- | Create and register the metrics to metric store.
@@ -28,5 +31,8 @@ data WorldMetrics = WorldMetrics
 initWorldMetrics :: Store -> IO WorldMetrics
 initWorldMetrics s = do
   loadedTiles <- createGauge "game.tile_loaded" s
-  tileLoadTime <- createDistribution "game.tile_load_time" s
+  inMemoryTiles <- createGauge "game.tile_in_memory" s
+  tileAverageLoadTime <- createDistribution "game.tile_average_load_time" s
+  tilesBatchLoadTime <- createDistribution "game.tiles_expected_load_time" s
+  tilesExpectedLoadTime <- createDistribution "game.tiles_batch_load_time" s
   pure WorldMetrics {..}

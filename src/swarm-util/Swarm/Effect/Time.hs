@@ -38,9 +38,9 @@ getNow = send GetNow
 measureCpuTimeInSec :: Has Time sig m => m a -> m (Double, a)
 measureCpuTimeInSec f = do
   s <- send GetCpuTime
-  res <- f
+  !res <- f
   e <- send GetCpuTime
-  let elapsedSec = fromIntegral (e - s) * 1e-12
+  let elapsedSec = fromRational $ fromIntegral (e - s) * 1e-12
   pure (elapsedSec, res)
 
 newtype TimeIOC m a = TimeIOC {runTimeIO :: m a}

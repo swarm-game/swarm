@@ -117,7 +117,14 @@ loadRegionM wm = updateMetric . state @(World t e) . loadRegion
     Nothing -> void m
     Just wMetrics -> do
       (loadTime, loadedTiles) <- Effect.measureCpuTimeInSec m
+      -- TODO: ONDRA - temporarily moved outside unless for sanity check
+      inMemoryTiles <- use @(World t e) $ tileCache . to M.size
+      Effect.gaugeSet wMetrics.inMemoryTiles inMemoryTiles
       unless (null loadedTiles) $ do
-        tileCount <- use @(World t e) $ tileCache . to M.size
-        Effect.gaugeSet wMetrics.loadedTiles tileCount
-        Effect.distributionAdd wMetrics.tileLoadTime loadTime
+        let loadedCount = length loadedTiles
+        let avgTime = loadTime / fromIntegral loadedCount
+        let expTime = avgTime * fromIntegral loadedCount
+        Effect.gaugeAdd wMetrics.loadedTiles loadedCount
+        Effect.distributionAdd wMetrics.tilesBatchLoadTime loadTime
+        Effect.distributionAdd wMetrics.tileAverageLoadTime avgTime
+        Effect.distributionAdd wMetrics.tilesExpectedLoadTime expTime
