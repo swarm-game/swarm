@@ -26,9 +26,7 @@ module Swarm.Game.World.Stateful (
 ) where
 
 import Control.Algebra (Has)
-import Control.Effect.Lens (use)
 import Control.Effect.State (State, get, state)
-import Control.Lens hiding (use)
 import Control.Monad (unless, void)
 import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
@@ -39,6 +37,7 @@ import Swarm.Game.Scenario.Topography.Modify
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Metrics (WorldMetrics (..))
 import Swarm.Game.World.Pure
+import Swarm.Game.World.Tile
 
 type HasWorldStateEffect t e sig m =
   ( IArray U.UArray t
@@ -111,14 +110,16 @@ loadRegionM ::
   Maybe WorldMetrics ->
   (Coords, Coords) ->
   m ()
-loadRegionM wm = updateMetric . state @(World t e) . loadRegion
+loadRegionM wm = updateMetric . state @(World t e) . loadRegion'
  where
+  loadRegion' :: (Coords, Coords) -> World t e -> (World t e, [TileCoords])
+  loadRegion' cc ow = let (nw, ts) = loadRegion cc ow in nw.tileCache `seq` (nw, ts)
+  updateMetric :: m [TileCoords] -> m ()
   updateMetric m = case wm of
     Nothing -> void m
     Just wMetrics -> do
       (loadTime, loadedTiles) <- Effect.measureCpuTimeInSec m
-      -- TODO: ONDRA - temporarily moved outside unless for sanity check
-      inMemoryTiles <- use @(World t e) $ tileCache . to M.size
+      inMemoryTiles <- M.size . (.tileCache) <$> get @(World t e)
       Effect.gaugeSet wMetrics.inMemoryTiles inMemoryTiles
       unless (null loadedTiles) $ do
         let loadedCount = length loadedTiles

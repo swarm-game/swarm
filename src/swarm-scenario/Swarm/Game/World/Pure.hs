@@ -24,10 +24,7 @@
 -- Prefer using the stateful versions for lookup in 'Swarm.Game.World.Stateful',
 -- which internally cache the loaded regions.
 module Swarm.Game.World.Pure (
-  World,
-  worldFun,
-  tileCache,
-  changed,
+  World(..),
   newWorld,
 
   -- ** Lookup
@@ -71,12 +68,10 @@ import Prelude hiding (Foldable (..), lookup)
 --   would also make for some difficult decisions in terms of how to
 --   handle respawning.
 data World t e = World
-  { _worldFun :: WorldFun t e
-  , _tileCache :: M.Map TileCoords (TerrainTile t, EntityTile e)
-  , _changed :: M.Map Coords (Maybe e)
+  { worldFun :: WorldFun t e
+  , tileCache :: M.Map TileCoords (TerrainTile t, EntityTile e)
+  , changed :: M.Map Coords (Maybe e)
   }
-
-makeLenses 'World
 
 -- | Create a new 'World' from a 'WorldFun'.
 newWorld :: WorldFun t e -> World t e
