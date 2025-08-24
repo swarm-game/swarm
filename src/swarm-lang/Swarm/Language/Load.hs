@@ -84,7 +84,7 @@ instance Erasable Module where
 -- | A SourceMap associates canonical 'ImportLocation's to modules.
 type SourceMap phase = Map (ImportLoc (ImportPhaseFor phase)) (Module phase)
 
--- | XXX
+-- | An AST paired with information about its recursive imports.
 data SyntaxWithImports phase = SyntaxWithImports
   { getSourceMap :: SourceMap phase
   , getSyntax :: Syntax phase
