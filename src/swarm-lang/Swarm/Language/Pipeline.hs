@@ -147,7 +147,7 @@ instance Processable SyntaxWithImports where
     SyntaxWithImports srcMapTy tTy <- withError (typeErrToSystemFailure "") . inferTop mempty mempty emptyTDCtx srcMapRes $ tRes
     pure $ SyntaxWithImports (M.map elaborateModule srcMapTy) (elaborate tTy)
 
--- | XXX process syntax but deliberately throw away information about
+-- | Process syntax, but deliberately throw away information about
 --   imports.  Used e.g. for processing code embedded in markdown.
 processSyntax :: (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) => Syntax Raw -> m (Syntax Elaborated)
 processSyntax = fmap getSyntax . process . SyntaxWithImports mempty
