@@ -600,7 +600,6 @@ library swarm-scenario
     extra,
     filepath,
     fused-effects,
-    fused-effects-lens,
     hashable,
     nonempty-containers,
     hsnoise,
