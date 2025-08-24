@@ -132,7 +132,7 @@ import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Language.Load (SyntaxWithImports (..))
 import Swarm.Language.Pipeline (processSource, requireNonEmptyTerm)
-import Swarm.Language.Syntax (Phase (..), SrcLoc (..), Syntax, sLoc)
+import Swarm.Language.Syntax (Phase (..), SrcLoc (..), sLoc)
 import Swarm.Language.Value (Env)
 import Swarm.Log
 import Swarm.Util (applyWhen, uniq)
