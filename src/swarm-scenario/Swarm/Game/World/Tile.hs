@@ -52,7 +52,7 @@ type EntityTile e = A.Array TileOffset (Maybe e)
 --   1024 cells in each tile. This seems to result in more smooth
 --   scrolling of the world map.
 tileBits :: Int
-tileBits = 8 -- TODO: ONDRA test
+tileBits = 5
 
 -- | The number consisting of 'tileBits' many 1 bits.  We can use this
 --   to mask out the tile offset of a coordinate.
