@@ -11,6 +11,7 @@ module Main where
 
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
+import Control.Carrier.Error.Either (runError)
 import Control.Lens (Ixed (ix), at, to, view, (&), (.~), (^.), (^..), (^?), (^?!))
 import Control.Monad (forM_, unless, when)
 import Control.Monad.State (execStateT)
@@ -95,6 +96,7 @@ import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, test
 import TestFormat
 import TestRecipeCoverage
 import Witch (into)
+import Swarm.Language.Phase (Raw)
 
 isUnparseableTest :: FilePath -> Bool
 isUnparseableTest fp = "_Validation" `elem` splitDirectories fp
@@ -148,8 +150,9 @@ exampleTests = testGroup "Test example" . map exampleTest
 exampleTest :: FilePath -> TestTree
 exampleTest path =
   testCase ("processTerm for contents of " ++ show path) $ do
-    value <- processTerm <$> T.readFile path
-    either (assertFailure . into @String) (const $ return ()) value
+    assertFailure "TODO"
+    -- value <- undefined processTerm <$> T.readFile path
+    -- either (assertFailure . into @String) (const $ return ()) value
 
 scenarioParseTests :: ScenarioInputs -> [FilePath] -> TestTree
 scenarioParseTests scenarioInputs inputs =
@@ -171,7 +174,7 @@ scenarioTest expRes scenarioInputs path =
 
 getScenario :: ParseResult -> ScenarioInputs -> FilePath -> IO ()
 getScenario expRes scenarioInputs p = do
-  res <- decodeFileEitherE scenarioInputs p :: IO (Either ParseException Scenario)
+  res <- decodeFileEitherE scenarioInputs p :: IO (Either ParseException (Scenario Raw))
   case expRes of
     Parsed -> case res of
       Left err -> assertFailure $ prettyPrintParseException err
@@ -543,7 +546,7 @@ testScenarioSolutions ps =
   testSolution' s p shouldCheckBadErrors verify = testCase p $ do
     cleanStore <- Metrics.newStore
     out <-
-      runM . runThrow @SystemFailure $
+      runM . runError @SystemFailure $
         constructAppState
           (resetMetrics cleanStore ps)
           (defaultAppOpts {userScenario = Just p})
