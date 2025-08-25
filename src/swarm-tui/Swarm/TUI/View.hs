@@ -112,8 +112,8 @@ import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Tick (TickNumber (..), formatTicks)
 import Swarm.Game.Universe
-import Swarm.Game.World.Coords
 import Swarm.Game.World (Seed)
+import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
