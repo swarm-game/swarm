@@ -102,13 +102,16 @@ appMain opts = do
       modifyIORef appStateRef $ logColorMode vty
 
       -- Run the app.
-      void $
+      sFinal <-
         readIORef appStateRef
           >>= customMain
             vty
             (buildVty opts.colorMode)
             (Just chan)
             (app $ handleEventAndUpdateWeb appStateRef)
+
+      -- Finish writing logs before exiting
+      waitForLogger (sFinal ^. runtimeState . logger)
 
 -- | A demo program to run the web service directly, without the terminal application.
 --   This is useful to live update the code using @ghcid -W --test "Swarm.App.demoWeb"@.

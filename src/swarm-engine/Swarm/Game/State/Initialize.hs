@@ -24,6 +24,7 @@ import Data.Maybe (isNothing)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Tuple.Extra (dupe)
+import Log (Logger)
 import Swarm.Game.CESK (finalValue, initMachine)
 import Swarm.Game.Device (getCapabilitySet, getMap)
 import Swarm.Game.Entity
@@ -68,7 +69,7 @@ scenarioToGameState si@(ScenarioWith scenario _) (LaunchParams (Identity userSee
   theSeed <- arbitrateSeed userSeed $ scenario ^. scenarioLandscape
   now <- Clock.getTime Clock.Monotonic
   gMetric <- maybe (initGameMetrics $ rs ^. metrics) pure prevMetric
-  return $ pureScenarioToGameState si theSeed now toRun (Just gMetric) (rs ^. stdGameConfigInputs)
+  return $ pureScenarioToGameState si theSeed now toRun (Just gMetric) (rs ^. logger) (rs ^. stdGameConfigInputs)
 
 pureScenarioToGameState ::
   ScenarioWith (Maybe ScenarioPath) ->
@@ -76,9 +77,10 @@ pureScenarioToGameState ::
   Clock.TimeSpec ->
   Maybe CodeToRun ->
   Maybe GameMetrics ->
+  Logger ->
   GameStateConfig ->
   GameState
-pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gMetric gsc =
+pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gMetric gLogger gsc =
   preliminaryGameState
     & discovery . structureRecognition .~ recognition
  where
@@ -94,7 +96,7 @@ pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gMetric gsc
       . adaptGameState
       $ initializeRecognition mtlEntityAt (sLandscape ^. scenarioStructures)
 
-  gs = initGameState gsc
+  gs = initGameState gsc gLogger
   preliminaryGameState =
     gs
       & currentScenarioPath .~ fp

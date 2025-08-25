@@ -13,6 +13,7 @@ import Control.Lens (use, (^.))
 import Control.Monad.State (StateT, gets)
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
+import Swarm.Effect.Log qualified as Log
 import Swarm.Effect.Time (runTimeIO)
 import Swarm.Game.Robot.Concrete (robotLog)
 import Swarm.Game.State (GameState, messageInfo, robotInfo, winCondition)
@@ -33,7 +34,9 @@ playUntilWin = do
     Just badErrs -> return $ Left badErrs
     Nothing -> case w of
       WinConditions (Won _ ts) _ -> return $ Right ts
-      _ -> runTimeIO gameTick >> playUntilWin
+      _ -> runEffects gameTick >> playUntilWin
+ where
+  runEffects = runTimeIO . Log.runLogIOC mempty mempty minBound
 
 -- | Extract any bad error messages from robot logs or the global
 --   message queue, where "bad" errors are either fatal errors or

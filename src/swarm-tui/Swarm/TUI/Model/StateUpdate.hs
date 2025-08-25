@@ -49,8 +49,9 @@ import Data.Sequence (Seq)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Time (getZonedTime)
+import Data.Time (getCurrentTime, getZonedTime)
 import Data.Yaml (decodeFileEither, prettyPrintParseException)
+import Log hiding ((.=))
 import Swarm.Failure (SystemFailure (..))
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Persistence
@@ -144,6 +145,7 @@ mkRuntimeOptions AppOpts {..} =
     { startPaused = pausedAtStart
     , pauseOnObjectiveCompletion = autoShowObjectives
     , loadTestScenarios = Set.member LoadTestingScenarios debugOptions
+    , startLogging = True
     }
 
 data PersistentState
@@ -164,6 +166,20 @@ initPersistentState ::
 initPersistentState opts@(AppOpts {..}) = do
   (warnings :: Seq SystemFailure, PersistentState initRS initUI initKs initProg) <- runAccum mempty $ do
     rs <- initRuntimeState $ mkRuntimeOptions opts
+
+    -- TODO: this is a hello world, fix it with proper LogEnv
+    timeNow <- sendIO getCurrentTime
+    sendIO $
+      execLogger (rs ^. logger) $
+        LogMessage
+          { lmComponent = T.pack "TUI"
+          , lmDomain = [T.pack "State update"]
+          , lmTime = timeNow
+          , lmLevel = LogInfo
+          , lmMessage = T.pack "Hello world! I just initialized the runtime state"
+          , lmData = object []
+          }
+
     let showMainMenu = not (skipMenu opts)
     ui <- initUIState UIInitOptions {..}
     ks <- initKeyHandlingState
@@ -214,8 +230,7 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mCha
   chan <- sendIO $ maybe initTestChan pure mChan
   animMgr <- sendIO $ startAnimationManager animMgrTickDuration chan PopupEvent
 
-  let gsc = rs ^. stdGameConfigInputs
-      gs = initGameState gsc
+  let gs = initGameState (rs ^. stdGameConfigInputs) (rs ^. logger)
       ps =
         PlayState
           { _scenarioState = ScenarioState gs $ initialUiGameplay startTime history

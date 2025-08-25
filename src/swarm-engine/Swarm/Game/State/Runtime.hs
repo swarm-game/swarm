@@ -19,10 +19,12 @@ module Swarm.Game.State.Runtime (
   appData,
   stdGameConfigInputs,
   metrics,
+  logger,
 
   -- ** Utility
   initScenarioInputs,
   initGameStateConfig,
+  waitForLogger,
 )
 where
 
@@ -33,6 +35,9 @@ import Control.Lens
 import Data.Map (Map)
 import Data.Sequence (Seq)
 import Data.Text (Text)
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
+import Log
 import Swarm.Failure (SystemFailure)
 import Swarm.Game.Land
 import Swarm.Game.Recipe (loadRecipes)
@@ -40,8 +45,10 @@ import Swarm.Game.Scenario (GameStateInputs (..), ScenarioInputs (..))
 import Swarm.Game.State.Substate
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Log
-import Swarm.ResourceLoading (initNameGenerator, readAppData)
+import Swarm.ResourceLoading (getSwarmLogsPath, initNameGenerator, readAppData)
 import Swarm.Util.Lens (makeLensesNoSigs)
+import System.FilePath
+import System.IO (BufferMode (..), IOMode (..), hSetBuffering, openFile)
 import System.Metrics qualified as Metrics
 
 data RuntimeState = RuntimeState
@@ -52,6 +59,7 @@ data RuntimeState = RuntimeState
   , _stdGameConfigInputs :: GameStateConfig
   , _appData :: Map Text Text
   , _metrics :: Metrics.Store
+  , _logger :: Logger
   }
 
 initScenarioInputs ::
@@ -94,6 +102,7 @@ data RuntimeOptions = RuntimeOptions
   { startPaused :: Bool
   , pauseOnObjectiveCompletion :: Bool
   , loadTestScenarios :: Bool
+  , startLogging :: Bool
   }
   deriving (Eq, Show)
 
@@ -108,6 +117,7 @@ initRuntimeState opts = do
   store <- sendIO Metrics.newStore
   sendIO $ Metrics.registerGcMetrics store
   gsc <- initGameStateConfig opts
+  fileLogger <- if startLogging opts then sendIO makeFileLogger else pure mempty
   return $
     RuntimeState
       { _webPort = Nothing
@@ -117,7 +127,18 @@ initRuntimeState opts = do
       , _appData = initAppDataMap gsc
       , _stdGameConfigInputs = gsc
       , _metrics = store
+      , _logger = fileLogger
       }
+
+makeFileLogger :: IO Logger
+makeFileLogger = do
+  logPath <- getSwarmLogsPath
+  logFile <- openFile (logPath </> "log.txt") WriteMode
+  hSetBuffering logFile LineBuffering
+  mkLogger "file log" (T.hPutStrLn logFile . formatMsg)
+ where
+  formatMsg :: LogMessage -> Text
+  formatMsg = showLogMessage Nothing
 
 makeLensesNoSigs ''RuntimeState
 
@@ -149,3 +170,10 @@ appData :: Lens' RuntimeState (Map Text Text)
 -- will be published together with GHC metrics by the Wai server taking
 -- a reference to this store.
 metrics :: Lens' RuntimeState Metrics.Store
+
+-- | Get the persisted logger - you can think of this is as the IO action,
+-- while LoggerEnv should be passed around to enrich logging in current context.
+-- For example game engine logs can be enriched with the "game engine" component.
+-- While game state can be rebuilt each time time a scenario is started
+-- and LoggerEnv discarded, we want to keep around this logging IO action.
+logger :: Lens' RuntimeState Logger
