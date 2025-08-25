@@ -118,8 +118,8 @@ loadCell ::
   (IArray U.UArray t) =>
   Coords ->
   World t e ->
-  (World t e, Maybe TileCoords)
-loadCell c = over _2 listToMaybe . loadRegion (c, c)
+  Maybe TileCoords
+loadCell c = loadRegion (c, c)
 
 -- | Load all the tiles which overlap the given rectangular region
 --   (specified as an upper-left and lower-right corner, inclusive).
