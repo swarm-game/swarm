@@ -19,7 +19,6 @@ module Swarm.Game.World.Stateful (
 
   -- ** Update
   updateM,
-
   -- TODO: #2555
   -- Loading
   -- loadCellM,
@@ -27,7 +26,7 @@ module Swarm.Game.World.Stateful (
 ) where
 
 import Control.Algebra (Has)
-import Control.Effect.State (State, get, state, modify)
+import Control.Effect.State (State, get, modify, state)
 import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
 import Swarm.Game.Entity (Entity)
@@ -79,4 +78,3 @@ updateM ::
   m (CellUpdate Entity)
 updateM c g = do
   state @(World t Entity) $ update c g . loadCell c
-
