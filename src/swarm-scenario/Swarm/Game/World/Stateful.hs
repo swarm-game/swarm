@@ -27,18 +27,13 @@ module Swarm.Game.World.Stateful (
 ) where
 
 import Control.Algebra (Has)
-import Control.Effect.State (State, get, state)
-import Control.Monad (unless, void)
+import Control.Effect.State (State, get, state, modify)
 import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
-import Data.Map.Strict qualified as M
-import Swarm.Effect as Effect
 import Swarm.Game.Entity (Entity)
 import Swarm.Game.Scenario.Topography.Modify
 import Swarm.Game.World.Coords
-import Swarm.Game.World.Metrics (WorldMetrics (..))
 import Swarm.Game.World.Pure
-import Swarm.Game.World.Tile
 
 -- | A stateful variant of 'lookupTerrain', which first loads the tile
 --   containing the given coordinates if it is not already loaded,
