@@ -72,10 +72,10 @@ import Swarm.Game.Scenario.Topography.Modify
 import Swarm.Game.Terrain (TerrainMap, TerrainType (BlankT), terrainByIndex, terrainName)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
+import Swarm.Game.World.DSL.Gen (Seed)
 import Swarm.Util ((?))
 import Swarm.Util.Erasable
 import Prelude hiding (Foldable (..), lookup)
-import Swarm.Game.World.DSL.Gen (Seed)
 
 ------------------------------------------------------------
 -- World function

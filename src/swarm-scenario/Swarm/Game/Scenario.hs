@@ -99,7 +99,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Terrain
 import Swarm.Game.Universe
-import Swarm.Game.World.DSL (Seed, loadWorlds, WorldMap)
+import Swarm.Game.World.DSL (Seed, WorldMap, loadWorlds)
 import Swarm.Language.Syntax (Syntax, TSyntax)
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Pretty (prettyText)
