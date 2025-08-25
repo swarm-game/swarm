@@ -15,7 +15,7 @@
 -- For more info, see:
 --
 --   https://byorgey.wordpress.com/2023/07/13/compiling-to-intrinsically-typed-combinators/
-module Swarm.Game.World.Compile where
+module Swarm.Game.World.DSL.Compile where
 
 import Data.ByteString (ByteString)
 import Data.Hash.Murmur (murmur3)
@@ -23,11 +23,11 @@ import Data.Kind (Constraint)
 import Data.Tagged (Tagged (unTagged))
 import Numeric.Noise.Perlin (noiseValue, perlin)
 import Swarm.Game.Location (pattern Location)
-import Swarm.Game.World.Abstract (BTerm (..))
+import Swarm.Game.World.DSL.Abstract (BTerm (..))
 import Swarm.Game.World.Coords (Coords (..), coordsToLoc, locToCoords)
-import Swarm.Game.World.Gen (Seed)
-import Swarm.Game.World.Syntax (Axis (..), World)
-import Swarm.Game.World.Typecheck (Applicable (..), Const (..), Empty (..), NotFun, Over (..))
+import Swarm.Game.World.DSL.Gen (Seed)
+import Swarm.Game.World.DSL.Syntax (Axis (..), World)
+import Swarm.Game.World.DSL.Typecheck (Applicable (..), Const (..), Empty (..), NotFun, Over (..))
 import Witch (from)
 import Witch.Encoding qualified as Encoding
 

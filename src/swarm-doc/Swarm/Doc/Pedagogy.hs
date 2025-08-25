@@ -54,7 +54,7 @@ import Swarm.Game.ScenarioInfo (
   pathifyCollection,
   scenarioCollectionToList,
  )
-import Swarm.Game.World.Load (loadWorlds)
+import Swarm.Game.World.DSL (loadWorlds)
 import Swarm.Language.Syntax
 import Swarm.Language.Text.Markdown (docToText, findCode)
 import Swarm.Language.Types (Polytype)

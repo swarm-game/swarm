@@ -655,16 +655,17 @@ library swarm-scenario
     Swarm.Game.State.Landscape
     Swarm.Game.Terrain
     Swarm.Game.World
-    Swarm.Game.World.Abstract
-    Swarm.Game.World.Compile
-    Swarm.Game.World.Eval
-    Swarm.Game.World.Gen
-    Swarm.Game.World.Interpret
-    Swarm.Game.World.Load
-    Swarm.Game.World.Parse
+    Swarm.Game.World.DSL
+    Swarm.Game.World.DSL.Abstract
+    Swarm.Game.World.DSL.Compile
+    Swarm.Game.World.DSL.Eval
+    Swarm.Game.World.DSL.Gen
+    Swarm.Game.World.DSL.Interpret
+    Swarm.Game.World.DSL.Load
+    Swarm.Game.World.DSL.Parse
+    Swarm.Game.World.DSL.Syntax
+    Swarm.Game.World.DSL.Typecheck
     Swarm.Game.World.Render
-    Swarm.Game.World.Syntax
-    Swarm.Game.World.Typecheck
     Swarm.Util.Content
 
   other-modules: Paths_swarm

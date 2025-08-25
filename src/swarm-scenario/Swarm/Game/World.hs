@@ -43,6 +43,9 @@ module Swarm.Game.World (
 
   -- ** Runtime updates
   WorldUpdate (..),
+
+  -- * Re-export
+  Seed,
 ) where
 
 import Control.Algebra (Has)
@@ -72,6 +75,7 @@ import Swarm.Game.World.Coords
 import Swarm.Util ((?))
 import Swarm.Util.Erasable
 import Prelude hiding (Foldable (..), lookup)
+import Swarm.Game.World.DSL.Gen (Seed)
 
 ------------------------------------------------------------
 -- World function
