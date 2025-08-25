@@ -36,13 +36,13 @@ module Swarm.Game.World.Pure (
   loadRegion,
 ) where
 
+import Control.Arrow ((&&&))
 import Control.Lens hiding (use)
 import Data.Array qualified as A
 import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
 import Data.Foldable (foldl')
 import Data.Map.Strict qualified as M
-import Data.Maybe (listToMaybe)
 import Swarm.Game.Entity (Entity, entityHash)
 import Swarm.Game.Scenario.Topography.Modify
 import Swarm.Game.World.Coords
@@ -118,7 +118,7 @@ loadCell ::
   (IArray U.UArray t) =>
   Coords ->
   World t e ->
-  Maybe TileCoords
+  World t e
 loadCell c = loadRegion (c, c)
 
 -- | Load all the tiles which overlap the given rectangular region
