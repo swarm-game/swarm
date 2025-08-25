@@ -52,7 +52,6 @@ import Swarm.Game.State.Config
 import Swarm.Game.Terrain (TerrainType (..), terrainIndexByName)
 import Swarm.Game.Universe as U
 import Swarm.Game.World
-import Swarm.Game.World.Coords
 import Swarm.Game.World.DSL (runWorld)
 import Swarm.Util.Erasable
 import Swarm.Util.Lens (makeLensesNoSigs)
