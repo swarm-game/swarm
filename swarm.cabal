@@ -665,7 +665,13 @@ library swarm-scenario
     Swarm.Game.World.DSL.Parse
     Swarm.Game.World.DSL.Syntax
     Swarm.Game.World.DSL.Typecheck
+    Swarm.Game.World.Function
+    Swarm.Game.World.Multi
+    Swarm.Game.World.Pure
     Swarm.Game.World.Render
+    Swarm.Game.World.Stateful
+    Swarm.Game.World.Tile
+    Swarm.Game.World.Update
     Swarm.Util.Content
 
   other-modules: Paths_swarm
