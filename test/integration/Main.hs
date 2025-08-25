@@ -9,9 +9,9 @@
 -- Swarm integration tests
 module Main where
 
+import Control.Carrier.Error.Either (runError)
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
-import Control.Carrier.Error.Either (runError)
 import Control.Lens (Ixed (ix), at, to, view, (&), (.~), (^.), (^..), (^?), (^?!))
 import Control.Monad (forM_, unless, when)
 import Control.Monad.State (execStateT)
@@ -70,6 +70,7 @@ import Swarm.Game.State.Substate (
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Step.Validate (badErrorsInLogs, playUntilWin)
 import Swarm.Game.Tick (getTickNumber)
+import Swarm.Language.Phase (Raw)
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.Log
 import Swarm.Pretty (prettyString)
@@ -96,7 +97,6 @@ import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, test
 import TestFormat
 import TestRecipeCoverage
 import Witch (into)
-import Swarm.Language.Phase (Raw)
 
 isUnparseableTest :: FilePath -> Bool
 isUnparseableTest fp = "_Validation" `elem` splitDirectories fp
@@ -151,8 +151,9 @@ exampleTest :: FilePath -> TestTree
 exampleTest path =
   testCase ("processTerm for contents of " ++ show path) $ do
     assertFailure "TODO"
-    -- value <- undefined processTerm <$> T.readFile path
-    -- either (assertFailure . into @String) (const $ return ()) value
+
+-- value <- undefined processTerm <$> T.readFile path
+-- either (assertFailure . into @String) (const $ return ()) value
 
 scenarioParseTests :: ScenarioInputs -> [FilePath] -> TestTree
 scenarioParseTests scenarioInputs inputs =

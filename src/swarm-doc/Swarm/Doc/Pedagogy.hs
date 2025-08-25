@@ -138,7 +138,8 @@ isConsidered c = isUserFunc c && c `S.notMember` ignoredCommands
 -- the player did not write it explicitly in their code.
 --
 -- Also, the code from `run` is not parsed transitively yet.
-getCommands :: forall phase.
+getCommands ::
+  forall phase.
   ( Data (Anchor (ImportPhaseFor phase))
   , Data (SwarmType phase)
   , Typeable phase
