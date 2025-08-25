@@ -1,11 +1,13 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE NoFieldSelectors #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
--- Description: Grid on which the game takes place
+-- Description: Game-related state and utilities
+--
+-- Pure world definition and functions.
 --
 -- A /world/ refers to the grid on which the game takes place, and the
 -- things in it (besides robots). A world has a base, immutable
@@ -15,167 +17,39 @@
 -- A world is technically finite but practically infinite (worlds are
 -- indexed by 32-bit signed integers, so they correspond to a
 -- \( 2^{32} \times 2^{32} \) torus).
-module Swarm.Game.World (
-  -- * Worlds
-  WorldFun (..),
-  runWF,
-  worldFunFromArray,
-  World,
-  MultiWorld,
-
-  -- ** Tile management
-  loadCell,
-  loadRegion,
-
-  -- ** World functions
+--
+-- Prefer using the stateful versions for lookup in 'Swarm.Game.World.Stateful',
+-- which internally cache the loaded regions.
+module Swarm.Game.World.Pure (
+  World (..),
   newWorld,
-  lookupCosmicTerrain,
+
+  -- ** Lookup
   lookupTerrain,
-  lookupCosmicEntity,
   lookupEntity,
+
+  -- ** Update
   update,
 
-  -- ** Monadic variants
-  lookupTerrainM,
-  lookupEntityM,
-  lookupContentM,
-  updateM,
-
-  -- ** Runtime updates
-  WorldUpdate (..),
-
-  -- * Re-export
-  Seed,
+  -- ** Loading
+  loadCell,
+  loadRegion,
 ) where
 
-import Control.Algebra (Has)
-import Control.Arrow ((&&&))
-import Control.Effect.State (State, get, modify, state)
-import Control.Lens
+import Control.Lens hiding (use)
 import Data.Array qualified as A
 import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
-import Data.Bifunctor (second)
-import Data.Bits
 import Data.Foldable (foldl')
-import Data.Int (Int32)
-import Data.IntMap qualified as IM
-import Data.Map (Map)
 import Data.Map.Strict qualified as M
-import Data.Maybe (fromMaybe)
-import Data.Semigroup (Last (..))
-import Data.Yaml (FromJSON, ToJSON)
-import GHC.Generics (Generic)
+import Data.Maybe (listToMaybe)
 import Swarm.Game.Entity (Entity, entityHash)
-import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Modify
-import Swarm.Game.Terrain (TerrainMap, TerrainType (BlankT), terrainByIndex, terrainName)
-import Swarm.Game.Universe
 import Swarm.Game.World.Coords
-import Swarm.Game.World.DSL.Gen (Seed)
+import Swarm.Game.World.Function
+import Swarm.Game.World.Tile
 import Swarm.Util ((?))
-import Swarm.Util.Erasable
 import Prelude hiding (Foldable (..), lookup)
-
-------------------------------------------------------------
--- World function
-------------------------------------------------------------
-
--- | A @WorldFun t e@ represents a 2D world with terrain of type @t@
--- (exactly one per cell) and entities of type @e@ (at most one per
--- cell).
-newtype WorldFun t e = WF {getWF :: Coords -> (t, Erasable (Last e))}
-  deriving stock (Functor)
-  deriving newtype (Semigroup, Monoid)
-
-runWF :: WorldFun t e -> Coords -> (t, Maybe e)
-runWF wf = second (erasableToMaybe . fmap getLast) . getWF wf
-
-instance Bifunctor WorldFun where
-  bimap g h (WF z) = WF (bimap g (fmap (fmap h)) . z)
-
--- | Create a world function from a finite array of specified cells.
-worldFunFromArray :: Monoid t => Array (Int32, Int32) (t, Erasable e) -> WorldFun t e
-worldFunFromArray arr = WF $ \(Coords (r, c)) ->
-  if inRange bnds (r, c)
-    then second (fmap Last) (arr ! (r, c))
-    else mempty
- where
-  bnds = bounds arr
-
-------------------------------------------------------------
--- Tiles and coordinates
-------------------------------------------------------------
-
--- | The number of bits we need in each coordinate to represent all
---   the locations in a tile.  In other words, each tile has a size of
---   @2^tileBits x 2^tileBits@.
---
---   Currently, 'tileBits' is set to 6, giving us 64x64 tiles, with
---   4096 cells in each tile. That seems intuitively like a good size,
---   but I don't have a good sense for the tradeoffs here, and I don't
---   know how much the choice of tile size matters.
-tileBits :: Int
-tileBits = 6
-
--- | The number consisting of 'tileBits' many 1 bits.  We can use this
---   to mask out the tile offset of a coordinate.
-tileMask :: Int32
-tileMask = (1 `shiftL` tileBits) - 1
-
--- | If we think of the world as a grid of /tiles/, we can assign each
---   tile some coordinates in the same way we would if each tile was a
---   single cell.  These are the tile coordinates.
-newtype TileCoords = TileCoords {unTileCoords :: Coords}
-  deriving (Eq, Ord, Show, Ix, Generic)
-
-instance Rewrapped TileCoords t
-instance Wrapped TileCoords
-
--- | Convert from a cell's coordinates to the coordinates of its tile,
---   simply by shifting out 'tileBits' many bits.
-tileCoords :: Coords -> TileCoords
-tileCoords = TileCoords . over (_Wrapped . both) (`shiftR` tileBits)
-
--- | Find the coordinates of the upper-left corner of a tile.
-tileOrigin :: TileCoords -> Coords
-tileOrigin = over (_Wrapped . both) (`shiftL` tileBits) . unTileCoords
-
--- | A 'TileOffset' represents an offset from the upper-left corner of
---   some tile to a cell in its interior.
-newtype TileOffset = TileOffset Coords
-  deriving (Eq, Ord, Show, Ix, Generic)
-
--- | The offsets of the upper-left and lower-right corners of a tile:
---   (0,0) to ('tileMask', 'tileMask').
-tileBounds :: (TileOffset, TileOffset)
-tileBounds = (TileOffset (Coords (0, 0)), TileOffset (Coords (tileMask, tileMask)))
-
--- | Compute the offset of a given coordinate within its tile.
-tileOffset :: Coords -> TileOffset
-tileOffset = TileOffset . over (_Wrapped . both) (.&. tileMask)
-
--- | Add a tile offset to the coordinates of the tile's upper left
---   corner.  NOTE that for efficiency, this function only works when
---   the first argument is in fact the coordinates of a tile's
---   upper-left corner (/i.e./ it is an output of 'tileOrigin').  In
---   that case the coordinates will end with all 0 bits, and we can
---   add the tile offset just by doing a coordinatewise 'xor'.
-plusOffset :: Coords -> TileOffset -> Coords
-plusOffset (Coords (x1, y1)) (TileOffset (Coords (x2, y2))) = Coords (x1 `xor` x2, y1 `xor` y2)
-
-instance Rewrapped TileOffset t
-instance Wrapped TileOffset
-
--- | A terrain tile is an unboxed array of terrain values.
-type TerrainTile t = U.UArray TileOffset t
-
--- | An entity tile is an array of possible entity values.  Note it
---   cannot be an unboxed array since entities are complex records
---   which have to be boxed.
-type EntityTile e = A.Array TileOffset (Maybe e)
-
-type MultiWorld t e = Map SubworldName (World t e)
 
 -- | A 'World' consists of a 'WorldFun' that specifies the initial
 --   world, a cache of loaded square tiles to make lookups faster, and
@@ -190,25 +64,14 @@ type MultiWorld t e = Map SubworldName (World t e)
 --   would also make for some difficult decisions in terms of how to
 --   handle respawning.
 data World t e = World
-  { _worldFun :: WorldFun t e
-  , _tileCache :: M.Map TileCoords (TerrainTile t, EntityTile e)
-  , _changed :: M.Map Coords (Maybe e)
+  { worldFun :: WorldFun t e
+  , tileCache :: M.Map TileCoords (TerrainTile t, EntityTile e)
+  , changed :: M.Map Coords (Maybe e)
   }
 
 -- | Create a new 'World' from a 'WorldFun'.
 newWorld :: WorldFun t e -> World t e
 newWorld f = World f M.empty M.empty
-
-lookupCosmicTerrain ::
-  TerrainMap ->
-  Cosmic Coords ->
-  MultiWorld Int e ->
-  TerrainType
-lookupCosmicTerrain tm (Cosmic subworldName i) multiWorld =
-  fromMaybe BlankT $ do
-    x <- M.lookup subworldName multiWorld
-    y <- (`IM.lookup` terrainByIndex tm) . lookupTerrain i $ x
-    return $ terrainName y
 
 -- | Look up the terrain value at certain coordinates: try looking it
 --   up in the tile cache first, and fall back to running the 'WorldFun'
@@ -220,32 +83,6 @@ lookupTerrain :: (IArray U.UArray t) => Coords -> World t e -> t
 lookupTerrain i (World f t _) =
   ((U.! tileOffset i) . fst <$> M.lookup (tileCoords i) t)
     ? fst (runWF f i)
-
--- | A stateful variant of 'lookupTerrain', which first loads the tile
---   containing the given coordinates if it is not already loaded,
---   then looks up the terrain value.
-lookupTerrainM ::
-  forall t e sig m.
-  (Has (State (World t e)) sig m, IArray U.UArray t) =>
-  Coords ->
-  m t
-lookupTerrainM c = do
-  modify @(World t e) $ loadCell c
-  lookupTerrain c <$> get @(World t e)
-
-lookupContentM ::
-  forall t e sig m.
-  (Has (State (World t e)) sig m, IArray U.UArray t) =>
-  Coords ->
-  m (t, Maybe e)
-lookupContentM c = do
-  modify @(World t e) $ loadCell c
-  w <- get @(World t e)
-  return (lookupTerrain c w, lookupEntity c w)
-
-lookupCosmicEntity :: Cosmic Coords -> MultiWorld t e -> Maybe e
-lookupCosmicEntity (Cosmic subworldName i) multiWorld =
-  lookupEntity i =<< M.lookup subworldName multiWorld
 
 -- | Look up the entity at certain coordinates: first, see if it is in
 --   the map of locations with changed entities; then try looking it
@@ -259,18 +96,6 @@ lookupEntity i (World f t m) =
   M.lookup i m
     ? ((A.! tileOffset i) . snd <$> M.lookup (tileCoords i) t)
     ? snd (runWF f i)
-
--- | A stateful variant of 'lookupEntity', which first loads the tile
---   containing the given coordinates if it is not already loaded,
---   then looks up the terrain value.
-lookupEntityM ::
-  forall t e sig m.
-  (Has (State (World t e)) sig m, IArray U.UArray t) =>
-  Coords ->
-  m (Maybe e)
-lookupEntityM c = do
-  modify @(World t e) $ loadCell c
-  lookupEntity c <$> get @(World t e)
 
 -- | Update the entity (or absence thereof) at a certain location,
 --   returning an updated 'World' and a Boolean indicating whether
@@ -288,20 +113,13 @@ update i g w@(World f t m) =
   entityBefore = lookupEntity i w
   entityAfter = g entityBefore
 
--- | A stateful variant of 'update', which also ensures the tile
---   containing the given coordinates is loaded.
-updateM ::
-  forall t sig m.
-  (Has (State (World t Entity)) sig m, IArray U.UArray t) =>
-  Coords ->
-  (Maybe Entity -> Maybe Entity) ->
-  m (CellUpdate Entity)
-updateM c g = do
-  state @(World t Entity) $ update c g . loadCell c
-
 -- | Load the tile containing a specific cell.
-loadCell :: (IArray U.UArray t) => Coords -> World t e -> World t e
-loadCell c = loadRegion (c, c)
+loadCell ::
+  (IArray U.UArray t) =>
+  Coords ->
+  World t e ->
+  (World t e, Maybe TileCoords)
+loadCell c = over _2 listToMaybe . loadRegion (c, c)
 
 -- | Load all the tiles which overlap the given rectangular region
 --   (specified as an upper-left and lower-right corner, inclusive).
@@ -325,19 +143,3 @@ loadRegion reg (World f t m) = World f t' m
    where
     tileCorner = tileOrigin tc
     (terrain, entities) = unzip $ map (runWF f . plusOffset tileCorner) (range tileBounds)
-
----------------------------------------------------------------------
--- Runtime world update
----------------------------------------------------------------------
-
--- | Enumeration of world updates.  This type is used for changes by
---   /e.g./ the @drill@ command which must be carried out at a later
---   tick. Using a first-order representation (as opposed to /e.g./
---   just a @World -> World@ function) allows us to serialize and
---   inspect the updates.
-data WorldUpdate e = ReplaceEntity
-  { updatedLoc :: Cosmic Location
-  , originalEntity :: e
-  , newEntity :: Maybe e
-  }
-  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
