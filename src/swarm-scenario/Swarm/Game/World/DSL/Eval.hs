@@ -4,19 +4,19 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Evaluation for the Swarm world description DSL.
-module Swarm.Game.World.Eval (
+module Swarm.Game.World.DSL.Eval (
   runWorld,
 ) where
 
 import Swarm.Game.Entity (Entity)
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.World (WorldFun (..))
-import Swarm.Game.World.Abstract (bracket)
 import Swarm.Game.World.Coords (Coords)
-import Swarm.Game.World.Gen (Seed)
-import Swarm.Game.World.Interpret (interpBTerm)
-import Swarm.Game.World.Syntax
-import Swarm.Game.World.Typecheck
+import Swarm.Game.World.DSL.Abstract (bracket)
+import Swarm.Game.World.DSL.Gen (Seed)
+import Swarm.Game.World.DSL.Interpret (interpBTerm)
+import Swarm.Game.World.DSL.Syntax
+import Swarm.Game.World.DSL.Typecheck
 
 -- | Run a typechecked world description DSL term to produce a
 --   'WorldFun'.

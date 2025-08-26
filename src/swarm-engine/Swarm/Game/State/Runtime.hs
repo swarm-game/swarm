@@ -38,7 +38,7 @@ import Swarm.Game.Land
 import Swarm.Game.Recipe (loadRecipes)
 import Swarm.Game.Scenario (GameStateInputs (..), ScenarioInputs (..))
 import Swarm.Game.State.Substate
-import Swarm.Game.World.Load (loadWorlds)
+import Swarm.Game.World.DSL (loadWorlds)
 import Swarm.Log
 import Swarm.ResourceLoading (initNameGenerator, readAppData)
 import Swarm.Util.Lens (makeLensesNoSigs)

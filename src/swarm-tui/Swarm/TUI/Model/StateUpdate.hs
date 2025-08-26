@@ -84,7 +84,7 @@ import Swarm.Game.State.Landscape
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Tick (TickNumber (TickNumber))
-import Swarm.Game.World.Gen (Seed)
+import Swarm.Game.World (Seed)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
 import Swarm.Pretty (prettyText)
 import Swarm.ResourceLoading (getSwarmHistoryPath)

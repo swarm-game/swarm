@@ -4,7 +4,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Abstract syntax for the Swarm world description DSL.
-module Swarm.Game.World.Syntax (
+module Swarm.Game.World.DSL.Syntax (
   -- | Various component types
   World,
   RawCellVal,

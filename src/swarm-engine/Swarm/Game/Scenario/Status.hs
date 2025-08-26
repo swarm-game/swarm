@@ -26,7 +26,7 @@ import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Tick (TickNumber)
-import Swarm.Game.World.Gen (Seed)
+import Swarm.Game.World (Seed)
 import Swarm.Util.Lens (makeLensesNoSigs)
 
 -- | These launch parameters are used in a number of ways:

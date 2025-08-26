@@ -123,7 +123,7 @@ import Swarm.Game.State
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Tick (TickNumber (..))
-import Swarm.Game.World.Gen (Seed)
+import Swarm.Game.World (Seed)
 import Swarm.Log
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.DebugOption (DebugOption)

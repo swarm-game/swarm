@@ -111,7 +111,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (emptyFoundStructures)
 import Swarm.Game.State.Config
 import Swarm.Game.Tick (TickNumber (..))
-import Swarm.Game.World.Gen (Seed)
+import Swarm.Game.World (Seed)
 import Swarm.Language.Syntax (Const, Syntax)
 import Swarm.Language.Types (Polytype)
 import Swarm.Language.Value (Value)

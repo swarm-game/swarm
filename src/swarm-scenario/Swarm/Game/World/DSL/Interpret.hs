@@ -6,7 +6,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Interpreter for the Swarm world description DSL.
-module Swarm.Game.World.Interpret (
+module Swarm.Game.World.DSL.Interpret (
   interpBTerm,
   interpConst,
 ) where
@@ -16,11 +16,11 @@ import Data.Hash.Murmur (murmur3)
 import Data.Tagged (unTagged)
 import Numeric.Noise.Perlin (noiseValue, perlin)
 import Swarm.Game.Location (pattern Location)
-import Swarm.Game.World.Abstract (BTerm (..))
 import Swarm.Game.World.Coords (Coords (..), coordsToLoc, locToCoords)
-import Swarm.Game.World.Gen (Seed)
-import Swarm.Game.World.Syntax (Axis (..))
-import Swarm.Game.World.Typecheck (Const (..), Empty (..), Over (..))
+import Swarm.Game.World.DSL.Abstract (BTerm (..))
+import Swarm.Game.World.DSL.Gen (Seed)
+import Swarm.Game.World.DSL.Syntax (Axis (..))
+import Swarm.Game.World.DSL.Typecheck (Const (..), Empty (..), Over (..))
 import Witch (from)
 import Witch.Encoding qualified as Encoding
 
