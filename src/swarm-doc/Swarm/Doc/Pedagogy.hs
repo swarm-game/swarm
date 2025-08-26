@@ -56,6 +56,7 @@ import Swarm.Game.ScenarioInfo (
   scenarioCollectionToList,
  )
 import Swarm.Game.World.DSL (loadWorlds)
+import Swarm.Language.Load (getSyntax)
 import Swarm.Language.Syntax
 import Swarm.Language.Text.Markdown (docToText, findCode)
 import Swarm.Util.Effect (ignoreWarnings)
@@ -100,7 +101,7 @@ extractCommandUsages :: Int -> ScenarioWith ScenarioPath -> TutorialInfo
 extractCommandUsages idx siPair@(ScenarioWith s _si) =
   TutorialInfo siPair idx solnCommands $ getDescCommands s
  where
-  solnCommands = getCommands maybeSoln
+  solnCommands = getCommands . fmap getSyntax $ maybeSoln
   maybeSoln = view (scenarioOperation . scenarioSolution) s
 
 -- | Obtain the set of all commands mentioned by
@@ -137,7 +138,8 @@ isConsidered c = isUserFunc c && c `S.notMember` ignoredCommands
 -- the player did not write it explicitly in their code.
 --
 -- Also, the code from `run` is not parsed transitively yet.
-getCommands :: forall phase.
+getCommands ::
+  forall phase.
   ( Data (Anchor (ImportPhaseFor phase))
   , Data (SwarmType phase)
   , Typeable phase
