@@ -18,7 +18,7 @@
 -- information, see:
 --
 --   https://byorgey.wordpress.com/2023/07/13/compiling-to-intrinsically-typed-combinators/
-module Swarm.Game.World.Typecheck where
+module Swarm.Game.World.DSL.Typecheck where
 
 import Control.Algebra (Has)
 import Control.Effect.Reader (Reader, ask)
@@ -38,7 +38,7 @@ import Prettyprinter
 import Swarm.Game.Entity (lookupEntityName)
 import Swarm.Game.Land
 import Swarm.Game.Terrain
-import Swarm.Game.World.Syntax
+import Swarm.Game.World.DSL.Syntax
 import Swarm.Pretty (PrettyPrec (..), pparens, ppr)
 import Swarm.Util (showT)
 import Swarm.Util.Erasable

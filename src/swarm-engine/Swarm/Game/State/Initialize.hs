@@ -49,7 +49,7 @@ import Swarm.Game.State.Landscape (mkLandscape)
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Util (adaptGameState)
-import Swarm.Game.World.Gen (Seed)
+import Swarm.Game.World (Seed)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Syntax (allConst, erase)
 import Swarm.Language.Types

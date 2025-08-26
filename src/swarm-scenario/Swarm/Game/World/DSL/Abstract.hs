@@ -13,10 +13,10 @@
 -- For more information, see:
 --
 --   https://byorgey.wordpress.com/2023/07/13/compiling-to-intrinsically-typed-combinators/
-module Swarm.Game.World.Abstract where
+module Swarm.Game.World.DSL.Abstract where
 
 import Data.Kind (Type)
-import Swarm.Game.World.Typecheck (Applicable (..), Const (..), HasConst (..), Idx (..), TTerm (..), ($$.), (.$$), (.$$.))
+import Swarm.Game.World.DSL.Typecheck (Applicable (..), Const (..), HasConst (..), Idx (..), TTerm (..), ($$.), (.$$), (.$$.))
 
 ------------------------------------------------------------
 -- Bracket abstraction

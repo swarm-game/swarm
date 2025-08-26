@@ -4,7 +4,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Loading world descriptions from `worlds/*.world`.
-module Swarm.Game.World.Load where
+module Swarm.Game.World.DSL.Load where
 
 import Control.Algebra (Has)
 import Control.Arrow (left)
@@ -15,8 +15,8 @@ import Data.Map qualified as M
 import Data.Text (Text)
 import Swarm.Failure (Asset (..), AssetData (..), LoadingFailure (..), SystemFailure (..))
 import Swarm.Game.Land
-import Swarm.Game.World.Parse (parseWExp, runParser)
-import Swarm.Game.World.Typecheck
+import Swarm.Game.World.DSL.Parse (parseWExp, runParser)
+import Swarm.Game.World.DSL.Typecheck
 import Swarm.Pretty (prettyText)
 import Swarm.ResourceLoading (getDataDirSafe)
 import Swarm.Util (acquireAllWithExt)

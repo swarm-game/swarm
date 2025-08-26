@@ -43,6 +43,9 @@ module Swarm.Game.World (
 
   -- ** Runtime updates
   WorldUpdate (..),
+
+  -- * Re-export
+  Seed,
 ) where
 
 import Control.Algebra (Has)
@@ -69,6 +72,7 @@ import Swarm.Game.Scenario.Topography.Modify
 import Swarm.Game.Terrain (TerrainMap, TerrainType (BlankT), terrainByIndex, terrainName)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
+import Swarm.Game.World.DSL.Gen (Seed)
 import Swarm.Util ((?))
 import Swarm.Util.Erasable
 import Prelude hiding (Foldable (..), lookup)
