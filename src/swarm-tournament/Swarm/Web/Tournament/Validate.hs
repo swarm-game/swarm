@@ -17,7 +17,6 @@ import Control.Monad.State (evalStateT)
 import Control.Monad.Trans.Except
 import Data.ByteString.Lazy qualified as LBS
 import Data.Either.Extra (maybeToEither)
-import Data.Map qualified as M
 import Data.Sequence (Seq)
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8')
@@ -34,8 +33,9 @@ import Swarm.Game.State.Initialize (scenarioToGameState)
 import Swarm.Game.State.Runtime (RuntimeOptions (..), initRuntimeState, initScenarioInputs, pauseOnObjectiveCompletion, stdGameConfigInputs)
 import Swarm.Game.State.Substate (initState, seed)
 import Swarm.Game.Step.Validate (playUntilWin)
+import Swarm.Language.Load (SyntaxWithImports, getSyntax)
 import Swarm.Language.Pipeline
-import Swarm.Language.Syntax (Phase (..), Syntax)
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.Pretty (prettyString, prettyText)
 import Swarm.Util.Yaml
 import Swarm.Web.Tournament.Database.Query
@@ -130,8 +130,8 @@ validateSubmittedSolution (CommonValidationArgs solnTimeout persistenceArgs) sce
         . decodeUtf8'
         . LBS.toStrict
         $ fileContent file
-    res <- liftIO $ processTermEither solText
-    (_srcMap, soln) <- withExceptT (SolutionParseError . prettyText) . except $ res
+    res <- liftIO . runError @SystemFailure $ requireNonEmptyTerm =<< processSource solText Nothing
+    soln <- withExceptT (SolutionParseError . prettyText) . except $ res
     gs <- withExceptT ScenarioRetrievalFailure $ do
       scenarioContent <-
         withExceptT DatabaseRetrievalFailure $
@@ -203,7 +203,7 @@ gamestateFromScenarioText content = do
 
 verifySolution ::
   SolutionTimeout ->
-  Syntax Elaborated ->
+  SyntaxWithImports Elaborated ->
   GameState ->
   ExceptT SolutionEvaluationFailure IO SolutionCharacterization
 verifySolution (SolutionTimeout timeoutSeconds) sol gs = do
@@ -223,5 +223,5 @@ verifySolution (SolutionTimeout timeoutSeconds) sol gs = do
       (gs ^. randomness . seed)
       codeMetrics
  where
-  codeMetrics = codeMetricsFromSyntax sol
-  gs' = gs & baseRobot . machine %~ continue M.empty sol
+  codeMetrics = codeMetricsFromSyntax (getSyntax sol)
+  gs' = gs & baseRobot . machine %~ continue sol
