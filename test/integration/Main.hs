@@ -7,6 +7,7 @@
 -- Swarm integration tests
 module Main where
 
+import Control.Carrier.Error.Either (runError)
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens ((&), (.~), (^.))
@@ -18,6 +19,7 @@ import Swarm.Game.Scenario.Scoring.GenericMetrics (Metric (..), Progress (..))
 import Swarm.Game.ScenarioInfo (ScenarioInfo, ScenarioStatus (..), scenarioStatus)
 import Swarm.Game.State.Runtime (eventLog, stdGameConfigInputs)
 import Swarm.Game.State.Substate (initState)
+import Swarm.Language.Phase (Raw)
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.Pretty (prettyString)
 import Swarm.TUI.Model (debugOptions, defaultAppOpts)

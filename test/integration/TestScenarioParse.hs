@@ -41,7 +41,7 @@ scenarioParseTest expRes scenarioInputs path =
 
 getScenario :: ParseResult -> ScenarioInputs -> FilePath -> IO ()
 getScenario expRes scenarioInputs p = do
-  res <- decodeFileEitherE scenarioInputs p :: IO (Either ParseException Scenario)
+  res <- decodeFileEitherE scenarioInputs p :: IO (Either ParseException (Scenario Raw))
   case expRes of
     Parsed -> case res of
       Left err -> assertFailure $ prettyPrintParseException err
