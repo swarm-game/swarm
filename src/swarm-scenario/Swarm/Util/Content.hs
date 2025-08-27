@@ -16,7 +16,6 @@ import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Terrain (TerrainMap, TerrainType, getTerrainWord)
 import Swarm.Game.Universe
 import Swarm.Game.World
-import Swarm.Game.World.Coords
 import Swarm.Util.Erasable (erasableToMaybe, maybeToErasable)
 
 -- | Get the terrain and entity at a single cell
