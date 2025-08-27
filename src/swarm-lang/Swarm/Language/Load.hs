@@ -37,7 +37,7 @@ import Swarm.Language.Syntax.Import hiding (ImportPhase (..))
 import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Language.Syntax.Util (Erasable(..), traverseSyntax)
 import Swarm.Language.Types (TCtx, UCtx)
-import Swarm.Util (readFileMayT)
+import Swarm.Util (readFileMayT, showT)
 import Swarm.Util.Graph (findCycle)
 import Witch (into)
 
@@ -207,15 +207,18 @@ readLoc loc = do
       badImport :: Has (Throw SystemFailure) sig m => LoadingFailure -> m a
       badImport = throwError . AssetNotLoaded (Data Script) path
 
-  -- Try to read the file from network/disk
+  -- Try to read the file from network/disk, depending on the anchor
   src <- case importAnchor loc of
-    Web_ {} -> sendIO $ do
+    Web_ {} ->
       case parseRequest (into @String path) of
-        Left err -> undefined
-        -- XXX use T.decodeUtf8'
-        -- XXX handle other encodings?
-        Right req -> httpBS req >>= (pure . T.decodeUtf8Lenient . getResponseBody)
+        Left err -> badImport $ BadURL (showT err)
+        Right req -> do
+          resp <- sendIO $ httpBS req
+          case T.decodeUtf8' (getResponseBody resp) of
+            Left unicodeErr -> badImport $ CanNotDecodeUTF8 unicodeErr
+            Right txt -> pure txt
     _ -> sendIO (readFileMayT path) >>= maybe (badImport (DoesNotExist File)) pure
 
   -- Try to parse the contents
-  readTerm' (defaultParserConfig & importLoc ?~ loc) src & either (badImport . SystemFailure . CanNotParseMegaparsec) pure
+  readTerm' (defaultParserConfig & importLoc ?~ loc) src
+    & either (badImport . SystemFailure . CanNotParseMegaparsec) pure

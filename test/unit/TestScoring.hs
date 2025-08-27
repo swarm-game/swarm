@@ -3,20 +3,23 @@
 -- | High score records
 module TestScoring where
 
+import Control.Carrier.Error.Either (runError)
 import Data.Text.IO qualified as TIO
 import Data.Time.Calendar.OrdinalDate
 import Data.Time.LocalTime
+import Swarm.Failure (SystemFailure)
 import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Tick (TickNumber (..))
+import Swarm.Language.Load (SyntaxWithImports (getSyntax))
 import Swarm.Language.Pipeline
 import Swarm.Language.Syntax
+import Swarm.Pretty (prettyString)
 import System.FilePath ((</>))
 import Test.Tasty
 import Test.Tasty.HUnit
-import Witch (into)
 
 baseTestPath :: FilePath
 baseTestPath = "data/test/language-snippets/code-size"
@@ -60,9 +63,8 @@ testHighScores =
 compareAstSize :: Int -> FilePath -> TestTree
 compareAstSize expectedSize path = testCase (unwords ["size of", path]) $ do
   contents <- TIO.readFile $ baseTestPath </> path
-  t <- case processTermEither contents of
-    Right x -> return x
-    Left y -> assertFailure (into @String y)
+  src <- runError @SystemFailure $ requireNonEmptyTerm =<< processSource contents Nothing
+  t <- either (assertFailure . prettyString) (pure . getSyntax) src
   assertEqual "incorrect size" expectedSize (measureAstSize t)
 
 betterReplTimeAfterCodeSizeRecord :: TestTree

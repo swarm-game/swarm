@@ -19,14 +19,14 @@ testQQ =
     [ testCase "basic untyped AST quasiquote" $
         assertEqual
           "numeric literal"
-          [astQ| 3 |]
-          (Syntax' (SrcLoc 1 2) (TInt 3) mempty ())
+          ([astQ| 3 |] :: Syntax Raw)
+          (Syntax (SrcLoc Nothing 1 2) (TInt 3) mempty ())
     , testCase "antiquoting for untyped AST quasiquotes" $
-        let t = [astQ| 3 + 6 |]
+        let t :: Syntax Raw = [astQ| 3 + 6 |]
          in assertEqual
               "foo"
-              (prettyText [astQ| def x : Int -> Cmd Bool = \x. pure (x == $syn:t) end |])
-              (prettyText [astQ| def x : Int -> Cmd Bool = \x. pure (x == 3 + 6) end |])
+              (prettyText @(Syntax Raw) [astQ| def x : Int -> Cmd Bool = \x. pure (x == $syn:t) end |])
+              (prettyText @(Syntax Raw) [astQ| def x : Int -> Cmd Bool = \x. pure (x == 3 + 6) end |])
     ]
 
 -- Note, they are not equal as ASTs because the SrcLoc
