@@ -144,18 +144,18 @@ addCombustionBot inputEntity combustibility ts loc = do
 --    cells. This would avoid polluting the logic of the currently burning cell
 --    with logic to manage probabilities of combustion propagation.
 combustionProgram :: Integer -> Combustibility -> SyntaxWithImports Elaborated
-combustionProgram _combustionDuration (Combustibility _ _ _ maybeCombustionProduct) =
+combustionProgram combustionDuration (Combustibility _ _ _ maybeCombustionProduct) =
   [tmQ|
-    wait $int:_combustionDuration;
-    if ($int:_invQuantity > 0) {
+    wait $int:combustionDuration;
+    if ($int:invQuantity > 0) {
       try {
-        place $str:_combustionProduct;
+        place $str:combustionProduct;
       } {};
     } {};
     selfdestruct
   |]
  where
-  (_invQuantity, _combustionProduct) = case maybeCombustionProduct of
+  (invQuantity, combustionProduct) = case maybeCombustionProduct of
     Nothing -> (0 :: Integer, "")
     Just p -> (1, p)
 
@@ -229,9 +229,9 @@ addIgnitionBot ignitionDelay inputEntity ts loc =
 
 -- Triggers the ignition of the entity underfoot with some delay.
 ignitionProgram :: Integer -> SyntaxWithImports Elaborated
-ignitionProgram _waitTime =
+ignitionProgram waitTime =
   [tmQ|
-    wait $int:_waitTime;
+    wait $int:waitTime;
     try {
       ignite down;
       noop;

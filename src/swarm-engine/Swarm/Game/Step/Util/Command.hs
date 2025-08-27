@@ -519,24 +519,24 @@ seedProgram ::
   -- | entity to place
   EntityName ->
   SyntaxWithImports Elaborated
-seedProgram _minTime _randTime _seedlingCount _seedlingRadius _thing =
+seedProgram minTime randTime seedlingCount seedlingRadius thing =
   [tmQ|
     def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
 
     try {
-      r <- random (1 + $int:_randTime);
-      wait (r + $int:_minTime);
+      r <- random (1 + $int:randTime);
+      wait (r + $int:minTime);
       appear "|" (inl ());
-      r <- random (1 + $int:_randTime);
-      wait (r + $int:_minTime);
-      place $str:_thing;
+      r <- random (1 + $int:randTime);
+      wait (r + $int:minTime);
+      place $str:thing;
 
-      doN $int:_seedlingCount (
+      doN $int:seedlingCount (
         _robo <- build {
-          propagationDelay <- random (1 + $int:_randTime);
-          wait (propagationDelay + $int:_minTime);
+          propagationDelay <- random (1 + $int:randTime);
+          wait (propagationDelay + $int:minTime);
 
-          totalDist <- random (1 + $int:_seedlingRadius);
+          totalDist <- random (1 + $int:seedlingRadius);
           horizontalDist <- random (1 + totalDist);
           let verticalDist = totalDist - horizontalDist in
 
@@ -552,9 +552,9 @@ seedProgram _minTime _randTime _seedlingCount _seedlingRadius _thing =
           } {};
           stride verticalDist;
 
-          create $str:_thing;
+          create $str:thing;
           try {
-            sow $str:_thing;
+            sow $str:thing;
           } {};
 
           selfdestruct
