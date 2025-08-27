@@ -13,6 +13,7 @@ import Data.Text (Text)
 import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Quote
 import Swarm.Failure (SystemFailure)
+import Swarm.Language.Load (SyntaxWithImports)
 import Swarm.Language.Parser.Core (runParserTH)
 import Swarm.Language.Parser.Lex (sc)
 import Swarm.Language.Parser.Term (parseTerm)
@@ -49,7 +50,7 @@ quoteTermExp (into @Text -> s) = do
     Left err -> failT [prettyText err]
     Right ptm -> dataToExpQ ((fmap liftText . cast) `extQ` antiTermExp) ptm
 
-antiTermExp :: Term Typed -> Maybe TH.ExpQ
+antiTermExp :: Term Elaborated -> Maybe TH.ExpQ
 antiTermExp (TAntiText v) =
   Just $ TH.appE (TH.conE (TH.mkName "TText")) (TH.varE (TH.mkName (from v)))
 antiTermExp (TAntiInt v) =
