@@ -42,6 +42,10 @@ you are expected to uphold this code. Please report unacceptable behavior to
 - Bug to report or feature to request? Try the
   [GitHub issue tracker](https://github.com/swarm-game/swarm/swarm/issues).
 - Questions? Join the [Swarm Discord server](https://discord.gg/kp8MuSgkPw).
+- The (still incomplete) [module
+  guide](https://github.com/swarm-game/swarm/wiki/Module-guide) may be
+  a helpful place to learn about how the codebase is organized.
+- See also the [Haddock documentation on Hackage](https://hackage.haskell.org/package/swarm).
 
 ## How can I contribute?
 
