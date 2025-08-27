@@ -1281,6 +1281,7 @@ test-suite swarm-unit
     containers,
     data-fix,
     filepath,
+    fused-effects,
     hashable,
     lens,
     megaparsec,

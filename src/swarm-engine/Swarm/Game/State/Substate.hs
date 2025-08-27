@@ -114,7 +114,7 @@ import Swarm.Game.State.Config
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World (Seed)
 import Swarm.Language.Load (ModuleCtx, ModuleImports, SyntaxWithImports)
-import Swarm.Language.Syntax (Anchor, Const, ImportPhaseFor, Phase (..), SwarmType, Syntax, Unresolvable)
+import Swarm.Language.Syntax (Anchor, Const, ImportPhaseFor, Phase (..), SwarmType, Unresolvable)
 import Swarm.Language.Types (Polytype)
 import Swarm.Language.Value (Value)
 import Swarm.Log
