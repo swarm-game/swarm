@@ -13,7 +13,6 @@ import Data.Text (Text)
 import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Quote
 import Swarm.Failure (SystemFailure)
-import Swarm.Language.Load (SyntaxWithImports)
 import Swarm.Language.Parser.Core (runParserTH)
 import Swarm.Language.Parser.Lex (sc)
 import Swarm.Language.Parser.Term (parseTerm)

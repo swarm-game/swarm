@@ -24,6 +24,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Encoding.Error qualified as T
 import Data.Void
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Prettyprinter (Pretty (pretty), nest, squotes, vcat, (<+>))
@@ -53,7 +54,9 @@ data Entry = Directory | File
 data LoadingFailure
   = DoesNotExist Entry
   | EntryNot Entry
+  | CanNotDecodeUTF8 T.UnicodeException
   | CanNotParseYaml ParseException
+  | BadURL Text
   | Duplicate AssetData Text
   | SystemFailure SystemFailure
   deriving (Show)
@@ -116,10 +119,17 @@ instance PrettyPrec LoadingFailure where
   prettyPrec prec = \case
     DoesNotExist e -> "The" <+> ppr e <+> "is missing!"
     EntryNot e -> "The entry is not a" <+> ppr e <> "!"
+    CanNotDecodeUTF8 (T.DecodeError s _) ->
+      nest 2 . vcat $
+        "UTF-8 decoding failure:"
+          : [pretty s]
+    CanNotDecodeUTF8 _ ->
+      "Encoding failure while decoding UTF-8?? This should never happen."
     CanNotParseYaml p ->
       nest 2 . vcat $
         "Parse failure:"
           : map pretty (T.lines (into @Text (prettyPrintParseException p)))
+    BadURL err -> "Bad URL:" <+> pretty err
     Duplicate thing duped -> "Duplicate" <+> ppr thing <> ":" <+> squotes (pretty duped)
     SystemFailure g -> prettyPrec prec g
 

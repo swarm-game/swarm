@@ -37,7 +37,7 @@ import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (CDebug))
-import Swarm.Language.Load (SourceMap, SyntaxWithImports (..))
+import Swarm.Language.Load (SyntaxWithImports (..))
 import Swarm.Language.Pipeline (processSource)
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Value (emptyEnv)
