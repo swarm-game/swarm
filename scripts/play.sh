@@ -1,9 +1,9 @@
-#!/bin/bash -ex
+#!/usr/bin/env bash
+set -euo pipefail
 
-cd $(git rev-parse --show-toplevel)
+cd "$(git rev-parse --show-toplevel)"
 
-# This compiles without optimizations and then runs the resulting executable.
-# It's been observed in certain versions of GHC that compiling with optimizations
-# results in the swarm UI freezing for a potentially long time upon starting a scenario.
-# See https://github.com/swarm-game/swarm/issues/1000#issuecomment-1378632269
-scripts/build-game.sh && cabal run -j -O0 swarm:exe:swarm -- "$@"
+# This compiles with optimizations and then runs the resulting executable.
+# Building with optimizations takes longer, but is noticeable when running
+# scenarios with swarms of robots.
+cabal run -j --semaphore swarm:exe:swarm -- "$@"
