@@ -156,10 +156,7 @@ instance PrettyPrec SystemFailure where
         [ "Warning: while processing" <+> pretty orderFile <> ":"
         , ppr w
         ]
-    CanNotParseMegaparsec p ->
-      nest 2 . vcat $
-        "Parse failure:"
-          : map pretty (T.lines (into @Text (errorBundlePretty p)))
+    CanNotParseMegaparsec p -> pretty (errorBundlePretty p)
     DoesNotTypecheck _ t -> pretty t
     ImportCycle imps ->
       ppr $ BulletList "Imports form a cycle:" (map (into @Text) imps)
