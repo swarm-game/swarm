@@ -160,10 +160,7 @@ instance PrettyPrec SystemFailure where
       nest 2 . vcat $
         "Parse failure:"
           : map pretty (T.lines (into @Text (errorBundlePretty p)))
-    DoesNotTypecheck _ t ->
-      nest 2 . vcat $
-        "Typechecking failure:"
-          : map pretty (T.lines t)
+    DoesNotTypecheck _ t -> pretty t
     ImportCycle imps ->
       ppr $ BulletList "Imports form a cycle:" (map (into @Text) imps)
     EmptyTerm -> "Term was only whitespace"
