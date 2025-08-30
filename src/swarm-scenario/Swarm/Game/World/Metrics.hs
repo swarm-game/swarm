@@ -32,5 +32,5 @@ initWorldMetrics s = do
   loadedTiles <- createGauge "game.tile_loaded" s
   inMemoryTiles <- createGauge "game.tile_in_memory" s
   tileAverageLoadTime <- createDistribution "game.tile_average_load_time" s
-  tilesBatchLoadTime <- createDistribution "game.tiles_batch_load_time" s
+  tilesBatchLoadTime <- createDistribution "game.tile_batch_load_time" s
   pure WorldMetrics {..}
