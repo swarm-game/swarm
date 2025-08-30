@@ -27,17 +27,17 @@ module Swarm.Game.World.Stateful (
 
 import Control.Algebra (Has)
 import Control.Effect.State (State, get, modify, state)
+import Control.Monad (unless, void)
 import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
+import Data.Map.Strict qualified as M
+import Swarm.Effect qualified as Effect
 import Swarm.Game.Entity (Entity)
 import Swarm.Game.Scenario.Topography.Modify
 import Swarm.Game.World.Coords
-import Swarm.Game.World.Pure
-import Swarm.Effect qualified as Effect
 import Swarm.Game.World.Metrics
+import Swarm.Game.World.Pure
 import Swarm.Game.World.Tile
-import Data.Map.Strict qualified as M
-import Control.Monad (unless, void)
 
 type HasWorldStateEffect t e sig m =
   ( IArray U.UArray t

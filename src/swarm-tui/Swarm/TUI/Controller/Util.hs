@@ -12,19 +12,20 @@ import Brick.Keybindings
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens as Lens
-import Control.Monad (forM, forM_, unless, when, void)
+import Control.Monad (forM, forM_, unless, void, when)
 import Control.Monad.IO.Class (MonadIO (liftIO), liftIO)
 import Control.Monad.State (MonadState, execState)
 import Data.List.Extra (enumerate)
-import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Graphics.Vty qualified as V
 import Swarm.Effect (TimeIOC, runTimeIO)
+import Swarm.Effect qualified as Effect
 import Swarm.Game.CESK (continue)
 import Swarm.Game.Device
+import Swarm.Game.Entity (Entity)
 import Swarm.Game.Robot (robotCapabilities)
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.State
@@ -56,8 +57,6 @@ import Swarm.TUI.Model.Repl (REPLEntryType (..), REPLHistItem (..), REPLHistItem
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Util (ScenarioSeriesContext (..), curMenuName, generateModal, generateScenarioEndModal)
 import System.Clock (Clock (..), getTime)
-import Swarm.Game.Entity (Entity)
-import Swarm.Effect qualified as Effect
 
 -- | Pattern synonyms to simplify brick event handler
 pattern Key :: V.Key -> BrickEvent n e

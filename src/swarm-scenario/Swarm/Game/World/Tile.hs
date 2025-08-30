@@ -33,9 +33,9 @@ import Data.Array.IArray qualified as A
 import Data.Array.Unboxed qualified as U
 import Data.Bits
 import Data.Int (Int32)
+import Data.Strict qualified as Strict
 import GHC.Generics (Generic)
 import Swarm.Game.World.Coords
-import Data.Strict qualified as Strict
 
 -- | A terrain tile is an unboxed array of terrain values.
 type TerrainTile t = U.UArray TileOffset t
