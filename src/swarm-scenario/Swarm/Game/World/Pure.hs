@@ -41,7 +41,6 @@ import Control.Lens hiding (use)
 import Data.Array qualified as A
 import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
-import Data.Foldable (foldl')
 import Data.Map.Strict qualified as M
 import Data.Strict qualified as Strict
 import Swarm.Game.Entity (Entity, entityHash)
@@ -50,7 +49,6 @@ import Swarm.Game.World.Coords
 import Swarm.Game.World.Function
 import Swarm.Game.World.Tile
 import Swarm.Util ((?))
-import Prelude hiding (Foldable (..), lookup)
 
 -- | A 'World' consists of a 'WorldFun' that specifies the initial
 --   world, a cache of loaded square tiles to make lookups faster, and
