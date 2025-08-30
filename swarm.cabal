@@ -735,7 +735,6 @@ library swarm-engine
   visibility: public
   -- cabal-gild: discover src/swarm-engine
   exposed-modules:
-    Swarm.Effect
     Swarm.Game.Achievement.Attainment
     Swarm.Game.Achievement.Description
     Swarm.Game.Achievement.Persistence

@@ -570,11 +570,11 @@ zoomRobots n = do
 zoomWorld ::
   (Has (State GameState) sig m) =>
   SubworldName ->
-  Fused.StateC (W.World Int Entity) Identity b ->
+  Fused.StateC (W.World Int Entity) m b ->
   m (Maybe b)
 zoomWorld swName n = do
   mw <- use $ landscape . multiWorld
   forM (M.lookup swName mw) $ \w -> do
-    let (w', a) = run (Fused.runState w n)
+    (w', a) <- Fused.runState w n
     landscape . multiWorld %= M.insert swName w'
     return a

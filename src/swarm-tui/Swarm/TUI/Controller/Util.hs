@@ -12,7 +12,7 @@ import Brick.Keybindings
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens as Lens
-import Control.Monad (forM, forM_, unless, when)
+import Control.Monad (forM, forM_, unless, when, void)
 import Control.Monad.IO.Class (MonadIO (liftIO), liftIO)
 import Control.Monad.State (MonadState, execState)
 import Data.List.Extra (enumerate)
@@ -56,6 +56,8 @@ import Swarm.TUI.Model.Repl (REPLEntryType (..), REPLHistItem (..), REPLHistItem
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Util (ScenarioSeriesContext (..), curMenuName, generateModal, generateScenarioEndModal)
 import System.Clock (Clock (..), getTime)
+import Swarm.Game.Entity (Entity)
+import Swarm.Effect qualified as Effect
 
 -- | Pattern synonyms to simplify brick event handler
 pattern Key :: V.Key -> BrickEvent n e
@@ -184,8 +186,13 @@ loadVisibleRegion = do
   mext <- lookupExtent WorldExtent
   forM_ mext $ \(Extent _ _ size) -> do
     vc <- use $ robotInfo . viewCenter
+    wMetric <- use $ landscape . worldMetrics
     let vr = viewingRegion vc (over both fromIntegral size)
-    landscape . multiWorld %= M.adjust (W.loadRegion (vr ^. planar)) (vr ^. subworld)
+    let swName = vr ^. subworld
+    let f = void . zoomWorld swName $ W.loadRegionM @Int @Entity wMetric (vr ^. planar)
+    gs <- get
+    gs' <- liftIO . Fused.runM . Effect.runMetricIO . Effect.runTimeIO $ Fused.execState gs f
+    put gs'
 
 mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe (Cosmic Coords))
 mouseLocToWorldCoords (Brick.Location mouseLoc) = do

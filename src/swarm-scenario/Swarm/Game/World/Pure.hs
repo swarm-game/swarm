@@ -36,7 +36,7 @@ module Swarm.Game.World.Pure (
   loadRegion,
 ) where
 
-import Control.Arrow ((&&&), second)
+import Control.Arrow (second)
 import Control.Lens hiding (use)
 import Data.Array qualified as A
 import Data.Array.IArray
@@ -142,8 +142,8 @@ loadRegion reg (World f t m) = (World f t' m, tileCs)
   loadTile tc = (listArray tileBounds terrain Strict.:!: listArray tileBounds entities)
    where
     tileCorner = tileOrigin tc
-    runWF' f = second toStrictMaybe . runWF f
-    (terrain, entities) = unzip $ map (runWF' f . plusOffset tileCorner) (range tileBounds)
+    runWF' = second toStrictMaybe . runWF f
+    (terrain, entities) = unzip $ map (runWF' . plusOffset tileCorner) (range tileBounds)
 
 toLazyMaybe :: Strict.Maybe a -> Maybe a
 toLazyMaybe = Strict.maybe Nothing Just
