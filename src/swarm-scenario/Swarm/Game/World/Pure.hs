@@ -139,7 +139,7 @@ loadRegion reg (World f t m) = (World f t' m, tileCs)
   t' = foldl' (\hm (i, tile) -> M.insert i tile hm) t (zip tileCs tiles)
 
   loadTile :: TileCoords -> Strict.Pair (TerrainTile t) (EntityTile e)
-  loadTile tc = (listArray tileBounds terrain Strict.:!: listArray tileBounds entities)
+  loadTile tc = listArray tileBounds terrain Strict.:!: listArray tileBounds entities
    where
     tileCorner = tileOrigin tc
     runWF' = second toStrictMaybe . runWF f
