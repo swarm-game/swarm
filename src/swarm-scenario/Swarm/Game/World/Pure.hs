@@ -41,8 +41,9 @@ import Control.Lens hiding (use)
 import Data.Array qualified as A
 import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
+import Data.List qualified as List
 import Data.Map.Strict qualified as M
-import Data.Strict (toStrict, toLazy)
+import Data.Strict (toLazy, toStrict)
 import Data.Strict qualified as Strict
 import Swarm.Game.Entity (Entity, entityHash)
 import Swarm.Game.Scenario.Topography.Modify
@@ -135,7 +136,7 @@ loadRegion reg (World f t m) = (World f t' m, tileCs)
   -- the range is applied to tile coordinates, so we are not loading a tile twice
   tileCs = filter (`M.notMember` t) $ range (over both tileCoords reg)
   tiles = map loadTile tileCs
-  t' = foldl' (\hm (i, tile) -> M.insert i tile hm) t (zip tileCs tiles)
+  t' = List.foldl' (\hm (i, tile) -> M.insert i tile hm) t (zip tileCs tiles)
 
   loadTile :: TileCoords -> Strict.Pair (TerrainTile t) (EntityTile e)
   loadTile tc = listArray tileBounds terrain Strict.:!: listArray tileBounds entities
