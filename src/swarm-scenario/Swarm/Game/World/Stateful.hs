@@ -1,6 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -32,6 +33,11 @@ import Swarm.Game.Entity (Entity)
 import Swarm.Game.Scenario.Topography.Modify
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Pure
+import Swarm.Effect qualified as Effect
+import Swarm.Game.World.Metrics
+import Swarm.Game.World.Tile
+import Data.Map.Strict qualified as M
+import Control.Monad (unless, void)
 
 type HasWorldStateEffect t e sig m =
   ( IArray U.UArray t

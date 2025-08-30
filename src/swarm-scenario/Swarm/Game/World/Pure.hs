@@ -36,7 +36,7 @@ module Swarm.Game.World.Pure (
   loadRegion,
 ) where
 
-import Control.Arrow ((&&&))
+import Control.Arrow ((&&&), second)
 import Control.Lens hiding (use)
 import Data.Array qualified as A
 import Data.Array.IArray
@@ -49,6 +49,7 @@ import Swarm.Game.World.Coords
 import Swarm.Game.World.Function
 import Swarm.Game.World.Tile
 import Swarm.Util ((?))
+import Data.Strict qualified as Strict
 import Prelude hiding (Foldable (..), lookup)
 
 -- | A 'World' consists of a 'WorldFun' that specifies the initial
@@ -65,8 +66,8 @@ import Prelude hiding (Foldable (..), lookup)
 --   handle respawning.
 data World t e = World
   { worldFun :: WorldFun t e
-  , tileCache :: M.Map TileCoords (TerrainTile t, EntityTile e)
-  , changed :: M.Map Coords (Maybe e)
+  , tileCache :: M.Map TileCoords (Strict.Pair (TerrainTile t) (EntityTile e))
+  , changed :: M.Map Coords (Strict.Maybe e)
   }
 
 -- | Create a new 'World' from a 'WorldFun'.
@@ -81,7 +82,7 @@ newWorld f = World f M.empty M.empty
 --   given coordinates is loaded.  For that, see 'lookupTerrainM'.
 lookupTerrain :: (IArray U.UArray t) => Coords -> World t e -> t
 lookupTerrain i (World f t _) =
-  ((U.! tileOffset i) . fst <$> M.lookup (tileCoords i) t)
+  ((U.! tileOffset i) . Strict.fst <$> M.lookup (tileCoords i) t)
     ? fst (runWF f i)
 
 -- | Look up the entity at certain coordinates: first, see if it is in
@@ -92,10 +93,11 @@ lookupTerrain i (World f t _) =
 --   This function does /not/ ensure that the tile containing the
 --   given coordinates is loaded.  For that, see 'lookupEntityM'.
 lookupEntity :: Coords -> World t e -> Maybe e
-lookupEntity i (World f t m) =
-  M.lookup i m
-    ? ((A.! tileOffset i) . snd <$> M.lookup (tileCoords i) t)
-    ? snd (runWF f i)
+lookupEntity i (World f t m) = modifiedEntity ? cachedTileEntity ? computedEntity
+ where
+  modifiedEntity = toLazyMaybe <$> M.lookup i m
+  cachedTileEntity = toLazyMaybe . (A.! tileOffset i) . Strict.snd <$> M.lookup (tileCoords i) t
+  computedEntity = snd (runWF f i)
 
 -- | Update the entity (or absence thereof) at a certain location,
 --   returning an updated 'World' and a Boolean indicating whether
@@ -109,7 +111,7 @@ update ::
 update i g w@(World f t m) =
   (wNew, classifyModification (view entityHash) entityBefore entityAfter)
  where
-  wNew = World f t $ M.insert i entityAfter m
+  wNew = World f t $ M.insert i (toStrictMaybe entityAfter) m
   entityBefore = lookupEntity i w
   entityAfter = g entityBefore
 
@@ -119,7 +121,7 @@ loadCell ::
   Coords ->
   World t e ->
   World t e
-loadCell c = loadRegion (c, c)
+loadCell c = fst . loadRegion (c, c)
 
 -- | Load all the tiles which overlap the given rectangular region
 --   (specified as an upper-left and lower-right corner, inclusive).
@@ -128,18 +130,23 @@ loadRegion ::
   (IArray U.UArray t) =>
   (Coords, Coords) ->
   World t e ->
-  World t e
-loadRegion reg (World f t m) = World f t' m
+  (World t e, [TileCoords])
+loadRegion reg (World f t m) = (World f t' m, tileCs)
  where
-  tiles = range (over both tileCoords reg)
-  t' = foldl' (\hm (i, tile) -> maybeInsert i tile hm) t (map (id &&& loadTile) tiles)
+  -- the range is applied to tile coordinates, so we are not loading a tile twice
+  tileCs = filter (`M.notMember` t) $ range (over both tileCoords reg)
+  tiles = map loadTile tileCs
+  t' = foldl' (\hm (i, tile) -> M.insert i tile hm) t (zip tileCs tiles)
 
-  maybeInsert k v tm
-    | k `M.member` tm = tm
-    | otherwise = M.insert k v tm
-
-  loadTile :: TileCoords -> (TerrainTile t, EntityTile e)
-  loadTile tc = (listArray tileBounds terrain, listArray tileBounds entities)
+  loadTile :: TileCoords -> Strict.Pair (TerrainTile t) (EntityTile e)
+  loadTile tc = (listArray tileBounds terrain Strict.:!: listArray tileBounds entities)
    where
     tileCorner = tileOrigin tc
-    (terrain, entities) = unzip $ map (runWF f . plusOffset tileCorner) (range tileBounds)
+    runWF' f = second toStrictMaybe . runWF f
+    (terrain, entities) = unzip $ map (runWF' f . plusOffset tileCorner) (range tileBounds)
+
+toLazyMaybe :: Strict.Maybe a -> Maybe a
+toLazyMaybe = Strict.maybe Nothing Just
+
+toStrictMaybe :: Maybe a -> Strict.Maybe a
+toStrictMaybe = maybe Strict.Nothing Strict.Just
