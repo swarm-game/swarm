@@ -42,6 +42,7 @@ import Data.Array qualified as A
 import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
 import Data.Map.Strict qualified as M
+import Data.Strict (toStrict, toLazy)
 import Data.Strict qualified as Strict
 import Swarm.Game.Entity (Entity, entityHash)
 import Swarm.Game.Scenario.Topography.Modify
@@ -93,8 +94,8 @@ lookupTerrain i (World f t _) =
 lookupEntity :: Coords -> World t e -> Maybe e
 lookupEntity i (World f t m) = modifiedEntity ? cachedTileEntity ? computedEntity
  where
-  modifiedEntity = toLazyMaybe <$> M.lookup i m
-  cachedTileEntity = toLazyMaybe . (A.! tileOffset i) . Strict.snd <$> M.lookup (tileCoords i) t
+  modifiedEntity = toLazy <$> M.lookup i m
+  cachedTileEntity = toLazy . (A.! tileOffset i) . Strict.snd <$> M.lookup (tileCoords i) t
   computedEntity = snd (runWF f i)
 
 -- | Update the entity (or absence thereof) at a certain location,
@@ -109,7 +110,7 @@ update ::
 update i g w@(World f t m) =
   (wNew, classifyModification (view entityHash) entityBefore entityAfter)
  where
-  wNew = World f t $ M.insert i (toStrictMaybe entityAfter) m
+  wNew = World f t $ M.insert i (toStrict entityAfter) m
   entityBefore = lookupEntity i w
   entityAfter = g entityBefore
 
@@ -140,11 +141,5 @@ loadRegion reg (World f t m) = (World f t' m, tileCs)
   loadTile tc = listArray tileBounds terrain Strict.:!: listArray tileBounds entities
    where
     tileCorner = tileOrigin tc
-    runWF' = second toStrictMaybe . runWF f
+    runWF' = second toStrict . runWF f
     (terrain, entities) = unzip $ map (runWF' . plusOffset tileCorner) (range tileBounds)
-
-toLazyMaybe :: Strict.Maybe a -> Maybe a
-toLazyMaybe = Strict.maybe Nothing Just
-
-toStrictMaybe :: Maybe a -> Strict.Maybe a
-toStrictMaybe = maybe Strict.Nothing Strict.Just
