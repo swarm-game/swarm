@@ -173,7 +173,7 @@ testSolution :: PersistentState -> ScenarioTestConfig -> TestTree
 testSolution ps (ScenarioTestConfig s p shouldCheckBadErrors verify) = maybeExpectFail . testCase p $ do
   cleanStore <- Metrics.newStore
   out <-
-    runM . runThrow @SystemFailure $
+    runM . runError @SystemFailure $
       constructAppState
         (resetMetrics cleanStore ps)
         (defaultAppOpts {userScenario = Just p})
