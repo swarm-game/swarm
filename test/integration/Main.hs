@@ -71,7 +71,7 @@ import Swarm.Game.Step.Path.Type
 import Swarm.Game.Step.Validate (badErrorsInLogs, playUntilWin)
 import Swarm.Game.Tick (getTickNumber)
 import Swarm.Language.Phase (Raw)
-import Swarm.Language.Pipeline (processTerm)
+import Swarm.Language.Pipeline (processSource, requireNonEmptyTerm)
 import Swarm.Log
 import Swarm.Pretty (prettyString)
 import Swarm.TUI.Model (
@@ -96,7 +96,6 @@ import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, testCase)
 import TestFormat
 import TestRecipeCoverage
-import Witch (into)
 
 isUnparseableTest :: FilePath -> Bool
 isUnparseableTest fp = "_Validation" `elem` splitDirectories fp
@@ -149,11 +148,10 @@ exampleTests = testGroup "Test example" . map exampleTest
 
 exampleTest :: FilePath -> TestTree
 exampleTest path =
-  testCase ("processTerm for contents of " ++ show path) $ do
-    assertFailure "TODO"
-
--- value <- undefined processTerm <$> T.readFile path
--- either (assertFailure . into @String) (const $ return ()) value
+  testCase ("processSource for contents of " ++ show path) $ do
+    content <- T.readFile path
+    res <- runError @SystemFailure (processSource content Nothing >>= requireNonEmptyTerm)
+    either (assertFailure . prettyString) (const $ pure ()) res
 
 scenarioParseTests :: ScenarioInputs -> [FilePath] -> TestTree
 scenarioParseTests scenarioInputs inputs =
