@@ -14,6 +14,7 @@ module Swarm.Game.State.Landscape (
   worldScrollable,
   terrainAndEntities,
   recognizerAutomatons,
+  worldMetrics,
 
   -- ** Utilities
   initLandscape,
@@ -64,6 +65,7 @@ data Landscape = Landscape
   , _terrainAndEntities :: TerrainEntityMaps
   , _recognizerAutomatons :: RecognizerAutomatons RecognizableStructureContent Entity
   , _worldScrollable :: Bool
+  , _worldMetrics :: Maybe WorldMetrics
   }
 
 makeLensesNoSigs ''Landscape
@@ -87,6 +89,9 @@ recognizerAutomatons :: Lens' Landscape (RecognizerAutomatons RecognizableStruct
 -- | Whether the world map is supposed to be scrollable or not.
 worldScrollable :: Lens' Landscape Bool
 
+-- | Metrics tracked for the Swarm World, namely tile load time and cache. See 'RuntimeState' metrics store.
+worldMetrics :: Lens' Landscape (Maybe WorldMetrics)
+
 -- | Create an record that is empty except for
 -- system-provided entities.
 initLandscape :: GameStateConfig -> Landscape
@@ -97,6 +102,7 @@ initLandscape gsc =
     , _terrainAndEntities = initEntityTerrain $ gsiScenarioInputs $ initState gsc
     , _recognizerAutomatons = RecognizerAutomatons mempty mempty
     , _worldScrollable = True
+    , _worldMetrics = Nothing
     }
 
 mkLandscape :: ScenarioLandscape -> NonEmpty SubworldDescription -> Seed -> Landscape
@@ -110,6 +116,7 @@ mkLandscape sLandscape worldTuples theSeed =
       -- Leaning toward no, but for now just adopt the root world scrollability
       -- as being universal.
       _worldScrollable = NE.head (sLandscape ^. scenarioWorlds) ^. to scrollable
+    , _worldMetrics = Nothing
     }
 
 buildWorldTuples :: ScenarioLandscape -> NonEmpty SubworldDescription

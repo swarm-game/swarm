@@ -324,11 +324,14 @@ common servant-JuicyPixels
 common servant-server
   build-depends: servant-server >=0.19 && <0.22
 
+common sqlite-simple
+  build-depends: sqlite-simple >=0.4.19.0 && <0.4.20
+
 common split
   build-depends: split >=0.2.3 && <0.3
 
-common sqlite-simple
-  build-depends: sqlite-simple >=0.4.19.0 && <0.4.20
+common strict
+  build-depends: strict >=0.5 && <0.6
 
 common syb
   build-depends: syb >=0.7 && <0.8
@@ -593,6 +596,7 @@ library swarm-scenario
     containers,
     directory,
     either,
+    ekg-core,
     extra,
     filepath,
     fused-effects,
@@ -612,6 +616,7 @@ library swarm-scenario
     prettyprinter,
     random,
     servant-docs,
+    strict,
     tagged,
     text,
     vector,
@@ -666,6 +671,7 @@ library swarm-scenario
     Swarm.Game.World.DSL.Syntax
     Swarm.Game.World.DSL.Typecheck
     Swarm.Game.World.Function
+    Swarm.Game.World.Metrics
     Swarm.Game.World.Multi
     Swarm.Game.World.Pure
     Swarm.Game.World.Render
@@ -729,8 +735,6 @@ library swarm-engine
   visibility: public
   -- cabal-gild: discover src/swarm-engine
   exposed-modules:
-    Swarm.Effect
-    Swarm.Effect.Time
     Swarm.Game.Achievement.Attainment
     Swarm.Game.Achievement.Description
     Swarm.Game.Achievement.Persistence
@@ -916,6 +920,7 @@ library swarm-util
     data-fix,
     directory,
     either,
+    ekg-core,
     extra,
     filepath,
     free,
@@ -939,6 +944,9 @@ library swarm-util
   -- cabal-gild: discover src/swarm-util
   exposed-modules:
     Data.BoolExpr.Simplify
+    Swarm.Effect
+    Swarm.Effect.Metric
+    Swarm.Effect.Time
     Swarm.Failure
     Swarm.Language.Syntax.Direction
     Swarm.Pretty

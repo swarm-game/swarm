@@ -33,9 +33,8 @@ module Swarm.Game.World (
   lookupEntityM,
   lookupContentM,
   updateM,
-  -- TODO: #2555
-  -- loadCellM
-  -- loadRegionM,
+  loadCellM,
+  loadRegionM,
 
   -- * Multi-Worlds
   MultiWorld,
@@ -47,12 +46,14 @@ module Swarm.Game.World (
 
   -- * Re-Exports
   Seed,
+  module Metrics,
   module Coords,
 ) where
 
 import Swarm.Game.World.Coords as Coords
 import Swarm.Game.World.DSL.Gen (Seed)
 import Swarm.Game.World.Function
+import Swarm.Game.World.Metrics as Metrics
 import Swarm.Game.World.Multi
 import Swarm.Game.World.Pure
 import Swarm.Game.World.Stateful
