@@ -22,14 +22,13 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (
 where
 
 import Control.Arrow ((&&&))
-import Data.List (partition, sortOn)
+import Data.List (partition, sortBy)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Map.NonEmpty (NEMap)
 import Data.Map.NonEmpty qualified as NEM
 import Data.Maybe (listToMaybe, maybeToList)
-import Data.Ord (Down (Down))
 import Data.Set qualified as Set
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Structure.Named (StructureName, name)
@@ -42,18 +41,18 @@ import Swarm.Util (binTuples, deleteKeys)
 --
 -- The two type parameters, `b` and `a`, correspond
 -- to 'Cell' and 'Entity', respectively.
-data FoundRegistry b a = FoundRegistry
-  { _foundByName :: Map StructureName (NEMap (Cosmic Location, AbsoluteDir) (StructureWithGrid b a))
-  , _foundByLocation :: Map (Cosmic Location) (FoundStructure b a)
+data FoundRegistry a b = FoundRegistry
+  { _foundByName :: Map StructureName (NEMap (Cosmic Location, AbsoluteDir) (StructureWithGrid a b))
+  , _foundByLocation :: Map (Cosmic Location) (FoundStructure a b)
   }
 
-emptyFoundStructures :: FoundRegistry b a
+emptyFoundStructures :: FoundRegistry a b
 emptyFoundStructures = FoundRegistry mempty mempty
 
 -- | We use a 'NEMap' here so that we can use the
 -- safe-indexing function 'indexWrapNonEmpty' in the implementation
 -- of the @structure@ command.
-foundByName :: FoundRegistry b a -> Map StructureName (NEMap (Cosmic Location, AbsoluteDir) (StructureWithGrid b a))
+foundByName :: FoundRegistry a b -> Map StructureName (NEMap (Cosmic Location, AbsoluteDir) (StructureWithGrid a b))
 foundByName = _foundByName
 
 -- | This is a worldwide "mask" that prevents members of placed
@@ -61,10 +60,10 @@ foundByName = _foundByName
 -- deletion of structures when their elements are removed from the world.
 --
 -- Each recognized structure instance will have @MxN@ entries in this map.
-foundByLocation :: FoundRegistry b a -> Map (Cosmic Location) (FoundStructure b a)
+foundByLocation :: FoundRegistry a b -> Map (Cosmic Location) (FoundStructure a b)
 foundByLocation = _foundByLocation
 
-removeStructure :: FoundStructure b a -> FoundRegistry b a -> FoundRegistry b a
+removeStructure :: FoundStructure a b -> FoundRegistry a b -> FoundRegistry a b
 removeStructure fs (FoundRegistry byName byLoc) =
   FoundRegistry
     (M.update tidyDelete structureName byName)
@@ -79,7 +78,7 @@ removeStructure fs (FoundRegistry byName byLoc) =
   -- Swarm.Game.State.removeRobotFromLocationMap
   tidyDelete = NEM.nonEmptyMap . NEM.delete (upperLeft, rotation)
 
-addFound :: FoundStructure b a -> FoundRegistry b a -> FoundRegistry b a
+addFound :: FoundStructure a b -> FoundRegistry a b -> FoundRegistry a b
 addFound fs@(PositionedStructure loc swg) (FoundRegistry byName byLoc) =
   FoundRegistry
     (M.insertWith (<>) k (NEM.singleton (loc, rotatedTo swg) swg) byName)
@@ -105,9 +104,8 @@ addFound fs@(PositionedStructure loc swg) (FoundRegistry byName byLoc) =
 -- So we just use the same sorting criteria as the one used to resolve recognition
 -- conflicts at entity placement time (see [STRUCTURE RECOGNIZER CONFLICT RESOLUTION]).
 populateStaticFoundStructures ::
-  (Eq a, Eq b) =>
-  [FoundStructure b a] ->
-  FoundRegistry b a
+  [FoundStructure a b] ->
+  FoundRegistry a b
 populateStaticFoundStructures allFound =
   FoundRegistry byName byLocation
  where
@@ -124,7 +122,7 @@ populateStaticFoundStructures allFound =
   resolvePreplacementCollisions foundList =
     nonOverlappingFound <> maybeToList (listToMaybe overlapsByDecreasingPreference)
    where
-    overlapsByDecreasingPreference = sortOn Down overlappingFound
+    overlapsByDecreasingPreference = sortBy compareFoundStructure overlappingFound
 
     (overlappingFound, nonOverlappingFound) =
       partition ((`Set.member` overlappingPlacements) . fmap distillLabel) foundList

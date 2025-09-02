@@ -9,6 +9,7 @@
 -- Swarm integration tests
 module Main where
 
+import Control.Carrier.Error.Either (runError)
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens (Ixed (ix), at, to, view, (&), (.~), (^.), (^..), (^?), (^?!))
@@ -69,7 +70,8 @@ import Swarm.Game.State.Substate (
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Step.Validate (badErrorsInLogs, playUntilWin)
 import Swarm.Game.Tick (getTickNumber)
-import Swarm.Language.Pipeline (processTerm)
+import Swarm.Language.Phase (Raw)
+import Swarm.Language.Pipeline (processSource, requireNonEmptyTerm)
 import Swarm.Log
 import Swarm.Pretty (prettyString)
 import Swarm.TUI.Model (
@@ -94,7 +96,6 @@ import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, testCase)
 import TestFormat
 import TestRecipeCoverage
-import Witch (into)
 
 isUnparseableTest :: FilePath -> Bool
 isUnparseableTest fp = "_Validation" `elem` splitDirectories fp
@@ -147,9 +148,10 @@ exampleTests = testGroup "Test example" . map exampleTest
 
 exampleTest :: FilePath -> TestTree
 exampleTest path =
-  testCase ("processTerm for contents of " ++ show path) $ do
-    value <- processTerm <$> T.readFile path
-    either (assertFailure . into @String) (const $ return ()) value
+  testCase ("processSource for contents of " ++ show path) $ do
+    content <- T.readFile path
+    res <- runError @SystemFailure (processSource content Nothing >>= requireNonEmptyTerm)
+    either (assertFailure . prettyString) (const $ pure ()) res
 
 scenarioParseTests :: ScenarioInputs -> [FilePath] -> TestTree
 scenarioParseTests scenarioInputs inputs =
@@ -171,7 +173,7 @@ scenarioTest expRes scenarioInputs path =
 
 getScenario :: ParseResult -> ScenarioInputs -> FilePath -> IO ()
 getScenario expRes scenarioInputs p = do
-  res <- decodeFileEitherE scenarioInputs p :: IO (Either ParseException Scenario)
+  res <- decodeFileEitherE scenarioInputs p :: IO (Either ParseException (Scenario Raw))
   case expRes of
     Parsed -> case res of
       Left err -> assertFailure $ prettyPrintParseException err
@@ -543,7 +545,7 @@ testScenarioSolutions ps =
   testSolution' s p shouldCheckBadErrors verify = testCase p $ do
     cleanStore <- Metrics.newStore
     out <-
-      runM . runThrow @SystemFailure $
+      runM . runError @SystemFailure $
         constructAppState
           (resetMetrics cleanStore ps)
           (defaultAppOpts {userScenario = Just p})

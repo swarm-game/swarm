@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 -- Description: All achievements enumerated
@@ -24,7 +26,7 @@ import Data.Aeson
 import Data.List.Extra (enumerate)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Syntax (Phase (Raw), Syntax)
 import Swarm.Language.Text.Markdown (Document)
 
 -- | How hard do we expect the achievement to be?
@@ -45,7 +47,7 @@ data Quotation = Quotation
 -- | Flavor text to spice up the description of an achievement, either
 --   freeform text or a quotation.
 data FlavorText
-  = Freeform (Document Syntax)
+  = Freeform (Document (Syntax Raw))
   | FTQuotation Quotation
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
@@ -77,7 +79,7 @@ data AchievementInfo = AchievementInfo
   -- ^ Explain the reference, e.g. in the form of a full quote
   -- from a movie, or something you might find
   -- in a fortune cookie
-  , attainmentProcess :: Document Syntax
+  , attainmentProcess :: Document (Syntax Raw)
   -- ^ Precisely what must be done to obtain this achievement.
   , effort :: ExpectedEffort
   -- ^ How hard the achievement is expected to be.

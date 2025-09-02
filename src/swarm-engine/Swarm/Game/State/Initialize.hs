@@ -51,7 +51,7 @@ import Swarm.Game.State.Substate
 import Swarm.Game.Step.Util (adaptGameState)
 import Swarm.Game.World (Seed, WorldMetrics, initWorldMetrics)
 import Swarm.Language.Capability (constCaps)
-import Swarm.Language.Syntax (allConst, erase)
+import Swarm.Language.Syntax (allConst)
 import Swarm.Language.Types
 import Swarm.Util (applyWhen, binTuples, (?))
 import System.Clock qualified as Clock
@@ -114,7 +114,7 @@ pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gMetric wMe
       & recipesInfo %~ modifyRecipesInfo
       & landscape .~ mkLandscape sLandscape worldTuples theSeed
       & landscape . worldMetrics .~ wMetric
-      & gameControls . initiallyRunCode .~ (erase <$> initialCodeToRun)
+      & gameControls . initiallyRunCode .~ initialCodeToRun
       & gameControls . replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
       -- otherwise the store of definition cells is not saved (see #333, #838)
         False -> REPLDone Nothing
@@ -208,10 +208,10 @@ pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gMetric wMe
 -- explicitly given their location; we only need to validate that each
 -- structure remains intact given other, potentially overlapping static placements.
 initializeRecognition ::
-  (Monad s, Hashable a, Eq b) =>
+  (Monad s, Hashable a) =>
   GenericEntLocator s a ->
-  StaticStructureInfo b a ->
-  s (RecognitionState b a)
+  StaticStructureInfo a b ->
+  s (RecognitionState a b)
 initializeRecognition entLoader structInfo = do
   foundIntact <- mapM checkIntactness allPlaced
 
