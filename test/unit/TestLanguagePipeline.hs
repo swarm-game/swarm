@@ -17,8 +17,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Swarm.Failure (SystemFailure)
-import Swarm.Language.Load (SyntaxWithImports (..))
 import Swarm.Language.JSON ()
+import Swarm.Language.Load (SyntaxWithImports (..))
 import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Pipeline (processSource)
@@ -770,15 +770,16 @@ testLanguagePipeline =
   process = processCompare T.isPrefixOf
 
   processCompare :: (Text -> Text -> Bool) -> Text -> Text -> Assertion
-  processCompare cmp code expect = runError @SystemFailure (processSource code Nothing) >>= \case
-    Left e
-      | not (T.null expect) && cmp expect (prettyText e) -> pure ()
-      | otherwise ->
-          error $
-            "Unexpected failure:\n\n  " <> show (prettyText e) <> "\n\nExpected:\n\n  " <> show expect <> "\n"
-    Right _
-      | expect == "" -> pure ()
-      | otherwise -> error "Unexpected success"
+  processCompare cmp code expect =
+    runError @SystemFailure (processSource code Nothing) >>= \case
+      Left e
+        | not (T.null expect) && cmp expect (prettyText e) -> pure ()
+        | otherwise ->
+            error $
+              "Unexpected failure:\n\n  " <> show (prettyText e) <> "\n\nExpected:\n\n  " <> show expect <> "\n"
+      Right _
+        | expect == "" -> pure ()
+        | otherwise -> error "Unexpected success"
 
 -- | Check round tripping of term from and to text, then test ToJSON/FromJSON.
 roundTripTerm :: Text -> Assertion
