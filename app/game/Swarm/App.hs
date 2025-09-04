@@ -140,7 +140,6 @@ startMetricsThread (Just 0) _ = pure $ Left "Metrics API disabled."
 startMetricsThread mPort store = do
   let port = fromMaybe 6543 mPort
   portCheck <- checkPortFree port
-  print portCheck
   case portCheck of
     Right () -> Right port <$ WaiMetrics.forkServerWith store "localhost" port
     Left e -> pure . Left $ "Can not start on port '" <> show port <> "': " <> show e
