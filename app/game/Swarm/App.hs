@@ -27,16 +27,19 @@ import Brick.BChan
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
 import Control.Concurrent (forkIO, threadDelay)
+import Control.Exception (bracket, try)
 import Control.Lens (Setter', view, (%~), (?~), (^.))
 import Control.Monad (forever, void, when)
 import Control.Monad.IO.Class (liftIO)
 import Data.IORef (IORef, modifyIORef, newIORef, readIORef, writeIORef)
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import GitHash (GitInfo)
 import Graphics.Vty qualified as V
 import Graphics.Vty.CrossPlatform qualified as V
+import Network.Socket qualified as Net
 import Swarm.Failure (SystemFailure)
 import Swarm.Game.State.Runtime
 import Swarm.Log (LogSource (SystemLog), Severity (..))
@@ -135,9 +138,18 @@ defaultMetrics = 6543
 startMetricsThread :: Maybe Int -> Store -> IO (Either String Int)
 startMetricsThread (Just 0) _ = pure $ Left "Metrics API disabled."
 startMetricsThread mPort store = do
-  let p = fromMaybe 6543 mPort
-  _ <- WaiMetrics.forkServerWith store "localhost" p
-  pure $ Right p
+  let port = fromMaybe 6543 mPort
+  portCheck <- checkPortFree port
+  print portCheck
+  case portCheck of
+    Right () -> Right port <$ WaiMetrics.forkServerWith store "localhost" port
+    Left e -> pure . Left $ "Can not start on port '" <> show port <> "': " <> show e
+ where
+  checkPortFree :: Int -> IO (Either IOError ())
+  checkPortFree port = do
+    let hints = Net.defaultHints {Net.addrFlags = [Net.AI_PASSIVE], Net.addrSocketType = Net.Stream}
+    addr <- NE.head <$> Net.getAddrInfo (Just hints) Nothing (Just $ show port)
+    try @IOError . bracket (Net.openSocket addr) Net.close $ flip Net.bind (Net.addrAddress addr)
 
 -- | Create a channel for app events.
 --
