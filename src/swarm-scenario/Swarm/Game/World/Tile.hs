@@ -33,6 +33,7 @@ import Data.Array.IArray qualified as A
 import Data.Array.Unboxed qualified as U
 import Data.Bits
 import Data.Int (Int32)
+import Data.Strict qualified as Strict
 import GHC.Generics (Generic)
 import Swarm.Game.World.Coords
 
@@ -42,7 +43,7 @@ type TerrainTile t = U.UArray TileOffset t
 -- | An entity tile is an array of possible entity values.  Note it
 --   cannot be an unboxed array since entities are complex records
 --   which have to be boxed.
-type EntityTile e = A.Array TileOffset (Maybe e)
+type EntityTile e = A.Array TileOffset (Strict.Maybe e)
 
 -- | The number of bits we need in each coordinate to represent all
 --   the locations in a tile.  In other words, each tile has a size of

@@ -45,11 +45,11 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (emptyFoundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
-import Swarm.Game.State.Landscape (mkLandscape)
+import Swarm.Game.State.Landscape (mkLandscape, worldMetrics)
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Util (adaptGameState)
-import Swarm.Game.World (Seed)
+import Swarm.Game.World (Seed, WorldMetrics, initWorldMetrics)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Syntax (allConst, erase)
 import Swarm.Language.Types
@@ -62,13 +62,15 @@ scenarioToGameState ::
   ScenarioWith (Maybe ScenarioPath) ->
   ValidatedLaunchParams ->
   Maybe GameMetrics ->
+  Maybe WorldMetrics ->
   RuntimeState ->
   IO GameState
-scenarioToGameState si@(ScenarioWith scenario _) (LaunchParams (Identity userSeed) (Identity toRun)) prevMetric rs = do
+scenarioToGameState si@(ScenarioWith scenario _) (LaunchParams (Identity userSeed) (Identity toRun)) prevGMetric prevWMetric rs = do
   theSeed <- arbitrateSeed userSeed $ scenario ^. scenarioLandscape
   now <- Clock.getTime Clock.Monotonic
-  gMetric <- maybe (initGameMetrics $ rs ^. metrics) pure prevMetric
-  return $ pureScenarioToGameState si theSeed now toRun (Just gMetric) (rs ^. stdGameConfigInputs)
+  gMetric <- maybe (initGameMetrics $ rs ^. metrics) pure prevGMetric
+  wMetric <- maybe (initWorldMetrics $ rs ^. metrics) pure prevWMetric
+  return $ pureScenarioToGameState si theSeed now toRun (Just gMetric) (Just wMetric) (rs ^. stdGameConfigInputs)
 
 pureScenarioToGameState ::
   ScenarioWith (Maybe ScenarioPath) ->
@@ -76,9 +78,10 @@ pureScenarioToGameState ::
   Clock.TimeSpec ->
   Maybe CodeToRun ->
   Maybe GameMetrics ->
+  Maybe WorldMetrics ->
   GameStateConfig ->
   GameState
-pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gMetric gsc =
+pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gMetric wMetric gsc =
   preliminaryGameState
     & discovery . structureRecognition .~ recognition
  where
@@ -110,6 +113,7 @@ pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gMetric gsc
       & randomness . randGen .~ mkStdGen theSeed
       & recipesInfo %~ modifyRecipesInfo
       & landscape .~ mkLandscape sLandscape worldTuples theSeed
+      & landscape . worldMetrics .~ wMetric
       & gameControls . initiallyRunCode .~ (erase <$> initialCodeToRun)
       & gameControls . replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
       -- otherwise the store of definition cells is not saved (see #333, #838)

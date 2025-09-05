@@ -1,6 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -18,20 +19,32 @@ module Swarm.Game.World.Stateful (
 
   -- ** Update
   updateM,
-  -- TODO: #2555
-  -- Loading
-  -- loadCellM,
-  -- loadRegionM,
+
+  -- ** Loading
+  loadCellM,
+  loadRegionM,
 ) where
 
 import Control.Algebra (Has)
 import Control.Effect.State (State, get, modify, state)
+import Control.Monad (unless, void)
 import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
+import Data.Map.Strict qualified as M
+import Swarm.Effect qualified as Effect
 import Swarm.Game.Entity (Entity)
 import Swarm.Game.Scenario.Topography.Modify
 import Swarm.Game.World.Coords
+import Swarm.Game.World.Metrics
 import Swarm.Game.World.Pure
+import Swarm.Game.World.Tile
+
+type HasWorldStateEffect t e sig m =
+  ( IArray U.UArray t
+  , Has (State (World t e)) sig m
+  , Has Effect.Metric sig m
+  , Has Effect.Time sig m
+  )
 
 -- | A stateful variant of 'lookupTerrain', which first loads the tile
 --   containing the given coordinates if it is not already loaded,
@@ -77,3 +90,35 @@ updateM ::
   m (CellUpdate Entity)
 updateM c g = do
   state @(World t Entity) $ update c g . loadCell c
+
+loadCellM ::
+  forall t e sig m.
+  HasWorldStateEffect t e sig m =>
+  Maybe WorldMetrics ->
+  Coords ->
+  m ()
+loadCellM wm c = loadRegionM @t @e wm (c, c)
+
+loadRegionM ::
+  forall t e sig m.
+  HasWorldStateEffect t e sig m =>
+  Maybe WorldMetrics ->
+  (Coords, Coords) ->
+  m ()
+loadRegionM wm = updateMetric . state @(World t e) . loadRegion'
+ where
+  loadRegion' :: (Coords, Coords) -> World t e -> (World t e, [TileCoords])
+  loadRegion' cc ow = let (nw, ts) = loadRegion cc ow in nw.tileCache `seq` (nw, ts)
+  updateMetric :: m [TileCoords] -> m ()
+  updateMetric m = case wm of
+    Nothing -> void m
+    Just wMetrics -> do
+      (loadTime, loadedTiles) <- Effect.measureCpuTimeInSec m
+      inMemoryTiles <- M.size . (.tileCache) <$> get @(World t e)
+      Effect.gaugeSet wMetrics.inMemoryTiles inMemoryTiles
+      unless (null loadedTiles) $ do
+        let loadedCount = length loadedTiles
+        let avgTime = loadTime / fromIntegral loadedCount
+        Effect.gaugeAdd wMetrics.loadedTiles loadedCount
+        Effect.distributionAdd wMetrics.tilesBatchLoadTime loadTime
+        Effect.distributionAdd wMetrics.tileAverageLoadTime avgTime
