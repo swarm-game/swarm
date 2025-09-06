@@ -16,7 +16,7 @@ module Swarm.Doc.Keyword (
   builtinFunctionList,
 ) where
 
-import Data.List (nub)
+import Data.List (nub, sortOn)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Doc.Util
@@ -55,7 +55,7 @@ operatorNames e = case e of
   Emacs -> editorList e $ map constSyntax operators <> extraOperators
   -- Vim needs a list of unique characters that can be matched over using a regex
   Vim -> T.pack . nub . T.unpack . T.concat $ map constSyntax operators <> extraOperators
-  VSCode -> editorList e $ map (escape . constSyntax) operators <> extraOperators
+  VSCode -> editorList e . map escape . reverse . sortOn T.length $ map constSyntax operators <> extraOperators
  where
   slashNotComment = \case
     '/' -> "/(?![/|*])"

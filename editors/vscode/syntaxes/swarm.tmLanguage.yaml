@@ -70,7 +70,7 @@ repository:
       # ---------------------------------------------
       operator:
         name: keyword.operator
-        match: '-|==|!=|<|>|<=|>=|\|\||&&|\+|-|\*|/(?![/*])|\^|\+\+|\$|:'
+        match: '\+\+|&&|\|\||>=|<=|!=|==|:|\$|\^|/(?![/|*])|\*|-|\+|>|<|-'
       in:
         name: keyword.control.dictionary.let.in
         match: \b(in)\b
