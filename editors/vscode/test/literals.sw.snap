@@ -27,16 +27,13 @@
 >lit 0xf;
 #^^^ source.swarm variable.parameter
 #   ^ source.swarm
-#    ^ source.swarm constant.numeric
-#     ^^ source.swarm
+#    ^^^ source.swarm constant.numeric
 #       ^ source.swarm keyword.operator.chain
 >
 >lit 0b1111;
 #^^^ source.swarm variable.parameter
 #   ^ source.swarm
-#    ^ source.swarm constant.numeric
-#     ^ source.swarm
-#      ^^^^ source.swarm constant.numeric
+#    ^^^^^^ source.swarm constant.numeric
 #          ^ source.swarm keyword.operator.chain
 >
 >lit " Hello ";

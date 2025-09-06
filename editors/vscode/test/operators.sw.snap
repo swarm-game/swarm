@@ -41,8 +41,7 @@
 #^ source.swarm expression.group punctuation.paren.close
 >
 >++ format (true
-#^ source.swarm keyword.operator
-# ^ source.swarm keyword.operator
+#^^ source.swarm keyword.operator
 #  ^ source.swarm
 #   ^^^^^^ source.swarm keyword.other
 #         ^ source.swarm
@@ -62,8 +61,7 @@
 #^ source.swarm expression.group punctuation.paren.close
 >
 >++ format (
-#^ source.swarm keyword.operator
-# ^ source.swarm keyword.operator
+#^^ source.swarm keyword.operator
 #  ^ source.swarm
 #   ^^^^^^ source.swarm keyword.other
 #         ^ source.swarm
@@ -73,8 +71,8 @@
 #    ^ source.swarm expression.group expression.group punctuation.paren.open
 #     ^ source.swarm expression.group expression.group constant.numeric
 #      ^ source.swarm expression.group expression.group
-#       ^ source.swarm expression.group expression.group keyword.operator
-#        ^^ source.swarm expression.group expression.group
+#       ^^ source.swarm expression.group expression.group keyword.operator
+#         ^ source.swarm expression.group expression.group
 #          ^ source.swarm expression.group expression.group constant.numeric
 #           ^ source.swarm expression.group expression.group punctuation.paren.close
 #            ^ source.swarm expression.group
@@ -84,8 +82,8 @@
 #    ^ source.swarm expression.group expression.group punctuation.paren.open
 #     ^ source.swarm expression.group expression.group constant.numeric
 #      ^ source.swarm expression.group expression.group
-#       ^ source.swarm expression.group expression.group keyword.operator
-#        ^^ source.swarm expression.group expression.group
+#       ^^ source.swarm expression.group expression.group keyword.operator
+#         ^ source.swarm expression.group expression.group
 #          ^ source.swarm expression.group expression.group constant.numeric
 #           ^ source.swarm expression.group expression.group punctuation.paren.close
 #            ^ source.swarm expression.group
@@ -136,8 +134,7 @@
 #^ source.swarm expression.group punctuation.paren.close
 >
 >++ format (
-#^ source.swarm keyword.operator
-# ^ source.swarm keyword.operator
+#^^ source.swarm keyword.operator
 #  ^ source.swarm
 #   ^^^^^^ source.swarm keyword.other
 #         ^ source.swarm
@@ -153,8 +150,7 @@
 #^ source.swarm expression.group punctuation.paren.close
 >
 >++ format (
-#^ source.swarm keyword.operator
-# ^ source.swarm keyword.operator
+#^^ source.swarm keyword.operator
 #  ^ source.swarm
 #   ^^^^^^ source.swarm keyword.other
 #         ^ source.swarm
