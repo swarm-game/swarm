@@ -1,0 +1,169 @@
+>format (0
+#^^^^^^ source.swarm keyword.other
+#      ^ source.swarm
+#       ^ source.swarm expression.group punctuation.paren.open
+#        ^ source.swarm expression.group constant.numeric
+>    + 1
+#^^^^ source.swarm expression.group
+#    ^ source.swarm expression.group keyword.operator
+#     ^ source.swarm expression.group
+#      ^ source.swarm expression.group constant.numeric
+>    * 2
+#^^^^ source.swarm expression.group
+#    ^ source.swarm expression.group keyword.operator
+#     ^ source.swarm expression.group
+#      ^ source.swarm expression.group constant.numeric
+>    - 3
+#^^^^ source.swarm expression.group
+#    ^ source.swarm expression.group keyword.operator
+#     ^ source.swarm expression.group
+#      ^ source.swarm expression.group constant.numeric
+>    / 4
+#^^^^ source.swarm expression.group
+#    ^ source.swarm expression.group keyword.operator
+#     ^ source.swarm expression.group
+#      ^ source.swarm expression.group constant.numeric
+>    // This is a comment, not division
+#^^^^ source.swarm expression.group
+#    ^^ source.swarm expression.group comment.line.double-slash
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.swarm expression.group comment.line.double-slash
+>    /* This is also a comment */
+#^^^^ source.swarm expression.group
+#    ^^ source.swarm expression.group comment.block
+#      ^^^^^^^^^^^^^^^^^^^^^^^^ source.swarm expression.group comment.block
+#                              ^^ source.swarm expression.group comment.block
+>    ^ 5
+#^^^^ source.swarm expression.group
+#    ^ source.swarm expression.group keyword.operator
+#     ^ source.swarm expression.group
+#      ^ source.swarm expression.group constant.numeric
+>)
+#^ source.swarm expression.group punctuation.paren.close
+>
+>++ format (true
+#^ source.swarm keyword.operator
+# ^ source.swarm keyword.operator
+#  ^ source.swarm
+#   ^^^^^^ source.swarm keyword.other
+#         ^ source.swarm
+#          ^ source.swarm expression.group punctuation.paren.open
+#           ^^^^ source.swarm expression.group variable.parameter
+>    || true
+#^^^^ source.swarm expression.group
+#    ^^ source.swarm expression.group keyword.operator
+#      ^ source.swarm expression.group
+#       ^^^^ source.swarm expression.group variable.parameter
+>    && true
+#^^^^ source.swarm expression.group
+#    ^^ source.swarm expression.group keyword.operator
+#      ^ source.swarm expression.group
+#       ^^^^ source.swarm expression.group variable.parameter
+>)
+#^ source.swarm expression.group punctuation.paren.close
+>
+>++ format (
+#^ source.swarm keyword.operator
+# ^ source.swarm keyword.operator
+#  ^ source.swarm
+#   ^^^^^^ source.swarm keyword.other
+#         ^ source.swarm
+#          ^ source.swarm expression.group punctuation.paren.open
+>    (1 <= 2) ||
+#^^^^ source.swarm expression.group
+#    ^ source.swarm expression.group expression.group punctuation.paren.open
+#     ^ source.swarm expression.group expression.group constant.numeric
+#      ^ source.swarm expression.group expression.group
+#       ^ source.swarm expression.group expression.group keyword.operator
+#        ^^ source.swarm expression.group expression.group
+#          ^ source.swarm expression.group expression.group constant.numeric
+#           ^ source.swarm expression.group expression.group punctuation.paren.close
+#            ^ source.swarm expression.group
+#             ^^ source.swarm expression.group keyword.operator
+>    (1 >= 2) ||
+#^^^^ source.swarm expression.group
+#    ^ source.swarm expression.group expression.group punctuation.paren.open
+#     ^ source.swarm expression.group expression.group constant.numeric
+#      ^ source.swarm expression.group expression.group
+#       ^ source.swarm expression.group expression.group keyword.operator
+#        ^^ source.swarm expression.group expression.group
+#          ^ source.swarm expression.group expression.group constant.numeric
+#           ^ source.swarm expression.group expression.group punctuation.paren.close
+#            ^ source.swarm expression.group
+#             ^^ source.swarm expression.group keyword.operator
+>    (1 > 2) ||
+#^^^^ source.swarm expression.group
+#    ^ source.swarm expression.group expression.group punctuation.paren.open
+#     ^ source.swarm expression.group expression.group constant.numeric
+#      ^ source.swarm expression.group expression.group
+#       ^ source.swarm expression.group expression.group keyword.operator
+#        ^ source.swarm expression.group expression.group
+#         ^ source.swarm expression.group expression.group constant.numeric
+#          ^ source.swarm expression.group expression.group punctuation.paren.close
+#           ^ source.swarm expression.group
+#            ^^ source.swarm expression.group keyword.operator
+>    (1 < 2) ||
+#^^^^ source.swarm expression.group
+#    ^ source.swarm expression.group expression.group punctuation.paren.open
+#     ^ source.swarm expression.group expression.group constant.numeric
+#      ^ source.swarm expression.group expression.group
+#       ^ source.swarm expression.group expression.group keyword.operator
+#        ^ source.swarm expression.group expression.group
+#         ^ source.swarm expression.group expression.group constant.numeric
+#          ^ source.swarm expression.group expression.group punctuation.paren.close
+#           ^ source.swarm expression.group
+#            ^^ source.swarm expression.group keyword.operator
+>    (1 == 2) ||
+#^^^^ source.swarm expression.group
+#    ^ source.swarm expression.group expression.group punctuation.paren.open
+#     ^ source.swarm expression.group expression.group constant.numeric
+#      ^ source.swarm expression.group expression.group
+#       ^^ source.swarm expression.group expression.group keyword.operator
+#         ^ source.swarm expression.group expression.group
+#          ^ source.swarm expression.group expression.group constant.numeric
+#           ^ source.swarm expression.group expression.group punctuation.paren.close
+#            ^ source.swarm expression.group
+#             ^^ source.swarm expression.group keyword.operator
+>    (1 != 2)
+#^^^^ source.swarm expression.group
+#    ^ source.swarm expression.group expression.group punctuation.paren.open
+#     ^ source.swarm expression.group expression.group constant.numeric
+#      ^ source.swarm expression.group expression.group
+#       ^^ source.swarm expression.group expression.group keyword.operator
+#         ^ source.swarm expression.group expression.group
+#          ^ source.swarm expression.group expression.group constant.numeric
+#           ^ source.swarm expression.group expression.group punctuation.paren.close
+>)
+#^ source.swarm expression.group punctuation.paren.close
+>
+>++ format (
+#^ source.swarm keyword.operator
+# ^ source.swarm keyword.operator
+#  ^ source.swarm
+#   ^^^^^^ source.swarm keyword.other
+#         ^ source.swarm
+#          ^ source.swarm expression.group punctuation.paren.open
+>    scan $ north
+#^^^^ source.swarm expression.group
+#    ^^^^ source.swarm expression.group keyword.other
+#        ^ source.swarm expression.group
+#         ^ source.swarm expression.group keyword.operator
+#          ^ source.swarm expression.group
+#           ^^^^^ source.swarm expression.group variable.language.dir
+>)
+#^ source.swarm expression.group punctuation.paren.close
+>
+>++ format (
+#^ source.swarm keyword.operator
+# ^ source.swarm keyword.operator
+#  ^ source.swarm
+#   ^^^^^^ source.swarm keyword.other
+#         ^ source.swarm
+#          ^ source.swarm expression.group punctuation.paren.open
+>    1 : Int
+#^^^^ source.swarm expression.group
+#    ^ source.swarm expression.group constant.numeric
+#     ^ source.swarm expression.group
+#      ^ source.swarm expression.group keyword.operator
+#       ^^^^^ source.swarm expression.group
+>)
+#^ source.swarm expression.group punctuation.paren.close
