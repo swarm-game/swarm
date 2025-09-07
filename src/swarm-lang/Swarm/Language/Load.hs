@@ -35,7 +35,7 @@ import Swarm.Language.Parser.Core (defaultParserConfig, importLoc)
 import Swarm.Language.Syntax (ImportPhaseFor, Phase (..), SwarmType, Syntax)
 import Swarm.Language.Syntax.Import hiding (ImportPhase (..))
 import Swarm.Language.Syntax.Import qualified as Import
-import Swarm.Language.Syntax.Util (Erasable(..), traverseSyntax)
+import Swarm.Language.Syntax.Util (Erasable (..), traverseSyntax)
 import Swarm.Language.Types (TCtx, UCtx)
 import Swarm.Util (readFileMayT, showT)
 import Swarm.Util.Graph (findCycle)
@@ -211,7 +211,6 @@ readLoc loc = do
 
   -- Try to read the file from network/disk, depending on the anchor
   src <- case importAnchor loc of
-
     -- Read from network
     Web_ {} -> do
       -- Try to parse the URL
