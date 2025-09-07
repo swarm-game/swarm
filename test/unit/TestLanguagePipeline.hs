@@ -766,10 +766,19 @@ testLanguagePipeline =
         "Import #2540"
         [ testCase
             "simple import"
-            ( valid "import \"data/test/import/a.sw\"; pure (a + 2)" )
+            ( valid "import \"data/test/import/a.sw\"; pure (a + 1)" )
         , testCase
             "recursive import - unused"
             ( valid "import \"data/test/import/b.sw\"; pure (b + 1)" )
+        , testCase
+            "recursive import - used"
+            ( valid "import \"data/test/import/d.sw\"; pure (d + 1)" )
+        , testCase
+            "recursive import is not re-exported"
+            ( process
+               "import \"data/test/import/f.sw\"; pure (f + g)"
+               "1:43: Unbound variable g"
+            )
         ]
     ]
  where
