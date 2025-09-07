@@ -172,7 +172,7 @@ common commonmark-extensions
   build-depends: commonmark-extensions >=0.2 && <0.3
 
 common containers
-  build-depends: containers >=0.6.2 && <0.8
+  build-depends: containers >=0.6.2 && <0.9
 
 common cookie
   build-depends: cookie >=0.4 && <1.0
@@ -289,7 +289,7 @@ common palette
   build-depends: palette >=0.3 && <0.4
 
 common pandoc
-  build-depends: pandoc >=3.0 && <3.8
+  build-depends: pandoc >=3.0 && <3.9
 
 common pandoc-types
   build-depends: pandoc-types >=1.23 && <1.24
@@ -370,7 +370,7 @@ common text-zipper
   build-depends: text-zipper >=0.10 && <0.14
 
 common time
-  build-depends: time >=1.9 && <1.15
+  build-depends: time >=1.9 && <1.16
 
 common transformers
   build-depends: transformers >=0.6 && <0.7
