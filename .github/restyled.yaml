@@ -2,4 +2,4 @@ restylers_version: stable
 restylers:
   - fourmolu:
       image:
-        tag: v0.18.0.0
+        tag: v0.19.0.0
