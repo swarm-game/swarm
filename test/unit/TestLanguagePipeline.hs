@@ -779,6 +779,9 @@ testLanguagePipeline =
                "import \"data/test/import/f.sw\"; pure (f + g)"
                "1:43: Unbound variable g"
             )
+        , testCase
+            "import from URL"
+            ( valid "import \"https://raw.githubusercontent.com/byorgey/swarm-defs/refs/heads/main/defs.sw\"; tL")
         ]
     ]
  where
