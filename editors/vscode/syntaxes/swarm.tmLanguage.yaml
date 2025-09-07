@@ -70,7 +70,7 @@ repository:
       # ---------------------------------------------
       operator:
         name: keyword.operator
-        match: '-|==|!=|<|>|<=|>=|\|\||&&|\+|-|\*|/(?![/|*])|\^|\+\+|\$|:'
+        match: '==|!=|<=|>=|\|\||&&|\+\+|-|<|>|\+|-|\*|/(?![/|*])|\^|\$|:'
       in:
         name: keyword.control.dictionary.let.in
         match: \b(in)\b
@@ -145,7 +145,7 @@ repository:
   constants:
     patterns:
       - name: constant.numeric
-        match: ([0-9]+|0b[01]+|0o[0-8]+|0x\x+)
+        match: (0b[01]+|0o[0-8]+|0x[a-fA-F0-9]+|[0-9]+)
   # ============================================================================
   definitions:
     patterns:
