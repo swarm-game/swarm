@@ -28,7 +28,7 @@ data SignpostableCell c = SignpostableCell
   , structureMarker :: Maybe StructureMarker
   , standardCell :: c
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Functor, Foldable, Traversable)
 
 instance (FromJSONE e a) => FromJSONE e (SignpostableCell a) where
   parseJSONE x =

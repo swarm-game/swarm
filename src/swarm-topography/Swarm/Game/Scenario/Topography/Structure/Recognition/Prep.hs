@@ -28,7 +28,7 @@ import Text.AhoCorasick (makeStateMachine)
 -- This operation may result in multiple entries that contain the same contents
 -- (but different annotations), either because the same contents appear
 -- in multiple rows within the same structure, or occur across structures.
-allStructureRows :: [StructureWithGrid b a] -> [StructureRow b a]
+allStructureRows :: [StructureWithGrid a b] -> [StructureRow a b]
 allStructureRows =
   concatMap $ NE.toList . transformRows
  where
@@ -65,8 +65,8 @@ mkOffsets pos (RowWidth w) =
 -- 5. Prepare Aho-Corasick state machines for recognizing these chunks
 mkEntityLookup ::
   (Hashable a, Eq a) =>
-  [StructureWithGrid b a] ->
-  HM.HashMap a (AutomatonInfo b a)
+  [StructureWithGrid a b] ->
+  HM.HashMap a (AutomatonInfo a b)
 mkEntityLookup grids =
   HM.map mkRowAutomatons rowsByEntityParticipation
  where
@@ -132,8 +132,8 @@ getContiguousChunks rowMembers =
 -- are dropped but accounted for positionally when indexing the columns.
 explodeRowEntities ::
   (Hashable a, Eq a) =>
-  ConsolidatedRowReferences b a ->
-  [SingleRowEntityOccurrences b a]
+  ConsolidatedRowReferences a b ->
+  [SingleRowEntityOccurrences a b]
 explodeRowEntities annotatedRow@(ConsolidatedRowReferences rowMembers _ width) =
   map f $ HM.toList $ binTuplesHM unconsolidatedEntityOccurrences
  where
@@ -153,7 +153,7 @@ explodeRowEntities annotatedRow@(ConsolidatedRowReferences rowMembers _ width) =
       . NE.toList
       $ imap (\idx -> fmap (PositionWithinRow (fromIntegral idx) annotatedRow,)) rowMembers
 
-  deriveEntityOffsets :: PositionWithinRow b a -> InspectionOffsets
+  deriveEntityOffsets :: PositionWithinRow a b -> InspectionOffsets
   deriveEntityOffsets (PositionWithinRow pos _) = mkOffsets pos width
 
 -- * Util

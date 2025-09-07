@@ -39,9 +39,11 @@ module Swarm.Game.ScenarioInfo (
 ) where
 
 import Control.Algebra (Has)
+import Control.Carrier.Error.Either (runError)
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Accum (Accum, add)
+import Control.Effect.Error (Error)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw (Throw, liftEither)
 import Control.Lens hiding (from, (<.>))
@@ -237,7 +239,7 @@ loadScenarioDir scenarioInputs loadTestScenarios dir = do
   -- or has thrown SystemFailure. The following code just adds that thrown failure to others.
   loadItems :: [FilePath] -> m (Map FilePath (ScenarioItem ScenarioInfo))
   loadItems items = do
-    let loadItem f = runThrow @SystemFailure $ (f,) <$> loadScenarioItem scenarioInputs loadTestScenarios (dir </> f)
+    let loadItem f = runError @SystemFailure $ (f,) <$> loadScenarioItem scenarioInputs loadTestScenarios (dir </> f)
     (scenarioFailures, okScenarios) <- partitionEithers <$> mapM loadItem items
     add (Seq.fromList scenarioFailures)
     return $ M.fromList okScenarios
@@ -312,7 +314,7 @@ saveScenarioInfo path si = do
 -- | Load a scenario item (either a scenario, or a subdirectory
 --   containing a collection of scenarios) from a particular path.
 loadScenarioItem ::
-  ( Has (Throw SystemFailure) sig m
+  ( Has (Error SystemFailure) sig m
   , Has (Accum (Seq SystemFailure)) sig m
   , Has (Lift IO) sig m
   ) =>
