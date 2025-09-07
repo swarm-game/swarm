@@ -762,6 +762,15 @@ testLanguagePipeline =
                 "1:35: The `read` command must be given a literal type as its first argument (Swarm does not have dependent types); found `T` instead."
             )
         ]
+    , testGroup
+        "Import #2540"
+        [ testCase
+            "simple import"
+            ( valid "import \"data/test/import/a.sw\"; pure (a + 2)" )
+        , testCase
+            "recursive import - unused"
+            ( valid "import \"data/test/import/b.sw\"; pure (b + 1)" )
+        ]
     ]
  where
   valid = flip process ""
