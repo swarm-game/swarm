@@ -206,19 +206,24 @@ readLoc loc = do
   let path = locToFilePath loc
       badImport :: Has (Throw SystemFailure) sig m => LoadingFailure -> m a
       badImport = throwError . AssetNotLoaded (Data Script) path
+      withBadImport :: Has (Throw SystemFailure) sig m => (e -> LoadingFailure) -> Either e a -> m a
+      withBadImport f = either (badImport . f) pure
 
   -- Try to read the file from network/disk, depending on the anchor
   src <- case importAnchor loc of
-    Web_ {} ->
-      case parseRequest (into @String path) of
-        Left err -> badImport $ BadURL (showT err)
-        Right req -> do
-          resp <- sendIO $ httpBS req
-          case T.decodeUtf8' (getResponseBody resp) of
-            Left unicodeErr -> badImport $ CanNotDecodeUTF8 unicodeErr
-            Right txt -> pure txt
+
+    -- Read from network
+    Web_ {} -> do
+      -- Try to parse the URL
+      req <- parseRequest (into @String path) & withBadImport (BadURL . showT)
+      -- Send HTTP request
+      resp <- sendIO $ httpBS req
+      -- Try to decode the response
+      T.decodeUtf8' (getResponseBody resp) & withBadImport CanNotDecodeUTF8
+
+    -- Read from disk
     _ -> sendIO (readFileMayT path) >>= maybe (badImport (DoesNotExist File)) pure
 
-  -- Try to parse the contents
+  -- Finally, try to parse the contents
   readTerm' (defaultParserConfig & importLoc ?~ loc) src
-    & either (badImport . SystemFailure . CanNotParseMegaparsec) pure
+    & withBadImport (SystemFailure . CanNotParseMegaparsec)

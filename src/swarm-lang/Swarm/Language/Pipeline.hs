@@ -25,8 +25,6 @@ module Swarm.Language.Pipeline (
 ) where
 
 import Control.Algebra (Has)
-import Control.Carrier.Error.Either (ErrorC, runError)
-import Control.Carrier.Lift (LiftC, runM)
 import Control.Effect.Error (Error, throwError)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Throw (liftEither)
