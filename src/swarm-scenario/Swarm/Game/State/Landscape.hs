@@ -92,7 +92,7 @@ recognizerAutomatons :: Lens' (Landscape phase) (RecognizerAutomatons Entity (Re
 worldScrollable :: Lens' (Landscape phase) Bool
 
 -- | Metrics tracked for the Swarm World, namely tile load time and cache. See 'RuntimeState' metrics store.
-worldMetrics :: Lens' Landscape (Maybe WorldMetrics)
+worldMetrics :: Lens' (Landscape phase) (Maybe WorldMetrics)
 
 -- | Create an record that is empty except for
 -- system-provided entities.
