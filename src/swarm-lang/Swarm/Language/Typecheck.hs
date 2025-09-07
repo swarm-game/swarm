@@ -1137,6 +1137,7 @@ collectDefs ::
 collectDefs (Syntax _ (SLet LSDef _ x _ _ _ body t) _ _) = do
   ty' <- generalize (body ^. sType)
   (Ctx.singleton (lvVar x) ty' <>) <$> collectDefs t
+collectDefs (Syntax _ (SImportIn _ t) _ _) = collectDefs t
 collectDefs _ = pure Ctx.empty
 
 -- | Infer the type of a module, i.e. import, by (1) typechecking and
