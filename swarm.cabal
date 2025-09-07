@@ -276,6 +276,9 @@ common murmur3
 common natural-sort
   build-depends: natural-sort >=0.1.2 && <0.2
 
+common network
+  build-depends: network >=3.2 && <3.3
+
 common nonempty-containers
   build-depends: nonempty-containers >=0.3.4 && <0.3.6
 
@@ -1168,6 +1171,7 @@ executable swarm
     http-client-tls,
     http-types,
     lens,
+    network,
     optparse-applicative,
     text,
     vty,
