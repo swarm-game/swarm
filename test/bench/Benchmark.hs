@@ -13,7 +13,7 @@ import Data.Map qualified as M
 import Data.Sequence (Seq)
 import Data.Text qualified as T
 import Data.Tuple.Extra (dupe)
-import Swarm.Effect (runTimeIO, runMetricIO)
+import Swarm.Effect (runMetricIO, runTimeIO)
 import Swarm.Failure (SystemFailure, simpleErrorHandle)
 import Swarm.Game.CESK (initMachine)
 import Swarm.Game.Cosmetic.Display (defaultRobotDisplay)
