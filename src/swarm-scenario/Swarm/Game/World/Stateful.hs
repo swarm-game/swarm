@@ -88,12 +88,14 @@ lookupEntityM wm c = snd <$> lookupContentM @t @e wm c
 --   containing the given coordinates is loaded.
 updateM ::
   forall t sig m.
-  (Has (State (World t Entity)) sig m, IArray U.UArray t) =>
+  HasWorldStateEffect t Entity sig m =>
+  Maybe WorldMetrics ->
   Coords ->
   (Maybe Entity -> Maybe Entity) ->
   m (CellUpdate Entity)
-updateM c g = do
-  state @(World t Entity) $ update c g . loadCell c
+updateM wm c g = do
+  loadCellM @t @Entity wm c
+  state @(World t Entity) $ update c g
 
 loadCellM ::
   forall t e sig m.

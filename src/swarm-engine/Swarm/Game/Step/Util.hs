@@ -80,8 +80,8 @@ updateEntityAt ::
   m ()
 updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
   someChange <-
-    zoomWorld subworldName $ \_ ->
-      W.updateM @Int (locToCoords loc) upd
+    zoomWorld subworldName $ \wMetric ->
+      W.updateM @Int wMetric (locToCoords loc) upd
 
   forM_ (WM.getModification =<< someChange) $ \modType -> do
     currentTick <- use $ temporal . ticks
