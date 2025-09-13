@@ -62,15 +62,6 @@ lookInDirection d = do
   let nextLoc = loc `offsetBy` newHeading
   (nextLoc,) <$> entityAt nextLoc
 
-adaptGameState ::
-  Has (State GameState) sig m =>
-  TS.State GameState b ->
-  m b
-adaptGameState f = do
-  (newRecognizer, newGS) <- TS.runState f <$> get
-  put newGS
-  return newRecognizer
-
 -- | Modify the entity (if any) at a given location, and mark the cell
 --   dirty (i.e. needing to be redrawn) if anything changes.
 updateEntityAt ::
