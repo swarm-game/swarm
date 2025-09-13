@@ -15,10 +15,12 @@ module Swarm.Effect.Metric (
   distributionAdd,
 
   -- * Metric Carrier
-  MetricIOC (..),
+  MetricIOC,
+  runMetricIO,
 
   -- ** Test Fake Carrier
-  FakeMetric (..),
+  FakeMetric,
+  runFakeMetric,
 ) where
 
 import Control.Algebra
@@ -36,18 +38,26 @@ data Metric (m :: Type -> Type) k where
 
 counterInc :: Has Metric sig m => Counter.Counter -> m ()
 counterInc = send . CounterInc
+{-# INLINE counterInc #-}
 
 gaugeAdd :: Has Metric sig m => Gauge.Gauge -> Int -> m ()
 gaugeAdd g = send . GaugeAdd g
+{-# INLINE gaugeAdd #-}
 
 gaugeSet :: Has Metric sig m => Gauge.Gauge -> Int -> m ()
 gaugeSet g = send . GaugeSet g
+{-# INLINE gaugeSet #-}
 
 distributionAdd :: Has Metric sig m => Distribution.Distribution -> Double -> m ()
 distributionAdd d = send . DistributionAdd d
+{-# INLINE distributionAdd #-}
 
-newtype MetricIOC m a = MetricIOC {runMetricIO :: m a}
+newtype MetricIOC m a = MetricIOC (m a)
   deriving newtype (Applicative, Functor, Monad, MonadIO)
+
+runMetricIO :: MetricIOC m a -> m a
+runMetricIO (MetricIOC m) = m
+{-# INLINE runMetricIO #-}
 
 instance (MonadIO m, Algebra sig m) => Algebra (Metric :+: sig) (MetricIOC m) where
   alg hdl sig ctx = case sig of
@@ -56,9 +66,14 @@ instance (MonadIO m, Algebra sig m) => Algebra (Metric :+: sig) (MetricIOC m) wh
     L (GaugeAdd g v) -> (<$ ctx) <$> liftIO (Gauge.add g $ fromIntegral v)
     L (GaugeSet g v) -> (<$ ctx) <$> liftIO (Gauge.set g $ fromIntegral v)
     R other -> MetricIOC (alg (runMetricIO . hdl) other ctx)
+  {-# INLINE alg #-}
 
-newtype FakeMetric m a = FakeMetric {runFakeMetric :: m a}
+newtype FakeMetric m a = FakeMetric (m a)
   deriving newtype (Applicative, Functor, Monad)
+
+runFakeMetric :: FakeMetric m a -> m a
+runFakeMetric (FakeMetric m) = m
+{-# INLINE runFakeMetric #-}
 
 instance (Algebra sig m) => Algebra (Metric :+: sig) (FakeMetric m) where
   alg hdl sig ctx = case sig of
@@ -67,3 +82,4 @@ instance (Algebra sig m) => Algebra (Metric :+: sig) (FakeMetric m) where
     L (GaugeAdd {}) -> pure ctx
     L (GaugeSet {}) -> pure ctx
     R other -> FakeMetric (alg (runFakeMetric . hdl) other ctx)
+  {-# INLINE alg #-}

@@ -30,7 +30,7 @@ roots = [
     "^Swarm.Game.Step.traceLogShow$",
     "^Swarm.Game.World.DSL.Compile.compile$",
     "^Swarm.Game.World.DSL.Compile.runCTerm$",
-    "^Swarm.Game.World.Stateful.loadCellM$",
+    "^Swarm.Game.World.Pure.loadCell$",
     "^Swarm.Game.World.Stateful.lookupTerrainM$",
     "^Swarm.Language.Context.withBindings$",
     "^Swarm.Language.Context.singleton$",

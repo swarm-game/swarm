@@ -15,7 +15,6 @@ import Control.Effect.Lens
 import Control.Monad (forM_, guard, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Maybe (MaybeT (..), hoistMaybe, runMaybeT)
-import Control.Monad.Trans.State.Strict qualified as TS
 import Data.Array (bounds, (!))
 import Data.IntMap qualified as IM
 import Data.Set qualified as S
@@ -62,26 +61,17 @@ lookInDirection d = do
   let nextLoc = loc `offsetBy` newHeading
   (nextLoc,) <$> entityAt nextLoc
 
-adaptGameState ::
-  Has (State GameState) sig m =>
-  TS.State GameState b ->
-  m b
-adaptGameState f = do
-  (newRecognizer, newGS) <- TS.runState f <$> get
-  put newGS
-  return newRecognizer
-
 -- | Modify the entity (if any) at a given location, and mark the cell
 --   dirty (i.e. needing to be redrawn) if anything changes.
 updateEntityAt ::
-  (Has (State Robot) sig m, Has (State GameState) sig m) =>
+  HasRobotStepState sig m =>
   Cosmic Location ->
   (Maybe Entity -> Maybe Entity) ->
   m ()
 updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
   someChange <-
-    zoomWorld subworldName $
-      W.updateM @Int (locToCoords loc) upd
+    zoomWorld subworldName $ \wMetric ->
+      W.updateM @Int wMetric (locToCoords loc) upd
 
   forM_ (WM.getModification =<< someChange) $ \modType -> do
     currentTick <- use $ temporal . ticks
@@ -90,7 +80,7 @@ updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
 
     structureRecognizer <- use $ landscape . recognizerAutomatons
     oldRecognition <- use $ discovery . structureRecognition
-    newRecognition <- adaptGameState $ SRT.entityModified mtlEntityAt modType cLoc structureRecognizer oldRecognition
+    newRecognition <- SRT.entityModified entityAt modType cLoc structureRecognizer oldRecognition
     discovery . structureRecognition .= newRecognition
 
     pcr <- use $ pathCaching . pathCachingRobots

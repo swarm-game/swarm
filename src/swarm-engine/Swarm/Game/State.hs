@@ -69,7 +69,6 @@ module Swarm.Game.State (
   genMultiWorld,
   genRobotTemplates,
   entityAt,
-  mtlEntityAt,
   contentAt,
   zoomWorld,
   zoomRobots,
@@ -88,7 +87,6 @@ import Control.Effect.State (State)
 import Control.Effect.Throw
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad (forM, forM_, join)
-import Control.Monad.Trans.State.Strict qualified as TS
 import Data.Aeson (ToJSON)
 import Data.Digest.Pure.SHA (sha1, showDigest)
 import Data.Foldable (toList)
@@ -105,8 +103,8 @@ import Data.Text qualified as T (drop, take)
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
-import Data.Tuple (swap)
 import GHC.Generics (Generic)
+import Swarm.Effect qualified as Effect
 import Swarm.Failure (SystemFailure (..))
 import Swarm.Game.CESK (Store, emptyStore, store, suspendedEnv)
 import Swarm.Game.Entity
@@ -526,28 +524,22 @@ initGameState gsc =
     , _gameMetrics = Nothing
     }
 
--- | Provide an entity accessor via the MTL transformer State API.
--- This is useful for the structure recognizer.
-mtlEntityAt :: Cosmic Location -> TS.State GameState (Maybe Entity)
-mtlEntityAt = TS.state . runGetEntity
- where
-  runGetEntity :: Cosmic Location -> GameState -> (Maybe Entity, GameState)
-  runGetEntity loc gs =
-    swap . run . Fused.runState gs $ entityAt loc
-
 -- | Get the entity (if any) at a given location.
-entityAt :: (Has (State GameState) sig m) => Cosmic Location -> m (Maybe Entity)
+entityAt ::
+  (Has (State GameState) sig m, Has Effect.Metric sig m, Has Effect.Time sig m) =>
+  Cosmic Location ->
+  m (Maybe Entity)
 entityAt (Cosmic subworldName loc) =
-  join <$> zoomWorld subworldName (W.lookupEntityM @Int (locToCoords loc))
+  join <$> zoomWorld subworldName (\wm -> W.lookupEntityM @Int wm (locToCoords loc))
 
 contentAt ::
-  (Has (State GameState) sig m) =>
+  (Has (State GameState) sig m, Has Effect.Metric sig m, Has Effect.Time sig m) =>
   Cosmic Location ->
   m (TerrainType, Maybe Entity)
 contentAt (Cosmic subworldName loc) = do
   tm <- use $ landscape . terrainAndEntities . terrainMap
-  val <- zoomWorld subworldName $ do
-    (terrIdx, maybeEnt) <- W.lookupContentM (locToCoords loc)
+  val <- zoomWorld subworldName $ \wm -> do
+    (terrIdx, maybeEnt) <- W.lookupContentM wm (locToCoords loc)
     let terrObj = terrIdx `IM.lookup` terrainByIndex tm
     return (maybe BlankT terrainName terrObj, maybeEnt)
   return $ fromMaybe (BlankT, Nothing) val
@@ -570,11 +562,12 @@ zoomRobots n = do
 zoomWorld ::
   (Has (State GameState) sig m) =>
   SubworldName ->
-  Fused.StateC (W.World Int Entity) m b ->
+  (Maybe W.WorldMetrics -> Fused.StateC (W.World Int Entity) m b) ->
   m (Maybe b)
-zoomWorld swName n = do
+zoomWorld swName f = do
   mw <- use $ landscape . multiWorld
+  wMetric <- use $ landscape . worldMetrics
   forM (M.lookup swName mw) $ \w -> do
-    (w', a) <- Fused.runState w n
+    (w', a) <- Fused.runState w $ f wMetric
     landscape . multiWorld %= M.insert swName w'
     return a

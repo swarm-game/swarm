@@ -122,7 +122,7 @@ data GrabRemoval = DeferRemoval | PerformRemoval
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
 execConst ::
-  (HasRobotStepState sig m, Has Effect.Time sig m, Has (Lift IO) sig m) =>
+  (HasRobotStepState sig m, Has (Lift IO) sig m) =>
   -- | Need to pass this function as an argument to avoid module import cycle
   -- The supplied function invokes 'runCESK', which lives in "Swarm.Game.Step".
   (Store -> Robot -> Value -> m Value) ->
