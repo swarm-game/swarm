@@ -120,11 +120,11 @@ loadRegionM wm = updateMetric . state @(World t e) . loadRegion'
     Nothing -> void m
     Just wMetrics -> do
       (loadTime, loadedTiles) <- Effect.measureCpuTimeInSec m
-      inMemoryTiles <- M.size . (.tileCache) <$> get @(World t e)
-      Effect.gaugeSet wMetrics.inMemoryTiles inMemoryTiles
       unless (null loadedTiles) $ do
+        inMemoryTiles <- M.size . (.tileCache) <$> get @(World t e)
         let loadedCount = length loadedTiles
         let avgTime = loadTime / fromIntegral loadedCount
+        Effect.gaugeSet wMetrics.inMemoryTiles inMemoryTiles
         Effect.gaugeAdd wMetrics.loadedTiles loadedCount
         Effect.distributionAdd wMetrics.tilesBatchLoadTime loadTime
         Effect.distributionAdd wMetrics.tileAverageLoadTime avgTime
