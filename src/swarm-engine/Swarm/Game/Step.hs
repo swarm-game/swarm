@@ -56,7 +56,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Linear (zero)
 import Prettyprinter (pretty)
-import Swarm.Effect as Effect (Metric, Time, getNow, measureCpuTimeInSec)
+import Swarm.Effect as Effect (Metric, Time, getNow)
+import Swarm.Effect qualified as Effect
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
 import Swarm.Game.Cosmetic.Display
@@ -88,9 +89,6 @@ import Swarm.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Util hiding (both)
 import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec)
-import System.Metrics.Counter qualified as Counter
-import System.Metrics.Distribution qualified as Distribution
-import System.Metrics.Gauge qualified as Gauge
 import Witch (From (from))
 
 -- | GameState with support for IO and Time effect
@@ -106,7 +104,7 @@ type HasGameStepState sig m =
 --   Note that the game may be in 'RobotStep' mode and not finish
 --   the tick. Use the return value to check whether a full tick happened.
 gameTick :: forall m sig. HasGameStepState sig m => m Bool
-gameTick = measureCpuTimeInSec runTick >>= updateMetrics
+gameTick = Effect.measureCpuTimeInSec runTick >>= updateMetrics
  where
   updateMetrics :: (Double, b) -> m b
   updateMetrics (t, res) =
@@ -114,12 +112,10 @@ gameTick = measureCpuTimeInSec runTick >>= updateMetrics
       Just metrics -> do
         total <- use $ robotInfo . robotMap . to IM.size
         active <- use $ robotInfo . activeRobots . to IS.size
-        -- TODO: ONDRA - use metric effect
-        sendIO $ do
-          Counter.inc metrics.tickCounter
-          Distribution.add metrics.tickDistribution t
-          Gauge.set metrics.robotsGauge $ fromIntegral total
-          Gauge.set metrics.activeRobotsGauge $ fromIntegral active
+        Effect.counterInc metrics.tickCounter
+        Effect.distributionAdd metrics.tickDistribution t
+        Effect.gaugeSet metrics.robotsGauge total
+        Effect.gaugeSet metrics.activeRobotsGauge active
         pure res
       Nothing -> pure res
   runTick :: m Bool
