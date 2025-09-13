@@ -26,7 +26,7 @@ module Swarm.Game.World.Stateful (
 ) where
 
 import Control.Algebra (Has)
-import Control.Effect.State (State, get, modify, state)
+import Control.Effect.State (State, get, state)
 import Control.Monad (unless, void)
 import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
@@ -46,39 +46,43 @@ type HasWorldStateEffect t e sig m =
   , Has Effect.Time sig m
   )
 
+-- | Look up tile and entity on coordinates in the world state.
+--
+-- This first loads the tile containing the given coordinates
+-- and logs how long that took to metrics. So the loading has
+-- to be strict but the result is looked up lazily.
+lookupContentM ::
+  forall t e sig m.
+  HasWorldStateEffect t e sig m =>
+  Maybe WorldMetrics ->
+  Coords ->
+  m (t, Maybe e)
+lookupContentM wm c = do
+  loadCellM @t @e wm c
+  w <- get @(World t e)
+  return (lookupTerrain c w, lookupEntity c w)
+
 -- | A stateful variant of 'lookupTerrain', which first loads the tile
 --   containing the given coordinates if it is not already loaded,
 --   then looks up the terrain value.
 lookupTerrainM ::
   forall t e sig m.
-  (Has (State (World t e)) sig m, IArray U.UArray t) =>
+  HasWorldStateEffect t e sig m =>
+  Maybe WorldMetrics ->
   Coords ->
   m t
-lookupTerrainM c = do
-  modify @(World t e) $ loadCell c
-  lookupTerrain c <$> get @(World t e)
-
-lookupContentM ::
-  forall t e sig m.
-  (Has (State (World t e)) sig m, IArray U.UArray t) =>
-  Coords ->
-  m (t, Maybe e)
-lookupContentM c = do
-  modify @(World t e) $ loadCell c
-  w <- get @(World t e)
-  return (lookupTerrain c w, lookupEntity c w)
+lookupTerrainM wm c = fst <$> lookupContentM @t @e wm c
 
 -- | A stateful variant of 'lookupEntity', which first loads the tile
 --   containing the given coordinates if it is not already loaded,
 --   then looks up the terrain value.
 lookupEntityM ::
   forall t e sig m.
-  (Has (State (World t e)) sig m, IArray U.UArray t) =>
+  HasWorldStateEffect t e sig m =>
+  Maybe WorldMetrics ->
   Coords ->
   m (Maybe e)
-lookupEntityM c = do
-  modify @(World t e) $ loadCell c
-  lookupEntity c <$> get @(World t e)
+lookupEntityM wm c = snd <$> lookupContentM @t @e wm c
 
 -- | A stateful variant of 'update', which also ensures the tile
 --   containing the given coordinates is loaded.

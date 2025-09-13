@@ -74,13 +74,13 @@ adaptGameState f = do
 -- | Modify the entity (if any) at a given location, and mark the cell
 --   dirty (i.e. needing to be redrawn) if anything changes.
 updateEntityAt ::
-  (Has (State Robot) sig m, Has (State GameState) sig m) =>
+  HasRobotStepState sig m =>
   Cosmic Location ->
   (Maybe Entity -> Maybe Entity) ->
   m ()
 updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
   someChange <-
-    zoomWorld subworldName $
+    zoomWorld subworldName $ \_ ->
       W.updateM @Int (locToCoords loc) upd
 
   forM_ (WM.getModification =<< someChange) $ \modType -> do
@@ -90,7 +90,7 @@ updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
 
     structureRecognizer <- use $ landscape . recognizerAutomatons
     oldRecognition <- use $ discovery . structureRecognition
-    newRecognition <- adaptGameState $ SRT.entityModified mtlEntityAt modType cLoc structureRecognizer oldRecognition
+    newRecognition <- SRT.entityModified entityAt modType cLoc structureRecognizer oldRecognition
     discovery . structureRecognition .= newRecognition
 
     pcr <- use $ pathCaching . pathCachingRobots

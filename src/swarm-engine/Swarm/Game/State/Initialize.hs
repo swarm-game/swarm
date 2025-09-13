@@ -6,11 +6,11 @@
 -- utility functions.
 module Swarm.Game.State.Initialize (
   scenarioToGameState,
-  pureScenarioToGameState,
+  scenarioToGameStateForTests,
 ) where
 
 import Control.Arrow (Arrow ((&&&)))
-import Control.Carrier.State.Lazy qualified as Fused
+import Control.Carrier.State.Strict qualified as Fused
 import Control.Effect.Lens (view)
 import Control.Lens hiding (view)
 import Data.Hashable (Hashable)
@@ -24,6 +24,7 @@ import Data.Maybe (isNothing)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Tuple.Extra (dupe)
+import Swarm.Effect qualified as Effect
 import Swarm.Game.CESK (finalValue, initMachine)
 import Swarm.Game.Device (getCapabilitySet, getMap)
 import Swarm.Game.Entity
@@ -48,7 +49,6 @@ import Swarm.Game.State
 import Swarm.Game.State.Landscape (mkLandscape, worldMetrics)
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
-import Swarm.Game.Step.Util (adaptGameState)
 import Swarm.Game.World (Seed, WorldMetrics, initWorldMetrics)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Syntax (allConst, erase)
@@ -65,13 +65,38 @@ scenarioToGameState ::
   Maybe WorldMetrics ->
   RuntimeState ->
   IO GameState
-scenarioToGameState si@(ScenarioWith scenario _) (LaunchParams (Identity userSeed) (Identity toRun)) prevGMetric prevWMetric rs = do
-  theSeed <- arbitrateSeed userSeed $ scenario ^. scenarioLandscape
+scenarioToGameState si (LaunchParams (Identity userSeed) (Identity toRun)) prevGMetric prevWMetric rs = do
+  theSeed <- arbitrateSeed userSeed land
   now <- Clock.getTime Clock.Monotonic
   gMetric <- maybe (initGameMetrics $ rs ^. metrics) pure prevGMetric
   wMetric <- maybe (initWorldMetrics $ rs ^. metrics) pure prevWMetric
-  return $ pureScenarioToGameState si theSeed now toRun (Just gMetric) (Just wMetric) (rs ^. stdGameConfigInputs)
+  -- set up game state
+  let gs = pureScenarioToGameState si theSeed now toRun (Just gMetric) (Just wMetric) (rs ^. stdGameConfigInputs)
+  -- then initialize structure recognition (needs IO because of the metrics)
+  (gs', recognition) <- runEffects gs $ initializeRecognition entityAt (land ^. scenarioStructures)
+  return $ gs' & discovery . structureRecognition .~ recognition
+ where
+  land = si ^. getScenario . scenarioLandscape
+  runEffects gs = Fused.runState gs . Effect.runMetricIO . Effect.runTimeIO
 
+-- | This initialises the 'GameState' without running metrics.
+scenarioToGameStateForTests ::
+  ScenarioWith (Maybe ScenarioPath) ->
+  Seed ->
+  Clock.TimeSpec ->
+  Maybe CodeToRun ->
+  GameStateConfig ->
+  GameState
+scenarioToGameStateForTests si theSeed now toRun gsc =
+  gs'
+    & discovery . structureRecognition .~ recognition
+ where
+  gs = pureScenarioToGameState si theSeed now toRun Nothing Nothing gsc
+  structures = si ^. getScenario . scenarioLandscape . scenarioStructures
+  (gs', recognition) = runPureEffects $ initializeRecognition entityAt structures
+  runPureEffects = Fused.run . Fused.runState gs . Effect.runFakeMetric . Effect.runFakeTime 0
+
+-- | Initialize the GameState record for current scenario.
 pureScenarioToGameState ::
   ScenarioWith (Maybe ScenarioPath) ->
   Seed ->
@@ -82,47 +107,34 @@ pureScenarioToGameState ::
   GameStateConfig ->
   GameState
 pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gMetric wMetric gsc =
-  preliminaryGameState
-    & discovery . structureRecognition .~ recognition
+  initGameState gsc
+    & currentScenarioPath .~ fp
+    & robotInfo %~ setRobotInfo baseID robotList'
+    & creativeMode .~ scenario ^. scenarioOperation . scenarioCreative
+    & winCondition .~ theWinCondition
+    & winSolution .~ scenario ^. scenarioOperation . scenarioSolution
+    & discovery . availableCommands .~ Notifications 0 False initialCommands
+    & discovery . knownEntities .~ sLandscape ^. scenarioKnown
+    & discovery . tagMembers .~ buildTagMap em
+    & discovery . craftableDevices .~ craftable
+    & randomness . seed .~ theSeed
+    & randomness . randGen .~ mkStdGen theSeed
+    & recipesInfo %~ modifyRecipesInfo
+    & landscape .~ mkLandscape sLandscape worldTuples theSeed
+    & landscape . worldMetrics .~ wMetric
+    & gameControls . initiallyRunCode .~ (erase <$> initialCodeToRun)
+    & gameControls . replStatus .~ initialReplStatus
+    & gameMetrics .~ gMetric
+    & temporal . robotStepsPerTick .~ ((scenario ^. scenarioOperation . scenarioStepsPerTick) ? defaultRobotStepsPerTick)
  where
   sLandscape = scenario ^. scenarioLandscape
-
-  -- It may be possible at some point for the game seed to affect whether
-  -- initially-placed structures remain intact, by way of random placements.
-  -- Therefore we run this at 'GameState' initialization time, rather than
-  -- 'Scenario' parse time.
-  recognition =
-    runIdentity
-      . Fused.evalState preliminaryGameState
-      . adaptGameState
-      $ initializeRecognition mtlEntityAt (sLandscape ^. scenarioStructures)
-
-  gs = initGameState gsc
-  preliminaryGameState =
-    gs
-      & currentScenarioPath .~ fp
-      & robotInfo %~ setRobotInfo baseID robotList'
-      & creativeMode .~ scenario ^. scenarioOperation . scenarioCreative
-      & winCondition .~ theWinCondition
-      & winSolution .~ scenario ^. scenarioOperation . scenarioSolution
-      & discovery . availableCommands .~ Notifications 0 False initialCommands
-      & discovery . knownEntities .~ sLandscape ^. scenarioKnown
-      & discovery . tagMembers .~ buildTagMap em
-      & discovery . craftableDevices .~ craftable
-      & randomness . seed .~ theSeed
-      & randomness . randGen .~ mkStdGen theSeed
-      & recipesInfo %~ modifyRecipesInfo
-      & landscape .~ mkLandscape sLandscape worldTuples theSeed
-      & landscape . worldMetrics .~ wMetric
-      & gameControls . initiallyRunCode .~ (erase <$> initialCodeToRun)
-      & gameControls . replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
-      -- otherwise the store of definition cells is not saved (see #333, #838)
-        False -> REPLDone Nothing
-        True -> REPLWorking PolyUnit Nothing
-      & gameMetrics .~ gMetric
-      & temporal . robotStepsPerTick .~ ((scenario ^. scenarioOperation . scenarioStepsPerTick) ? defaultRobotStepsPerTick)
-
   robotList' = (robotCreatedAt .~ now) <$> robotList
+
+  -- When the base starts out running a program, the REPL status must be set to working,
+  -- otherwise the store of definition cells is not saved (see #333, #838)
+  initialReplStatus = case running of
+    False -> REPLDone Nothing
+    True -> REPLWorking PolyUnit Nothing
 
   -- Get the names of all devices (i.e. entities that provide at least
   -- one capability) which can be recursively crafted from the
@@ -207,6 +219,11 @@ pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gMetric wMe
 -- we don't actually have to "search" for these structures since we are
 -- explicitly given their location; we only need to validate that each
 -- structure remains intact given other, potentially overlapping static placements.
+--
+-- It may be possible at some point for the game seed to affect whether
+-- initially-placed structures remain intact, by way of random placements.
+-- Therefore we run this at 'GameState' initialization time, rather than
+-- 'Scenario' parse time.
 initializeRecognition ::
   (Monad s, Hashable a, Eq b) =>
   GenericEntLocator s a ->
