@@ -28,7 +28,7 @@ import Data.Text.Encoding.Error qualified as T
 import Data.Void
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Prettyprinter (Pretty (pretty), nest, squotes, vcat, (<+>))
-import Swarm.Language.Syntax.Import (ImportLoc, ImportPhase (Raw))
+import Swarm.Language.Syntax.Import (ImportLoc, ImportPhase (..))
 import Swarm.Language.Syntax.Loc (SrcLoc)
 import Swarm.Pretty (BulletList (..), PrettyPrec (..), ppr, prettyShowLow, prettyString)
 import Swarm.Util (showLowT)
@@ -89,6 +89,7 @@ data SystemFailure
   | ImportCycle [FilePath]
   | EmptyTerm
   | DisallowedImport (ImportLoc Raw)
+  | ImpureImport (ImportLoc Resolved) Text -- See Note [Pretty-printing typechecking errors]
   | CustomFailure Text
   deriving (Show)
 
@@ -162,4 +163,10 @@ instance PrettyPrec SystemFailure where
       ppr $ BulletList "Imports form a cycle:" (map (into @Text) imps)
     EmptyTerm -> "Term was only whitespace"
     DisallowedImport _imp -> "Import is not allowed here"
+    ImpureImport imp t ->
+      nest 2 . vcat $
+      [ "While processing import" <+> ppr imp <> ":"
+      , "Imported modules must only contain imports + definitions, but found:"
+      , squotes (pretty t)
+      ]
     CustomFailure m -> pretty m

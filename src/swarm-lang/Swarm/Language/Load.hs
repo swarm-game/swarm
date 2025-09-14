@@ -32,14 +32,17 @@ import Network.HTTP.Simple (getResponseBody, httpBS, parseRequest)
 import Swarm.Failure (Asset (..), AssetData (..), Entry (..), LoadingFailure (..), SystemFailure (..))
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig, importLoc)
-import Swarm.Language.Syntax (ImportPhaseFor, Phase (..), SwarmType, Syntax)
+import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Import hiding (ImportPhase (..))
 import Swarm.Language.Syntax.Import qualified as Import
-import Swarm.Language.Syntax.Util (Erasable(..), traverseSyntax)
+import Swarm.Language.Syntax.Util (Erasable(..))
 import Swarm.Language.Types (TCtx, UCtx)
+import Swarm.Pretty (prettyText)
 import Swarm.Util (readFileMayT, showT)
 import Swarm.Util.Graph (findCycle)
 import Witch (into)
+
+type ResLoc = ImportLoc Import.Resolved
 
 -- | The context for a module, containing names and types of things
 --   defined in the module (once typechecking has run).
@@ -120,8 +123,6 @@ resolve' = traverseSyntax pure (throwError . DisallowedImport)
 eraseSourceMap :: SourceMap Elaborated -> SourceMap Resolved
 eraseSourceMap = M.map erase
 
-type ResLoc = ImportLoc Import.Resolved
-
 -- | Convert a 'SourceMap' into a suitable form for 'findCycle'.
 toImportGraph :: SourceMap Resolved -> [(ResLoc, ResLoc, [ResLoc])]
 toImportGraph = map processNode . M.assocs
@@ -172,8 +173,8 @@ resolveImport parent loc = do
   add $ S.singleton canonicalLoc
 
   srcMap <- get @(SourceMap Resolved)
-  case M.lookup canonicalLoc srcMap of
-    Just _ -> pure () -- Already loaded - do nothing
+  resMod <- case M.lookup canonicalLoc srcMap of
+    Just m -> pure m    -- Already loaded - do nothing
     Nothing -> do
       -- Record this import loc in the source map using a temporary, empty module,
       -- to prevent it from attempting to load itself recursively
@@ -188,13 +189,34 @@ resolveImport parent loc = do
       let (imps, mt') = sequence mres
 
       -- Finally, record the loaded module in the SourceMap.
-      modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module mt' () imps)
+      let m = Module mt' () imps
+      modify @(SourceMap Resolved) (M.insert canonicalLoc m)
 
-  -- XXX make sure imports contain ONLY defs + more imports?
-  -- Otherwise we can't cache their values---we would have to
-  -- re-execute them every time they are imported.
+      pure m
+
+  -- Make sure imports are pure, i.e. contain ONLY defs + imports.
+  validateImport canonicalLoc resMod
 
   pure canonicalLoc
+
+-- | Validate the source code of the import to ensure that it contains
+--   *only* imports and definitions.  This is so we do not have to worry
+--   about side-effects happening every time a module is imported.  In
+--   other words, imports must be pure so we can get away with only
+--   evaluating them once.
+validateImport :: forall sig m. (Has (Throw SystemFailure) sig m) => ResLoc -> Module Resolved -> m ()
+validateImport loc = maybe (pure ()) validate . moduleTerm
+  where
+    validate :: Syntax Resolved -> m ()
+    validate = validateTerm . _sTerm
+
+    validateTerm :: Term Resolved -> m ()
+    validateTerm = \case
+      SLet LSDef _ _ _ _ _ _ t -> validate t
+      SImportIn _ t -> validate t
+      STydef _ _ _ t -> validate t
+      TConst Noop -> pure ()
+      t -> throwError $ ImpureImport loc (prettyText t)
 
 -- | Try to read and parse a term from a specific import location,
 --   either over the network or on disk.
