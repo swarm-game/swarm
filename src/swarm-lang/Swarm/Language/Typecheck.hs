@@ -1127,7 +1127,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     check s sTy
 
 -- | Collect up the names and types of any top-level definitions into
---   a context.
+--   a context. XXX this must collect tydefs as well!
 collectDefs ::
   (Has Unification sig m, Has (Reader UCtx) sig m) =>
   Syntax Inferred ->
@@ -1136,6 +1136,7 @@ collectDefs (Syntax _ (SLet LSDef _ x _ _ _ body t) _ _) = do
   ty' <- generalize (body ^. sType)
   (Ctx.singleton (lvVar x) ty' <>) <$> collectDefs t
 collectDefs (Syntax _ (SImportIn _ t) _ _) = collectDefs t
+collectDefs (Syntax _ (STydef _ _ _ t) _ _) = collectDefs t
 collectDefs _ = pure Ctx.empty
 
 -- | Infer the type of a module, i.e. import, by (1) typechecking and
