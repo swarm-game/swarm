@@ -8,6 +8,7 @@
 module TestLanguagePipeline where
 
 import Control.Arrow ((&&&))
+import Control.Carrier.Error.Either (runError)
 import Control.Lens (toListOf)
 import Control.Lens.Plated (universe)
 import Data.Aeson (eitherDecode, encode)
@@ -15,10 +16,12 @@ import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
+import Swarm.Failure (SystemFailure)
+import Swarm.Language.Load (SyntaxWithImports (..))
 import Swarm.Language.JSON ()
 import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ (tyQ)
-import Swarm.Language.Pipeline (processTerm)
+import Swarm.Language.Pipeline (processSource)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (isSimpleUType)
@@ -368,7 +371,7 @@ testLanguagePipeline =
             "annotate 1 + 1"
             ( assertEqual
                 "type annotations"
-                (toListOf traverse [tmQ| 1 + 1 |])
+                (toListOf (\f -> traverseSyntax f mempty) (getSyntax ([tmQ| 1 + 1 |] :: SyntaxWithImports Elaborated)))
                 [[tyQ| Int -> Int -> Int|], [tyQ|Int|], [tyQ|Int -> Int|], [tyQ|Int|], [tyQ|Int|]]
             )
         , testCase
@@ -377,11 +380,11 @@ testLanguagePipeline =
 
                   isVar (TVar {}) = True
                   isVar _ = False
-                  getVars :: TSyntax -> [(Term' Polytype, Polytype)]
+                  getVars :: Syntax Elaborated -> [(Term Elaborated, Polytype)]
                   getVars = map (_sTerm &&& _sType) . filter (isVar . _sTerm) . universe
                in assertEqual
                     "variable types"
-                    (getVars s)
+                    (getVars (getSyntax s))
                     [ (TVar "g", [tyQ| Int -> Int |])
                     , (TVar "x", [tyQ| Int |])
                     ]
@@ -741,7 +744,7 @@ testLanguagePipeline =
             "missing end"
             ( process
                 "def x = 3;\n def y = 3 end;\n def z = 3 end"
-                "3:15:\n  |\n3 |  def z = 3 end\n  |               ^\nunexpected end of input\nexpecting \"!=\", \"&&\", \"()\", \"++\", \"<=\", \"==\", \">=\", \"def\", \"false\", \"let\", \"require\", \"requirements\", \"stock\", \"true\", \"tydef\", \"||\", '\"', '$', '(', '*', '+', '-', '.', '/', ':', ';', '<', '>', '@', '[', '\\', '^', 'end' keyword for definition of 'x', '{', built-in user function, direction constant, integer literal, or variable name\n"
+                "3:15:\n  |\n3 |  def z = 3 end\n  |               ^\nunexpected end of input\nexpecting \"!=\", \"&&\", \"()\", \"++\", \"<=\", \"==\", \">=\", \"def\", \"false\", \"import\", \"let\", \"require\", \"requirements\", \"stock\", \"true\", \"tydef\", \"||\", '\"', '$', '(', '*', '+', '-', '.', '/', ':', ';', '<', '>', '@', '[', '\\', '^', 'end' keyword for definition of 'x', '{', built-in user function, direction constant, integer literal, or variable name\n"
             )
         ]
     , testGroup
@@ -759,6 +762,27 @@ testLanguagePipeline =
                 "1:35: The `read` command must be given a literal type as its first argument (Swarm does not have dependent types); found `T` instead."
             )
         ]
+    , testGroup
+        "Import #2540"
+        [ testCase
+            "simple import"
+            ( valid "import \"data/test/import/a.sw\"; pure (a + 1)" )
+        , testCase
+            "recursive import - unused"
+            ( valid "import \"data/test/import/b.sw\"; pure (b + 1)" )
+        , testCase
+            "recursive import - used"
+            ( valid "import \"data/test/import/d.sw\"; pure (d + 1)" )
+        , testCase
+            "recursive import is not re-exported"
+            ( process
+               "import \"data/test/import/f.sw\"; pure (f + g)"
+               "1:43: Unbound variable g"
+            )
+        , testCase
+            "import from URL"
+            ( valid "import \"https://raw.githubusercontent.com/byorgey/swarm-defs/refs/heads/main/defs.sw\"; tL")
+        ]
     ]
  where
   valid = flip process ""
@@ -767,12 +791,12 @@ testLanguagePipeline =
   process = processCompare T.isPrefixOf
 
   processCompare :: (Text -> Text -> Bool) -> Text -> Text -> Assertion
-  processCompare cmp code expect = case processTerm code of
+  processCompare cmp code expect = runError @SystemFailure (processSource code Nothing) >>= \case
     Left e
-      | not (T.null expect) && cmp expect e -> pure ()
+      | not (T.null expect) && cmp expect (prettyText e) -> pure ()
       | otherwise ->
           error $
-            "Unexpected failure:\n\n  " <> show e <> "\n\nExpected:\n\n  " <> show expect <> "\n"
+            "Unexpected failure:\n\n  " <> show (prettyText e) <> "\n\nExpected:\n\n  " <> show expect <> "\n"
     Right _
       | expect == "" -> pure ()
       | otherwise -> error "Unexpected success"

@@ -30,36 +30,36 @@ testParse =
     , testCase "suffix" $
         expectParsedComments
           "1 + 2 // add"
-          [Comment (SrcLoc 6 12) LineComment SuffixComment " add"]
+          [Comment (SrcLoc Nothing 6 12) LineComment SuffixComment " add"]
     , testCase "standalone" $
         expectParsedComments
           "// add\n1 + 2"
-          [Comment (SrcLoc 0 6) LineComment StandaloneComment " add"]
+          [Comment (SrcLoc Nothing 0 6) LineComment StandaloneComment " add"]
     , testCase "block suffix" $
         expectParsedComments
           "1 + 2 /* add */"
-          [Comment (SrcLoc 6 15) BlockComment SuffixComment " add "]
+          [Comment (SrcLoc Nothing 6 15) BlockComment SuffixComment " add "]
     , testCase "block standalone" $
         expectParsedComments
           "/* add */\n1 + 2"
-          [Comment (SrcLoc 0 9) BlockComment StandaloneComment " add "]
+          [Comment (SrcLoc Nothing 0 9) BlockComment StandaloneComment " add "]
     , testCase "block prefix" $
         expectParsedComments
           "/* add */ 1 + 2"
-          [Comment (SrcLoc 0 9) BlockComment StandaloneComment " add "]
+          [Comment (SrcLoc Nothing 0 9) BlockComment StandaloneComment " add "]
     , testCase "block infix" $
         expectParsedComments
           "1 + /*add*/ 2"
-          [Comment (SrcLoc 4 11) BlockComment SuffixComment "add"]
+          [Comment (SrcLoc Nothing 4 11) BlockComment SuffixComment "add"]
     , testCase "multiline block" $
         expectParsedComments
           "/* add \n  some numbers */\n  1 + 2"
-          [Comment (SrcLoc 0 25) BlockComment StandaloneComment " add \n  some numbers "]
+          [Comment (SrcLoc Nothing 0 25) BlockComment StandaloneComment " add \n  some numbers "]
     , testCase "multiple lines" $
         expectParsedComments
           "// add\n// some numbers\n  1 + 2"
-          [ Comment (SrcLoc 0 6) LineComment StandaloneComment " add"
-          , Comment (SrcLoc 7 22) LineComment StandaloneComment " some numbers"
+          [ Comment (SrcLoc Nothing 0 6) LineComment StandaloneComment " add"
+          , Comment (SrcLoc Nothing 7 22) LineComment StandaloneComment " some numbers"
           ]
     ]
 

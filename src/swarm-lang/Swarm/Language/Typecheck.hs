@@ -2,6 +2,7 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
@@ -28,6 +29,7 @@ module Swarm.Language.Typecheck (
   LocatedTCFrame (..),
   TCStack,
   withFrame,
+  popFrame,
 
   -- * Typechecking monad
   fresh,
@@ -47,21 +49,21 @@ module Swarm.Language.Typecheck (
 ) where
 
 import Control.Arrow ((***))
-import Control.Carrier.Error.Either (ErrorC, runError)
 import Control.Carrier.Reader (ReaderC, runReader)
+import Control.Carrier.State.Strict (StateC, runState)
 import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Category ((>>>))
 import Control.Effect.Catch (Catch, catchError)
 import Control.Effect.Error (Error)
 import Control.Effect.Reader
+import Control.Effect.State
 import Control.Effect.Throw
 import Control.Lens (view, (^.))
 import Control.Lens.Indexed (itraverse)
 import Control.Monad (forM, forM_, void, when, (<=<), (>=>))
 import Control.Monad.Free qualified as Free
-import Data.Data (Data, gmapM)
-import Data.Foldable (fold)
-import Data.Functor.Identity
+import Data.Data (gmapM)
+import Data.Foldable (fold, traverse_)
 import Data.Generics (mkM)
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -77,11 +79,14 @@ import Swarm.Effect.Unify.Fast qualified as U
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Kindcheck (KindError (..), processPolytype, processType)
+import Swarm.Language.Load (Module (..), SourceMap, SyntaxWithImports (..))
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Requirements.Analysis (requirements)
 import Swarm.Language.Requirements.Type (ReqCtx)
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.Import ()
+import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Language.TDVar (TDVar, tdVarName)
 import Swarm.Language.Types
 import Swarm.Pretty
@@ -97,10 +102,12 @@ data TCFrame where
   TCLet :: Var -> TCFrame
   -- | Inferring the LHS of an application.  Stored Syntax is the term
   --   on the RHS.
-  TCAppL :: Syntax -> TCFrame
+  TCAppL :: Syntax Resolved -> TCFrame
   -- | Checking the RHS of an application.  Stored Syntax is the term
   -- on the LHS.
-  TCAppR :: Syntax -> TCFrame
+  TCAppR :: Syntax Resolved -> TCFrame
+  -- | Recursively checking an import.
+  TCImport :: ImportLoc Import.Resolved -> TCFrame
   deriving (Show)
 
 instance PrettyPrec TCFrame where
@@ -108,12 +115,15 @@ instance PrettyPrec TCFrame where
     TCLet x -> "While checking the definition of" <+> ppr x
     TCAppL s -> "While checking a function applied to an argument: _" <+> prettyPrec 11 s
     TCAppR s -> "While checking the argument to a function:" <+> prettyPrec 10 s <+> "_"
+    TCImport loc -> "While checking an import:" <+> prettyPrec 0 loc
 
 -- | A typechecking stack frame together with the relevant @SrcLoc@.
 data LocatedTCFrame = LocatedTCFrame SrcLoc TCFrame
   deriving (Show)
 
 instance PrettyPrec LocatedTCFrame where
+  -- XXX: print the SrcLoc somehow, need access to the original
+  -- source text though
   prettyPrec p (LocatedTCFrame _ f) = prettyPrec p f
 
 -- | A typechecking stack keeps track of what we are currently in the
@@ -123,6 +133,13 @@ type TCStack = [LocatedTCFrame]
 -- | Push a frame on the typechecking stack.
 withFrame :: Has (Reader TCStack) sig m => SrcLoc -> TCFrame -> m a -> m a
 withFrame l f = local (LocatedTCFrame l f :)
+
+-- | Locally pop a frame from the typechecking stack.
+popFrame :: Has (Reader TCStack) sig m => m a -> m a
+popFrame = local @TCStack pop
+ where
+  pop (_ : fs) = fs
+  pop [] = []
 
 ------------------------------------------------------------
 -- Type source
@@ -181,60 +198,81 @@ getJoin (Join j) = (j Expected, j Actual)
 ------------------------------------------------------------
 -- Type checking
 
-fromUSyntax ::
+-- | Finalize the typechecking process by generalizing over free
+--   unification variables and ensuring that no bound unification
+--   variables remain.
+fromInferredSyntax ::
   ( Has Unification sig m
   , Has (Reader UCtx) sig m
   , Has (Throw ContextualTypeErr) sig m
   ) =>
-  USyntax ->
-  m TSyntax
-fromUSyntax = mapM (checkPredicative <=< (fmap fromU . generalize))
+  Syntax Inferred ->
+  m (Syntax Typed)
+fromInferredSyntax = traverseSyntax (checkPredicative <=< (fmap fromU . generalize)) pure
 
-finalizeUSyntax ::
+fromInferredModule ::
   ( Has Unification sig m
   , Has (Reader UCtx) sig m
   , Has (Throw ContextualTypeErr) sig m
   ) =>
-  USyntax ->
-  m TSyntax
-finalizeUSyntax = applyBindings >=> fromUSyntax
+  Module Inferred ->
+  m (Module Typed)
+fromInferredModule (Module t ctx imps) =
+  Module
+    <$> traverse fromInferredSyntax t
+    <*> traverse (checkPredicative . fromU) ctx
+    <*> pure imps
 
--- | Version of 'runTC' which is generic in the base monad.
-runTC' ::
-  Algebra sig m =>
+-- | Finalize the typechecking process by generalizing over free
+--   unification variables and ensuring that no bound unification
+--   variables remain.
+finalizeInferred ::
+  ( Has Unification sig m
+  , Has (Reader UCtx) sig m
+  , Has (Throw ContextualTypeErr) sig m
+  ) =>
+  (SourceMap Inferred, Syntax Inferred) ->
+  m (SourceMap Typed, Syntax Typed)
+finalizeInferred =
+  applyBindings >=> \(srcMap, s) ->
+    (,)
+      <$> traverse fromInferredModule srcMap
+      <*> fromInferredSyntax s
+
+-- | Run a top-level inference computation, either throwing a
+--   'ContextualTypeErr' or returning a fully resolved 'Syntax Typed',
+--   along with a type-checked 'SourceMap' containing any new modules
+--   recursively imported by the given term.  Note the returned
+--   SourceMap will NOT include anything contained in the given
+--   parameter SourceMap.
+runTC ::
+  Has (Throw ContextualTypeErr) sig m =>
   TCtx ->
   ReqCtx ->
   TDCtx ->
   TVCtx ->
-  ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx m)))))) USyntax ->
-  m (Either ContextualTypeErr TSyntax)
-runTC' ctx reqCtx tdctx tvCtx =
-  (>>= finalizeUSyntax)
+  SourceMap Resolved ->
+  StateC (SourceMap Inferred) (ReaderC UCtx (ReaderC TCStack (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx (ReaderC (SourceMap Resolved) m))))))) (Syntax Inferred) ->
+  m (SourceMap Typed, Syntax Typed)
+runTC ctx reqCtx tdctx tvCtx srcMap =
+  runState M.empty
+    >>> (>>= finalizeInferred)
     >>> runReader (toU ctx)
     >>> runReader []
-    >>> runError
     >>> U.runUnification
     >>> runReader reqCtx
     >>> runReader tdctx
     >>> runReader tvCtx
-    >>> fmap reportUnificationError
-
--- | Run a top-level inference computation, returning either a
---   'ContextualTypeErr' or a fully resolved 'TSyntax'.
-runTC ::
-  TCtx ->
-  ReqCtx ->
-  TDCtx ->
-  TVCtx ->
-  ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx Identity)))))) USyntax ->
-  Either ContextualTypeErr TSyntax
-runTC tctx reqCtx tdctx tvCtx = runTC' tctx reqCtx tdctx tvCtx >>> runIdentity
+    >>> runReader srcMap
+    >>> reportUnificationError
 
 checkPredicative :: Has (Throw ContextualTypeErr) sig m => Maybe a -> m a
 checkPredicative = maybe (throwError (mkRawTypeErr Impredicative)) pure
 
-reportUnificationError :: Either UnificationError (Either ContextualTypeErr a) -> Either ContextualTypeErr a
-reportUnificationError = either (Left . mkRawTypeErr . UnificationErr) id
+reportUnificationError ::
+  Has (Throw ContextualTypeErr) sig m =>
+  m (Either UnificationError a) -> m a
+reportUnificationError = (>>= either (throwError . mkRawTypeErr . UnificationErr) pure)
 
 -- | Look up a variable in the ambient type context, either throwing
 --   an 'UnboundVar' error if it is not found, or opening its
@@ -286,7 +324,7 @@ instance (FreeUVars t) => FreeUVars (Poly q t) where
 
 -- | We can get the free variables in any polytype in a context.
 instance FreeUVars UCtx where
-  freeUVars = fmap S.unions . mapM freeUVars . M.elems . unCtx
+  freeUVars = fmap S.unions . traverse freeUVars . M.elems . unCtx
 
 -- | Generate a fresh unification variable.
 fresh :: Has Unification sig m => m UType
@@ -346,7 +384,7 @@ unify ::
   , Has (Throw ContextualTypeErr) sig m
   , Has (Reader TCStack) sig m
   ) =>
-  Maybe Syntax ->
+  Maybe (Syntax Resolved) ->
   TypeJoin ->
   m UType
 unify ms j = do
@@ -365,6 +403,15 @@ unify ms j = do
 class HasBindings u where
   applyBindings :: Has Unification sig m => u -> m u
 
+instance (HasBindings u, HasBindings v) => HasBindings (u, v) where
+  applyBindings (u, v) = (,) <$> applyBindings u <*> applyBindings v
+
+instance HasBindings u => HasBindings (Map k u) where
+  applyBindings = traverse applyBindings
+
+instance HasBindings u => HasBindings (Maybe u) where
+  applyBindings = traverse applyBindings
+
 instance HasBindings UType where
   applyBindings = U.applyBindings
 
@@ -372,13 +419,16 @@ instance HasBindings UPolytype where
   applyBindings = traverse applyBindings
 
 instance HasBindings UCtx where
-  applyBindings = mapM applyBindings
+  applyBindings = traverse applyBindings
 
-instance (HasBindings u, Data u) => HasBindings (Term' u) where
-  applyBindings = gmapM (mkM (applyBindings @(Syntax' u)))
+instance HasBindings (Term Inferred) where
+  applyBindings = gmapM (mkM (applyBindings @(Syntax Inferred)))
 
-instance (HasBindings u, Data u) => HasBindings (Syntax' u) where
-  applyBindings (Syntax' l t cs u) = Syntax' l <$> applyBindings t <*> pure cs <*> applyBindings u
+instance HasBindings (Syntax Inferred) where
+  applyBindings (Syntax l t cs u) = Syntax l <$> applyBindings t <*> pure cs <*> applyBindings u
+
+instance HasBindings (Module Inferred) where
+  applyBindings (Module t ctx imps) = Module <$> applyBindings t <*> applyBindings ctx <*> pure imps
 
 ------------------------------------------------------------
 -- Converting between mono- and polytypes
@@ -388,7 +438,7 @@ instance (HasBindings u, Data u) => HasBindings (Syntax' u) where
 --   substitute them throughout the type.
 instantiate :: (Has Unification sig m, Has (Reader TVCtx) sig m) => UPolytype -> m UType
 instantiate (unPoly -> (xs, uty)) = do
-  xs' <- mapM (const fresh) xs
+  xs' <- traverse (const fresh) xs
   boundSubst <- ask @TVCtx
   let s = M.mapKeys Left (M.fromList (zip xs xs') `M.union` unCtx boundSubst)
   return $ substU s uty
@@ -460,10 +510,10 @@ data TypeErr
   | -- | Type mismatch caught by 'unify'.  The given term was
     --   expected to have a certain type, but has a different type
     --   instead.
-    Mismatch (Maybe Syntax) TypeJoin
+    Mismatch (Maybe (Syntax Resolved)) TypeJoin
   | -- | Record type mismatch.  The given term was expected to have a
     --   record type, but has a different type instead.
-    MismatchRcd (Maybe Syntax) UType
+    MismatchRcd (Maybe (Syntax Resolved)) UType
   | -- | Lambda argument type mismatch.
     LambdaArgMismatch TypeJoin
   | -- | Record field mismatch, i.e. based on the expected type we
@@ -471,23 +521,27 @@ data TypeErr
     --   a different field set.
     FieldsMismatch (Join (Set Var))
   | -- | A definition was encountered not at the top level.
-    DefNotTopLevel Term
+    DefNotTopLevel (Term Resolved)
   | -- | A term was encountered which we cannot infer the type of.
     --   This should never happen.
-    CantInfer Term
+    CantInfer (Term Resolved)
   | -- | We can't infer the type of a record projection @r.x@ if we
     --   don't concretely know the type of the record @r@.
-    CantInferProj Term
+    CantInferProj (Term Resolved)
   | -- | An attempt to project out a nonexistent field
-    UnknownProj Var Term
+    UnknownProj Var (Term Resolved)
   | -- | An invalid argument was provided to @atomic@.
-    InvalidAtomic InvalidAtomicReason Term
+    InvalidAtomic InvalidAtomicReason (Term Resolved)
   | -- | Some unification variables ended up in a type, probably due to
     --   impredicativity.  See https://github.com/swarm-game/swarm/issues/351 .
     Impredicative
   | -- | Read must be given a literal type as an argument.  See
     --   https://github.com/swarm-game/swarm/pull/2461#discussion_r2124125021
-    ReadNonLiteralTypeArg Term
+    ReadNonLiteralTypeArg (Term Resolved)
+  | -- | An import encountered during typechecking was not found in
+    --   the import source map.  This should never happen and indicates
+    --   a bug.
+    UnknownImport (ImportLoc Import.Resolved)
   deriving (Show)
 
 instance PrettyPrec TypeErr where
@@ -537,6 +591,11 @@ instance PrettyPrec TypeErr where
       "Unconstrained unification type variables encountered, likely due to an impredicative type. This is a known bug; for more information see https://github.com/swarm-game/swarm/issues/351 ."
     ReadNonLiteralTypeArg t ->
       "The `read` command must be given a literal type as its first argument (Swarm does not have dependent types); found" <+> pprCode t <+> "instead."
+    UnknownImport loc ->
+      vsep
+        [ "Unknown import encountered:" <+> ppr loc <> "."
+        , "This should never happen; please report this as a bug at https://github.com/swarm-game/swarm/issues/new?template=bug_report.md"
+        ]
    where
     pprCode :: PrettyPrec a => a -> Doc ann
     pprCode = bquote . ppr
@@ -617,6 +676,8 @@ data InvalidAtomicReason
     LongConst
   | -- | The argument contained a suspend
     AtomicSuspend
+  | -- | The argument contained an import
+    AtomicImport
   deriving (Show)
 
 instance PrettyPrec InvalidAtomicReason where
@@ -629,6 +690,7 @@ instance PrettyPrec InvalidAtomicReason where
     LongConst -> "commands that can take multiple ticks to execute are not allowed"
     AtomicSuspend ->
       "encountered a suspend command inside an atomic block" <> hardline <> reportBug
+    AtomicImport -> "import is not allowed"
 
 --------------------------------------------------
 -- Type errors with context
@@ -686,22 +748,19 @@ prettyTypeErr :: Text -> ContextualTypeErr -> Doc ann
 prettyTypeErr code (CTE l tcStack te) =
   vcat
     [ teLoc <> ppr te
-    , ppr (BulletList "" (filterTCStack tcStack))
+    , ppr (BulletList "" tcStack)
     ]
  where
   teLoc = case l of
-    SrcLoc s e -> (showLoc . fst $ getLocRange code (s, e)) <> ": "
+    SrcLoc {} -> prettySrcLoc code l <> ": "
     NoLoc -> emptyDoc
-  showLoc (r, c) = pretty r <> ":" <> pretty c
 
--- | Filter the TCStack so we stop printing context outside of a def/let
-filterTCStack :: TCStack -> TCStack
-filterTCStack tcStack = case tcStack of
-  [] -> []
-  -- A def/let is enough context to locate something; don't keep
-  -- printing wider context after that
-  t@(LocatedTCFrame _ (TCLet _)) : _ -> [t]
-  t : xs -> t : filterTCStack xs
+prettySrcLoc :: Text -> SrcLoc -> Doc a
+prettySrcLoc _ NoLoc = emptyDoc
+prettySrcLoc code (SrcLoc loc s e) =
+  maybe "" ((<> ": ") . ppr) loc <> (showLoc . fst $ getLocRange code (s, e))
+ where
+  showLoc (r, c) = pretty r <> ":" <> pretty c
 
 ------------------------------------------------------------
 -- Type decomposition
@@ -717,7 +776,7 @@ decomposeTyConApp1 ::
   , Has (Reader TCStack) sig m
   ) =>
   TyCon ->
-  Syntax ->
+  Syntax Resolved ->
   Sourced UType ->
   m UType
 decomposeTyConApp1 c t (src, UTyConApp (TCUser u) as) = do
@@ -737,7 +796,7 @@ decomposeCmdTy
     , Has (Reader TDCtx) sig m
     , Has (Reader TCStack) sig m
     ) =>
-    Syntax ->
+    Syntax Resolved ->
     Sourced UType ->
     m UType
 decomposeCmdTy = decomposeTyConApp1 TCCmd
@@ -761,7 +820,7 @@ decomposeRcdTy ::
   , Has (Reader TCStack) sig m
   , Has (Throw ContextualTypeErr) sig m
   ) =>
-  Maybe Syntax ->
+  Maybe (Syntax Resolved) ->
   UType ->
   m (Maybe (Map Var UType))
 decomposeRcdTy ms = \case
@@ -789,7 +848,7 @@ decomposeTyConApp2 ::
   , Has (Reader TCStack) sig m
   ) =>
   TyCon ->
-  Syntax ->
+  Syntax Resolved ->
   Sourced UType ->
   m (UType, UType)
 decomposeTyConApp2 c t (src, UTyConApp (TCUser u) as) = do
@@ -810,7 +869,7 @@ decomposeFunTy
     , Has (Reader TDCtx) sig m
     , Has (Reader TCStack) sig m
     ) =>
-    Syntax ->
+    Syntax Resolved ->
     Sourced UType ->
     m (UType, UType)
 decomposeFunTy = decomposeTyConApp2 TCFun
@@ -822,12 +881,23 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 -- | Top-level type inference function: given a context of definition
 --   types, type synonyms, and a term, either return a type error or a
 --   fully type-annotated version of the term.
-inferTop :: TCtx -> ReqCtx -> TDCtx -> Syntax -> Either ContextualTypeErr TSyntax
-inferTop ctx reqCtx tdCtx = runTC ctx reqCtx tdCtx Ctx.empty . infer
+inferTop ::
+  Has (Error ContextualTypeErr) sig m =>
+  TCtx -> ReqCtx -> TDCtx -> SourceMap Resolved -> Syntax Resolved -> m (SyntaxWithImports Typed)
+inferTop ctx reqCtx tdCtx srcMap =
+  fmap (uncurry SyntaxWithImports) .
+  runTC ctx reqCtx tdCtx Ctx.empty srcMap .
+  infer
 
 -- | Top level type checking function.
-checkTop :: TCtx -> ReqCtx -> TDCtx -> Syntax -> Type -> Either ContextualTypeErr TSyntax
-checkTop ctx reqCtx tdCtx t ty = runTC ctx reqCtx tdCtx Ctx.empty $ check t (toU ty)
+checkTop ::
+  Has (Error ContextualTypeErr) sig m =>
+  TCtx -> ReqCtx -> TDCtx -> SourceMap Resolved -> Syntax Resolved -> Type -> m (SyntaxWithImports Typed)
+checkTop ctx reqCtx tdCtx srcMap t =
+  fmap (uncurry SyntaxWithImports) .
+  runTC ctx reqCtx tdCtx Ctx.empty srcMap .
+  check t .
+  toU
 
 -- | Infer the type of a term, returning a type-annotated term.
 --
@@ -852,37 +922,39 @@ infer ::
   , Has (Reader ReqCtx) sig m
   , Has (Reader TDCtx) sig m
   , Has (Reader TVCtx) sig m
+  , Has (Reader (SourceMap Resolved)) sig m
+  , Has (State (SourceMap Inferred)) sig m
   , Has (Reader TCStack) sig m
   , Has Unification sig m
   , Has (Error ContextualTypeErr) sig m
   ) =>
-  Syntax ->
-  m (Syntax' UType)
+  Syntax Resolved ->
+  m (Syntax Inferred)
 infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- Primitives, i.e. things for which we immediately know the only
   -- possible correct type, and knowing an expected type would provide
   -- no extra information.
-  TUnit -> return $ Syntax' l TUnit cs UTyUnit
-  TConst c -> Syntax' l (TConst c) cs <$> (instantiate . toU $ inferConst c)
-  TDir d -> return $ Syntax' l (TDir d) cs UTyDir
-  TInt n -> return $ Syntax' l (TInt n) cs UTyInt
-  TAntiInt x -> return $ Syntax' l (TAntiInt x) cs UTyInt
-  TText x -> return $ Syntax' l (TText x) cs UTyText
-  TAntiText x -> return $ Syntax' l (TAntiText x) cs UTyText
-  TBool b -> return $ Syntax' l (TBool b) cs UTyBool
-  TRobot r -> return $ Syntax' l (TRobot r) cs UTyActor
-  TRequire d -> return $ Syntax' l (TRequire d) cs (UTyCmd UTyUnit)
-  TStock n d -> return $ Syntax' l (TStock n d) cs (UTyCmd UTyUnit)
+  TUnit -> return $ Syntax l TUnit cs UTyUnit
+  TConst c -> Syntax l (TConst c) cs <$> (instantiate . toU $ inferConst c)
+  TDir d -> return $ Syntax l (TDir d) cs UTyDir
+  TInt n -> return $ Syntax l (TInt n) cs UTyInt
+  TAntiInt x -> return $ Syntax l (TAntiInt x) cs UTyInt
+  TText x -> return $ Syntax l (TText x) cs UTyText
+  TAntiText x -> return $ Syntax l (TAntiText x) cs UTyText
+  TBool b -> return $ Syntax l (TBool b) cs UTyBool
+  TRobot r -> return $ Syntax l (TRobot r) cs UTyActor
+  TRequire d -> return $ Syntax l (TRequire d) cs (UTyCmd UTyUnit)
+  TStock n d -> return $ Syntax l (TStock n d) cs (UTyCmd UTyUnit)
   SRequirements x t1 -> do
     t1' <- infer t1
-    return $ Syntax' l (SRequirements x t1') cs (UTyCmd UTyUnit)
+    return $ Syntax l (SRequirements x t1') cs (UTyCmd UTyUnit)
 
   -- We should never encounter a TRef since they do not show up in
   -- surface syntax, only as values while evaluating (*after*
   -- typechecking).
   TRef _ -> throwTypeErr l $ CantInfer t
   -- Just look up variables in the context.
-  TVar x -> Syntax' l (TVar x) cs <$> lookup l x
+  TVar x -> Syntax l (TVar x) cs <$> lookup l x
   -- It is helpful to handle lambdas in inference mode as well as
   -- checking mode; in particular, we can handle lambdas with an
   -- explicit type annotation on the argument.  Just infer the body
@@ -892,7 +964,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     argTy' <- adaptToTypeErr l KindErr $ processType argTy
     let uargTy = toU argTy'
     body' <- withBinding @Var @UPolytype (lvVar x) (mkTrivPoly uargTy) $ infer body
-    return $ Syntax' l (SLam x (Just argTy') body') cs (UTyFun uargTy (body' ^. sType))
+    return $ Syntax l (SLam x (Just argTy') body') cs (UTyFun uargTy (body' ^. sType))
 
   -- Need special case here for applying 'atomic' or 'instant' so we
   -- don't handle it with the case for generic type application.
@@ -901,14 +973,14 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     | c `elem` [Atomic, Instant] -> fresh >>= check s
   -- Special case for applying 'read' to a type argument, since we need to make
   -- sure the type propagates to the inferred output type of 'read'.
-  TConst Read :$: STerm arg -> do
+  TConst Read :$: RTerm arg -> do
     argTy <- case arg of
       TType ty -> pure ty
       _ -> throwTypeErr l $ ReadNonLiteralTypeArg arg
-    r' <- infer $ Syntax l (TConst Read)
+    r' <- infer $ RSyntax l (TConst Read)
     argTy' <- adaptToTypeErr l (UnboundType . getUnexpanded) $ expandTydefs argTy
-    arg' <- check (STerm (TType argTy')) UTyType
-    pure $ Syntax' l (SApp r' arg') cs (UTyFun UTyText (toU argTy'))
+    arg' <- check (RTerm (TType argTy')) UTyType
+    pure $ Syntax l (SApp r' arg') cs (UTyFun UTyText (toU argTy'))
 
   -- It works better to handle applications in *inference* mode.
   -- Knowing the expected result type of an application does not
@@ -946,7 +1018,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     -- Unit`).
     resTy' <- applyBindings resTy
 
-    return $ Syntax' l (SApp f' x') cs resTy'
+    return $ Syntax l (SApp f' x') cs resTy'
 
   -- We handle binds in inference mode for a similar reason to
   -- application.
@@ -982,7 +1054,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     -- will have to wait for #231.
     let binderReqs = mempty
 
-    return $ Syntax' l (SBind mx (Just a) Nothing (Just binderReqs) c1' c2') cs (c2' ^. sType)
+    return $ Syntax l (SBind mx (Just a) Nothing (Just binderReqs) c1' c2') cs (c2' ^. sType)
 
   -- Handle record projection in inference mode.  Knowing the expected
   -- type of r.x doesn't really help since we must infer the type of r
@@ -992,14 +1064,14 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     mm <- decomposeRcdTy (Just t1) (t1' ^. sType)
     case mm of
       Just m -> case M.lookup x m of
-        Just xTy -> return $ Syntax' l (SProj t1' x) cs xTy
+        Just xTy -> return $ Syntax l (SProj t1' x) cs xTy
         Nothing -> throwTypeErr l $ UnknownProj x (SProj t1 x)
       Nothing -> throwTypeErr l $ CantInferProj (SProj t1 x)
 
   -- See Note [Checking and inference for record literals]
   SRcd m -> do
-    m' <- itraverse (\x -> infer . fromMaybe (STerm (TVar x))) m
-    return $ Syntax' l (SRcd (Just <$> m')) cs (UTyRcd (fmap (^. sType) m'))
+    m' <- itraverse (\x -> infer . fromMaybe (RTerm (TVar x))) m
+    return $ Syntax l (SRcd (Just <$> m')) cs (UTyRcd (fmap (^. sType) m'))
 
   -- Once we're typechecking, we don't need to keep around explicit
   -- parens any more
@@ -1015,20 +1087,81 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     (skolemSubst, uty) <- skolemize upty
     _ <- check c uty
     -- Make sure no skolem variables have escaped.
-    ask @UCtx >>= mapM_ (noSkolems l (Ctx.vars skolemSubst))
+    ask @UCtx >>= traverse_ (noSkolems l (Ctx.vars skolemSubst))
     -- If check against skolemized polytype is successful,
     -- instantiate polytype with unification variables.
     -- Free variables should be able to unify with anything in
     -- following typechecking steps.
     iuty <- instantiate upty
     c' <- check c iuty
-    return $ Syntax' l (SAnnotate c' (forgetQ qpty')) cs iuty
-  TType ty -> pure $ Syntax' l (TType ty) cs UTyType
+    return $ Syntax l (SAnnotate c' (forgetQ qpty)) cs iuty
+
+  -- To infer @import m in e@, first make sure we have loaded and
+  -- typechecked the import, then infer @e@ in an extended context.
+  SImportIn loc t1 -> do
+    -- See whether we have already processed this import before
+    usrcMap <- get @(SourceMap Inferred)
+    umod <- case M.lookup loc usrcMap of
+      -- We have: just use its already-typechecked version
+      Just umod -> pure umod
+      -- We haven't: go typecheck it and add it to the USourceMap before proceeding.
+      Nothing -> do
+        srcMap <- ask @(SourceMap Resolved)
+        case M.lookup loc srcMap of
+          -- The lookup should always succeed, since the SourceMap was
+          -- computed by transitively following all imports.
+          Nothing -> throwTypeErr l $ UnknownImport loc
+          Just smod -> do
+            umod <- withFrame l (TCImport loc) $ inferModule smod
+            modify @(SourceMap Inferred) $ M.insert loc umod
+            pure umod
+
+    -- Now infer t1 with the import's exports added to the context.
+    t1' <- withBindings (moduleCtx umod) $ infer t1
+    return $ Syntax l (SImportIn loc t1') cs (t1' ^. sType)
+  TType ty -> pure $ Syntax l (TType ty) cs UTyType
   -- Fallback: to infer the type of anything else, make up a fresh unification
   -- variable for its type and check against it.
   _ -> do
     sTy <- fresh
     check s sTy
+
+-- | Collect up the names and types of any top-level definitions into
+--   a context. XXX this must collect tydefs as well!
+collectDefs ::
+  (Has Unification sig m, Has (Reader UCtx) sig m) =>
+  Syntax Inferred ->
+  m UCtx
+collectDefs (Syntax _ (SLet LSDef _ x _ _ _ body t) _ _) = do
+  ty' <- generalize (body ^. sType)
+  (Ctx.singleton (lvVar x) ty' <>) <$> collectDefs t
+collectDefs (Syntax _ (SImportIn _ t) _ _) = collectDefs t
+collectDefs (Syntax _ (STydef _ _ _ t) _ _) = collectDefs t
+collectDefs _ = pure Ctx.empty
+
+-- | Infer the type of a module, i.e. import, by (1) typechecking and
+--   annotating the term itself, and (2) collecting up the types of
+--   all exported top-level definitions into a context.
+inferModule ::
+  ( Has (Reader UCtx) sig m
+  , Has (Reader ReqCtx) sig m
+  , Has (Reader TDCtx) sig m
+  , Has (Reader TVCtx) sig m
+  , Has (Reader (SourceMap Resolved)) sig m
+  , Has (State (SourceMap Inferred)) sig m
+  , Has (Reader TCStack) sig m
+  , Has Unification sig m
+  , Has (Error ContextualTypeErr) sig m
+  ) =>
+  Module Resolved -> m (Module Inferred)
+inferModule (Module ms _ _imps) = do
+  -- Infer the type of the term
+  mt <- traverse infer ms
+
+  -- Now, if the term has top-level definitions, collect up their
+  -- types and put them in the context.
+  ctx <- maybe (pure Ctx.empty) collectDefs mt
+  pure $ Module mt ctx ()
 
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype
@@ -1160,13 +1293,15 @@ check ::
   , Has (Reader ReqCtx) sig m
   , Has (Reader TDCtx) sig m
   , Has (Reader TVCtx) sig m
+  , Has (Reader (SourceMap Resolved)) sig m
+  , Has (State (SourceMap Inferred)) sig m
   , Has (Reader TCStack) sig m
   , Has Unification sig m
   , Has (Error ContextualTypeErr) sig m
   ) =>
-  Syntax ->
+  Syntax Resolved ->
   UType ->
-  m (Syntax' UType)
+  m (Syntax Inferred)
 check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   -- Once we're typechecking, we don't need to keep around explicit
   -- parens any more
@@ -1175,7 +1310,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   SDelay s1 -> do
     ty1 <- decomposeDelayTy s (Expected, expected)
     s1' <- check s1 ty1
-    return $ Syntax' l (SDelay s1') cs (UTyDelay ty1)
+    return $ Syntax l (SDelay s1') cs (UTyDelay ty1)
 
   -- To check the type of a pair, make sure the expected type is a
   -- product type, and push the two types down into the left and right.
@@ -1183,7 +1318,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
     (ty1, ty2) <- decomposeProdTy s (Expected, expected)
     s1' <- check s1 ty1
     s2' <- check s2 ty2
-    return $ Syntax' l (SPair s1' s2') cs (UTyProd ty1 ty2)
+    return $ Syntax l (SPair s1' s2') cs (UTyProd ty1 ty2)
 
   -- To check a lambda, make sure the expected type is a function type.
   SLam x mxTy body -> do
@@ -1200,7 +1335,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         Right _ -> return ()
 
     body' <- withBinding @Var @UPolytype (lvVar x) (mkTrivPoly argTy) $ check body resTy
-    return $ Syntax' l (SLam x mxTy' body') cs (UTyFun argTy resTy)
+    return $ Syntax l (SLam x mxTy' body') cs (UTyFun argTy resTy)
 
   -- Special case for checking the argument to 'atomic' (or
   -- 'instant').  Both have the type @{Cmd a} -> Cmd a@.
@@ -1209,7 +1344,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
     | c `elem` [Atomic, Instant] -> do
         argTy <- decomposeCmdTy s (Expected, expected)
         at' <- check at (UTyDelay (UTyCmd argTy))
-        atomic' <- infer (Syntax l (TConst c))
+        atomic' <- infer (RSyntax l (TConst c))
         -- It's important that we typecheck the subterm @at@ *before* we
         -- check that it is a valid argument to @atomic@: this way we can
         -- ensure that we have already inferred the types of any variables
@@ -1219,7 +1354,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         -- guaranteed to operate within a single tick.  When c is Instant
         -- we skip this check.
         when (c == Atomic) $ validAtomic at
-        return $ Syntax' l (SApp atomic' at') cs (UTyCmd argTy)
+        return $ Syntax l (SApp atomic' at') cs (UTyCmd argTy)
 
   -- Checking the type of a let- or def-expression.
   SLet ls r x mxTy _ _ t1 t2 -> withFrame l (TCLet (lvVar x)) $ do
@@ -1249,55 +1384,60 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
     -- Check the requirements of t1.
     tdCtx <- ask @TDCtx
     reqCtx <- ask @ReqCtx
-    let Syntax' _ tt1 _ _ = t1
+    let Syntax _ tt1 _ _ = t1
         reqs = requirements tdCtx reqCtx tt1
 
-    -- If we are checking a 'def', ensure t2 has a command type.  This ensures that
-    -- something like 'def ... end; x + 3' is not allowed, since this
-    -- would result in the whole thing being wrapped in pure, like
-    -- 'pure (def ... end; x + 3)', which means the def would be local and
-    -- not persist to the next REPL input, which could be surprising.
-    --
-    -- On the other hand, 'let x = y in x + 3' is perfectly fine.
-    when (ls == LSDef) $ void $ decomposeCmdTy t2 (Expected, expected)
+    -- Locally pop the typechecking frame that said we were checking
+    -- the definition of a let while typechecking the body.  Even
+    -- though the body is a syntactic subterm of the let, we don't
+    -- want to see a bunch of nested typechecking frames.
+    popFrame $ do
+      -- If we are checking a 'def', ensure t2 has a command type.  This ensures that
+      -- something like 'def ... end; x + 3' is not allowed, since this
+      -- would result in the whole thing being wrapped in pure, like
+      -- 'pure (def ... end; x + 3)', which means the def would be local and
+      -- not persist to the next REPL input, which could be surprising.
+      --
+      -- On the other hand, 'let x = y in x + 3' is perfectly fine.
+      when (ls == LSDef) $ void $ decomposeCmdTy t2 (Expected, expected)
 
-    -- Now check the type of the body, under a context extended with
-    -- the type and requirements of the bound variable.
-    t2' <-
-      withBinding (lvVar x) upty $
-        withBinding (lvVar x) reqs $
-          check t2 expected
+      -- Now check the type of the body, under a context extended with
+      -- the type and requirements of the bound variable.
+      t2' <-
+        withBinding (lvVar x) upty $
+          withBinding (lvVar x) reqs $
+            check t2 expected
 
-    -- Make sure none of the generated skolem variables have escaped.
-    ask @UCtx >>= mapM_ (noSkolems l skolems)
+      -- Make sure none of the generated skolem variables have escaped.
+      ask @UCtx >>= traverse_ (noSkolems l skolems)
 
-    -- Annotate a 'def' with requirements, but not 'let'.  The reason
-    -- is so that let introduces truly "local" bindings which never
-    -- persist, but def introduces "global" bindings.  Variables bound
-    -- in the environment can only be used to typecheck future REPL
-    -- terms if the environment holds not only a value but also a type
-    -- + requirements for them.  For example:
-    --
-    -- > def x : Int = 3 end; pure (x + 2)
-    -- 5
-    -- > x
-    -- 3
-    -- > let y : Int = 3 in y + 2
-    -- 5
-    -- > y
-    -- 1:1: Unbound variable y
-    -- > let y = 3 in def x = 5 end; pure (x + y)
-    -- 8
-    -- > y
-    -- 1:1: Unbound variable y
-    -- > x
-    -- 5
-    let mreqs = case ls of
-          LSDef -> Just reqs
-          LSLet -> Nothing
+      -- Annotate a 'def' with requirements, but not 'let'.  The reason
+      -- is so that let introduces truly "local" bindings which never
+      -- persist, but def introduces "global" bindings.  Variables bound
+      -- in the environment can only be used to typecheck future REPL
+      -- terms if the environment holds not only a value but also a type
+      -- + requirements for them.  For example:
+      --
+      -- > def x : Int = 3 end; pure (x + 2)
+      -- 5
+      -- > x
+      -- 3
+      -- > let y : Int = 3 in y + 2
+      -- 5
+      -- > y
+      -- 1:1: Unbound variable y
+      -- > let y = 3 in def x = 5 end; pure (x + y)
+      -- 8
+      -- > y
+      -- 1:1: Unbound variable y
+      -- > x
+      -- 5
+      let mreqs = case ls of
+            LSDef -> Just reqs
+            LSLet -> Nothing
 
-    -- Return the annotated let.
-    return $ Syntax' l (SLet ls r x mxTy mqxTy mreqs t1' t2') cs expected
+      -- Return the annotated let.
+      return $ Syntax l (SLet ls r x mxTy mqxTy mreqs t1' t2') cs expected
 
   -- Kind-check a type definition and then check the body under an
   -- extended context.
@@ -1307,7 +1447,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
     -- Eliminate the type alias in the reported type, since it is not
     -- in scope in the ambient context to which we report back the type.
     expected' <- elimTydef (lvVar x) tydef <$> applyBindings expected
-    return $ Syntax' l (STydef x pty' (Just tydef) t1') cs expected'
+    return $ Syntax l (STydef x pty' (Just tydef) t1') cs expected'
 
   -- To check a record, ensure the expected type is a record type,
   -- ensure all the right fields are present, and push the expected
@@ -1328,23 +1468,23 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
             FieldsMismatch (joined expectedFields actualFields)
         m' <-
           itraverse
-            (\x (ms, ty) -> check (fromMaybe (STerm (TVar x)) ms) ty)
+            (\x (ms, ty) -> check (fromMaybe (RTerm (TVar x)) ms) ty)
             -- Since we checked above that 'fields' and 'tyMap' have the
             -- same keys, intersectionWith is really just a zip.
             (M.intersectionWith (,) fields tyMap)
-        return $ Syntax' l (SRcd (Just <$> m')) cs expected
+        return $ Syntax l (SRcd (Just <$> m')) cs expected
 
   -- The type of @suspend t@ is @Cmd T@ if @t : T@.
   SSuspend s1 -> do
     argTy <- decomposeCmdTy s (Expected, expected)
     s1' <- check s1 argTy
-    return $ Syntax' l (SSuspend s1') cs expected
+    return $ Syntax l (SSuspend s1') cs expected
 
   -- Fallback: switch into inference mode, and check that the type we
   -- get is what we expected.
   _ -> do
-    Syntax' l' t' _ actual <- infer s
-    Syntax' l' t' cs <$> unify (Just s) (joined expected actual)
+    Syntax l' t' _ actual <- infer s
+    Syntax l' t' cs <$> unify (Just s) (joined expected actual)
 
 -- ~~~~ Note [Checking and inference for record literals]
 --
@@ -1395,9 +1535,9 @@ validAtomic ::
   , Has Unification sig m
   , Has (Throw ContextualTypeErr) sig m
   ) =>
-  Syntax ->
+  Syntax Resolved ->
   m ()
-validAtomic s@(Syntax l t) = do
+validAtomic s@(RSyntax l t) = do
   n <- analyzeAtomic S.empty s
   when (n > 1) $ throwTypeErr l $ InvalidAtomic (TooManyTicks n) t
 
@@ -1411,9 +1551,9 @@ analyzeAtomic ::
   , Has (Throw ContextualTypeErr) sig m
   ) =>
   Set Var ->
-  Syntax ->
+  Syntax Resolved ->
   m Int
-analyzeAtomic locals (Syntax l t) = case t of
+analyzeAtomic locals (Syntax l t _ _) = case t of
   -- Literals, primitives, etc. that are fine and don't require a tick
   -- to evaluate
   TUnit {} -> return 0
@@ -1453,7 +1593,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- Bind is similarly simple except that we have to keep track of a local variable
   -- bound in the RHS.
   SBind mx _ _ _ s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id (S.insert . lvVar) mx locals) s2
-  SRcd m -> sum <$> mapM analyzeField (M.assocs m)
+  SRcd m -> sum <$> traverse analyzeField (M.assocs m)
    where
     analyzeField ::
       ( Has (Reader UCtx) sig m
@@ -1461,9 +1601,9 @@ analyzeAtomic locals (Syntax l t) = case t of
       , Has Unification sig m
       , Has (Throw ContextualTypeErr) sig m
       ) =>
-      (Var, Maybe Syntax) ->
+      (Var, Maybe (Syntax Resolved)) ->
       m Int
-    analyzeField (x, Nothing) = analyzeAtomic locals (STerm (TVar x))
+    analyzeField (x, Nothing) = analyzeAtomic locals (Syntax NoLoc (TVar x) mempty ())
     analyzeField (_, Just s) = analyzeAtomic locals s
   SProj {} -> return 0
   -- Variables are allowed if bound locally, or if they have a simple type.
@@ -1508,6 +1648,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- We should never encounter a suspend since it cannot be written
   -- explicitly in the surface syntax.
   SSuspend {} -> throwTypeErr l $ InvalidAtomic AtomicSuspend t
+  SImportIn {} -> throwTypeErr l $ InvalidAtomic AtomicImport t
 
 -- | A simple polytype is a simple type with no quantifiers.
 isSimpleUPolytype :: UPolytype -> Bool
