@@ -48,6 +48,7 @@ import Swarm.Language.Load (SourceMap)
 import Swarm.Language.Requirements.Type (ReqCtx, Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
+import Swarm.Language.TDVar (TDVar)
 import Swarm.Language.Types (Polytype, TCtx, TDCtx, TydefInfo, Type, addBindingTD, emptyTDCtx)
 import Swarm.Language.WithType
 import Swarm.Pretty (prettyText)
@@ -196,7 +197,7 @@ addBinding x v = at x ?~ v
 addValueBinding :: Var -> Value -> Env -> Env
 addValueBinding x v = envVals %~ Ctx.addBinding x v
 
-addTydef :: Text -> TydefInfo -> Env -> Env
+addTydef :: TDVar -> TydefInfo -> Env -> Env
 addTydef x pty = envTydefs %~ addBindingTD x pty
 
 type instance Index Env = Var

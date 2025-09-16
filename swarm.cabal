@@ -433,8 +433,6 @@ library swarm-lang
     lens,
     lsp,
     megaparsec,
-    monoidmap,
-    monoidmap-aeson,
     mtl,
     parser-combinators,
     prettyprinter,

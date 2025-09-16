@@ -123,6 +123,7 @@ module Swarm.Language.Types (
   lookupTDR,
   addBindingTD,
   withBindingTD,
+  withBindingsTD,
   resolveUserTy,
 
   -- * WHNF
@@ -153,11 +154,7 @@ import Data.List.NonEmpty ((<|))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
-import Data.MonoidMap (MonoidMap)
-import Data.MonoidMap qualified as MM
-import Data.MonoidMap.JSON ()
 import Data.Ord.Deriving (deriveOrd1)
-import Data.Semigroup (Sum (..))
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.String (IsString (..))
@@ -167,7 +164,8 @@ import GHC.Generics (Generic, Generic1)
 import Prettyprinter (align, braces, brackets, concatWith, flatAlt, hsep, pretty, punctuate, softline, (<+>))
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.TDVar (TDVar, mkTDVar, mkTDVar', tdVarName)
+import Swarm.Language.Syntax.Import (ImportLoc, ImportPhase (Resolved))
+import Swarm.Language.TDVar (TDVar (..), mkTDVar, setVersion)
 import Swarm.Language.Var (Var)
 import Swarm.Pretty (PrettyPrec (..), pparens, pparens', ppr, prettyBinding)
 import Swarm.Util (showT, unsnocNE)
@@ -840,27 +838,22 @@ makeLenses ''TydefInfo
 
 -- | A @TDCtx@ is a mapping from user-defined type constructor names
 --   to their definitions and arities/kinds.  It also stores the
---   latest version of each name (for any names with more than one
---   version), so we can tell when a type definition has been
---   shadowed.
+--   latest version + current module of each name (for any names with
+--   more than one version), so we can tell when a type definition has
+--   been shadowed.
 data TDCtx = TDCtx
-  { getTDCtx :: Ctx TDVar TydefInfo
-  , getTDVersions :: MonoidMap Text (Sum Int)
+  { -- | Mapping from fully resolved + versioned TDVars to
+    --   corresponding type definition info record
+    getTDCtx :: Ctx TDVar TydefInfo
+    -- | Mapping from raw names to the latest in-scope import location
+    --   + version number for that name.
+  , getTDResolved :: Map Text (Int, Maybe (ImportLoc Resolved))
   }
-  deriving (Eq, Generic, Show, ToJSON)
-
--- Need to write manual Hashable instance since MonoidMap
--- does not have instances of its own.
-
-instance Hashable TDCtx where
-  hashWithSalt s (TDCtx ctx versions) =
-    s
-      `hashWithSalt` ctx
-      `hashWithSalt` (getSum <$> MM.toMap versions)
+  deriving (Eq, Show, Generic, Data, Hashable, ToJSON)
 
 -- | The empty type definition context.
 emptyTDCtx :: TDCtx
-emptyTDCtx = TDCtx Ctx.empty MM.empty
+emptyTDCtx = TDCtx Ctx.empty M.empty
 
 -- | Look up a variable in the type definition context.
 lookupTD :: TDVar -> TDCtx -> Maybe TydefInfo
@@ -873,28 +866,35 @@ lookupTDR x = lookupTD x <$> ask
 -- | Add a binding of a variable name to a type definition, giving it
 --   an appropriate version number if it shadows other variables with
 --   the same name.
-addBindingTD :: Text -> TydefInfo -> TDCtx -> TDCtx
-addBindingTD x info (TDCtx tdCtx tdVersions) =
-  case Ctx.lookup (mkTDVar x) tdCtx of
-    Nothing -> TDCtx (Ctx.addBinding (mkTDVar x) info tdCtx) tdVersions
-    Just _ ->
-      let newVersion = 1 + MM.get x tdVersions
-       in TDCtx (Ctx.addBinding (mkTDVar' (getSum newVersion) x) info tdCtx) (MM.set x newVersion tdVersions)
+addBindingTD :: TDVar -> TydefInfo -> TDCtx -> TDCtx
+addBindingTD v info (TDCtx tdCtx tdVersions) =
+  let x = tdVarName v
+      ver' = maybe 0 (succ . fst) $ M.lookup x tdVersions
+  in TDCtx (Ctx.addBinding (setVersion ver' v) info tdCtx) (M.insert x (ver', tdModule v) tdVersions)
 
 -- | Locally extend the ambient type definition context with an
 --   additional binding, via 'addBindingTD'.
-withBindingTD :: Has (Reader TDCtx) sig m => Text -> TydefInfo -> m a -> m a
-withBindingTD x info = local (addBindingTD x info)
+withBindingTD :: Has (Reader TDCtx) sig m => TDVar -> TydefInfo -> m a -> m a
+withBindingTD v info = local (addBindingTD v info)
 
--- | Given a parsed variable representing a user-defined type, figure
---   out which version is currently in scope and set the version
---   number of the variable appropriately.
-resolveUserTy :: Has (Reader TDCtx) sig m => TDVar -> m TDVar
-resolveUserTy v = do
+-- | Locally extend the ambient type definition context with
+--   additional bindings.
+withBindingsTD :: Has (Reader TDCtx) sig m => TDCtx -> m a -> m a
+withBindingsTD tdCtx = undefined   -- XXX
+  -- XXX working here, have to think carefully about how to support context union!
+  -- I'm not sure the current configuration works...
+
+-- | Given the name of a variable representing a user-defined type,
+--   fill in the version + importloc of the variable of that name
+--   currently in scope.
+resolveUserTy :: Has (Reader TDCtx) sig m => Text -> m TDVar
+resolveUserTy x = do
   tdCtx <- ask
-  let x = tdVarName v
-  let ver = getSum (MM.get x (getTDVersions tdCtx))
-  pure $ mkTDVar' ver x
+  case M.lookup x (getTDResolved tdCtx) of
+    -- If the variable is not found, just return a default version + import loc;
+    -- checking for undefined type variables is done elsewhere.
+    Nothing -> pure $ mkTDVar 0 Nothing x
+    Just (ver, loc) -> pure $ mkTDVar ver loc x
 
 newtype ExpandTydefErr = UnexpandedUserType {getUnexpanded :: TDVar}
   deriving (Eq, Show)

@@ -86,7 +86,7 @@ import Swarm.Language.Requirements.Type (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Import ()
 import Swarm.Language.Syntax.Import qualified as Import
-import Swarm.Language.TDVar (TDVar, tdVarName)
+import Swarm.Language.TDVar (TDVar)
 import Swarm.Language.Types
 import Swarm.Pretty
 import Prelude hiding (lookup)
@@ -216,10 +216,10 @@ fromInferredModule ::
   ) =>
   Module Inferred ->
   m (Module Typed)
-fromInferredModule (Module t ctx imps) =
+fromInferredModule (Module t (ctx, tdCtx) imps) =
   Module
     <$> traverse fromInferredSyntax t
-    <*> traverse (checkPredicative . fromU) ctx
+    <*> ((,tdCtx) <$> traverse (checkPredicative . fromU) ctx)
     <*> pure imps
 
 -- | Finalize the typechecking process by generalizing over free
@@ -419,6 +419,9 @@ instance HasBindings UPolytype where
 
 instance HasBindings UCtx where
   applyBindings = traverse applyBindings
+
+instance HasBindings TDCtx where
+  applyBindings = pure
 
 instance HasBindings (Term Inferred) where
   applyBindings = gmapM (mkM (applyBindings @(Syntax Inferred)))
@@ -1117,7 +1120,8 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
             pure umod
 
     -- Now infer t1 with the import's exports added to the context.
-    t1' <- withBindings (moduleCtx umod) $ infer t1
+    let (mCtx, mTDCtx) = moduleCtx umod
+    t1' <- withBindings mCtx $ withBindingsTD mTDCtx $ infer t1
     return $ Syntax l (SImportIn loc t1') cs (t1' ^. sType)
   TType ty -> pure $ Syntax l (TType ty) cs UTyType
   -- Fallback: to infer the type of anything else, make up a fresh unification
@@ -1131,13 +1135,14 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
 collectDefs ::
   (Has Unification sig m, Has (Reader UCtx) sig m) =>
   Syntax Inferred ->
-  m UCtx
+  m (UCtx, TDCtx)
 collectDefs (Syntax _ (SLet LSDef _ x _ _ _ body t) _ _) = do
   ty' <- generalize (body ^. sType)
-  (Ctx.singleton (lvVar x) ty' <>) <$> collectDefs t
+  first (Ctx.singleton (lvVar x) ty' <>) <$> collectDefs t
 collectDefs (Syntax _ (SImportIn _ t) _ _) = collectDefs t
-collectDefs (Syntax _ (STydef _ _ _ t) _ _) = collectDefs t
-collectDefs _ = pure Ctx.empty
+collectDefs (Syntax _ (STydef x _ (Just tdInfo) t) _ _) =
+  second (addBindingTD (lvVar x) tdInfo) <$> collectDefs t
+collectDefs _ = pure (Ctx.empty, emptyTDCtx)
 
 -- | Infer the type of a module, i.e. import, by (1) typechecking and
 --   annotating the term itself, and (2) collecting up the types of
@@ -1160,7 +1165,7 @@ inferModule (Module ms _ _imps) = do
 
   -- Now, if the term has top-level definitions, collect up their
   -- types and put them in the context.
-  ctx <- maybe (pure Ctx.empty) collectDefs mt
+  ctx <- maybe (pure (Ctx.empty, emptyTDCtx)) collectDefs mt
   pure $ Module mt ctx ()
 
 -- | Infer the type of a constant.
@@ -1443,7 +1448,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   -- extended context.
   STydef x pty _ t1 -> do
     tydef@(TydefInfo pty' _) <- adaptToTypeErr l KindErr $ processPolytype pty
-    t1' <- withBindingTD (tdVarName (locVal x)) tydef (check t1 expected)
+    t1' <- withBindingTD (locVal x) tydef (check t1 expected)
     -- Eliminate the type alias in the reported type, since it is not
     -- in scope in the ambient context to which we report back the type.
     expected' <- elimTydef (locVal x) tydef <$> applyBindings expected

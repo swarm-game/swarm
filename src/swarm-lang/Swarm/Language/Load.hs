@@ -36,7 +36,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Import hiding (ImportPhase (..))
 import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Language.Syntax.Util (Erasable(..))
-import Swarm.Language.Types (TCtx, UCtx)
+import Swarm.Language.Types (TCtx, TDCtx, UCtx)
 import Swarm.Pretty (prettyText)
 import Swarm.Util (readFileMayT, showT)
 import Swarm.Util.Graph (findCycle)
@@ -49,10 +49,10 @@ type ResLoc = ImportLoc Import.Resolved
 type family ModuleCtx (phase :: Phase) where
   ModuleCtx Raw = ()
   ModuleCtx Resolved = ()
-  ModuleCtx Inferred = UCtx
-  ModuleCtx Typed = TCtx
-  ModuleCtx Elaborated = TCtx
-  ModuleCtx Instantiated = TCtx
+  ModuleCtx Inferred = (UCtx, TDCtx)
+  ModuleCtx Typed = (TCtx, TDCtx)
+  ModuleCtx Elaborated = (TCtx, TDCtx)
+  ModuleCtx Instantiated = (TCtx, TDCtx)
 
 -- | A module only needs to record its imports during resolution, so
 --   we can do cyclic import detection.  After that we no longer

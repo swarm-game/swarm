@@ -245,7 +245,7 @@ locTmVar = locIdentifier IDTmVar
 -- | Parse a user-defined type name together with its source location
 --   info.
 locTyName :: Parser (Located TDVar)
-locTyName = (fmap . fmap) mkTDVar (locIdentifier IDTyName)
+locTyName = (fmap . mkTDVar 0) <$> view importLoc <*> locIdentifier IDTyName
 
 -- | Parse an identifier, i.e. any non-reserved string containing
 --   alphanumeric characters and underscores, not starting with a
@@ -268,7 +268,7 @@ tyVar = identifier IDTyVar
 --   separate name resolution pass later that assigns correct version
 --   numbers to user type names.
 tyName :: Parser TDVar
-tyName = mkTDVar <$> identifier IDTyName
+tyName = lvVar <$> locTyName
 
 -- | Parse a term variable, which can start in any case and just
 --   cannot be the same (case-insensitively) as a lowercase reserved
