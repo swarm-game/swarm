@@ -671,8 +671,7 @@ entityNameFor _ = to $ \e ->
     Just pl -> pl
     Nothing -> plural (e ^. entityName)
 
--- | A longer, free-form description of the entity.  Each 'Text' value
---   represents a paragraph.
+-- | A longer, free-form description of the entity.
 entityDescription :: Lens' Entity (Document Syntax)
 entityDescription = hashedLens _entityDescription (\e x -> e {_entityDescription = x})
 

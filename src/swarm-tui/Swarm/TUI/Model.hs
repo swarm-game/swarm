@@ -107,6 +107,7 @@ import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Vector qualified as V
 import GitHash (GitInfo)
 import Graphics.Vty (ColorMode (..))
@@ -124,6 +125,7 @@ import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World (Seed)
+import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Log
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.DebugOption (DebugOption)
@@ -278,7 +280,15 @@ populateInventoryList (Just r) = do
               && not ((r ^. equippedDevices) `E.contains` e)
 
       matchesSearch :: (Count, Entity) -> Bool
-      matchesSearch (_, e) = maybe (const True) Fuzzy.test search (e ^. E.entityName)
+      matchesSearch (_, e) =
+        or
+          [ -- Fuzzy search within entity names.
+            maybe (const True) Fuzzy.test search (e ^. E.entityName)
+          , -- Also do a literal substring search within entity
+            -- descriptions.  Since descriptions are long, a fuzzy
+            -- search tends to yield too many false positives.
+            maybe (const True) T.isInfixOf search (Markdown.docToText (e ^. E.entityDescription))
+          ]
 
       items =
         (r ^. robotInventory . to (itemList True mkInvEntry "Compendium"))
