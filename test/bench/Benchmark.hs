@@ -13,7 +13,7 @@ import Data.Map qualified as M
 import Data.Sequence (Seq)
 import Data.Text qualified as T
 import Data.Tuple.Extra (dupe)
-import Swarm.Effect (runTimeIO)
+import Swarm.Effect (runMetricIO, runTimeIO)
 import Swarm.Failure (SystemFailure, simpleErrorHandle)
 import Swarm.Game.CESK (initMachine)
 import Swarm.Game.Cosmetic.Display (defaultRobotDisplay)
@@ -23,7 +23,7 @@ import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Scenario (loadStandaloneScenario)
 import Swarm.Game.Scenario.Status
 import Swarm.Game.State (GameState, creativeMode, landscape, zoomRobots)
-import Swarm.Game.State.Initialize (pureScenarioToGameState)
+import Swarm.Game.State.Initialize (scenarioToGameStateForTests)
 import Swarm.Game.State.Landscape (multiWorld)
 import Swarm.Game.State.Robot (addTRobot)
 import Swarm.Game.State.Runtime (RuntimeOptions (..), initRuntimeState, stdGameConfigInputs)
@@ -148,7 +148,7 @@ mkGameState prog robotMaker numRobots = do
       runAccum mempty . initRuntimeState $
         RuntimeOptions {startPaused = False, pauseOnObjectiveCompletion = False, loadTestScenarios = False}
     (scenario, _gsi) <- loadStandaloneScenario "classic"
-    return $ pureScenarioToGameState (ScenarioWith scenario Nothing) 0 0 Nothing Nothing Nothing $ view stdGameConfigInputs initRS
+    return $ scenarioToGameStateForTests (ScenarioWith scenario Nothing) 0 0 Nothing $ view stdGameConfigInputs initRS
 
   execStateT
     (zoomRobots $ mapM_ (addTRobot $ initMachine prog) robots)
@@ -159,7 +159,7 @@ mkGameState prog robotMaker numRobots = do
 
 -- | Runs numGameTicks ticks of the game.
 runGame :: Int -> GameState -> IO ()
-runGame numGameTicks = evalStateT (replicateM_ numGameTicks $ runTimeIO gameTick)
+runGame numGameTicks = evalStateT (replicateM_ numGameTicks . runMetricIO $ runTimeIO gameTick)
 
 main :: IO ()
 main = do
