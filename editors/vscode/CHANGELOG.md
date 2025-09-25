@@ -2,6 +2,13 @@
 
 All notable changes to the "swarm-language" extension will be documented in this file.
 
+## version 0.1.3
+* Fix numeric literal parsing
+* Fix operator parsing
+* Add support for `stock` special keyword (split from `require`)
+* Add new commands `destroy`, `erase`, `locateme`, `match`, `print`, `pure`, `read`, `structures`, `warp`, `waypoints`
+* Remove commands `fst`, `snd`, `return`, `structure`
+
 ## version 0.1.2
 * Update VSCode plugin NPM package
 * Update VSCode syntax
