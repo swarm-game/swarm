@@ -10,13 +10,19 @@ module Swarm.Language.LSP where
 import Control.Lens (to, (^.))
 import Control.Monad (void)
 import Control.Monad.IO.Class
+import Data.Foldable (traverse_)
 import Data.Int (Int32)
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text.IO qualified as Text
+import Data.Text.Lines qualified as R
+import Data.Text.Utf16.Rope.Mixed qualified as R
 import Language.LSP.Diagnostics
 import Language.LSP.Protocol.Lens qualified as LSP
 import Language.LSP.Protocol.Message qualified as LSP
+import Language.LSP.Protocol.Types (Definition (Definition))
+import Language.LSP.Protocol.Types qualified as J
 import Language.LSP.Protocol.Types qualified as LSP
 import Language.LSP.Server
 import Language.LSP.VFS (VirtualFile (..), virtualFileText)
@@ -25,8 +31,8 @@ import Swarm.Language.LSP.VarUsage qualified as VU
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Parser.Util (getLocRange, showErrorPos)
-import Swarm.Language.Pipeline (processParsedTerm')
-import Swarm.Language.Syntax (SrcLoc (..))
+import Swarm.Language.Pipeline (processParsedTerm, processParsedTerm')
+import Swarm.Language.Syntax (Located (LV), SrcLoc (..), Syntax, Syntax' (Syntax'), Term' (SLet, TVar))
 import Swarm.Language.Typecheck (ContextualTypeErr (..))
 import Swarm.Language.Value (emptyEnv)
 import Swarm.Pretty (prettyText)
@@ -179,4 +185,65 @@ handlers =
               (markdownText, maybeRange) <- H.showHoverInfo doc pos vf
               return $ LSP.Hover (LSP.InL $ LSP.MarkupContent LSP.MarkupKind_Markdown markdownText) maybeRange
         responder . Right . LSP.maybeToNull $ maybeHover
+    , requestHandler LSP.SMethod_TextDocumentDefinition $ \req responder -> do
+        let uri = req ^. LSP.params . LSP.textDocument . LSP.uri
+            doc = uri ^. to LSP.toNormalizedUri
+            pos = req ^. LSP.params . LSP.position
+        mdoc <- getVirtualFile doc
+        let defs = maybe [] (findDefinition doc pos) mdoc
+        case defs of
+          [] -> responder . Right . LSP.InR . LSP.InR $ LSP.Null
+          [def'] -> responder . Right . LSP.InL . LSP.Definition . LSP.InL $ LSP.Location uri def'
+          defs' -> responder . Right . LSP.InL . LSP.Definition . LSP.InR $ LSP.Location uri <$> defs'
     ]
+
+findDefinition ::
+  J.NormalizedUri ->
+  J.Position ->
+  VirtualFile ->
+  [J.Range]
+findDefinition _ p vf@(VirtualFile _ _ myRope) =
+  either (const []) (concatMap findDef) (readTerm' defaultParserConfig content)
+ where
+  content = virtualFileText vf
+  absolutePos =
+    R.charLength . fst $ R.charSplitAtPosition (H.lspToRopePosition p) myRope
+
+  findDef :: Syntax -> [LSP.Range]
+  findDef stx =
+    case processParsedTerm stx of
+      Left _e -> []
+      Right pt -> do
+        let path = H.pathToPosition pt $ fromIntegral absolutePos
+
+        -- The last element in the path is the thing we are looking for
+        let usage = NE.last path
+
+        -- get the path to search
+        let path' = NE.drop 1 . NE.reverse $ path
+        mapMaybe (maybeDefPosition usage) path'
+
+  -- take a syntax element that we want to find the defintion for and
+  -- a possible syntax element that contains it's defintion
+  -- if this is the matching definition return the position
+  maybeDefPosition :: (Eq a) => Syntax' a -> Syntax' a -> Maybe LSP.Range
+  maybeDefPosition (Syntax' _ (TVar name) _ usageT) (Syntax' _ (SLet _ _ (LV pos name') _ _ _ _ _) _ defT)
+    | name == name' = posToRange myRope pos
+    | otherwise = Nothing
+  maybeDefPosition _ _ = Nothing
+
+posToRange :: R.Rope -> SrcLoc -> Maybe J.Range
+posToRange myRope foundSloc = do
+  (s, e) <- case foundSloc of
+    SrcLoc s e -> Just (s, e)
+    _ -> Nothing
+  let (startRope, _) = R.charSplitAt (fromIntegral s) myRope
+      (endRope, _) = R.charSplitAt (fromIntegral e) myRope
+  return $
+    J.Range
+      (ropeToLspPosition $ R.charLengthAsPosition startRope)
+      (ropeToLspPosition $ R.charLengthAsPosition endRope)
+
+ropeToLspPosition :: R.Position -> J.Position
+ropeToLspPosition (R.Position l c) =
+  J.Position (fromIntegral l) (fromIntegral c)

@@ -12,13 +12,14 @@ module Swarm.Language.LSP.Hover (
   -- * Finding source location
   narrowToPosition,
   pathToPosition,
+  lspToRopePosition,
 
   -- * Explaining source position
   explain,
 ) where
 
 import Control.Applicative ((<|>))
-import Control.Lens ((^.))
+import Control.Lens (un, (^.))
 import Control.Monad (guard, void)
 import Data.Foldable (asum)
 import Data.Graph
