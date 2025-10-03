@@ -59,6 +59,7 @@ import Control.Lens (view, (^.))
 import Control.Lens.Indexed (itraverse)
 import Control.Monad (forM, forM_, void, when, (<=<), (>=>))
 import Control.Monad.Free qualified as Free
+import Data.Bifunctor (first, second)
 import Data.Data (Data, gmapM)
 import Data.Foldable (fold)
 import Data.Functor.Identity
@@ -998,8 +999,9 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
 
   -- See Note [Checking and inference for record literals]
   SRcd m -> do
-    m' <- itraverse (\x -> infer . fromMaybe (STerm (TVar x))) m
-    return $ Syntax' l (SRcd (Just <$> m')) cs (UTyRcd (fmap (^. sType) m'))
+    m' <- traverse (itraverse $ \x -> infer . fromMaybe (STerm (TVar (lvVar x)))) m
+    let rcdTy = M.fromList $ map (lvVar *** (^. sType)) m'
+    return $ Syntax' l (SRcd ((map . second) Just m')) cs (UTyRcd rcdTy)
 
   -- Once we're typechecking, we don't need to keep around explicit
   -- parens any more
@@ -1321,18 +1323,20 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   -- for record literals].
   SRcd fields
     | UTyRcd tyMap <- expected -> do
-        let expectedFields = M.keysSet tyMap
-            actualFields = M.keysSet fields
+        let fieldMap = M.fromList $ map (first lvVar) fields
+            expectedFields = M.keysSet tyMap
+            actualFields = M.keysSet fieldMap
         when (actualFields /= expectedFields) $
           throwTypeErr l $
             FieldsMismatch (joined expectedFields actualFields)
-        m' <-
-          itraverse
-            (\x (ms, ty) -> check (fromMaybe (STerm (TVar x)) ms) ty)
-            -- Since we checked above that 'fields' and 'tyMap' have the
-            -- same keys, intersectionWith is really just a zip.
-            (M.intersectionWith (,) fields tyMap)
-        return $ Syntax' l (SRcd (Just <$> m')) cs expected
+        -- Since we checked above that 'fields' and 'tyMap' have the
+        -- same keys, we know this lookup into the tyMap will never fail;
+        -- however, we still use lookup + mapMaybe to avoid partial functions.
+        let fieldsWithTypes = mapMaybe (\(x, mt) -> (x,mt,) <$> M.lookup (lvVar x) tyMap) fields
+        fields' <- traverse
+          (\(x,mt,ty) -> ((x,) . Just) <$> check (fromMaybe (STerm (TVar (lvVar x))) mt) ty)
+          fieldsWithTypes
+        return $ Syntax' l (SRcd fields') cs expected
 
   -- The type of @suspend t@ is @Cmd T@ if @t : T@.
   SSuspend s1 -> do
@@ -1349,17 +1353,18 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
 -- ~~~~ Note [Checking and inference for record literals]
 --
 -- We need to handle record literals in both inference and checking
--- mode.  By way of contrast, with a pair, if we are in checking
--- mode and the expected type is not manifestly a product type, we
--- can just generate fresh unification variables for the types of
--- the two components, generate a constraint that the expected type
--- is equal to a product type of these two fresh types, and continue
--- in checking mode on both sides.  With records, however, we cannot
--- do that; if we are checking a record and the expected type is not
--- manifestly a record type, we must simply switch into inference
--- mode.  However, it is still helpful to be able to handle records
--- in checking mode too, since if we know a record type it is
--- helpful to be able to push the field types down into the fields.
+-- mode.  By way of contrast, with a pair, if we are in checking mode
+-- and the expected type is not manifestly a product type, we can just
+-- generate fresh unification variables for the types of the two
+-- components, generate a constraint that the expected type is equal
+-- to a product type of these two fresh types, and continue in
+-- checking mode on both sides.  With records, however, we cannot do
+-- that, since we don't know what field names to generate. If we are
+-- checking a record and the expected type is not manifestly a record
+-- type, we must simply switch into inference mode.  However, it is
+-- still helpful to be able to handle records in checking mode too,
+-- since if we know a record type it is helpful to be able to push the
+-- field types down into the fields.
 
 ------------------------------------------------------------
 -- Special atomic checking
@@ -1453,7 +1458,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- Bind is similarly simple except that we have to keep track of a local variable
   -- bound in the RHS.
   SBind mx _ _ _ s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id (S.insert . lvVar) mx locals) s2
-  SRcd m -> sum <$> mapM analyzeField (M.assocs m)
+  SRcd m -> sum <$> mapM analyzeField m
    where
     analyzeField ::
       ( Has (Reader UCtx) sig m
@@ -1461,9 +1466,9 @@ analyzeAtomic locals (Syntax l t) = case t of
       , Has Unification sig m
       , Has (Throw ContextualTypeErr) sig m
       ) =>
-      (Var, Maybe Syntax) ->
+      (LocVar, Maybe Syntax) ->
       m Int
-    analyzeField (x, Nothing) = analyzeAtomic locals (STerm (TVar x))
+    analyzeField (LV _ x, Nothing) = analyzeAtomic locals (STerm (TVar x))
     analyzeField (_, Just s) = analyzeAtomic locals s
   SProj {} -> return 0
   -- Variables are allowed if bound locally, or if they have a simple type.

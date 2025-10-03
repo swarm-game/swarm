@@ -251,7 +251,7 @@ valueToTerm = \case
   VDelay t _ -> TDelay t
   VRef n -> TRef n
   VIndir n -> TRef n
-  VRcd m -> TRcd (Just . valueToTerm <$> m)
+  VRcd m -> TRcd (map (bimap (LV NoLoc) (Just . valueToTerm)) $ M.assocs m)   -- (Just . valueToTerm <$> m)
   VKey kc -> TApp (TConst Key) (TText (prettyKeyCombo kc))
   VRequirements x t _ -> TRequirements x t
   VSuspend t _ -> TSuspend t

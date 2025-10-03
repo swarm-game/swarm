@@ -15,8 +15,10 @@ module Swarm.Language.Parser.Type (
 
 import Control.Monad.Combinators (many)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
+import Data.Bifunctor (first)
 import Data.Fix (Fix (..), foldFix)
 import Data.List.Extra (enumerate)
+import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
 import Swarm.Language.Parser.Core (Parser)
 import Swarm.Language.Parser.Lex (
@@ -30,6 +32,7 @@ import Swarm.Language.Parser.Lex (
   tyVar,
  )
 import Swarm.Language.Parser.Record (parseRecord)
+import Swarm.Language.Syntax.Loc (lvVar)
 import Swarm.Language.Types
 import Text.Megaparsec (choice, optional, some, (<|>))
 
@@ -70,7 +73,7 @@ parseTypeAtom =
   TyVar <$> tyVar
     <|> TyConApp <$> parseTyCon <*> pure []
     <|> TyDelay <$> braces parseType
-    <|> TyRcd <$> brackets (parseRecord (symbol ":" *> parseType))
+    <|> TyRcd <$> brackets (M.fromList . (map . first) lvVar <$> parseRecord (symbol ":" *> parseType))
     <|> tyRec <$> (reserved "rec" *> tyVar) <*> (symbol "." *> parseType)
     <|> parens parseType
 

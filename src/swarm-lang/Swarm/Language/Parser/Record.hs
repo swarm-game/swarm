@@ -8,11 +8,9 @@ module Swarm.Language.Parser.Record (
   parseRecord,
 ) where
 
-import Data.Map (Map)
-import Data.Map qualified as M
 import Swarm.Language.Parser.Core (Parser)
-import Swarm.Language.Parser.Lex (symbol, tmVar)
-import Swarm.Language.Var (Var)
+import Swarm.Language.Parser.Lex (symbol, locTmVar)
+import Swarm.Language.Syntax.Loc (LocVar, lvVar)
 import Swarm.Util (failT, findDup, squote)
 import Text.Megaparsec (sepBy)
 
@@ -22,10 +20,10 @@ import Text.Megaparsec (sepBy)
 --
 --   The @Parser a@ argument is the parser to use for the RHS of each
 --   binding in the record.
-parseRecord :: Parser a -> Parser (Map Var a)
+parseRecord :: Parser a -> Parser [(LocVar, a)]
 parseRecord p = (parseBinding `sepBy` symbol ",") >>= fromListUnique
  where
-  parseBinding = (,) <$> tmVar <*> p
-  fromListUnique kvs = case findDup (map fst kvs) of
-    Nothing -> return $ M.fromList kvs
+  parseBinding = (,) <$> locTmVar <*> p
+  fromListUnique kvs = case findDup (map (lvVar . fst) kvs) of
+    Nothing -> pure kvs
     Just x -> failT ["duplicate field name", squote x, "in record literal"]

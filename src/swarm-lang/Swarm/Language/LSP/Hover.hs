@@ -24,7 +24,6 @@ import Data.Foldable (asum)
 import Data.Graph
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
-import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isNothing)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -124,7 +123,7 @@ pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
     STydef typ typBody _ti s1 -> d s1 <|> Just [locVarToSyntax' (tdVarName <$> typ) $ fromPoly typBody]
     SPair s1 s2 -> d s1 <|> d s2
     SDelay s -> d s
-    SRcd m -> asum . map d . catMaybes . M.elems $ m
+    SRcd m -> asum . map d . catMaybes . map snd $ m
     SProj s1 _ -> d s1
     SAnnotate s _ -> d s
     SRequirements _ s -> d s
