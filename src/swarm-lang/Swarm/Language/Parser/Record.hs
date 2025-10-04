@@ -9,7 +9,7 @@ module Swarm.Language.Parser.Record (
 ) where
 
 import Swarm.Language.Parser.Core (Parser)
-import Swarm.Language.Parser.Lex (symbol, locTmVar)
+import Swarm.Language.Parser.Lex (locTmVar, symbol)
 import Swarm.Language.Syntax.Loc (LocVar, lvVar)
 import Swarm.Util (failT, findDup, squote)
 import Text.Megaparsec (sepBy)

@@ -1333,9 +1333,10 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         -- same keys, we know this lookup into the tyMap will never fail;
         -- however, we still use lookup + mapMaybe to avoid partial functions.
         let fieldsWithTypes = mapMaybe (\(x, mt) -> (x,mt,) <$> M.lookup (lvVar x) tyMap) fields
-        fields' <- traverse
-          (\(x,mt,ty) -> ((x,) . Just) <$> check (fromMaybe (STerm (TVar (lvVar x))) mt) ty)
-          fieldsWithTypes
+        fields' <-
+          traverse
+            (\(x,mt,ty) -> ((x,) . Just) <$> check (fromMaybe (STerm (TVar (lvVar x))) mt) ty)
+            fieldsWithTypes
         return $ Syntax' l (SRcd fields') cs expected
 
   -- The type of @suspend t@ is @Cmd T@ if @t : T@.
