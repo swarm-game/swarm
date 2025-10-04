@@ -62,7 +62,7 @@ toValue = \case
       VKey <$> eitherToMaybe (MP.runParser parseKeyComboFull "" k)
     _ -> Nothing
   TPair t1 t2 -> VPair <$> toValue t1 <*> toValue t2
-  TRcd m -> VRcd . M.fromList <$> (traverse . traverse) (>>= toValue) (map (first lvVar) m)
+  TRcd m -> VRcd . M.fromList <$> traverse (traverse (>>= toValue) . first lvVar) m
   TParens t -> toValue t
   -- List the other cases explicitly, instead of a catch-all, so that
   -- we will get a warning if we ever add new constructors in the

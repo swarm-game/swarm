@@ -123,7 +123,7 @@ pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
     STydef typ typBody _ti s1 -> d s1 <|> Just [locVarToSyntax' (tdVarName <$> typ) $ fromPoly typBody]
     SPair s1 s2 -> d s1 <|> d s2
     SDelay s -> d s
-    SRcd m -> asum . map d . catMaybes . map snd $ m
+    SRcd m -> asum . map d . mapMaybe snd $ m
     SProj s1 _ -> d s1
     SAnnotate s _ -> d s
     SRequirements _ s -> d s
