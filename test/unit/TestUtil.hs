@@ -9,7 +9,7 @@ module TestUtil where
 
 import Control.Carrier.Error.Either (runError)
 import Control.Lens (Ixed (ix), to, use, (&), (.~), (^.), (^?))
-import Control.Monad ((<=<), void)
+import Control.Monad (void, (<=<))
 import Control.Monad.State (StateT (..), execState)
 import Control.Monad.Trans (lift)
 import Data.Bifunctor (first)
@@ -37,8 +37,9 @@ eval :: GameState -> Text -> IO (GameState, Robot Instantiated, Either Text (Val
 eval g = either (return . (g,hypotheticalRobot undefined 0,) . Left) (evalPT g) <=< processTerm1
 
 processTerm1 :: Text -> IO (Either Text (SyntaxWithImports Elaborated))
-processTerm1 txt = fmap (first prettyText) . runError @SystemFailure $
-  processSource txt Nothing >>= requireNonEmptyTerm
+processTerm1 txt =
+  fmap (first prettyText) . runError @SystemFailure $
+    processSource txt Nothing >>= requireNonEmptyTerm
 
 evalPT :: GameState -> SyntaxWithImports Elaborated -> IO (GameState, Robot Instantiated, Either Text (Value, Int))
 evalPT g t = evalCESK g (initMachine t)
@@ -84,6 +85,7 @@ playUntilDone rid = do
     Nothing -> return $ Left . T.pack $ "The robot with ID " <> show rid <> " is nowhere to be found!"
 
 check :: Text -> (SyntaxWithImports Elaborated -> Bool) -> Assertion
-check code expect = processTerm1 code >>= \case
-  Left err -> assertFailure $ "Term processing failed: " ++ into @String err
-  Right t -> assertBool "Predicate was false!" (expect t)
+check code expect =
+  processTerm1 code >>= \case
+    Left err -> assertFailure $ "Term processing failed: " ++ into @String err
+    Right t -> assertBool "Predicate was false!" (expect t)

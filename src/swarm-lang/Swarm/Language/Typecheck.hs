@@ -889,19 +889,19 @@ inferTop ::
   Has (Error ContextualTypeErr) sig m =>
   TCtx -> ReqCtx -> TDCtx -> SourceMap Resolved -> Syntax Resolved -> m (SyntaxWithImports Typed)
 inferTop ctx reqCtx tdCtx srcMap =
-  fmap (uncurry SyntaxWithImports) .
-  runTC ctx reqCtx tdCtx Ctx.empty srcMap .
-  infer
+  fmap (uncurry SyntaxWithImports)
+    . runTC ctx reqCtx tdCtx Ctx.empty srcMap
+    . infer
 
 -- | Top level type checking function.
 checkTop ::
   Has (Error ContextualTypeErr) sig m =>
   TCtx -> ReqCtx -> TDCtx -> SourceMap Resolved -> Syntax Resolved -> Type -> m (SyntaxWithImports Typed)
 checkTop ctx reqCtx tdCtx srcMap t =
-  fmap (uncurry SyntaxWithImports) .
-  runTC ctx reqCtx tdCtx Ctx.empty srcMap .
-  check t .
-  toU
+  fmap (uncurry SyntaxWithImports)
+    . runTC ctx reqCtx tdCtx Ctx.empty srcMap
+    . check t
+    . toU
 
 -- | Infer the type of a term, returning a type-annotated term.
 --

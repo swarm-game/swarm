@@ -841,12 +841,12 @@ makeLenses ''TydefInfo
 --   more than one version), so we can tell when a type definition has
 --   been shadowed.
 data TDCtx = TDCtx
-  { -- | Mapping from fully resolved + versioned TDVars to
-    --   corresponding type definition info record
-    getTDCtx :: Ctx TDVar TydefInfo
-    -- | Mapping from raw names to the latest in-scope import location
-    --   + version number for that name.
+  { getTDCtx :: Ctx TDVar TydefInfo
+  -- ^ Mapping from fully resolved + versioned TDVars to
+  --   corresponding type definition info record
   , getTDResolved :: Map Text (Int, Maybe (ImportLoc Resolved))
+  -- ^ Mapping from raw names to the latest in-scope import location
+  --   + version number for that name.
   }
   deriving (Eq, Show, Generic, Data, Hashable, ToJSON)
 
@@ -869,7 +869,7 @@ addBindingTD :: TDVar -> TydefInfo -> TDCtx -> TDCtx
 addBindingTD v info (TDCtx tdCtx tdVersions) =
   let x = tdVarName v
       ver' = maybe 0 (succ . fst) $ M.lookup x tdVersions
-  in TDCtx (Ctx.addBinding (setVersion ver' v) info tdCtx) (M.insert x (ver', tdModule v) tdVersions)
+   in TDCtx (Ctx.addBinding (setVersion ver' v) info tdCtx) (M.insert x (ver', tdModule v) tdVersions)
 
 -- | Locally extend the ambient type definition context with an
 --   additional binding, via 'addBindingTD'.

@@ -22,9 +22,9 @@ import Language.LSP.Protocol.Types qualified as LSP
 import Language.LSP.Server
 import Language.LSP.VFS (VirtualFile (..), virtualFileText)
 import Swarm.Failure (SystemFailure (..))
-import Swarm.Language.Load (SyntaxWithImports (..))
 import Swarm.Language.LSP.Hover qualified as H
 import Swarm.Language.LSP.VarUsage qualified as VU
+import Swarm.Language.Load (SyntaxWithImports (..))
 import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Pipeline (processSource)
 import Swarm.Language.Syntax (SrcLoc (..), eraseRaw)

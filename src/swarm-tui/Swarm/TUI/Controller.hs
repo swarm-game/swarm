@@ -890,7 +890,7 @@ validateREPLForm s =
               (theType, errSrcLoc) = case readTerm' defaultParserConfig uinput of
                 Left err ->
                   let (((_y1, x1), (_y2, x2)), _msg) = showErrorPos err
-                  in (Nothing, Left (SrcLoc Nothing x1 x2))
+                   in (Nothing, Left (SrcLoc Nothing x1 x2))
                 Right Nothing -> (Nothing, Right ())
                 Right (Just theTerm) ->
                   -- Explicitly ignore REPL entries with imports,
@@ -899,15 +899,15 @@ validateREPLForm s =
                   -- be properly resolved and checked when the
                   -- user hits enter.
                   let res = run . runError @SystemFailure $ processTermNoImports uinput theTerm (Just env)
-                  in case res of
-                       Right t -> (Just (t ^. sType), Right ())
-                       Left (DoesNotTypecheck loc _) -> (Nothing, Left loc)
-                       -- Don't signal an error if the REPL entry contained an import
-                       Left (DisallowedImport _) -> (Nothing, Right ())
-                       _ -> (Nothing, Right ())
+                   in case res of
+                        Right t -> (Just (t ^. sType), Right ())
+                        Left (DoesNotTypecheck loc _) -> (Nothing, Left loc)
+                        -- Don't signal an error if the REPL entry contained an import
+                        Left (DisallowedImport _) -> (Nothing, Right ())
+                        _ -> (Nothing, Right ())
            in s
-            & uiGameplay . uiREPL . replValid .~ errSrcLoc
-            & uiGameplay . uiREPL . replType .~ theType
+                & uiGameplay . uiREPL . replValid .~ errSrcLoc
+                & uiGameplay . uiREPL . replType .~ theType
     SearchPrompt _ -> s
  where
   uinput = s ^. uiGameplay . uiREPL . replPromptText

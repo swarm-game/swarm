@@ -179,7 +179,7 @@ makeLenses ''Env
 
 -- | Create an environment which is empty except for an initial SourceMap.
 envFromSrcMap :: SourceMap Elaborated -> Env
-envFromSrcMap srcMap = emptyEnv { _envSourceMap = srcMap }
+envFromSrcMap srcMap = emptyEnv {_envSourceMap = srcMap}
 
 emptyEnv :: Env
 emptyEnv = Env Ctx.empty Ctx.empty Ctx.empty emptyTDCtx M.empty

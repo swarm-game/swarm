@@ -74,7 +74,7 @@ mkTDVar v loc x = TDVar x v loc
 -- | Set the version number of a TDVar, leaving the name and import
 --   location unchanged.
 setVersion :: Int -> TDVar -> TDVar
-setVersion ver v = v { tdVarVersion = ver }
+setVersion ver v = v {tdVarVersion = ver}
 
 -- | Pretty-print a type definition variable, given an extra argument
 --   representing the latest version of any variable with this name.
