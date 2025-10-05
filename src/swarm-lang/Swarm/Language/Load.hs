@@ -35,7 +35,7 @@ import Swarm.Language.Parser.Core (defaultParserConfig, importLoc)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Import hiding (ImportPhase (..))
 import Swarm.Language.Syntax.Import qualified as Import
-import Swarm.Language.Syntax.Util (Erasable(..))
+import Swarm.Language.Syntax.Util (Erasable (..))
 import Swarm.Language.Types (TCtx, TDCtx, UCtx)
 import Swarm.Pretty (prettyText)
 import Swarm.Util (readFileMayT, showT)
@@ -174,7 +174,7 @@ resolveImport parent loc = do
 
   srcMap <- get @(SourceMap Resolved)
   resMod <- case M.lookup canonicalLoc srcMap of
-    Just m -> pure m    -- Already loaded - do nothing
+    Just m -> pure m -- Already loaded - do nothing
     Nothing -> do
       -- Record this import loc in the source map using a temporary, empty module,
       -- to prevent it from attempting to load itself recursively
@@ -206,17 +206,17 @@ resolveImport parent loc = do
 --   evaluating them once.
 validateImport :: forall sig m. (Has (Throw SystemFailure) sig m) => ResLoc -> Module Resolved -> m ()
 validateImport loc = maybe (pure ()) validate . moduleTerm
-  where
-    validate :: Syntax Resolved -> m ()
-    validate = validateTerm . _sTerm
+ where
+  validate :: Syntax Resolved -> m ()
+  validate = validateTerm . _sTerm
 
-    validateTerm :: Term Resolved -> m ()
-    validateTerm = \case
-      SLet LSDef _ _ _ _ _ _ t -> validate t
-      SImportIn _ t -> validate t
-      STydef _ _ _ t -> validate t
-      TConst Noop -> pure ()
-      t -> throwError $ ImpureImport loc (prettyText t)
+  validateTerm :: Term Resolved -> m ()
+  validateTerm = \case
+    SLet LSDef _ _ _ _ _ _ t -> validate t
+    SImportIn _ t -> validate t
+    STydef _ _ _ t -> validate t
+    TConst Noop -> pure ()
+    t -> throwError $ ImpureImport loc (prettyText t)
 
 -- | Try to read and parse a term from a specific import location,
 --   either over the network or on disk.
@@ -233,7 +233,6 @@ readLoc loc = do
 
   -- Try to read the file from network/disk, depending on the anchor
   src <- case importAnchor loc of
-
     -- Read from network
     Web_ {} -> do
       -- Try to parse the URL

@@ -165,8 +165,8 @@ instance PrettyPrec SystemFailure where
     DisallowedImport _imp -> "Import is not allowed here"
     ImpureImport imp t ->
       nest 2 . vcat $
-      [ "While processing import" <+> ppr imp <> ":"
-      , "Imported modules must only contain imports + definitions, but found:"
-      , squotes (pretty t)
-      ]
+        [ "While processing import" <+> ppr imp <> ":"
+        , "Imported modules must only contain imports + definitions, but found:"
+        , squotes (pretty t)
+        ]
     CustomFailure m -> pretty m

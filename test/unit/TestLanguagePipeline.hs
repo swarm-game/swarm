@@ -17,8 +17,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Swarm.Failure (SystemFailure)
-import Swarm.Language.Load (SyntaxWithImports (..))
 import Swarm.Language.JSON ()
+import Swarm.Language.Load (SyntaxWithImports (..))
 import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Pipeline (processSource)
@@ -766,22 +766,22 @@ testLanguagePipeline =
         "Import #2540"
         [ testCase
             "simple import"
-            ( valid "import \"data/test/import/a.sw\"; pure (a + 1)" )
+            (valid "import \"data/test/import/a.sw\"; pure (a + 1)")
         , testCase
             "recursive import - unused"
-            ( valid "import \"data/test/import/b.sw\"; pure (b + 1)" )
+            (valid "import \"data/test/import/b.sw\"; pure (b + 1)")
         , testCase
             "recursive import - used"
-            ( valid "import \"data/test/import/d.sw\"; pure (d + 1)" )
+            (valid "import \"data/test/import/d.sw\"; pure (d + 1)")
         , testCase
             "recursive import is not re-exported"
             ( process
-               "import \"data/test/import/f.sw\"; pure (f + g)"
-               "1:43: Unbound variable g"
+                "import \"data/test/import/f.sw\"; pure (f + g)"
+                "1:43: Unbound variable g"
             )
         , testCase
             "import from URL"
-            ( valid "import \"https://raw.githubusercontent.com/byorgey/swarm-defs/refs/heads/main/defs.sw\"; tL")
+            (valid "import \"https://raw.githubusercontent.com/byorgey/swarm-defs/refs/heads/main/defs.sw\"; tL")
         ]
     ]
  where
@@ -791,15 +791,16 @@ testLanguagePipeline =
   process = processCompare T.isPrefixOf
 
   processCompare :: (Text -> Text -> Bool) -> Text -> Text -> Assertion
-  processCompare cmp code expect = runError @SystemFailure (processSource code Nothing) >>= \case
-    Left e
-      | not (T.null expect) && cmp expect (prettyText e) -> pure ()
-      | otherwise ->
-          error $
-            "Unexpected failure:\n\n  " <> show (prettyText e) <> "\n\nExpected:\n\n  " <> show expect <> "\n"
-    Right _
-      | expect == "" -> pure ()
-      | otherwise -> error "Unexpected success"
+  processCompare cmp code expect =
+    runError @SystemFailure (processSource code Nothing) >>= \case
+      Left e
+        | not (T.null expect) && cmp expect (prettyText e) -> pure ()
+        | otherwise ->
+            error $
+              "Unexpected failure:\n\n  " <> show (prettyText e) <> "\n\nExpected:\n\n  " <> show expect <> "\n"
+      Right _
+        | expect == "" -> pure ()
+        | otherwise -> error "Unexpected success"
 
 -- | Check round tripping of term from and to text, then test ToJSON/FromJSON.
 roundTripTerm :: Text -> Assertion
