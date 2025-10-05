@@ -371,7 +371,7 @@ testLanguagePipeline =
             "annotate 1 + 1"
             ( assertEqual
                 "type annotations"
-                (toListOf (\f -> traverseSyntax f mempty) (getSyntax ([tmQ| 1 + 1 |] :: SyntaxWithImports Elaborated)))
+                (toListOf (`traverseSyntax` mempty) (getSyntax ([tmQ| 1 + 1 |] :: SyntaxWithImports Elaborated)))
                 [[tyQ| Int -> Int -> Int|], [tyQ|Int|], [tyQ|Int -> Int|], [tyQ|Int|], [tyQ|Int|]]
             )
         , testCase
