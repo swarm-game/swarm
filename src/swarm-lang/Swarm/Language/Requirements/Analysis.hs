@@ -20,7 +20,6 @@ import Control.Effect.Reader (Reader, ask, local)
 import Control.Monad (when)
 import Data.Fix (Fix (..))
 import Data.Foldable (forM_)
-import Data.Map qualified as M
 import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirements.Type
@@ -156,9 +155,9 @@ requirements tdCtx ctx =
     -- Everything else is straightforward.
     TPair t1 t2 -> add (singletonCap CProd) *> go t1 *> go t2
     TDelay t -> go t
-    TRcd m -> add (singletonCap CRecord) *> forM_ (M.assocs m) (go . expandEq)
+    TRcd m -> add (singletonCap CRecord) *> forM_ m (go . expandEq)
      where
-      expandEq (x, Nothing) = TVar x
+      expandEq (LV _ x, Nothing) = TVar x
       expandEq (_, Just t) = t
     TProj t _ -> add (singletonCap CRecord) *> go t
     -- A type ascription doesn't change requirements

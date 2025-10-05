@@ -17,7 +17,6 @@ import Data.Aeson.Types hiding (Key)
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
 import Data.Hashable (Hashable)
-import Data.Map.Strict (Map)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Swarm.Language.Requirements.Type (Requirements)
@@ -137,7 +136,7 @@ data Term' ty
   | -- | Record literals @[x1 = e1, x2 = e2, x3, ...]@ Names @x@
     --   without an accompanying definition are sugar for writing
     --   @x=x@.
-    SRcd (Map Var (Maybe (Syntax' ty)))
+    SRcd [(LocVar, Maybe (Syntax' ty))]
   | -- | Record projection @e.x@
     SProj (Syntax' ty) Var
   | -- | Annotate a term with a type
