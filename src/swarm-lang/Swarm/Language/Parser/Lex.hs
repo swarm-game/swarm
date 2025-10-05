@@ -245,7 +245,7 @@ locTmVar = locIdentifier IDTmVar
 -- | Parse a user-defined type name together with its source location
 --   info.
 locTyName :: Parser (Located TDVar)
-locTyName = (fmap . mkTDVar 0) <$> view importLoc <*> locIdentifier IDTyName
+locTyName = fmap . mkTDVar 0 <$> view importLoc <*> locIdentifier IDTyName
 
 -- | Parse an identifier, i.e. any non-reserved string containing
 --   alphanumeric characters and underscores, not starting with a

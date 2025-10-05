@@ -400,7 +400,7 @@ instance FromJSONE TerrainEntityMaps (Robot Raw) where
     -- Parse the robot program but also store the original text, for
     -- use in displaying error messages while typechecking
     prog <- case KM.lookup "program" v of
-      Just progV -> liftE $ Ae.withText "program" (\txt -> ((fmap . fmap) (txt,)) (v .:? "program")) progV
+      Just progV -> liftE $ Ae.withText "program" (\txt -> (fmap . fmap) (txt,) (v .:? "program")) progV
       _ -> pure Nothing
 
     mkRobot Nothing
