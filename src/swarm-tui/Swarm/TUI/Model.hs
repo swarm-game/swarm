@@ -281,14 +281,12 @@ populateInventoryList (Just r) = do
 
       matchesSearch :: (Count, Entity) -> Bool
       matchesSearch (_, e) =
-        or
-          [ -- Fuzzy search within entity names.
-            maybe (const True) Fuzzy.test search (e ^. E.entityName)
-          , -- Also do a literal substring search within entity
-            -- descriptions.  Since descriptions are long, a fuzzy
-            -- search tends to yield too many false positives.
-            maybe (const True) T.isInfixOf search (Markdown.docToText (e ^. E.entityDescription))
-          ]
+        -- Fuzzy search within entity names.
+        maybe (const True) Fuzzy.test search (e ^. E.entityName)
+          -- Also do a literal substring search within entity
+          -- descriptions.  Since descriptions are long, a fuzzy
+          -- search tends to yield too many false positives.
+          || maybe (const True) T.isInfixOf search (Markdown.docToText (e ^. E.entityDescription))
 
       items =
         (r ^. robotInventory . to (itemList True mkInvEntry "Compendium"))
