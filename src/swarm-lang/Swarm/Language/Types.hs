@@ -876,12 +876,28 @@ addBindingTD v info (TDCtx tdCtx tdVersions) =
 withBindingTD :: Has (Reader TDCtx) sig m => TDVar -> TydefInfo -> m a -> m a
 withBindingTD v info = local (addBindingTD v info)
 
+-- | Right-biased union two 'TDCtx' values, under the assumption that
+--   they come from different modules.  In particular, none of the
+--   variables from the second TDCtx can shadow variables from the
+--   same module, so they do not need to be given new version numbers.
+--   We can simply union the contexts.
+unionTDCtx :: TDCtx -> TDCtx -> TDCtx
+unionTDCtx (TDCtx ctx1 res1) (TDCtx ctx2 res2) = TDCtx (ctx1 <> ctx2) (M.union res2 res1)
+
 -- | Locally extend the ambient type definition context with
 --   additional bindings.
+--
+--   Unlike `withBindingTD`, we assume that this does not result in
+--   any shadowing within the same module, so we can simply union the
+--   contexts.
+--
+--   XXX currently, when typechecking modules only explicitly imported
+--   things are in scope, NOT transitively imported things.  However,
+--   this doesn't match what happens at runtime, where everything
+--   transitively imported ends up dumped into the context at the
+--   point where we suspend.
 withBindingsTD :: Has (Reader TDCtx) sig m => TDCtx -> m a -> m a
-withBindingsTD tdCtx = undefined   -- XXX
-  -- XXX working here, have to think carefully about how to support context union!
-  -- I'm not sure the current configuration works...
+withBindingsTD tdCtx = local (`unionTDCtx` tdCtx)
 
 -- | Given the name of a variable representing a user-defined type,
 --   fill in the version + importloc of the variable of that name

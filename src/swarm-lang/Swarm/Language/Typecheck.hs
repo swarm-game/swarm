@@ -1133,7 +1133,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     check s sTy
 
 -- | Collect up the names and types of any top-level definitions into
---   a context. XXX this must collect tydefs as well!
+--   a context.
 collectDefs ::
   (Has Unification sig m, Has (Reader UCtx) sig m) =>
   Syntax Inferred ->
