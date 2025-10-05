@@ -125,8 +125,8 @@ import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World (Seed)
-import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Syntax (Phase (..))
+import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Log
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.DebugOption (DebugOption)
