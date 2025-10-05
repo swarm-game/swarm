@@ -110,7 +110,7 @@ getUsage bindings (CSyntax _pos t _comments) = case t of
     Just v -> checkOccurrences bindings v Bind [s1, s2]
     Nothing -> getUsage bindings s1 <> getUsage bindings s2
   SDelay s -> getUsage bindings s
-  SRcd m -> M.foldMapWithKey (\x -> maybe (getUsage bindings (STerm (TVar x))) (getUsage bindings)) m
+  SRcd m -> foldMap (\(LV _ x, mt) -> maybe (getUsage bindings (STerm (TVar x))) (getUsage bindings) mt) m
   SProj s _ -> getUsage bindings s
   SAnnotate s _ -> getUsage bindings s
   SSuspend s -> getUsage bindings s

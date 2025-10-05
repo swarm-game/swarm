@@ -22,9 +22,9 @@ module Swarm.Language.Syntax.Pretty (
 
 import Control.Lens ((&), (<>~))
 import Control.Lens.Empty (pattern Empty)
+import Data.Bifunctor (first)
 import Data.Bool (bool)
 import Data.Foldable qualified as F
-import Data.Map qualified as M
 import Data.Sequence qualified as Seq
 import Data.String (fromString)
 import Prettyprinter
@@ -133,7 +133,7 @@ instance PrettyPrec (Term' ty) where
     SBind (Just (LV _ x)) _ _ _ t1 t2 ->
       pparens (p > 0) $
         ppr x <+> "<-" <+> prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
-    SRcd m -> brackets $ hsep (punctuate "," (map prettyEquality (M.assocs m)))
+    SRcd m -> brackets $ hsep (punctuate "," (map (prettyEquality . first lvVar) m))
     SProj t x -> prettyPrec 11 t <> "." <> ppr x
     SAnnotate t pt ->
       pparens (p > 0) $

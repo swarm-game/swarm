@@ -38,7 +38,7 @@ module Swarm.Language.Syntax.Pattern (
 ) where
 
 import Control.Lens (makeLenses, pattern Empty)
-import Data.Map.Strict (Map)
+import Data.Bifunctor (second)
 import Data.Text (Text)
 import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax.AST
@@ -130,10 +130,10 @@ pattern TDelay :: Term -> Term
 pattern TDelay t = SDelay (STerm t)
 
 -- | Match a TRcd without annotations.
-pattern TRcd :: Map Var (Maybe Term) -> Term
-pattern TRcd m <- SRcd ((fmap . fmap) _sTerm -> m)
+pattern TRcd :: [(LocVar, Maybe Term)] -> Term
+pattern TRcd m <- SRcd ((map . second . fmap) _sTerm -> m)
   where
-    TRcd m = SRcd ((fmap . fmap) STerm m)
+    TRcd m = SRcd ((map . second . fmap) STerm m)
 
 pattern TProj :: Term -> Var -> Term
 pattern TProj t x = SProj (STerm t) x
