@@ -18,8 +18,9 @@ module Swarm.Language.LSP.Hover (
 ) where
 
 import Control.Applicative ((<|>))
+import Control.Carrier.Error.Either (run, runError)
 import Control.Lens ((^.))
-import Control.Monad (guard, void)
+import Control.Monad (guard)
 import Data.Foldable (asum)
 import Data.Graph
 import Data.List.NonEmpty (NonEmpty (..))
@@ -31,18 +32,19 @@ import Data.Text.Lines qualified as R
 import Data.Text.Utf16.Rope.Mixed qualified as R
 import Language.LSP.Protocol.Types qualified as J
 import Language.LSP.VFS
+import Swarm.Failure (SystemFailure)
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
-import Swarm.Language.Pipeline (processParsedTerm)
+import Swarm.Language.Pipeline (processTermNoImports)
 import Swarm.Language.Syntax
 import Swarm.Language.TDVar (tdVarName)
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types
-import Swarm.Pretty (prettyText, prettyTextLine)
+import Swarm.Pretty (PrettyPrec, prettyText, prettyTextLine)
 import Swarm.Util qualified as U
 
 withinBound :: Int -> SrcLoc -> Bool
-withinBound pos (SrcLoc s e) = pos >= s && pos < e
+withinBound pos (SrcLoc _ s e) = pos >= s && pos < e
 withinBound _ NoLoc = False
 
 ropeToLspPosition :: R.Position -> J.Position
@@ -66,12 +68,12 @@ showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
     R.charLength . fst $ R.charSplitAtPosition (lspToRopePosition p) myRope
 
   genHoverInfo stx =
-    case processParsedTerm stx of
-      Left _e ->
+    case run (runError @SystemFailure (processTermNoImports content stx Nothing)) of
+      Left (_e :: SystemFailure) ->
         let found = narrowToPosition stx $ fromIntegral absolutePos
             finalPos = posToRange myRope (found ^. sLoc)
          in (,finalPos) . treeToMarkdown 0 $ explain found
-      Right pt ->
+      Right (pt :: Syntax Elaborated) ->
         let found =
               narrowToPosition pt $ fromIntegral absolutePos
             finalPos = posToRange myRope (found ^. sLoc)
@@ -80,7 +82,7 @@ showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
 posToRange :: R.Rope -> SrcLoc -> Maybe J.Range
 posToRange myRope foundSloc = do
   (s, e) <- case foundSloc of
-    SrcLoc s e -> Just (s, e)
+    SrcLoc _ s e -> Just (s, e)
     _ -> Nothing
   let (startRope, _) = R.charSplitAt (fromIntegral s) myRope
       (endRope, _) = R.charSplitAt (fromIntegral e) myRope
@@ -92,12 +94,12 @@ posToRange myRope foundSloc = do
 -- | Find the most specific term for a given
 -- position within the code.
 narrowToPosition ::
-  ExplainableType ty =>
+  ExplainableType (SwarmType phase) =>
   -- | parent term
-  Syntax' ty ->
+  Syntax phase ->
   -- | absolute offset within the file.
   Int ->
-  Syntax' ty
+  Syntax phase
 narrowToPosition s i = NE.last $ pathToPosition s i
 
 -- | Find the most specific term for a given
@@ -105,22 +107,22 @@ narrowToPosition s i = NE.last $ pathToPosition s i
 
 -- The list is nonempty because at minimum we can return the element of the syntax we are currently processing.
 pathToPosition ::
-  forall ty.
-  ExplainableType ty =>
+  forall phase.
+  ExplainableType (SwarmType phase) =>
   -- | parent term
-  Syntax' ty ->
+  Syntax phase ->
   -- | absolute offset within the file
   Int ->
-  NonEmpty (Syntax' ty)
+  NonEmpty (Syntax phase)
 pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
  where
-  innerPath :: Syntax' ty -> Maybe [Syntax' ty]
-  innerPath (Syntax' _ t _ ty) = case t of
-    SLam lv _ s -> d (locVarToSyntax' lv $ getInnerType ty) <|> d s
+  innerPath :: Syntax phase -> Maybe [Syntax phase]
+  innerPath (Syntax _ t _ ty) = case t of
+    SLam lv _ s -> d (locVarToSyntax lv $ getInnerType ty) <|> d s
     SApp s1 s2 -> d s1 <|> d s2
-    SLet _ _ lv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
-    SBind mlv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
-    STydef typ typBody _ti s1 -> d s1 <|> Just [locVarToSyntax' (tdVarName <$> typ) $ fromPoly typBody]
+    SLet _ _ lv _ _ _ s1@(Syntax _ _ _ lty) s2 -> d (locVarToSyntax lv lty) <|> d s1 <|> d s2
+    SBind mlv _ _ _ s1@(Syntax _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax (getInnerType lty)) <|> d s1 <|> d s2
+    STydef typ typBody _ti s1 -> d s1 <|> Just [locVarToSyntax (tdVarName <$> typ) $ fromPoly typBody]
     SPair s1 s2 -> d s1 <|> d s2
     SDelay s -> d s
     SRcd m -> asum . map d . mapMaybe snd $ m
@@ -139,6 +141,7 @@ pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
     TStock {} -> mempty
     TRequire {} -> mempty
     TType {} -> mempty
+    SImportIn {} -> mempty
     -- these should not show up in surface language
     TRef {} -> mempty
     TRobot {} -> mempty
@@ -150,11 +153,11 @@ pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
   d = descend pos
   -- try and decend into the syntax element if it is contained with position
   descend ::
-    ExplainableType ty =>
+    ExplainableType (SwarmType phase) =>
     Int ->
-    Syntax' ty ->
-    Maybe [Syntax' ty]
-  descend p s1@(Syntax' l1 _ _ _) = do
+    Syntax phase ->
+    Maybe [Syntax phase]
+  descend p s1@(Syntax l1 _ _ _) = do
     guard $ withinBound p l1
     pure $ case innerPath s1 of
       Nothing -> [s1]
@@ -212,7 +215,7 @@ instance ExplainableType RawPolytype where
     t -> t
   eq r t = r == forgetQ t
 
-explain :: ExplainableType ty => Syntax' ty -> Tree Text
+explain :: (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase)) => ExplainableType (SwarmType phase) => Syntax phase -> Tree Text
 explain trm = case trm ^. sTerm of
   TUnit -> literal "The unit value."
   TConst c -> literal . constGenSig c $ briefDoc (constDoc $ constInfo c)
@@ -226,6 +229,7 @@ explain trm = case trm ^. sTerm of
   STydef {} -> literal "A type synonym definition."
   TType {} -> literal "A type literal."
   SParens s -> explain s
+  SImportIn {} -> literal "An import expression."
   -- type ascription
   SAnnotate lhs typeAnn ->
     Node
@@ -271,7 +275,7 @@ explain trm = case trm ^. sTerm of
   SSuspend {} -> internal "A suspension."
  where
   ty = trm ^. sType
-  literal = pure . typeSignature (prettyText . void $ trm ^. sTerm) ty
+  literal = pure . typeSignature (prettyText $ trm ^. sTerm) ty
   internal description = literal $ description <> "\n**These should never show up in surface syntax.**"
   constGenSig c =
     let ity = inferConst c
@@ -281,11 +285,11 @@ explain trm = case trm ^. sTerm of
 --
 -- Note that 'Force' is often inserted internally, so
 -- if it shows up here we drop it.
-explainFunction :: ExplainableType ty => Syntax' ty -> Tree Text
+explainFunction :: (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase)) => ExplainableType (SwarmType phase) => Syntax phase -> Tree Text
 explainFunction s =
   case unfoldApps s of
-    (Syntax' _ (TConst Force) _ _ :| [innerT]) -> explain innerT
-    (Syntax' _ (TConst Force) _ _ :| f : params) -> explainF f params
+    (Syntax _ (TConst Force) _ _ :| [innerT]) -> explain innerT
+    (Syntax _ (TConst Force) _ _ :| f : params) -> explainF f params
     (f :| params) -> explainF f params
  where
   explainF f params =

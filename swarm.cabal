@@ -237,6 +237,9 @@ common http-client
 common http-client-tls
   build-depends: http-client-tls >=0.3 && <0.4
 
+common http-conduit
+  build-depends: http-conduit >=2.3 && <2.4
+
 common http-types
   build-depends: http-types >=0.12 && <0.13
 
@@ -435,11 +438,10 @@ library swarm-lang
     fused-effects,
     generic-data,
     hashable,
+    http-conduit,
     lens,
     lsp,
     megaparsec,
-    monoidmap,
-    monoidmap-aeson,
     mtl,
     parser-combinators,
     prettyprinter,
@@ -472,9 +474,11 @@ library swarm-lang
     Swarm.Language.LSP
     Swarm.Language.LSP.Hover
     Swarm.Language.LSP.VarUsage
+    Swarm.Language.Load
     Swarm.Language.Parser
     Swarm.Language.Parser.Comment
     Swarm.Language.Parser.Core
+    Swarm.Language.Parser.Import
     Swarm.Language.Parser.Lex
     Swarm.Language.Parser.QQ
     Swarm.Language.Parser.Record
@@ -492,17 +496,16 @@ library swarm-lang
     Swarm.Language.Syntax.CommandMetadata
     Swarm.Language.Syntax.Comments
     Swarm.Language.Syntax.Constants
-    Swarm.Language.Syntax.Loc
     Swarm.Language.Syntax.Pattern
     Swarm.Language.Syntax.Pretty
     Swarm.Language.Syntax.Util
     Swarm.Language.TDVar
     Swarm.Language.Text.Markdown
     Swarm.Language.Typecheck
-    Swarm.Language.Typed
     Swarm.Language.Types
     Swarm.Language.Value
     Swarm.Language.Var
+    Swarm.Language.WithType
 
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm
@@ -811,6 +814,7 @@ library swarm-web
     colour,
     commonmark,
     containers,
+    fused-effects,
     http-types,
     lens,
     nonempty-containers,
@@ -951,7 +955,10 @@ library swarm-util
     Swarm.Effect.Metric
     Swarm.Effect.Time
     Swarm.Failure
+    Swarm.Language.Phase
     Swarm.Language.Syntax.Direction
+    Swarm.Language.Syntax.Import
+    Swarm.Language.Syntax.Loc
     Swarm.Pretty
     Swarm.ResourceLoading
     Swarm.Util
@@ -1272,6 +1279,7 @@ test-suite swarm-unit
     containers,
     data-fix,
     filepath,
+    fused-effects,
     hashable,
     lens,
     megaparsec,

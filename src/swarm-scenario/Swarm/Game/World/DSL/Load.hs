@@ -17,6 +17,7 @@ import Swarm.Failure (Asset (..), AssetData (..), LoadingFailure (..), SystemFai
 import Swarm.Game.Land
 import Swarm.Game.World.DSL.Parse (parseWExp, runParser)
 import Swarm.Game.World.DSL.Typecheck
+import Swarm.Language.Syntax.Loc (SrcLoc (..))
 import Swarm.Pretty (prettyText)
 import Swarm.ResourceLoading (getDataDirSafe)
 import Swarm.Util (acquireAllWithExt)
@@ -45,11 +46,12 @@ loadWorld ::
   (FilePath, String) ->
   m (Text, Some (TTerm '[]))
 loadWorld dir tem (fp, src) = do
+  let tsrc = into @Text src
   wexp <-
     liftEither . left (AssetNotLoaded (Data Worlds) fp . SystemFailure . CanNotParseMegaparsec) $
-      runParser parseWExp (into @Text src)
+      runParser parseWExp tsrc
   t <-
-    withThrow (AssetNotLoaded (Data Worlds) fp . SystemFailure . DoesNotTypecheck . prettyText @CheckErr) $
+    withThrow (AssetNotLoaded (Data Worlds) fp . SystemFailure . DoesNotTypecheck NoLoc . prettyText @CheckErr) $
       runReader tem . runReader @WorldMap M.empty $
         infer CNil wexp
   return (into @Text (dropExtension (stripDir dir fp)), t)

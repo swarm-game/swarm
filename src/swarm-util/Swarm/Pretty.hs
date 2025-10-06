@@ -7,6 +7,7 @@
 -- Common pretty-printing infrastructure for the Swarm project.
 module Swarm.Pretty (
   -- * The 'PrettyPrec' class
+  Doc,
   PrettyPrec (..),
 
   -- * Running pretty-printers

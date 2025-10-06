@@ -17,6 +17,7 @@ import Control.Effect.Throw (Throw, throwError)
 import Control.Monad.Extra (unlessM)
 import Data.Fix (Fix (..))
 import Prettyprinter (hsep, nest, pretty, vsep, (<+>))
+import Swarm.Language.TDVar (tdVarName)
 import Swarm.Language.Types
 import Swarm.Pretty (PrettyPrec (..), ppr)
 import Swarm.Util (number)
@@ -52,7 +53,7 @@ resolveTydefs (Fix tyF) =
   Fix <$> case tyF of
     TyConF tc tys -> do
       tc' <- case tc of
-        TCUser u -> TCUser <$> resolveUserTy u
+        TCUser u -> TCUser <$> resolveUserTy (tdVarName u)
         _ -> pure tc
       TyConF tc' <$> mapM resolveTydefs tys
     TyRcdF m -> TyRcdF <$> mapM resolveTydefs m
