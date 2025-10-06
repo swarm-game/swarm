@@ -44,6 +44,7 @@ import Swarm.Language.Syntax.Import (ImportLoc)
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.TDVar
 import Swarm.Language.Types
+import Swarm.Language.Var (LocVar)
 
 makeLenses 'Syntax
 
@@ -117,7 +118,7 @@ pattern TDelay :: (SwarmType phase ~ ()) => Term phase -> Term phase
 pattern TDelay t = SDelay (RTerm t)
 
 -- | Match a TRcd without annotations.
-pattern TRcd :: (SwarmType phase ~ ()) => [(LocVar, Maybe (Term phase))] -> Term Raw
+pattern TRcd :: (SwarmType phase ~ ()) => [(LocVar, Maybe (Term phase))] -> Term phase
 pattern TRcd m <- SRcd ((map . second . fmap) _sTerm -> m)
   where
     TRcd m = SRcd ((map . second . fmap) RTerm m)
@@ -141,6 +142,6 @@ pattern TImportIn loc t = SImportIn loc (RTerm t)
 pattern TParens :: (SwarmType phase ~ ()) => Term phase -> Term phase
 pattern TParens t = SParens (RTerm t)
 
--- COMPLETE pragma tells GHC using this set of patterns is complete for Term Raw
+-- COMPLETE pragma tells GHC using this set of patterns is complete for Term
 
 {-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequire, TStock, TRequirements, TVar, TPair, TLam, TApp, TLet, TTydef, TBind, TDelay, TRcd, TProj, TAnnotate, TSuspend, TImportIn, TParens #-}

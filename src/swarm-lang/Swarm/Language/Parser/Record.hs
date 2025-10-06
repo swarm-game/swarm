@@ -10,7 +10,8 @@ module Swarm.Language.Parser.Record (
 
 import Swarm.Language.Parser.Core (Parser)
 import Swarm.Language.Parser.Lex (locTmVar, symbol)
-import Swarm.Language.Syntax.Loc (LocVar, lvVar)
+import Swarm.Language.Syntax.Loc (lvVar)
+import Swarm.Language.Var (LocVar)
 import Swarm.Util (failT, findDup, squote)
 import Text.Megaparsec (sepBy)
 

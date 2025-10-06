@@ -1076,7 +1076,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   SRcd m -> do
     m' <- traverse (itraverse $ \x -> infer . fromMaybe (RTerm (TVar (lvVar x)))) m
     let rcdTy = M.fromList $ map (lvVar *** (^. sType)) m'
-    return $ Syntax' l (SRcd ((map . second) Just m')) cs (UTyRcd rcdTy)
+    return $ Syntax l (SRcd ((map . second) Just m')) cs (UTyRcd rcdTy)
 
   -- Once we're typechecking, we don't need to keep around explicit
   -- parens any more
