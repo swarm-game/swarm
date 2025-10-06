@@ -90,9 +90,6 @@ import Swarm.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Util hiding (both)
 import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec)
-import System.Metrics.Counter qualified as Counter
-import System.Metrics.Distribution qualified as Distribution
-import System.Metrics.Gauge qualified as Gauge
 import Witch (From (from), into)
 import Prelude hiding (lookup)
 
