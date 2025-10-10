@@ -42,6 +42,10 @@ import Swarm.Pretty (prettyText)
 import Swarm.Util (Encoding (SystemLocale), readFileMayT, showT)
 import Swarm.Util.Graph (findCycle)
 import Witch (into)
+import Swarm.Language.InternCache
+import Control.Monad.IO.Class (MonadIO, liftIO)
+import System.IO.Unsafe (unsafePerformIO)
+import Swarm.Language.InternCache qualified as IC
 
 type ResLoc = ImportLoc Import.Resolved
 
@@ -168,6 +172,11 @@ resolveImports ::
   m (Set (ImportLoc Import.Resolved), Syntax Resolved)
 resolveImports parent = runAccum S.empty . traverseSyntax pure (resolveImport parent)
 
+-- | Cache imported modules. TODO: fix for module tree
+moduleCache :: (MonadIO m) => InternCache m (ImportLoc Import.Resolved) (Module Resolved)
+moduleCache = unsafePerformIO $ hoist liftIO <$> IC.newInternCache @IO @(ImportLoc Import.Resolved) @(Module Resolved) 
+{-# NOINLINE moduleCache #-}
+
 -- | Given a parent directory relative to which any local imports
 --   should be interpreted, load an import and all its imports,
 --   transitively.  Also return a canonicalized version of the import
@@ -185,31 +194,33 @@ resolveImport parent loc = do
   -- Compute the canonicalized location for the import, and record it
   canonicalLoc <- resolveImportLoc (unresolveImportDir parent <//> loc)
   add $ S.singleton canonicalLoc
+  
+  sendIO (IC.lookupCached moduleCache canonicalLoc) >>= \case
+    Just cachedModule -> do
+      sendIO $ putStr "C\a"
+      modify @(SourceMap Resolved) (M.insert canonicalLoc cachedModule)
+    Nothing -> M.lookup canonicalLoc <$> get @(SourceMap Resolved) >>= \case
+      Just _ -> pure () -- Already loaded - do nothing
+      Nothing -> do
+        -- Record this import loc in the source map using a temporary, empty module,
+        -- to prevent it from attempting to load itself recursively
+        modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module Nothing () mempty)
 
-  srcMap <- get @(SourceMap Resolved)
-  resMod <- case M.lookup canonicalLoc srcMap of
-    Just m -> pure m -- Already loaded - do nothing
-    Nothing -> do
-      -- Record this import loc in the source map using a temporary, empty module,
-      -- to prevent it from attempting to load itself recursively
-      modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module Nothing () mempty)
+        -- Read it from network/disk
+        mt <- readLoc canonicalLoc
 
-      -- Read it from network/disk
-      mt <- readLoc canonicalLoc
+        -- Recursively resolve any imports it contains
+        mres <- traverse (resolveImports (importDir canonicalLoc)) mt
+        -- sequence :: Maybe (Set a, b) -> (Set a, Maybe b)
+        let (imps, mt') = sequence mres
 
-      -- Recursively resolve any imports it contains
-      mres <- traverse (resolveImports (importDir canonicalLoc)) mt
-      -- sequence :: Maybe (Set a, b) -> (Set a, Maybe b)
-      let (imps, mt') = sequence mres
+        -- Finally, record the loaded module in the SourceMap.
+        let m = Module mt' () imps
+        modify @(SourceMap Resolved) (M.insert canonicalLoc m)
+        sendIO $ IC.insertCached moduleCache canonicalLoc m
 
-      -- Finally, record the loaded module in the SourceMap.
-      let m = Module mt' () imps
-      modify @(SourceMap Resolved) (M.insert canonicalLoc m)
-
-      pure m
-
-  -- Make sure imports are pure, i.e. contain ONLY defs + imports.
-  validateImport canonicalLoc resMod
+        -- Make sure imports are pure, i.e. contain ONLY defs + imports.
+        validateImport canonicalLoc m
 
   pure canonicalLoc
 
@@ -232,6 +243,11 @@ validateImport loc = maybe (pure ()) validate . moduleTerm
     TConst Noop -> pure ()
     t -> throwError $ ImpureImport loc (prettyText t)
 
+-- | Cache file contents for import location.
+fileCache :: (MonadIO m) => InternCache m (ImportLoc Import.Resolved) Text
+fileCache = unsafePerformIO $ hoist liftIO <$> IC.newInternCache @IO @(ImportLoc Import.Resolved) @Text 
+{-# NOINLINE fileCache #-}
+
 -- | Try to read and parse a term from a specific import location,
 --   either over the network or on disk.
 readLoc ::
@@ -239,26 +255,30 @@ readLoc ::
   ImportLoc Import.Resolved ->
   m (Maybe (Syntax Raw))
 readLoc loc = do
-  let path = locToFilePath loc
-      badImport :: Has (Throw SystemFailure) sig m => LoadingFailure -> m a
-      badImport = throwError . AssetNotLoaded (Data Script) path
-      withBadImport :: Has (Throw SystemFailure) sig m => (e -> LoadingFailure) -> Either e a -> m a
-      withBadImport f = either (badImport . f) pure
-
   -- Try to read the file from network/disk, depending on the anchor
-  src <- case importAnchor loc of
-    -- Read from network
-    Web_ {} -> do
-      -- Try to parse the URL
-      req <- parseRequest (into @String path) & withBadImport (BadURL . showT)
-      -- Send HTTP request
-      resp <- sendIO $ httpBS req
-      -- Try to decode the response
-      T.decodeUtf8' (getResponseBody resp) & withBadImport CanNotDecodeUTF8
-
-    -- Read from disk
-    _ -> sendIO (readFileMayT SystemLocale path) >>= maybe (badImport (DoesNotExist File)) pure
-
+  src <- sendIO (IC.lookupCached fileCache loc) >>= \case
+    Just cachedSrc -> pure cachedSrc
+    Nothing -> do
+      s <- case importAnchor loc of
+        Web_ {} -> readFromNet
+        _ -> readFromDisk
+      _ <- sendIO $ IC.insertCached fileCache loc s
+      pure s
   -- Finally, try to parse the contents
   readTerm' (defaultParserConfig & importLoc ?~ loc) src
     & withBadImport (SystemFailure . CanNotParseMegaparsec)
+
+ where
+  path = locToFilePath loc
+  badImport :: Has (Throw SystemFailure) sig m => LoadingFailure -> m a
+  badImport = throwError . AssetNotLoaded (Data Script) path
+  withBadImport :: Has (Throw SystemFailure) sig m => (e -> LoadingFailure) -> Either e a -> m a
+  withBadImport f = either (badImport . f) pure
+  readFromDisk = sendIO (readFileMayT SystemLocale path) >>= maybe (badImport (DoesNotExist File)) pure
+  readFromNet = do
+    -- Try to parse the URL
+    req <- parseRequest (into @String path) & withBadImport (BadURL . showT)
+    -- Send HTTP request
+    resp <- sendIO $ httpBS req
+    -- Try to decode the response
+    T.decodeUtf8' (getResponseBody resp) & withBadImport CanNotDecodeUTF8
