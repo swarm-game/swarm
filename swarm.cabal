@@ -376,6 +376,9 @@ common transformers
 common unicode-show
   build-depends: unicode-show >=0.1 && <0.2
 
+common unliftio
+  build-depends: unliftio >=0.2 && <0.3
+
 common unordered-containers
   build-depends: unordered-containers >=0.2.14 && <0.3
 
@@ -938,6 +941,8 @@ library swarm-util
     template-haskell,
     text,
     transformers,
+    unliftio,
+    unordered-containers,
     vector,
     witch,
     witherable,
@@ -951,6 +956,7 @@ library swarm-util
     Swarm.Effect.Metric
     Swarm.Effect.Time
     Swarm.Failure
+    Swarm.Language.InternCache
     Swarm.Language.Phase
     Swarm.Language.Syntax.Direction
     Swarm.Language.Syntax.Import
