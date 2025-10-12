@@ -18,15 +18,18 @@ module Swarm.Failure (
   OrderFileWarning (..),
 ) where
 
-import Control.Carrier.Throw.Either (ThrowC (..), runThrow)
+import Control.Carrier.Error.Either (ErrorC (..), runError)
 import Control.Monad ((<=<))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Encoding.Error qualified as T
 import Data.Void
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Prettyprinter (Pretty (pretty), nest, squotes, vcat, (<+>))
+import Swarm.Language.Syntax.Import (ImportLoc, ImportPhase (..))
+import Swarm.Language.Syntax.Loc (SrcLoc)
 import Swarm.Pretty (BulletList (..), PrettyPrec (..), ppr, prettyShowLow, prettyString)
 import Swarm.Util (showLowT)
 import Text.Megaparsec (ParseErrorBundle, errorBundlePretty)
@@ -51,7 +54,9 @@ data Entry = Directory | File
 data LoadingFailure
   = DoesNotExist Entry
   | EntryNot Entry
+  | CanNotDecodeUTF8 T.UnicodeException
   | CanNotParseYaml ParseException
+  | BadURL Text
   | Duplicate AssetData Text
   | SystemFailure SystemFailure
   deriving (Show)
@@ -59,10 +64,12 @@ data LoadingFailure
 -- ~~~~ Note [Pretty-printing typechecking errors]
 --
 -- It would make sense to store a CheckErr in DoesNotTypecheck;
--- however, Swarm.Failure is imported in lots of places, and
--- CheckErr can contain high-level things like TTerms etc., so it
--- would lead to an import cycle.  Instead, we choose to just
--- pretty-print typechecking errors before storing them here.
+-- however, Swarm.Failure is imported in lots of places, and CheckErr
+-- can contain high-level things like TTerms etc., so it would lead to
+-- an import cycle.  Instead, we choose to just pretty-print
+-- typechecking errors before storing them here; we also store the
+-- SrcLoc for use in indicating the position of the error, e.g. in the
+-- LSP server.
 
 -- | A warning that arose while processing an @00-ORDER.txt@ file.
 data OrderFileWarning
@@ -78,15 +85,19 @@ data SystemFailure
   | ScenarioNotFound FilePath
   | OrderFileWarning FilePath OrderFileWarning
   | CanNotParseMegaparsec (ParseErrorBundle Text Void)
-  | DoesNotTypecheck Text -- See Note [Pretty-printing typechecking errors]
+  | DoesNotTypecheck SrcLoc Text -- See Note [Pretty-printing typechecking errors]
+  | ImportCycle [FilePath]
+  | EmptyTerm
+  | DisallowedImport (ImportLoc Raw)
+  | ImpureImport (ImportLoc Resolved) Text -- See Note [Pretty-printing typechecking errors]
   | CustomFailure Text
   deriving (Show)
 
 ------------------------------------------------------------
 -- Basic error handling
 
-simpleErrorHandle :: ThrowC SystemFailure IO a -> IO a
-simpleErrorHandle = either (fail . prettyString) pure <=< runThrow
+simpleErrorHandle :: ErrorC SystemFailure IO a -> IO a
+simpleErrorHandle = either (fail . prettyString) pure <=< runError
 
 ------------------------------------------------------------
 -- Pretty-printing
@@ -109,10 +120,17 @@ instance PrettyPrec LoadingFailure where
   prettyPrec prec = \case
     DoesNotExist e -> "The" <+> ppr e <+> "is missing!"
     EntryNot e -> "The entry is not a" <+> ppr e <> "!"
+    CanNotDecodeUTF8 (T.DecodeError s _) ->
+      nest 2 . vcat $
+        "UTF-8 decoding failure:"
+          : [pretty s]
+    CanNotDecodeUTF8 _ ->
+      "Encoding failure while decoding UTF-8?? This should never happen."
     CanNotParseYaml p ->
       nest 2 . vcat $
         "Parse failure:"
           : map pretty (T.lines (into @Text (prettyPrintParseException p)))
+    BadURL err -> "Bad URL:" <+> pretty err
     Duplicate thing duped -> "Duplicate" <+> ppr thing <> ":" <+> squotes (pretty duped)
     SystemFailure g -> prettyPrec prec g
 
@@ -139,12 +157,16 @@ instance PrettyPrec SystemFailure where
         [ "Warning: while processing" <+> pretty orderFile <> ":"
         , ppr w
         ]
-    CanNotParseMegaparsec p ->
+    CanNotParseMegaparsec p -> pretty (errorBundlePretty p)
+    DoesNotTypecheck _ t -> pretty t
+    ImportCycle imps ->
+      ppr $ BulletList "Imports form a cycle:" (map (into @Text) imps)
+    EmptyTerm -> "Term was only whitespace"
+    DisallowedImport _imp -> "Import is not allowed here"
+    ImpureImport imp t ->
       nest 2 . vcat $
-        "Parse failure:"
-          : map pretty (T.lines (into @Text (errorBundlePretty p)))
-    DoesNotTypecheck t ->
-      nest 2 . vcat $
-        "Parse failure:"
-          : map pretty (T.lines t)
+        [ "While processing import" <+> ppr imp <> ":"
+        , "Imported modules must only contain imports + definitions, but found:"
+        , squotes (pretty t)
+        ]
     CustomFailure m -> pretty m

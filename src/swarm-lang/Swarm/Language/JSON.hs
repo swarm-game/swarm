@@ -1,4 +1,6 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -8,33 +10,38 @@
 -- to put them all here to avoid circular module dependencies.
 module Swarm.Language.JSON where
 
-import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON, withText)
+import Control.Lens (view)
+import Data.Aeson (FromJSON (..), ToJSON (..), genericToJSON, withText)
 import Data.Aeson qualified as Ae
-import Swarm.Language.Pipeline (processTermEither)
-import Swarm.Language.Syntax (Term)
-import Swarm.Language.Syntax.Pattern (Syntax, TSyntax)
+import Data.Map qualified as M
+import GHC.Generics (Generic)
+import Swarm.Language.Load (Module, ModuleCtx, ModuleImports, SyntaxWithImports (..))
+import Swarm.Language.Parser (readNonemptyTerm)
+import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (Raw), SwarmType, Syntax, Term, Unresolvable, sTerm)
 import Swarm.Language.Value (Env, Value (..))
-import Swarm.Pretty (prettyText)
+import Swarm.Pretty (PrettyPrec, prettyText)
 import Swarm.Util.JSON (optionsMinimize)
 import Witch (into)
 
-instance FromJSON TSyntax where
-  parseJSON = withText "Term" $ either (fail . into @String) return . processTermEither
+instance FromJSON (Term Raw) where
+  parseJSON = withText "Term" $ either (fail . into @String) (pure . view sTerm) . readNonemptyTerm
 
-instance ToJSON TSyntax where
+instance FromJSON (Syntax Raw) where
+  parseJSON = withText "Syntax" $ either (fail . into @String) pure . readNonemptyTerm
+
+instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => ToJSON (Term phase) where
   toJSON = Ae.String . prettyText
 
-instance FromJSON Term where
-  parseJSON = genericParseJSON optionsMinimize
+instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => ToJSON (Syntax phase) where
+  toJSON = Ae.String . prettyText
 
-instance FromJSON Syntax where
-  parseJSON = genericParseJSON optionsMinimize
+deriving instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), ToJSON (ModuleCtx phase), ToJSON (ModuleImports phase), Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => ToJSON (Module phase)
 
-instance ToJSON Term where
-  toJSON = genericToJSON optionsMinimize
+instance FromJSON (SyntaxWithImports Raw) where
+  parseJSON v = SyntaxWithImports Nothing M.empty <$> parseJSON @(Syntax Raw) v
 
-instance ToJSON Syntax where
-  toJSON = genericToJSON optionsMinimize
+instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), ToJSON (ModuleCtx phase), ToJSON (ModuleImports phase), Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => ToJSON (SyntaxWithImports phase) where
+  toJSON = toJSON . getSyntax
 
 instance ToJSON Value where
   toJSON = genericToJSON optionsMinimize

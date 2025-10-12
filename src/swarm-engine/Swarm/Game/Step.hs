@@ -11,6 +11,8 @@
 -- Facilities for stepping the robot CESK machines, /i.e./ the actual
 -- interpreter for the Swarm language.
 --
+-- TODO (#495): get rid of IO in Swarm.Game.Step
+--
 -- == Note on the IO:
 --
 -- The only reason we need @IO@ is so that robots can run programs
@@ -80,17 +82,18 @@ import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
 import Swarm.Game.Tick
 import Swarm.Language.Capability
+import Swarm.Language.Load (SyntaxWithImports, moduleTerm)
 import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
-import Swarm.Language.TDVar (tdVarName)
-import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
+import Swarm.Language.WithType (WithType (..))
 import Swarm.Log
 import Swarm.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Util hiding (both)
 import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec)
-import Witch (From (from))
+import Witch (From (from), into)
+import Prelude hiding (lookup)
 
 -- | GameState with support for IO and Time effect
 type HasGameStepState sig m =
@@ -170,7 +173,7 @@ finishGameTick =
 
 -- | Insert the robot back to robot map.
 -- Will selfdestruct or put the robot to sleep if it has that set.
-insertBackRobot :: Has (State GameState) sig m => RID -> Robot -> m ()
+insertBackRobot :: Has (State GameState) sig m => RID -> Robot Instantiated -> m ()
 insertBackRobot rn rob = do
   time <- use $ temporal . ticks
   if rob ^. selfDestruct
@@ -205,7 +208,7 @@ runRobotIDs robotNames = do
     mr <- uses (robotInfo . robotMap) (IM.lookup rn)
     forM_ mr (stepOneRobot rn)
  where
-  stepOneRobot :: HasGameStepState sig m => RID -> Robot -> m ()
+  stepOneRobot :: HasGameStepState sig m => RID -> Robot Instantiated -> m ()
   stepOneRobot rn rob = tickRobot rob >>= insertBackRobot rn
 
 -- |
@@ -310,7 +313,7 @@ singleStep ss focRID robotSet = do
  where
   h = hypotheticalRobot (Out VUnit emptyStore []) 0
   debugLog txt = do
-    m <- evalState @Robot h $ createLogEntry RobotError Debug txt
+    m <- evalState @(Robot Instantiated) h $ createLogEntry RobotError Debug txt
     emitMessage m
 
 -- | Check if the winning condition for the current objective is met.
@@ -324,8 +327,8 @@ hypotheticalWinCheck' =
 -- objectives to evaluate for their completion
 data CompletionsWithExceptions = CompletionsWithExceptions
   { exceptions :: [Text]
-  , completions :: ObjectiveCompletion
-  , completionAnnouncementQueue :: [OB.Objective]
+  , completions :: ObjectiveCompletion Elaborated
+  , completionAnnouncementQueue :: [OB.Objective Elaborated]
   -- ^ Upon completion, an objective is enqueued.
   -- It is dequeued when displayed on the UI.
   }
@@ -350,7 +353,7 @@ data CompletionsWithExceptions = CompletionsWithExceptions
 hypotheticalWinCheck ::
   HasGameStepState sig m =>
   WinStatus ->
-  ObjectiveCompletion ->
+  ObjectiveCompletion Elaborated ->
   m ()
 hypotheticalWinCheck ws oc = do
   em <- use $ landscape . terrainAndEntities . entityMap
@@ -436,7 +439,7 @@ hypotheticalWinCheck ws oc = do
 
   -- Log exceptions in the message queue so we can check for them in tests
   handleException exnText = do
-    m <- evalState @Robot h $ createLogEntry RobotError Critical exnText
+    m <- evalState @(Robot Instantiated) h $ createLogEntry RobotError Critical exnText
     emitMessage m
    where
     h = hypotheticalRobot (Out VUnit emptyStore []) 0
@@ -446,14 +449,14 @@ evalT ::
   ( HasGameStepState sig m
   , Has (Throw Exn) sig m
   ) =>
-  TSyntax ->
+  SyntaxWithImports Elaborated ->
   m Value
 evalT = evaluateCESK . initMachine
 
 -- | Create a special robot to check some hypothetical, for example the win condition.
 --
 -- Use ID (-1) so it won't conflict with any robots currently in the robot map.
-hypotheticalRobot :: CESK -> TimeSpec -> Robot
+hypotheticalRobot :: CESK -> TimeSpec -> Robot Instantiated
 hypotheticalRobot m =
   instantiateRobot (Just m) (-1)
     . mkRobot
@@ -500,7 +503,7 @@ runCESK cesk = case finalValue cesk of
 -- | Print a showable value via the robot's log.
 --
 -- Useful for debugging.
-traceLogShow :: (Has (State GameState) sig m, Has (State Robot) sig m, Show a) => a -> m ()
+traceLogShow :: (Has (State GameState) sig m, Has (State (Robot Instantiated)) sig m, Show a) => a -> m ()
 traceLogShow = void . traceLog Logged Info . from . show
 
 ------------------------------------------------------------
@@ -510,7 +513,7 @@ traceLogShow = void . traceLog Logged Info . from . show
 -- | Run a robot for one tick, which may consist of up to
 --   'robotStepsPerTick' CESK machine steps and at most one tangible
 --   command execution, whichever comes first.
-tickRobot :: HasGameStepState sig m => Robot -> m Robot
+tickRobot :: HasGameStepState sig m => Robot Instantiated -> m (Robot Instantiated)
 tickRobot r = do
   steps <- use $ temporal . robotStepsPerTick
   tickRobotRec (r & activityCounts . tickStepBudget .~ steps)
@@ -519,7 +522,7 @@ tickRobot r = do
 --   robot is actively running and still has steps left, and if so
 --   runs it for one step, then calls itself recursively to continue
 --   stepping the robot.
-tickRobotRec :: HasGameStepState sig m => Robot -> m Robot
+tickRobotRec :: HasGameStepState sig m => Robot Instantiated -> m (Robot Instantiated)
 tickRobotRec r = do
   time <- use $ temporal . ticks
   case wantsToStep time r && (r ^. runningAtomic || r ^. activityCounts . tickStepBudget > 0) of
@@ -528,7 +531,7 @@ tickRobotRec r = do
 
 -- | Single-step a robot by decrementing its 'tickStepBudget' counter and
 --   running its CESK machine for one step.
-stepRobot :: HasGameStepState sig m => Robot -> m Robot
+stepRobot :: HasGameStepState sig m => Robot Instantiated -> m (Robot Instantiated)
 stepRobot r = do
   (r', cesk') <- runState (r & activityCounts . tickStepBudget -~ 1) (stepCESK (r ^. machine))
   t <- use $ temporal . ticks
@@ -555,7 +558,7 @@ data SKpair = SKpair Store Cont
 -- Compare to "withExceptions".
 processImmediateFrame ::
   ( HasGameStepState sig m
-  , Has (State Robot) sig m
+  , Has (State (Robot Instantiated)) sig m
   ) =>
   Value ->
   SKpair ->
@@ -572,7 +575,7 @@ processImmediateFrame v (SKpair s k) unreliableComputation = do
 --   machine state and figure out a single next step.
 stepCESK ::
   ( HasGameStepState sig m
-  , Has (State Robot) sig m
+  , Has (State (Robot Instantiated)) sig m
   ) =>
   CESK ->
   m CESK
@@ -697,11 +700,11 @@ stepCESK cesk = case cesk of
   Out v1 s (FLet x mtr t2 e : k) -> do
     let e' = case mtr of
           Nothing -> addValueBinding x v1 e
-          Just (ty, req) -> addBinding x (Typed v1 ty req) e
+          Just (ty, req) -> addBinding x (WithType v1 ty req) e
     return $ In t2 e' s k
   -- To evaluate a tydef, insert it into the context and proceed to
   -- evaluate the body.
-  In (TTydef x _ tdInfo t1) e s k -> return $ In t1 (maybe id (addTydef (tdVarName x)) tdInfo e) s k
+  In (TTydef x _ tdInfo t1) e s k -> return $ In t1 (maybe id (addTydef x) tdInfo e) s k
   -- Bind expressions don't evaluate: just package it up as a value
   -- until such time as it is to be executed.
   In (TBind mx mty mreq t1 t2) e s k -> return $ Out (VBind mx mty mreq t1 t2 e) s k
@@ -714,6 +717,35 @@ stepCESK cesk = case cesk of
   -- If we see a primitive application of suspend, package it up as
   -- a value until it's time to execute.
   In (TSuspend t) e s k -> return $ Out (VSuspend t e) s k
+  -- Evaluate the code corresponding to an import.
+  In (TImportIn loc t) e s k -> do
+    return $ case M.lookup loc (e ^. envSourceMap) of
+      -- The import should have already been typechecked at this point, so
+      -- if it's not found in the source map, there must be a bug somewhere.
+      Nothing ->
+        let resolvedImports
+              | null (e ^. envSourceMap) = ["  (SourceMap is empty)"]
+              | otherwise =
+                  "  Resolved imports:"
+                    : map
+                      (T.append "  - " . into @Text . locToFilePath)
+                      (M.keys $ e ^. envSourceMap)
+
+            errMsg =
+              T.unlines $
+                T.append "Import not found: " (into @Text (locToFilePath loc)) : resolvedImports
+         in Up (Fatal errMsg) s k
+      Just mmod -> case moduleTerm mmod of
+        -- In theory there could be an import of an empty module
+        Nothing -> In t e s k
+        -- To evaluate an import:
+        --   (1) stick a 'suspend' at the end of the term
+        --     corresponding to the imported module, so we can save the resulting environment
+        --   (2) push an FImport frame on the stack to continue with the
+        --     body in the context of the input once we're done processing it.
+        Just m -> In (insertSuspend $ erase m ^. sTerm) e s (FImport t : k)
+  -- XXX keep a map from imports to corresponding Env, don't re-evaluate if it's already
+  -- in the map.  To make this sound, need to disallow all but defs in an import.
   -- Ignore explicit parens.
   In (TParens t) e s k -> return $ In t e s k
   ------------------------------------------------------------
@@ -782,8 +814,18 @@ stepCESK cesk = case cesk of
   Out v s (FBind (Just x) mtr t2 e : k) -> do
     let e' = case mtr of
           Nothing -> addValueBinding x v e
-          Just (ty, reqs) -> addBinding x (Typed v ty reqs) e
+          Just (ty, reqs) -> addBinding x (WithType v ty reqs) e
     return $ In t2 e' s (FExec : k)
+  -- If we have suspended at the end of an import, go ahead and
+  -- evaluate the suspend without waiting for an FExec, since the body
+  -- of the import may or may not be something we need to execute
+  -- (e.g. "import blah in x + 1" vs "import blah in move; foo")
+  Out (VSuspend t e) s (FImport body : k) -> return $ In t e s (FSuspend e : FImport body : k)
+  -- This case shouldn't happen: we will always insert a call to
+  -- 'suspend' at the end of an import, so we will reach the 'FImport'
+  -- frame in a 'Suspended' state, so we can restore the suspended
+  -- environment.
+  Out _ s (FImport _ : _) -> badMachineState s "FImport frame in non-suspended state"
   -- To execute a suspend instruction, evaluate its argument and then
   -- suspend.
   Out (VSuspend t e) s (FExec : k) -> return $ In t e s (FSuspend e : k)
@@ -817,8 +859,12 @@ stepCESK cesk = case cesk of
   Suspended v e s (FBind (Just x) mtr t2 _ : k) -> do
     let e' = case mtr of
           Nothing -> addValueBinding x v e
-          Just (ty, reqs) -> addBinding x (Typed v ty reqs) e
+          Just (ty, reqs) -> addBinding x (WithType v ty reqs) e
     return $ In t2 e' s (FExec : k)
+  -- If we we're suspended after processing an import, resume by
+  -- evaluating the body of the import in the suspended context we got
+  -- after processing the import.
+  Suspended _ e s (FImport t : k) -> return $ In t e s k
   -- Otherwise, if we're suspended with nothing else left to do,
   -- return the machine unchanged (but throw away the rest of the
   -- continuation stack).
@@ -896,19 +942,19 @@ stepCESK cesk = case cesk of
 runChildProg ::
   (HasRobotStepState sig m, Has (Lift IO) sig m) =>
   Store ->
-  Robot ->
+  Robot Instantiated ->
   Value ->
   m Value
 runChildProg s r prog = do
   g <- get @GameState
-  evalState @Robot (r & systemRobot .~ True) . evalState @GameState g $
+  evalState @(Robot Instantiated) (r & systemRobot .~ True) . evalState @GameState g $
     runCESK (Out prog s [FApp (VCApp Force []), FExec])
 
 -- | Execute a constant, catching any exception thrown and returning
 --   it via a CESK machine state.
 evalConst ::
   ( HasGameStepState sig m
-  , Has (State Robot) sig m
+  , Has (State (Robot Instantiated)) sig m
   ) =>
   Const ->
   [Value] ->
