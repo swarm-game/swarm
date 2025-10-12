@@ -300,7 +300,7 @@ runBaseCode uinput = do
   resetREPL T.empty (CmdPrompt [])
   env <- fromMaybe emptyEnv <$> preuse (gameState . baseEnv)
 
-  res <- liftIO $ Fused.runError @SystemFailure $ processSource uinput (Just env)
+  res <- liftIO $ Fused.runError @SystemFailure $ processSource Nothing uinput (Just env)
 
   case res of
     Right mt -> do

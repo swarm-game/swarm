@@ -135,7 +135,7 @@ type instance RobotLogUpdatedMember Typed = ()
 type instance RobotLogUpdatedMember Elaborated = ()
 
 type family RobotMachine (phase :: Phase) :: Data.Kind.Type
-type instance RobotMachine Raw = Maybe (Text, Syntax Raw)
+type instance RobotMachine Raw = Maybe (Maybe FilePath, Text, Syntax Raw)
 type instance RobotMachine Resolved = Maybe (SyntaxWithImports Resolved)
 type instance RobotMachine Inferred = Maybe (SyntaxWithImports Inferred)
 type instance RobotMachine Typed = Maybe (SyntaxWithImports Typed)
@@ -168,7 +168,7 @@ data Robot (phase :: Phase) = Robot
 instance Processable Robot where
   process (Robot e d c l upd loc i p h m s sd a ra u ca) =
     Robot e d c l upd loc i p h
-      <$> traverse (\(src, t) -> processTerm src t Nothing) m
+      <$> traverse (\(prov, src, t) -> processTerm prov src t Nothing) m
       <*> pure s
       <*> pure sd
       <*> pure a
@@ -399,8 +399,15 @@ instance FromJSONE TerrainEntityMaps (Robot Raw) where
 
     -- Parse the robot program but also store the original text, for
     -- use in displaying error messages while typechecking
+
+    -- XXX Note the use of Nothing below in (Nothing,txt,) .  This means
+    -- the provenance of the code is recorded as Nothing.  If we could
+    -- obtain here the location of the .yaml file from which this JSON was loaded,
+    -- we could use that as the provenance, so that any local imports in the program
+    -- would be interpreted relative to the location of the .yaml file.
+    -- Not currently sure how to do that, though.
     prog <- case KM.lookup "program" v of
-      Just progV -> liftE $ Ae.withText "program" (\txt -> (fmap . fmap) (txt,) (v .:? "program")) progV
+      Just progV -> liftE $ Ae.withText "program" (\txt -> (fmap . fmap) (Nothing,txt,) (v .:? "program")) progV
       _ -> pure Nothing
 
     mkRobot Nothing

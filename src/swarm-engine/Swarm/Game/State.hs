@@ -164,7 +164,7 @@ parseCodeFile ::
   m CodeToRun
 parseCodeFile filepath = do
   contents <- sendIO $ TIO.readFile filepath
-  mpt <- sendIO . runError $ requireNonEmptyTerm =<< processSource contents Nothing
+  mpt <- sendIO . runError $ requireNonEmptyTerm =<< processSource (Just filepath) contents Nothing
   pt <- either (throwError @SystemFailure) pure mpt
   let srcLoc = getSyntax pt ^. sLoc
       strippedText = stripSrc srcLoc contents
