@@ -1232,7 +1232,7 @@ execConst runChildProg c vs s k = do
 
         f <- msum (muser ++ msys) `isJustOrFail` ["File not found:", fileName]
 
-        res <- sendIO . runError @SystemFailure $ processSource (into @Text f) Nothing
+        res <- sendIO . runError @SystemFailure $ processSource (Just filePath) (into @Text f) Nothing
         mt <- res `isRightOr` \err -> cmdExn Run ["Error in", fileName, "\n", prettyText err]
 
         case mt of

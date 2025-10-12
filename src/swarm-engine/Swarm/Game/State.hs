@@ -163,7 +163,7 @@ parseCodeFile ::
   m CodeToRun
 parseCodeFile filepath = do
   contents <- sendIO (readFileMayT SystemLocale filepath) ??? throwError (AssetNotLoaded (Data Script) filepath (DoesNotExist File))
-  mpt <- sendIO . runError $ requireNonEmptyTerm =<< processSource contents Nothing
+  mpt <- sendIO . runError $ requireNonEmptyTerm =<< processSource (Just filepath) contents Nothing
   pt <- either (throwError @SystemFailure) pure mpt
   let srcLoc = getSyntax pt ^. sLoc
       strippedText = stripSrc srcLoc contents

@@ -86,10 +86,11 @@ validateSwarmCode doc version content = do
   -- However, getting rid of this seems to break error highlighting.
   flushDiagnosticsBySource 0 (Just diagnosticSourcePrefix)
 
-  res <- liftIO . runError $ processSource content Nothing
+  let provenance = fmap LSP.fromNormalizedFilePath . LSP.uriToNormalizedFilePath $ doc
+  res <- liftIO . runError $ processSource provenance content Nothing
   let (errors, warnings) = case res of
         Right Nothing -> ([], [])
-        Right (Just (SyntaxWithImports _ term)) -> ([], unusedWarnings)
+        Right (Just (SyntaxWithImports _ _ term)) -> ([], unusedWarnings)
          where
           VU.Usage _ problems = VU.getUsage mempty (eraseRaw term)
           unusedWarnings = mapMaybe (VU.toErrPos content) problems

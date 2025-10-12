@@ -269,9 +269,9 @@ recogFoundHandler appStateRef = do
 
 codeRenderHandler :: Text -> Handler Text
 codeRenderHandler contents = do
-  res <- liftIO . runError @SystemFailure $ requireNonEmptyTerm =<< processSource contents Nothing
+  res <- liftIO . runError @SystemFailure $ requireNonEmptyTerm =<< processSource Nothing contents Nothing
   pure $ case res of
-    Right (SyntaxWithImports _ t) ->
+    Right (SyntaxWithImports _ _ t) ->
       into @Text . drawTree . fmap (T.unpack . prettyTextLine) . para Node $ t
     Left x -> prettyText x
 

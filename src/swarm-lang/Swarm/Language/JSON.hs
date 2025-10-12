@@ -38,7 +38,7 @@ instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFo
 deriving instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), ToJSON (ModuleCtx phase), ToJSON (ModuleImports phase), Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => ToJSON (Module phase)
 
 instance FromJSON (SyntaxWithImports Raw) where
-  parseJSON v = SyntaxWithImports M.empty <$> parseJSON @(Syntax Raw) v
+  parseJSON v = SyntaxWithImports Nothing M.empty <$> parseJSON @(Syntax Raw) v
 
 instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), ToJSON (ModuleCtx phase), ToJSON (ModuleImports phase), Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => ToJSON (SyntaxWithImports phase) where
   toJSON = toJSON . getSyntax

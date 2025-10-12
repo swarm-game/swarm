@@ -44,7 +44,7 @@ quoteTermExp :: String -> TH.ExpQ
 quoteTermExp (into @Text -> s) = do
   loc <- TH.location
   parsed <- runParserTH loc (fully sc parseTerm) s
-  processed <- TH.runIO . runError @SystemFailure $ processTerm s parsed Nothing
+  processed <- TH.runIO . runError @SystemFailure $ processTerm Nothing s parsed Nothing
   case processed of
     Left err -> failT [prettyText err]
     Right ptm -> dataToExpQ ((fmap liftText . cast) `extQ` antiTermExp) ptm

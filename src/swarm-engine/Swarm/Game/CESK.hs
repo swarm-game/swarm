@@ -333,7 +333,7 @@ cont = lens get set
 --   continuation; if the given term does not have a command type, we
 --   wrap it in @pure@.
 initMachine :: SyntaxWithImports Elaborated -> CESK
-initMachine (SyntaxWithImports srcMap t) = In (prepareTerm V.emptyEnv t) (V.envFromSrcMap srcMap) emptyStore [FExec]
+initMachine (SyntaxWithImports _ srcMap t) = In (prepareTerm V.emptyEnv t) (V.envFromSrcMap srcMap) emptyStore [FExec]
 
 -- | Load a program into an existing robot CESK machine: either
 --   continue from a suspended state, or, as a fallback, start from
@@ -342,7 +342,7 @@ initMachine (SyntaxWithImports srcMap t) = In (prepareTerm V.emptyEnv t) (V.envF
 --   Also insert a @suspend@ primitive at the end, so the resulting
 --   term is suitable for execution by the base (REPL) robot.
 continue :: SyntaxWithImports Elaborated -> CESK -> CESK
-continue (SyntaxWithImports srcMap t) = \case
+continue (SyntaxWithImports _ srcMap t) = \case
   -- The normal case is when we are continuing from a suspended state. We:
   --
   --   (1) insert a suspend call at the end of the term, so that in

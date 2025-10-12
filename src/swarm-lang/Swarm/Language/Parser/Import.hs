@@ -6,9 +6,11 @@
 -- Parsing records in the Swarm language.
 module Swarm.Language.Parser.Import (
   parseImportLocation,
+  parseImportLocationRaw,
 ) where
 
 import Control.Applicative.Combinators.NonEmpty (sepBy1)
+import Data.Functor (void)
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Swarm.Language.Parser.Core (Parser)
@@ -23,14 +25,17 @@ import Witch (into)
 -- | Parse an import location --- something like "~/foo/bar/baz.sw",
 --   or "https://github.com/bar/baz", etc.
 parseImportLocation :: Parser (ImportLoc Import.Raw)
-parseImportLocation =
-  lexeme . between (char '"') (char '"') $ do
-    anchor <- parseAnchor
-    cs <- importComponent `sepBy1` separator
-    pure $ ImportLoc (mkImportDir anchor (NE.init cs)) (NE.last cs)
+parseImportLocation = lexeme . between (char '"') (char '"') $ parseImportLocationRaw
+
+-- | Parse an import location, without the double quotes.
+parseImportLocationRaw :: Parser (ImportLoc Import.Raw)
+parseImportLocationRaw = do
+  anchor <- parseAnchor
+  cs <- importComponent `sepBy1` separator
+  pure $ ImportLoc (mkImportDir anchor (NE.init cs)) (NE.last cs)
  where
   importComponent :: Parser Text
-  importComponent = into @Text <$> someTill L.charLiteral (lookAhead (oneOf ("\"/\\" :: [Char])))
+  importComponent = into @Text <$> someTill L.charLiteral (eof <|> void (lookAhead (oneOf ("\"/\\" :: [Char]))))
 
   separator :: Parser Char
   separator = oneOf ['/', '\\']

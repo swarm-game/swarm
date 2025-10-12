@@ -25,12 +25,14 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
+import Data.Text (Text)
 import Data.Text.Encoding qualified as T
 import GHC.Generics (Generic)
 import Network.HTTP.Simple (getResponseBody, httpBS, parseRequest)
 import Swarm.Failure (Asset (..), AssetData (..), Entry (..), LoadingFailure (..), SystemFailure (..))
 import Swarm.Language.Parser (readTerm')
-import Swarm.Language.Parser.Core (defaultParserConfig, importLoc)
+import Swarm.Language.Parser.Core (defaultParserConfig, importLoc, runParser)
+import Swarm.Language.Parser.Import (parseImportLocationRaw)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Import hiding (ImportPhase (..))
 import Swarm.Language.Syntax.Import qualified as Import
@@ -89,9 +91,11 @@ instance Erasable Module where
 -- | A SourceMap associates canonical 'ImportLocation's to modules.
 type SourceMap phase = Map (ImportLoc (ImportPhaseFor phase)) (Module phase)
 
--- | An AST paired with information about its recursive imports.
+-- | An AST paired with information about its recursive imports and
+--   its provenance.
 data SyntaxWithImports phase = SyntaxWithImports
-  { getSourceMap :: SourceMap phase
+  { getProvenance :: Maybe FilePath
+  , getSourceMap :: SourceMap phase
   , getSyntax :: Syntax phase
   }
   deriving (Generic)
@@ -105,12 +109,23 @@ deriving instance (Ord (Anchor (ImportPhaseFor phase)), Data (Anchor (ImportPhas
 --   imports as well as a SourceMap containing all the loaded imports.
 resolve ::
   (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) =>
-  Syntax Raw -> m (SyntaxWithImports Resolved)
-resolve s = do
-  cur <- sendIO $ resolveImportDir currentDir
+  -- | Provenance of the source, and location relative to which
+  --   imports should be interpreted.  If Nothing, use the current
+  --   working directory.
+  Maybe FilePath ->
+  -- | Raw syntax to be resolved.
+  Syntax Raw ->
+  m (SyntaxWithImports Resolved)
+resolve prov s = do
+  cur <- sendIO . resolveImportDir $
+    case prov of
+      Nothing -> currentDir
+      Just fp -> case runParser parseImportLocationRaw (into @Text fp) of
+        Left _ -> currentDir
+        Right (loc, _) -> importDir loc
   (resMap, (_, s')) <- runState mempty . resolveImports cur $ s
   checkImportCycles resMap
-  pure $ SyntaxWithImports resMap s'
+  pure $ SyntaxWithImports prov resMap s'
 
 -- | Resolve a term without requiring any I/O, throwing an error if
 --   any 'import' statements are encountered.
