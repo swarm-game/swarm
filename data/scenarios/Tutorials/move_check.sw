@@ -3,12 +3,12 @@ def abs = \x. if (x >= 0) {x} {-x} end
 
 def open_door = create "door"; swap "door" end
 
-def λmatch = \f. \p. match p f end
+def lmatch = \f. \p. match p f end
 
 // TRICK:
 // we only check for base at this location
 // so we can sleep for as long as base will take to get here
-def get_dist = λmatch \l1. \l2. λmatch \bl1. \bl2.
+def get_dist = lmatch \l1. \l2. lmatch \bl1. \bl2.
   abs (l1 - bl1) + abs (l2 - bl2)
 end
 
