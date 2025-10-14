@@ -45,6 +45,10 @@
       , TestLanguagePipeline
       ]
     }
+  - {name: readFile, within: []}
+  - {name: writeFile, within: []}
+  - {name: Data.Text.IO.readFile, within: []}
+  - {name: Data.Text.IO.writeFile, within: []}
 
 # Add custom hints for this project
 #
