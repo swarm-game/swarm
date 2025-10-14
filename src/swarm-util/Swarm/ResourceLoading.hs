@@ -149,7 +149,7 @@ readAppData = do
         return . Left . AssetNotLoaded (Data AppAsset) d . SystemFailure . CustomFailure . T.pack $ show e
   let fs = filter ((== ".txt") . takeExtension) dirMembers
 
-  filesList <- sendIO $ forM fs (\f -> (into @Text (dropExtension f),) <$> readFileMayT (d </> f))
+  filesList <- sendIO $ forM fs (\f -> (into @Text (dropExtension f),) <$> readFileMayT UTF8 (d </> f))
   return $ M.fromList . mapMaybe sequenceA $ filesList
 
 initNameGenerator :: Has (Throw SystemFailure) sig m => Map Text Text -> m NameGenerator

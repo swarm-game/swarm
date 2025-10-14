@@ -1227,9 +1227,10 @@ execConst runChildProg c vs s k = do
         let filePath = into @String fileName
         sData <- throwToMaybe @SystemFailure $ getDataFileNameSafe Script filePath
         sDataSW <- throwToMaybe @SystemFailure $ getDataFileNameSafe Script (filePath <> ".sw")
-        mf <- sendIO $ mapM readFileMay $ [filePath, filePath <> ".sw"] <> catMaybes [sData, sDataSW]
+        muser <- sendIO . traverse (readFileMay SystemLocale) $ [filePath, filePath <> ".sw"]
+        msys <- sendIO . traverse (readFileMay UTF8) $ catMaybes [sData, sDataSW]
 
-        f <- msum mf `isJustOrFail` ["File not found:", fileName]
+        f <- msum (muser ++ msys) `isJustOrFail` ["File not found:", fileName]
 
         mt <-
           processTerm (into @Text f) `isRightOr` \err ->

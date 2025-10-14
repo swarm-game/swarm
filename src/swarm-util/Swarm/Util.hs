@@ -36,8 +36,11 @@ module Swarm.Util (
   applyN,
 
   -- * Directory utilities
+  Encoding(..),
   readFileMay,
   readFileMayT,
+  writeFile,
+  writeFileT,
   findAllWithExt,
   acquireAllWithExt,
 
@@ -112,6 +115,7 @@ import Data.Set qualified as S
 import Data.Text (Text, toUpper)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
+import Data.Text.IO.Utf8 qualified as T8
 import Data.Tuple (swap)
 import Data.Yaml
 import Language.Haskell.TH
@@ -121,9 +125,12 @@ import NLP.Minimorph.Util ((<+>))
 import System.Clock (TimeSpec)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (takeExtension, (</>))
+import System.IO hiding (readFile, writeFile)
 import System.IO.Error (catchIOError)
 import Witch (from)
-import Prelude hiding (Foldable (..))
+import Witherable (wither)
+import Prelude hiding (Foldable (..), readFile, writeFile)
+import Prelude qualified
 
 infixr 1 ?
 infix 4 %%=, <+=, <%=, <<.=, <>=
@@ -339,15 +346,46 @@ applyN 0 _ = id
 applyN n f = applyN (n - 1) f . f
 
 ------------------------------------------------------------
--- Directory stuff
+-- File I/O + directory processing
 
--- | Safely attempt to read a file.
-readFileMay :: FilePath -> IO (Maybe String)
-readFileMay = catchIO . readFile
+-- | What encoding should we use for reading + writing files?  We use
+--   the system locale for user-written .sw files, and UTF8 for
+--   everything else.
+data Encoding = SystemLocale | UTF8
+  deriving (Eq, Ord, Read, Show)
 
--- | Safely attempt to (efficiently) read a file.
-readFileMayT :: FilePath -> IO (Maybe Text)
-readFileMayT = catchIO . T.readFile
+-- | Safely attempt to strictly read a file as a String.
+readFileMay :: Encoding -> FilePath -> IO (Maybe String)
+readFileMay = \case
+  SystemLocale -> catchIO . readFile'
+  UTF8 -> \path -> catchIO $ do
+    inputHandle <- openFile path ReadMode
+    hSetEncoding inputHandle utf8
+    contents <- hGetContents' inputHandle
+    hClose inputHandle
+    pure contents
+
+-- | Safely attempt to strictly read a file as Text.
+readFileMayT :: Encoding -> FilePath -> IO (Maybe Text)
+readFileMayT = \case
+  SystemLocale -> catchIO . T.readFile
+  UTF8 -> catchIO . T8.readFile
+
+-- | Write some 'String' data to a file.
+writeFile :: Encoding -> FilePath -> String -> IO ()
+writeFile = \case
+  SystemLocale -> Prelude.writeFile
+  UTF8 -> \path content -> do
+    outputHandle <- openFile path WriteMode
+    hSetEncoding outputHandle utf8
+    hPutStr outputHandle content
+    hClose outputHandle
+
+-- | Write some 'Text' data to a file.
+writeFileT :: Encoding -> FilePath -> Text -> IO ()
+writeFileT = \case
+  SystemLocale -> T.writeFile
+  UTF8 -> T8.writeFile
 
 -- | Recursively acquire all files in the given directory with the
 --   given extension, but does not read or open the file like 'acquireAllWithExt'.
@@ -363,12 +401,13 @@ findAllWithExt dir ext = do
   hasExt path = takeExtension path == ("." ++ ext)
 
 -- | Recursively acquire all files in the given directory with the
---   given extension, and their contents.
+--   given extension, and their contents.  Assume the files are
+--   encoded using UTF8.
 acquireAllWithExt :: FilePath -> String -> IO [(FilePath, String)]
-acquireAllWithExt dir ext = findAllWithExt dir ext >>= mapM addContent
+acquireAllWithExt dir ext = findAllWithExt dir ext >>= wither addContent
  where
-  addContent :: FilePath -> IO (FilePath, String)
-  addContent path = (,) path <$> readFile path
+  addContent :: FilePath -> IO (Maybe (FilePath, String))
+  addContent path = (fmap . fmap) (path,) (readFileMay UTF8 path)
 
 -- | Turns any IO error into Nothing.
 catchIO :: IO a -> IO (Maybe a)

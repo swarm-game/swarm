@@ -46,9 +46,12 @@
       ]
     }
   - {name: readFile, within: []}
-  - {name: writeFile, within: []}
-  - {name: Data.Text.IO.readFile, within: []}
-  - {name: Data.Text.IO.writeFile, within: []}
+  - {name: readFile', within: [Swarm.Util.readFileMay]}
+  - {name: writeFile, within: [Swarm.Util.writeFile]}
+  - {name: Data.Text.IO.readFile, within: [Swarm.Util.readFileMayT]}
+  - {name: Data.Text.IO.writeFile, within: [Swarm.Util.writeFileT]}
+  - {name: Data.Text.IO.Utf8.readFile, within: [Swarm.Util.readFileMayT]}
+  - {name: Data.Text.IO.Utf8.writeFile, within: [Swarm.Util.writeFileT]}
 
 # Add custom hints for this project
 #
