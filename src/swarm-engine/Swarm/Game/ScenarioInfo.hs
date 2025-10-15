@@ -70,7 +70,6 @@ import Swarm.Util (lookupEither)
 import Swarm.Util.Effect (warn, withThrow)
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
-import System.IO (readFile')
 import System.IO.Error (catchIOError)
 import Witch (into)
 
@@ -207,12 +206,10 @@ testingDirectory :: FilePath
 testingDirectory = "Testing"
 
 readOrderFile :: FilePath -> IO (Maybe [String])
-readOrderFile orderFile = fmap nonEmptyLines <$> readFileMaybe orderFile
+readOrderFile orderFile = fmap nonEmptyLines <$> readFileMay orderFile
  where
   nonEmptyLines :: String -> [String]
   nonEmptyLines = filter (not . null) . lines
-  readFileMaybe :: FilePath -> IO (Maybe String)
-  readFileMaybe path = (Just <$> readFile' path) `catchIOError` (\_ -> return Nothing)
 
 loadScenarioDir ::
   forall m sig.

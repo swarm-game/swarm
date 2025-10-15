@@ -20,19 +20,19 @@ import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Scientific (FPFormat (..), Scientific, formatScientific)
 import Data.Text qualified as T
-import Data.Text.IO qualified as TIO
 import Data.Vector qualified as V
 import Swarm.Doc.Schema.Arrangement
 import Swarm.Doc.Schema.Parse
 import Swarm.Doc.Schema.Refined
 import Swarm.Doc.Schema.SchemaType
 import Swarm.Doc.Wiki.Util
-import Swarm.Util (applyWhen, brackets, quote, showT)
+import Swarm.Util (applyWhen, brackets, quote, readFileMayT, showT, writeFileT)
 import System.Directory (listDirectory)
 import System.FilePath (splitExtension, (<.>), (</>))
 import Text.Pandoc
 import Text.Pandoc.Builder
 import Text.Pandoc.Walk (query)
+import Witherable (wither)
 
 scenariosDir :: FilePath
 scenariosDir = "data/scenarios"
@@ -135,7 +135,7 @@ parseSchemaFile stemAndExtension =
 
 loadFooterContent :: (FilePath, ToplevelSchema) -> IO SchemaData
 loadFooterContent (fp, schem) = do
-  xs <- mapM (TIO.readFile . (scenariosDir </>)) $ footerPaths schem
+  xs <- wither (readFileMayT UTF8 . (scenariosDir </>)) $ footerPaths schem
   parsedFooters <- mapM getMarkdown xs
   return $
     SchemaData
@@ -153,8 +153,11 @@ genScenarioSchemaDocs = do
     schemaTuples <- except $ traverse sequenceA xs
     things <- liftIO $ mapM loadFooterContent schemaTuples
     myMarkdown <- except $ genMarkdown things
-    docHeader <- liftIO $ TIO.readFile "data/scenarios/_doc-fragments/header.md"
-    liftIO . writeFile (docFragmentsDir </> "SCHEMA.md") . T.unpack $ docHeader <> myMarkdown
+    mdocHeader <- liftIO $ readFileMayT "data/scenarios/_doc-fragments/header.md"
+    case mdocHeader of
+      Nothing -> T.hPutStrLn stderr "Unable to read scenarios/_doc-fragments/header.md"
+      Just docHeader ->
+        liftIO . writeFileT (docFragmentsDir </> "SCHEMA.md") $ docHeader <> myMarkdown
 
   case result of
     Left e -> print $ unwords ["Failed:", T.unpack e]
