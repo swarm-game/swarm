@@ -36,7 +36,7 @@ module Swarm.Util (
   applyN,
 
   -- * Directory utilities
-  Encoding(..),
+  Encoding (..),
   readFileMay,
   readFileMayT,
   writeFile,

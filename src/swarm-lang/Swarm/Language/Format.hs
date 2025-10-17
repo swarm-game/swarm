@@ -23,7 +23,7 @@ import Swarm.Language.Parser.Core (LanguageVersion (..), defaultParserConfig, la
 import Swarm.Language.Parser.QQ (astQ)
 import Swarm.Language.Syntax
 import Swarm.Pretty (ppr)
-import Swarm.Util (Encoding (..), (?), readFileMayT, writeFileT)
+import Swarm.Util (Encoding (..), readFileMayT, writeFileT, (?))
 import System.Console.Terminal.Size qualified as Term
 import System.Exit (exitFailure)
 import System.IO (stderr)

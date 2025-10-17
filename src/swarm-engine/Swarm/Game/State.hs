@@ -130,7 +130,7 @@ import Swarm.Language.Pipeline (processTermEither)
 import Swarm.Language.Syntax (SrcLoc (..), TSyntax, sLoc)
 import Swarm.Language.Value (Env)
 import Swarm.Log
-import Swarm.Util (Encoding (..), applyWhen, uniq, readFileMayT)
+import Swarm.Util (Encoding (..), applyWhen, readFileMayT, uniq)
 import Swarm.Util.Lens (makeLensesNoSigs)
 
 newtype Sha1 = Sha1 String
