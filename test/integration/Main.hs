@@ -229,6 +229,7 @@ test file (Timed stype timed) =
 test file (Special stype timed shouldCheckBadErrors verify) =
   singletonTest $ ScenarioTestData timed file shouldCheckBadErrors (\g -> gameStateCheck stype g >> verify g)
 
+-- | A set of Scenario test configurations. The semigroup and monoid instances are left-biased.
 newtype TestData = TestData (S.Set ScenarioTestData)
   deriving newtype (Semigroup, Monoid)
 
@@ -245,10 +246,8 @@ gameStateCheck = \case
   Tutorial -> tutorialHasLog
   NonTutorial -> const $ pure ()
 
-discoverScenarios :: IO TestData
-discoverScenarios = do
-  scenarioList <- findAllWithExt "data/scenarios" "yaml"
-  pure . mconcat . map mkTest $ scenarioList
+defaultTestData :: [FilePath] -> TestData
+defaultTestData = foldMap mkTest
   where
     mkTest s = test s (DefaultTest $ isTutorial s)
 
