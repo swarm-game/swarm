@@ -39,7 +39,6 @@ module Swarm.Util (
   Encoding (..),
   readFileMay,
   readFileMayT,
-  writeFile,
   writeFileT,
   findAllWithExt,
   acquireAllWithExt,
@@ -129,7 +128,6 @@ import System.IO.Error (catchIOError)
 import Witch (from)
 import Witherable (wither)
 import Prelude hiding (Foldable (..), readFile, writeFile)
-import Prelude qualified
 
 infixr 1 ?
 infix 4 %%=, <+=, <%=, <<.=, <>=
@@ -294,7 +292,7 @@ tails1 =
   -- \* The only empty element of `tails xs` is the last one (by the definition of `tails`)
   -- \* Therefore, if we take all but the last element of `tails xs` i.e.
   --   `init (tails xs)`, we have a nonempty list of nonempty lists
-  NE.fromList . Prelude.map NE.fromList . List.init . List.tails . Foldable.toList
+  NE.fromList . map NE.fromList . List.init . List.tails . Foldable.toList
 
 -- | Attach a list at the beginning of a 'NonEmpty'.
 -- @since 4.16
@@ -371,10 +369,6 @@ readFileGeneric readFilePath readHandle = \case
     hClose inputHandle
     pure contents
 
--- | Write some 'String' data to a file.
-writeFile :: Encoding -> FilePath -> String -> IO ()
-writeFile = writeFileGeneric Prelude.writeFile hPutStr
-
 -- | Write some 'Text' data to a file.
 writeFileT :: Encoding -> FilePath -> Text -> IO ()
 writeFileT = writeFileGeneric T.writeFile T.hPutStr
@@ -404,11 +398,11 @@ findAllWithExt dir ext = do
 -- | Recursively acquire all files in the given directory with the
 --   given extension, and their contents.  Assume the files are
 --   encoded using UTF8.
-acquireAllWithExt :: FilePath -> String -> IO [(FilePath, String)]
+acquireAllWithExt :: FilePath -> String -> IO [(FilePath, Text)]
 acquireAllWithExt dir ext = findAllWithExt dir ext >>= wither addContent
  where
-  addContent :: FilePath -> IO (Maybe (FilePath, String))
-  addContent path = (fmap . fmap) (path,) (readFileMay UTF8 path)
+  addContent :: FilePath -> IO (Maybe (FilePath, Text))
+  addContent path = (fmap . fmap) (path,) (readFileMayT UTF8 path)
 
 -- | Turns any IO error into Nothing.
 catchIO :: IO a -> IO (Maybe a)
