@@ -115,7 +115,6 @@ import Data.Set qualified as S
 import Data.Text (Text, toUpper)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
-import Data.Text.IO.Utf8 qualified as T8
 import Data.Tuple (swap)
 import Data.Yaml
 import Language.Haskell.TH
@@ -356,36 +355,38 @@ data Encoding = SystemLocale | UTF8
 
 -- | Safely attempt to strictly read a file as a String.
 readFileMay :: Encoding -> FilePath -> IO (Maybe String)
-readFileMay = \case
-  SystemLocale -> catchIO . readFile'
-  UTF8 -> \path -> catchIO $ do
-    inputHandle <- openFile path ReadMode
-    hSetEncoding inputHandle utf8
-    contents <- hGetContents' inputHandle
-    hClose inputHandle
-    pure contents
+readFileMay = readFileGeneric readFile' hGetContents'
 
 -- | Safely attempt to strictly read a file as Text.
 readFileMayT :: Encoding -> FilePath -> IO (Maybe Text)
-readFileMayT = \case
-  SystemLocale -> catchIO . T.readFile
-  UTF8 -> catchIO . T8.readFile
+readFileMayT = readFileGeneric T.readFile T.hGetContents
+
+readFileGeneric :: (FilePath -> IO a) -> (Handle -> IO a) -> Encoding -> FilePath -> IO (Maybe a)
+readFileGeneric readFilePath readHandle = \case
+  SystemLocale -> catchIO . readFilePath
+  UTF8 -> \path -> catchIO $ do
+    inputHandle <- openFile path ReadMode
+    hSetEncoding inputHandle utf8
+    contents <- readHandle inputHandle
+    hClose inputHandle
+    pure contents
 
 -- | Write some 'String' data to a file.
 writeFile :: Encoding -> FilePath -> String -> IO ()
-writeFile = \case
-  SystemLocale -> Prelude.writeFile
-  UTF8 -> \path content -> do
-    outputHandle <- openFile path WriteMode
-    hSetEncoding outputHandle utf8
-    hPutStr outputHandle content
-    hClose outputHandle
+writeFile = writeFileGeneric Prelude.writeFile hPutStr
 
 -- | Write some 'Text' data to a file.
 writeFileT :: Encoding -> FilePath -> Text -> IO ()
-writeFileT = \case
-  SystemLocale -> T.writeFile
-  UTF8 -> T8.writeFile
+writeFileT = writeFileGeneric T.writeFile T.hPutStr
+
+writeFileGeneric :: (FilePath -> a -> IO ()) -> (Handle -> a -> IO ()) -> Encoding -> FilePath -> a -> IO ()
+writeFileGeneric writeFP writeHandle = \case
+  SystemLocale -> writeFP
+  UTF8 -> \path content -> do
+    outputHandle <- openFile path WriteMode
+    hSetEncoding outputHandle utf8
+    writeHandle outputHandle content
+    hClose outputHandle
 
 -- | Recursively acquire all files in the given directory with the
 --   given extension, but does not read or open the file like 'acquireAllWithExt'.
