@@ -161,7 +161,7 @@ parseCodeFile ::
   FilePath ->
   m CodeToRun
 parseCodeFile filepath = do
-  contents <- (sendIO $ readFileMayT SystemLocale filepath) ??? throwError (AssetNotLoaded (Data Script) filepath (DoesNotExist File))
+  contents <- sendIO (readFileMayT SystemLocale filepath) ??? throwError (AssetNotLoaded (Data Script) filepath (DoesNotExist File))
   pt <- either (throwError . CustomFailure) pure (processTermEither contents)
 
   let srcLoc = pt ^. sLoc
