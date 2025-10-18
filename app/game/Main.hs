@@ -25,7 +25,7 @@ import Swarm.TUI.Model (AppOpts (..), ColorMode (..), RunOpts (..))
 import Swarm.TUI.Model.DebugOption
 import Swarm.TUI.Model.KeyBindings (KeybindingPrint (..), showKeybindings)
 import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond)
-import Swarm.Util (writeFile)
+import Swarm.Util (Encoding (..), writeFileT)
 import Swarm.Version
 import Swarm.Web (defaultPort)
 import System.IO (hPrint, stderr)
