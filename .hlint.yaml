@@ -45,9 +45,9 @@
       , TestLanguagePipeline
       ]
     }
-  - {name: readFile, within: []}
+  - {name: readFile, within: [Lib, Main]}  # standalone-topography:Lib, tournament-host:Main
   - {name: readFile', within: [Swarm.Util.readFileMay]}
-  - {name: writeFile, within: [Swarm.Util.writeFile]}
+  - {name: writeFile, within: [Swarm.Util.writeFile, Lib]}
   - {name: Data.Text.IO.readFile, within: [Swarm.Util.readFileMayT]}
   - {name: Data.Text.IO.writeFile, within: [Swarm.Util.writeFileT]}
   - {name: Data.Text.IO.Utf8.readFile, within: [Swarm.Util.readFileMayT]}

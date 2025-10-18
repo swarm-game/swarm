@@ -9,7 +9,6 @@ module TestLSP (testLSP) where
 
 import Control.Monad (unless)
 import Data.Text (Text)
-import Data.Text.IO qualified as TIO
 import Swarm.Language.LSP.Hover (narrowToPosition)
 import Swarm.Language.LSP.VarUsage qualified as VU
 import Swarm.Language.Parser (readTerm)
@@ -17,6 +16,7 @@ import Swarm.Language.Parser.QQ
 import Swarm.Language.Syntax (Syntax' (Syntax'))
 import Swarm.Language.Syntax qualified as S
 import Swarm.Pretty (prettyString)
+import Swarm.Util (Encoding (..), readFileMayT)
 import System.FilePath ((</>))
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -157,7 +157,7 @@ testLSP =
  where
   checkFile :: FilePath -> [UnusedVar] -> IO ()
   checkFile filename expectedWarnings = do
-    content <- TIO.readFile fullPath
+    content <- maybe (assertFailure "Can't read file!") pure =<< readFileMayT UTF8 fullPath
     let actualWarnings = getWarnings content
     assertEqual "failed" expectedWarnings actualWarnings
    where

@@ -66,11 +66,10 @@ import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Status
 import Swarm.ResourceLoading (getDataDirSafe, getSwarmSavePath)
-import Swarm.Util (lookupEither)
+import Swarm.Util (Encoding (..), lookupEither, readFileMay)
 import Swarm.Util.Effect (warn, withThrow)
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
-import System.IO.Error (catchIOError)
 import Witch (into)
 
 ------------------------------------------------------------
@@ -206,7 +205,7 @@ testingDirectory :: FilePath
 testingDirectory = "Testing"
 
 readOrderFile :: FilePath -> IO (Maybe [String])
-readOrderFile orderFile = fmap nonEmptyLines <$> readFileMay orderFile
+readOrderFile orderFile = fmap nonEmptyLines <$> readFileMay UTF8 orderFile
  where
   nonEmptyLines :: String -> [String]
   nonEmptyLines = filter (not . null) . lines

@@ -25,6 +25,7 @@ import Swarm.TUI.Model (AppOpts (..), ColorMode (..), RunOpts (..))
 import Swarm.TUI.Model.DebugOption
 import Swarm.TUI.Model.KeyBindings (KeybindingPrint (..), showKeybindings)
 import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond)
+import Swarm.Util (writeFile)
 import Swarm.Version
 import Swarm.Web (defaultPort)
 import System.IO (hPrint, stderr)
@@ -224,7 +225,7 @@ printKeybindings initialize p = do
   (iniExists, ini) <- getSwarmConfigIniFile initialize
   when initialize $ do
     kbi <- showKeybindings IniPrint
-    T.writeFile ini kbi
+    writeFileT SystemLocale ini kbi
   let iniState
         | iniExists && initialize = "has been updated"
         | iniExists = "is"

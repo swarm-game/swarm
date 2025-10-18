@@ -1021,6 +1021,7 @@ library swarm-doc
     swarm:swarm-lang,
     swarm:swarm-scenario,
     swarm:swarm-util,
+    witherable,
 
   hs-source-dirs: src/swarm-doc
   ghc-options:

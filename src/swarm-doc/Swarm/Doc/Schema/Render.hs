@@ -20,15 +20,17 @@ import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Scientific (FPFormat (..), Scientific, formatScientific)
 import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import Data.Vector qualified as V
 import Swarm.Doc.Schema.Arrangement
 import Swarm.Doc.Schema.Parse
 import Swarm.Doc.Schema.Refined
 import Swarm.Doc.Schema.SchemaType
 import Swarm.Doc.Wiki.Util
-import Swarm.Util (applyWhen, brackets, quote, readFileMayT, showT, writeFileT)
+import Swarm.Util (Encoding (..), applyWhen, brackets, quote, readFileMayT, showT, writeFileT)
 import System.Directory (listDirectory)
 import System.FilePath (splitExtension, (<.>), (</>))
+import System.IO (stderr)
 import Text.Pandoc
 import Text.Pandoc.Builder
 import Text.Pandoc.Walk (query)
@@ -153,11 +155,11 @@ genScenarioSchemaDocs = do
     schemaTuples <- except $ traverse sequenceA xs
     things <- liftIO $ mapM loadFooterContent schemaTuples
     myMarkdown <- except $ genMarkdown things
-    mdocHeader <- liftIO $ readFileMayT "data/scenarios/_doc-fragments/header.md"
-    case mdocHeader of
+    mdocHeader <- liftIO $ readFileMayT UTF8 "data/scenarios/_doc-fragments/header.md"
+    liftIO $ case mdocHeader of
       Nothing -> T.hPutStrLn stderr "Unable to read scenarios/_doc-fragments/header.md"
       Just docHeader ->
-        liftIO . writeFileT (docFragmentsDir </> "SCHEMA.md") $ docHeader <> myMarkdown
+        writeFileT UTF8 (docFragmentsDir </> "SCHEMA.md") $ docHeader <> myMarkdown
 
   case result of
     Left e -> print $ unwords ["Failed:", T.unpack e]
