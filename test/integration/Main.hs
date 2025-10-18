@@ -83,6 +83,7 @@ import Swarm.TUI.Model (
 import Swarm.TUI.Model.DebugOption (DebugOption (LoadTestingScenarios))
 import Swarm.TUI.Model.StateUpdate (PersistentState (..), constructAppState, initPersistentState)
 import Swarm.Util (Encoding (..), applyWhen, findAllWithExt, readFileMayT)
+import Swarm.Util.Effect ((???))
 import Swarm.Util.RingBuffer qualified as RB
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.FilePath (splitDirectories)
@@ -147,7 +148,7 @@ exampleTests = testGroup "Test example" . map exampleTest
 exampleTest :: FilePath -> TestTree
 exampleTest path =
   testCase ("processTerm for contents of " ++ show path) $ do
-    content <- maybe (assertFailure "Can't read file!") pure =<< readFileMayT UTF8 path
+    content <- readFileMayT UTF8 path ??? assertFailure "Can't read file!"
     let value = processTerm content
     either (assertFailure . into @String) (const $ return ()) value
 

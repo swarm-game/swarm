@@ -131,6 +131,7 @@ import Swarm.Language.Syntax (SrcLoc (..), TSyntax, sLoc)
 import Swarm.Language.Value (Env)
 import Swarm.Log
 import Swarm.Util (Encoding (..), applyWhen, readFileMayT, uniq)
+import Swarm.Util.Effect ((???))
 import Swarm.Util.Lens (makeLensesNoSigs)
 
 newtype Sha1 = Sha1 String
@@ -160,8 +161,7 @@ parseCodeFile ::
   FilePath ->
   m CodeToRun
 parseCodeFile filepath = do
-  mcontents <- sendIO $ readFileMayT SystemLocale filepath
-  contents <- maybe (throwError (AssetNotLoaded (Data Script) filepath (DoesNotExist File))) pure mcontents
+  contents <- (sendIO $ readFileMayT SystemLocale filepath) ??? throwError (AssetNotLoaded (Data Script) filepath (DoesNotExist File))
   pt <- either (throwError . CustomFailure) pure (processTermEither contents)
 
   let srcLoc = pt ^. sLoc

@@ -17,6 +17,7 @@ import Swarm.Language.Syntax (Syntax' (Syntax'))
 import Swarm.Language.Syntax qualified as S
 import Swarm.Pretty (prettyString)
 import Swarm.Util (Encoding (..), readFileMayT)
+import Swarm.Util.Effect ((???))
 import System.FilePath ((</>))
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -157,7 +158,7 @@ testLSP =
  where
   checkFile :: FilePath -> [UnusedVar] -> IO ()
   checkFile filename expectedWarnings = do
-    content <- maybe (assertFailure "Can't read file!") pure =<< readFileMayT UTF8 fullPath
+    content <- readFileMayT UTF8 fullPath ??? assertFailure "Can't read file!"
     let actualWarnings = getWarnings content
     assertEqual "failed" expectedWarnings actualWarnings
    where

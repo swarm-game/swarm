@@ -41,6 +41,7 @@ import Swarm.Game.Terrain
 import Swarm.Game.World.DSL.Syntax
 import Swarm.Pretty (PrettyPrec (..), pparens, ppr)
 import Swarm.Util (showT)
+import Swarm.Util.Effect ((???))
 import Swarm.Util.Erasable
 import Prelude hiding (Foldable (..), lookup)
 
@@ -635,8 +636,7 @@ resolveCellItem ::
 resolveCellItem (mCellTag, item) = case mCellTag of
   Just cellTag -> do
     -- The item was tagged specifically, like {terrain: dirt} or {entity: water}
-    mCell <- resolverByTag cellTag item
-    maybe (throwError $ NotAThing item cellTag) return mCell
+    resolverByTag cellTag item ??? throwError (NotAThing item cellTag)
   Nothing -> do
     -- The item was not tagged; try resolving in all possible ways and choose
     -- the first that works
