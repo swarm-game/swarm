@@ -80,11 +80,13 @@ parseTypeAtom =
     <|> TyDelay
       <$> braces parseType
     <|> TyRcd
-      <$> brackets (M.fromList . (map . first) locVal <$> parseRecord (symbol ":" *> parseType))
+      <$> brackets (toRecFieldsMap <$> parseRecord (symbol ":" *> parseType))
     <|> tyRec
       <$> (reserved "rec" *> tyVar)
       <*> (symbol "." *> parseType)
     <|> parens parseType
+ where
+  toRecFieldsMap = M.fromList . (map . first) locVal
 
 -- | A type constructor.
 parseTyCon :: Parser TyCon
