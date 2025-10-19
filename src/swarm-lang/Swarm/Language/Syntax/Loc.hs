@@ -70,6 +70,7 @@ srcLocEndsBefore _ _ = False
 data Located v = Loc {lvSrcLoc :: SrcLoc, locVal :: v}
   deriving (Eq, Ord, Functor, Show, Data, Generic, Hashable, FromJSON, ToJSON)
 
--- | A variable with associated source location. (Variable occurrences are a bare TVar which gets
+-- | A variable with associated source location, used for variable
+--   binding sites. (Variable occurrences are a bare TVar which gets
 --   wrapped in a Syntax node, so we don't need LocVar for those.)
 type LocVar = Located Var
