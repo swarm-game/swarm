@@ -238,14 +238,14 @@ explain trm = case trm ^. sTerm of
   SRequirements {} -> pure "Query the requirements of a term."
   -- definition or bindings
   SLet ls isRecursive var mTypeAnn _ _ rhs _b -> pure $ explainDefinition ls isRecursive var (rhs ^. sType) mTypeAnn
-  SLam (LV _s v) _mType _syn ->
+  SLam (Loc _s v) _mType _syn ->
     pure $
       typeSignature v ty $
         "A lambda expression binding the variable " <> U.bquote v <> "."
   SBind mv _ _ _ rhs _cmds ->
     pure $
-      typeSignature (maybe "__rhs" lvVar mv) (getInnerType $ rhs ^. sType) $
-        "A monadic bind for commands" <> maybe "." (\(LV _s v) -> ", that binds variable " <> U.bquote v <> ".") mv
+      typeSignature (maybe "__rhs" locVal mv) (getInnerType $ rhs ^. sType) $
+        "A monadic bind for commands" <> maybe "." (\(Loc _s v) -> ", that binds variable " <> U.bquote v <> ".") mv
   -- composite types
   SPair {} ->
     Node
@@ -298,7 +298,7 @@ explainFunction s =
       ]
 
 explainDefinition :: ExplainableType ty => LetSyntax -> Bool -> LocVar -> ty -> Maybe RawPolytype -> Text
-explainDefinition ls isRecursive (LV _s var) ty maybeTypeAnnotation =
+explainDefinition ls isRecursive (Loc _s var) ty maybeTypeAnnotation =
   typeSignature var ty $
     T.unwords
       [ "A"

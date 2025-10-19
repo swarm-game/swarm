@@ -32,7 +32,7 @@ import Swarm.Language.Parser.Lex (
   tyVar,
  )
 import Swarm.Language.Parser.Record (parseRecord)
-import Swarm.Language.Syntax.Loc (lvVar)
+import Swarm.Language.Syntax.Loc (locVal)
 import Swarm.Language.Types
 import Text.Megaparsec (choice, optional, some, (<|>))
 
@@ -62,27 +62,38 @@ parseType = makeExprParser parseTypeMolecule table
 --   recursion.
 parseTypeMolecule :: Parser Type
 parseTypeMolecule =
-  TyConApp <$> parseTyCon <*> many parseTypeAtom
-    <|> parseTypeAtom
+  TyConApp
+    <$> parseTyCon
+    <*> many parseTypeAtom
+      <|> parseTypeAtom
 
 -- | A "type atom" consists of some atomic type snytax --- type
 --   variables, things in brackets of some kind, or a lone type
 --   constructor.
 parseTypeAtom :: Parser Type
 parseTypeAtom =
-  TyVar <$> tyVar
-    <|> TyConApp <$> parseTyCon <*> pure []
-    <|> TyDelay <$> braces parseType
-    <|> TyRcd <$> brackets (M.fromList . (map . first) lvVar <$> parseRecord (symbol ":" *> parseType))
-    <|> tyRec <$> (reserved "rec" *> tyVar) <*> (symbol "." *> parseType)
-    <|> parens parseType
+  TyVar
+    <$> tyVar
+      <|> TyConApp
+    <$> parseTyCon
+    <*> pure []
+      <|> TyDelay
+    <$> braces parseType
+      <|> TyRcd
+    <$> brackets (M.fromList . (map . first) locVal <$> parseRecord (symbol ":" *> parseType))
+      <|> tyRec
+    <$> (reserved "rec" *> tyVar)
+    <*> (symbol "." *> parseType)
+      <|> parens parseType
 
 -- | A type constructor.
 parseTyCon :: Parser TyCon
 parseTyCon = do
   choice (map (\b -> TCBase b <$ reservedCS (baseTyName b)) enumerate)
-    <|> TCCmd <$ reservedCS "Cmd"
-    <|> TCUser <$> tyName
+    <|> TCCmd
+    <$ reservedCS "Cmd"
+      <|> TCUser
+    <$> tyName
 
 -- | Close over a recursive type, replacing any bound occurrences
 --   of its variable in the body with de Bruijn indices.  Note that

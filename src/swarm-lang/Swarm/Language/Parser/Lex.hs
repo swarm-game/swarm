@@ -215,7 +215,7 @@ data IdentifierType = IDTyVar | IDTyName | IDTmVar
 -- | Parse an identifier together with its source location info.
 locIdentifier :: IdentifierType -> Parser LocVar
 locIdentifier idTy =
-  uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "variable name")
+  uncurry Loc <$> parseLocG ((lexeme . try) (p >>= check) <?> "variable name")
  where
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
   check (into @Text -> t)
@@ -248,7 +248,7 @@ locTyName = (fmap . fmap) mkTDVar (locIdentifier IDTyName)
 --   alphanumeric characters and underscores, not starting with a
 --   digit. The Bool indicates whether we are parsing a type variable.
 identifier :: IdentifierType -> Parser Var
-identifier = fmap lvVar . locIdentifier
+identifier = fmap locVal . locIdentifier
 
 -- | Parse a type variable, which must start with an underscore or
 --   lowercase letter and cannot be the lowercase version of a type

@@ -892,7 +892,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   SLam x (Just argTy) body -> do
     argTy' <- adaptToTypeErr l KindErr $ processType argTy
     let uargTy = toU argTy'
-    body' <- withBinding @Var @UPolytype (lvVar x) (mkTrivPoly uargTy) $ infer body
+    body' <- withBinding @Var @UPolytype (locVal x) (mkTrivPoly uargTy) $ infer body
     return $ Syntax' l (SLam x (Just argTy') body') cs (UTyFun uargTy (body' ^. sType))
 
   -- Need special case here for applying 'atomic' or 'instant' so we
@@ -960,7 +960,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     a <- decomposeCmdTy c1 (Actual, c1' ^. sType)
     genA <- generalize a
     c2' <-
-      maybe id ((`withBinding` genA) . lvVar) mx $
+      maybe id ((`withBinding` genA) . locVal) mx $
         infer c2
 
     -- We don't actually need the result type since we're just
@@ -999,8 +999,8 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
 
   -- See Note [Checking and inference for record literals]
   SRcd m -> do
-    m' <- traverse (itraverse $ \x -> infer . fromMaybe (STerm (TVar (lvVar x)))) m
-    let rcdTy = M.fromList $ map (lvVar *** (^. sType)) m'
+    m' <- traverse (itraverse $ \x -> infer . fromMaybe (STerm (TVar (locVal x)))) m
+    let rcdTy = M.fromList $ map (locVal *** (^. sType)) m'
     return $ Syntax' l (SRcd ((map . second) Just m')) cs (UTyRcd rcdTy)
 
   -- Once we're typechecking, we don't need to keep around explicit
@@ -1201,7 +1201,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         Left _ -> throwTypeErr l $ LambdaArgMismatch (joined argTy xTy)
         Right _ -> return ()
 
-    body' <- withBinding @Var @UPolytype (lvVar x) (mkTrivPoly argTy) $ check body resTy
+    body' <- withBinding @Var @UPolytype (locVal x) (mkTrivPoly argTy) $ check body resTy
     return $ Syntax' l (SLam x mxTy' body') cs (UTyFun argTy resTy)
 
   -- Special case for checking the argument to 'atomic' (or
@@ -1224,7 +1224,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         return $ Syntax' l (SApp atomic' at') cs (UTyCmd argTy)
 
   -- Checking the type of a let- or def-expression.
-  SLet ls r x mxTy _ _ t1 t2 -> withFrame l (TCLet (lvVar x)) $ do
+  SLet ls r x mxTy _ _ t1 t2 -> withFrame l (TCLet (locVal x)) $ do
     mqxTy <- traverse quantify mxTy
     (skolems, upty, t1') <- case mqxTy of
       -- No type annotation was provided for the let binding, so infer its type.
@@ -1233,7 +1233,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         -- unification variable for the type of x and infer the type
         -- of t1 with x in the context.
         xTy <- fresh
-        t1' <- withBinding @Var @UPolytype (lvVar x) (mkTrivPoly xTy) $ infer t1
+        t1' <- withBinding @Var @UPolytype (locVal x) (mkTrivPoly xTy) $ infer t1
         let uty = t1' ^. sType
         uty' <- unify (Just t1) (joined xTy uty)
         upty <- generalize uty'
@@ -1245,7 +1245,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         TydefInfo pty' _ <- adaptToTypeErr l KindErr . processPolytype $ pty
         let upty = toU pty'
         (ss, uty) <- skolemize upty
-        t1' <- withBinding (lvVar x) upty . withBindings ss $ check t1 uty
+        t1' <- withBinding (locVal x) upty . withBindings ss $ check t1 uty
         return (Ctx.vars ss, upty, t1')
 
     -- Check the requirements of t1.
@@ -1266,8 +1266,8 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
     -- Now check the type of the body, under a context extended with
     -- the type and requirements of the bound variable.
     t2' <-
-      withBinding (lvVar x) upty $
-        withBinding (lvVar x) reqs $
+      withBinding (locVal x) upty $
+        withBinding (locVal x) reqs $
           check t2 expected
 
     -- Make sure none of the generated skolem variables have escaped.
@@ -1305,10 +1305,10 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   -- extended context.
   STydef x pty _ t1 -> do
     tydef@(TydefInfo pty' _) <- adaptToTypeErr l KindErr $ processPolytype pty
-    t1' <- withBindingTD (tdVarName (lvVar x)) tydef (check t1 expected)
+    t1' <- withBindingTD (tdVarName (locVal x)) tydef (check t1 expected)
     -- Eliminate the type alias in the reported type, since it is not
     -- in scope in the ambient context to which we report back the type.
-    expected' <- elimTydef (lvVar x) tydef <$> applyBindings expected
+    expected' <- elimTydef (locVal x) tydef <$> applyBindings expected
     return $ Syntax' l (STydef x pty' (Just tydef) t1') cs expected'
 
   -- To check a record, ensure the expected type is a record type,
@@ -1323,7 +1323,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   -- for record literals].
   SRcd fields
     | UTyRcd tyMap <- expected -> do
-        let fieldMap = M.fromList $ map (first lvVar) fields
+        let fieldMap = M.fromList $ map (first locVal) fields
             expectedFields = M.keysSet tyMap
             actualFields = M.keysSet fieldMap
         when (actualFields /= expectedFields) $
@@ -1332,10 +1332,10 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         -- Since we checked above that 'fields' and 'tyMap' have the
         -- same keys, we know this lookup into the tyMap will never fail;
         -- however, we still use lookup + mapMaybe to avoid partial functions.
-        let fieldsWithTypes = mapMaybe (\(x, mt) -> (x,mt,) <$> M.lookup (lvVar x) tyMap) fields
+        let fieldsWithTypes = mapMaybe (\(x, mt) -> (x,mt,) <$> M.lookup (locVal x) tyMap) fields
         fields' <-
           traverse
-            (\(x, mt, ty) -> (x,) . Just <$> check (fromMaybe (STerm (TVar (lvVar x))) mt) ty)
+            (\(x, mt, ty) -> (x,) . Just <$> check (fromMaybe (STerm (TVar (locVal x))) mt) ty)
             fieldsWithTypes
         return $ Syntax' l (SRcd fields') cs expected
 
@@ -1458,7 +1458,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   SParens s1 -> analyzeAtomic locals s1
   -- Bind is similarly simple except that we have to keep track of a local variable
   -- bound in the RHS.
-  SBind mx _ _ _ s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id (S.insert . lvVar) mx locals) s2
+  SBind mx _ _ _ s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id (S.insert . locVal) mx locals) s2
   SRcd m -> sum <$> mapM analyzeField m
    where
     analyzeField ::
@@ -1469,7 +1469,7 @@ analyzeAtomic locals (Syntax l t) = case t of
       ) =>
       (LocVar, Maybe Syntax) ->
       m Int
-    analyzeField (LV _ x, Nothing) = analyzeAtomic locals (STerm (TVar x))
+    analyzeField (Loc _ x, Nothing) = analyzeAtomic locals (STerm (TVar x))
     analyzeField (_, Just s) = analyzeAtomic locals s
   SProj {} -> return 0
   -- Variables are allowed if bound locally, or if they have a simple type.
