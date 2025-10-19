@@ -66,7 +66,7 @@ srcLocEndsBefore :: SrcLoc -> SrcLoc -> Bool
 srcLocEndsBefore (SrcLoc _ a) (SrcLoc _ b) = a <= b
 srcLocEndsBefore _ _ = False
 
--- | A type with associated source location.
+-- | A value with associated source location.
 data Located v = Loc {lvSrcLoc :: SrcLoc, locVal :: v}
   deriving (Eq, Ord, Functor, Show, Data, Generic, Hashable, FromJSON, ToJSON)
 
