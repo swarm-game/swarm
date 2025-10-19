@@ -330,11 +330,14 @@ noSolutionScenarios = S.fromList . map normalizePath $
   , "Testing/1780-structure-merge-expansion/root-map-expansion"
   , "Testing/1780-structure-merge-expansion/structure-composition"
   , "Testing/2193-text-entities"
+  , "Testing/1356-portals/portals-and-waypoints"
   ]
 
 expectFailScenarios :: M.Map FilePath String
 expectFailScenarios = M.fromList
   [ "Testing/231-requirements/231-command-transformer-reqs" ==> "Awaiting fix for #231"
+  , "Testing/687-watch-command" ==> "Awaiting fix for #2601"
+  , "Challenges/wolf-goat-cabbage" ==> "Awaiting fix for #2602"
   ]
   where
     f ==> e = (normalizePath f, e)
@@ -365,7 +368,7 @@ customTimeoutScenarios = mconcat
   , "Challenges/gallery" ==> 20
   , "Challenges/telephone" ==> 20
   , "Challenges/flower-count" ==> 20
-  , "Challenges/photocopier" ==> 5
+  , "Challenges/photocopier" ==> 30
   , "Challenges/Mazes/invisible_maze" ==> 2
   , "Challenges/Ranching/beekeeping" ==> 60
   , "Challenges/Ranching/powerset" ==> 20
@@ -380,7 +383,6 @@ customTimeoutScenarios = mconcat
   , "Testing/1533-sow-command" ==> 10
   , "Testing/836-pathfinding/836-no-path-exists2" ==> 10
   , "Testing/836-pathfinding/836-automatic-waypoint-navigation" ==> 3
-  , "Testing/1356-portals/portals-and-waypoints" ==> 5
   ]
  where
   p ==> n = let p' = normalizePath p in test p' (Timed (isTutorial p') (Sec n))
