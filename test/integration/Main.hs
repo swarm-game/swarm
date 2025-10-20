@@ -280,9 +280,7 @@ testSolution ps (ScenarioTestData s p shouldCheckBadErrors verify) = maybeExpect
               _ -> return ()
             verify g
  where
-  maybeExpectFail = case M.lookup p expectFailScenarios of
-    Nothing -> id
-    Just e -> expectFailBecause e
+  maybeExpectFail = maybe id expectFailBecause $ M.lookup p expectFailScenarios
 
 tutorialHasLog :: GameState -> Assertion
 tutorialHasLog gs =
