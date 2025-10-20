@@ -120,7 +120,7 @@ import NLP.Minimorph.English qualified as MM
 import NLP.Minimorph.Util ((<+>))
 import System.Clock (TimeSpec)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
-import System.FilePath (takeExtension, (</>))
+import System.FilePath (normalise, takeExtension, (</>))
 import System.IO.Error (catchIOError)
 import Witch (from)
 import Prelude hiding (Foldable (..))
@@ -353,7 +353,8 @@ readFileMayT = catchIO . T.readFile
 --   given extension, but does not read or open the file like 'acquireAllWithExt'.
 findAllWithExt :: FilePath -> String -> IO [FilePath]
 findAllWithExt dir ext = do
-  paths <- listDirectory dir <&> map (dir </>)
+  let dir' = normalise dir
+  paths <- listDirectory dir <&> map (dir' </>)
   filePaths <- filterM (\path -> doesFileExist path <&> (&&) (hasExt path)) paths
   -- recurse
   sub <- filterM doesDirectoryExist paths

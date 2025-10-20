@@ -88,7 +88,7 @@ import Swarm.TUI.Model.StateUpdate (PersistentState (..), constructAppState, ini
 import Swarm.Util (applyWhen, findAllWithExt)
 import Swarm.Util.RingBuffer qualified as RB
 import Swarm.Util.Yaml (decodeFileEitherE)
-import System.FilePath (splitDirectories, (<.>), (</>))
+import System.FilePath (normalise, splitDirectories, (<.>), (</>))
 import System.Metrics qualified as Metrics (Store, newStore)
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
@@ -288,7 +288,7 @@ tutorialHasLog gs =
    in assertBool "Base should have a logger installed!" (not . null $ lookupByName "logger" baseDevs)
 
 normalizePath :: FilePath -> FilePath
-normalizePath = normalizePrefix . normalizeSuffix
+normalizePath = normalizePrefix . normalizeSuffix . normalise
  where
   normalizePrefix fp
     | ["data", "scenarios"] `isPrefixOf` splitDirectories fp = fp
