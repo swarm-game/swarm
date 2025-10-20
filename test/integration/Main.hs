@@ -291,7 +291,7 @@ normalizePath :: FilePath -> FilePath
 normalizePath = normalizePrefix . normalizeSuffix
  where
   normalizePrefix fp
-    | "data/scenarios/" `isPrefixOf` fp = fp
+    | ["data", "scenarios"] `isPrefixOf` splitDirectories fp = fp
     | otherwise = "data" </> "scenarios" </> fp
   normalizeSuffix fp
     | ".yaml" `isSuffixOf` fp = fp
