@@ -145,7 +145,7 @@ isError :: LogEntry -> Bool
 isError = (>= Warning) . view leSeverity
 
 exampleTests :: [FilePath] -> TestTree
-exampleTests = testGroup "Test example" . map exampleTest
+exampleTests = testGroup "Process .sw files" . map exampleTest
 
 exampleTest :: FilePath -> TestTree
 exampleTest path =
@@ -500,9 +500,7 @@ testScenarioSolutions scenarios ps = mkTests ps $ customTests <> defaultTests
   defaultTests = foldMap mkDefaultTest (filter shouldTest scenarios)
   mkDefaultTest s = test s (DefaultTest $ isTutorial s)
 
-  shouldTest s =
-    s `S.notMember` noSolutionScenarios
-      && "_Validation" `notElem` splitDirectories s
+  shouldTest s = s `S.notMember` noSolutionScenarios && not (isUnparseableTest s)
 
 resetMetrics :: Metrics.Store -> PersistentState -> PersistentState
 resetMetrics s (PersistentState r u k p) =
