@@ -85,7 +85,7 @@ import Swarm.TUI.Model (
  )
 import Swarm.TUI.Model.DebugOption (DebugOption (LoadTestingScenarios))
 import Swarm.TUI.Model.StateUpdate (PersistentState (..), constructAppState, initPersistentState)
-import Swarm.Util (applyWhen, findAllWithExt)
+import Swarm.Util (allPairs, applyWhen, findAllWithExt)
 import Swarm.Util.RingBuffer qualified as RB
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.FilePath (normalise, splitDirectories, (<.>), (</>))
@@ -124,6 +124,7 @@ main = do
       , scenarioParseTests scenarioInputs parseableScenarios
       , scenarioParseInvalidTests scenarioInputs unparseableScenarios
       , formatTests
+      , noScenarioOverlap
       , testScenarioSolutions scenarioPaths $ PersistentState rs' ui key progState
       , testEditorFiles
       , recipeTests
@@ -232,7 +233,7 @@ test file testType = singletonTest $ case testType of
   file' = normalizePath file
 
 -- | A set of Scenario test configurations. The semigroup and monoid instances are left-biased.
-newtype TestData = TestData (S.Set ScenarioTestData)
+newtype TestData = TestData { getTestData :: S.Set ScenarioTestData }
   deriving newtype (Semigroup, Monoid)
 
 singletonTest :: ScenarioTestData -> TestData
@@ -484,6 +485,26 @@ customTestScenarios =
           (length baseLogs)
           6 -- the final OK said by base happens after win, and is for debugging
     ]
+
+-- Ensure that none of the explicitly declared custom scenario test
+-- categories overlap.  Any given scenario may be in at most one of
+-- the special categories.
+noScenarioOverlap :: TestTree
+noScenarioOverlap = testGroup "Ensure custom scenario test categories do not overlap" $
+  map (uncurry pairTest) (allPairs categories)
+ where
+  pairTest (c1,s1) (c2,s2) = testCase ("[" ++ c1 ++ "] and [" ++ c2 ++ "] do not overlap") $
+    assertEqual "Non-null intersection!" S.empty (s1 `S.intersection` s2)
+
+  categories :: [(String, S.Set FilePath)]
+  categories =
+    [ ("No solutions", noSolutionScenarios)
+    , ("Expected failures", M.keysSet expectFailScenarios)
+    , ("Custom timeouts", S.map getFP (getTestData customTimeoutScenarios))
+    , ("Custom tests", S.map getFP (getTestData customTestScenarios))
+    ]
+
+  getFP (ScenarioTestData _ fp _ _) = fp
 
 testScenarioSolutions :: [FilePath] -> PersistentState -> TestTree
 testScenarioSolutions scenarios ps = mkTests ps $ customTests <> defaultTests

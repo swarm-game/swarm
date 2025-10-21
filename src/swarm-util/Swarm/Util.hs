@@ -11,6 +11,7 @@ module Swarm.Util (
   -- * Miscellaneous utilities
   (?),
   sortPair,
+  allPairs,
   maxOn,
   maximum0,
   enumeratedMap,
@@ -138,6 +139,24 @@ infix 4 %%=, <+=, <%=, <<.=, <>=
 -- | Ensure the smaller value in a pair is the first element.
 sortPair :: Ord b => (b, b) -> (b, b)
 sortPair (x, y) = if x <= y then (x, y) else (y, x)
+
+-- | All ordered pairs where the second element comes after the first
+--   element in the given list.
+--
+-- >>> allPairs []
+-- []
+-- >>> allPairs [1]
+-- []
+-- >>> allPairs [1,2]
+-- [(1, 2)]
+-- >>> allPairs [1,2,3]
+-- [(1, 2), (1, 3), (2, 3)]
+-- >>> allPairs [1,2,3,4]
+-- [(1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)]
+allPairs :: [a] -> [(a,a)]
+allPairs [] = []
+allPairs [_] = []
+allPairs (a:as) = map (a,) as ++ allPairs as
 
 -- | Find the maximum of two values, comparing them according to a
 --   custom projection function.
