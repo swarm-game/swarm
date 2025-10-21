@@ -153,10 +153,10 @@ sortPair (x, y) = if x <= y then (x, y) else (y, x)
 -- [(1, 2), (1, 3), (2, 3)]
 -- >>> allPairs [1,2,3,4]
 -- [(1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)]
-allPairs :: [a] -> [(a,a)]
+allPairs :: [a] -> [(a, a)]
 allPairs [] = []
 allPairs [_] = []
-allPairs (a:as) = map (a,) as ++ allPairs as
+allPairs (a : as) = map (a,) as ++ allPairs as
 
 -- | Find the maximum of two values, comparing them according to a
 --   custom projection function.
