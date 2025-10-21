@@ -207,7 +207,7 @@ constructAppState ::
   Maybe (BChan AppEvent) ->
   m AppState
 constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mChan = do
-  historyT <- sendIO $ readFileMayT =<< getSwarmHistoryPath False
+  historyT <- sendIO $ readFileMayT UTF8 =<< getSwarmHistoryPath False
   let mkREPLSubmission msg = REPLHistItem (REPLEntry Submitted) msg (TickNumber $ -1)
   let history = maybe [] (map mkREPLSubmission . T.lines) historyT
   startTime <- sendIO $ getTime Monotonic

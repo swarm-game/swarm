@@ -36,8 +36,10 @@ module Swarm.Util (
   applyN,
 
   -- * Directory utilities
+  Encoding (..),
   readFileMay,
   readFileMayT,
+  writeFileT,
   findAllWithExt,
   acquireAllWithExt,
 
@@ -121,9 +123,11 @@ import NLP.Minimorph.Util ((<+>))
 import System.Clock (TimeSpec)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (takeExtension, (</>))
+import System.IO hiding (readFile, writeFile)
 import System.IO.Error (catchIOError)
 import Witch (from)
-import Prelude hiding (Foldable (..))
+import Witherable (wither)
+import Prelude hiding (Foldable (..), readFile, writeFile)
 
 infixr 1 ?
 infix 4 %%=, <+=, <%=, <<.=, <>=
@@ -288,7 +292,7 @@ tails1 =
   -- \* The only empty element of `tails xs` is the last one (by the definition of `tails`)
   -- \* Therefore, if we take all but the last element of `tails xs` i.e.
   --   `init (tails xs)`, we have a nonempty list of nonempty lists
-  NE.fromList . Prelude.map NE.fromList . List.init . List.tails . Foldable.toList
+  NE.fromList . map NE.fromList . List.init . List.tails . Foldable.toList
 
 -- | Attach a list at the beginning of a 'NonEmpty'.
 -- @since 4.16
@@ -339,15 +343,44 @@ applyN 0 _ = id
 applyN n f = applyN (n - 1) f . f
 
 ------------------------------------------------------------
--- Directory stuff
+-- File I/O + directory processing
 
--- | Safely attempt to read a file.
-readFileMay :: FilePath -> IO (Maybe String)
-readFileMay = catchIO . readFile
+-- | What encoding should we use for reading + writing files?  We use
+--   the system locale for user-written .sw files, and UTF8 for
+--   everything else.
+data Encoding = SystemLocale | UTF8
+  deriving (Eq, Ord, Read, Show)
 
--- | Safely attempt to (efficiently) read a file.
-readFileMayT :: FilePath -> IO (Maybe Text)
-readFileMayT = catchIO . T.readFile
+-- | Safely attempt to strictly read a file as a String.
+readFileMay :: Encoding -> FilePath -> IO (Maybe String)
+readFileMay = readFileGeneric readFile' hGetContents'
+
+-- | Safely attempt to strictly read a file as Text.
+readFileMayT :: Encoding -> FilePath -> IO (Maybe Text)
+readFileMayT = readFileGeneric T.readFile T.hGetContents
+
+readFileGeneric :: (FilePath -> IO a) -> (Handle -> IO a) -> Encoding -> FilePath -> IO (Maybe a)
+readFileGeneric readFilePath readHandle = \case
+  SystemLocale -> catchIO . readFilePath
+  UTF8 -> \path -> catchIO $ do
+    inputHandle <- openFile path ReadMode
+    hSetEncoding inputHandle utf8
+    contents <- readHandle inputHandle
+    hClose inputHandle
+    pure contents
+
+-- | Write some 'Text' data to a file.
+writeFileT :: Encoding -> FilePath -> Text -> IO ()
+writeFileT = writeFileGeneric T.writeFile T.hPutStr
+
+writeFileGeneric :: (FilePath -> a -> IO ()) -> (Handle -> a -> IO ()) -> Encoding -> FilePath -> a -> IO ()
+writeFileGeneric writeFP writeHandle = \case
+  SystemLocale -> writeFP
+  UTF8 -> \path content -> do
+    outputHandle <- openFile path WriteMode
+    hSetEncoding outputHandle utf8
+    writeHandle outputHandle content
+    hClose outputHandle
 
 -- | Recursively acquire all files in the given directory with the
 --   given extension, but does not read or open the file like 'acquireAllWithExt'.
@@ -363,12 +396,13 @@ findAllWithExt dir ext = do
   hasExt path = takeExtension path == ("." ++ ext)
 
 -- | Recursively acquire all files in the given directory with the
---   given extension, and their contents.
-acquireAllWithExt :: FilePath -> String -> IO [(FilePath, String)]
-acquireAllWithExt dir ext = findAllWithExt dir ext >>= mapM addContent
+--   given extension, and their contents.  Assume the files are
+--   encoded using UTF8.
+acquireAllWithExt :: FilePath -> String -> IO [(FilePath, Text)]
+acquireAllWithExt dir ext = findAllWithExt dir ext >>= wither addContent
  where
-  addContent :: FilePath -> IO (FilePath, String)
-  addContent path = (,) path <$> readFile path
+  addContent :: FilePath -> IO (Maybe (FilePath, Text))
+  addContent path = (fmap . fmap) (path,) (readFileMayT UTF8 path)
 
 -- | Turns any IO error into Nothing.
 catchIO :: IO a -> IO (Maybe a)

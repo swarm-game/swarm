@@ -100,12 +100,11 @@ import Data.Sequence (Seq ((:<|)))
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as T (drop, take)
-import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import GHC.Generics (Generic)
 import Swarm.Effect qualified as Effect
-import Swarm.Failure (SystemFailure (..))
+import Swarm.Failure
 import Swarm.Game.CESK (Store, emptyStore, store, suspendedEnv)
 import Swarm.Game.Entity
 import Swarm.Game.Land
@@ -131,7 +130,8 @@ import Swarm.Language.Pipeline (processTermEither)
 import Swarm.Language.Syntax (SrcLoc (..), TSyntax, sLoc)
 import Swarm.Language.Value (Env)
 import Swarm.Log
-import Swarm.Util (applyWhen, uniq)
+import Swarm.Util (Encoding (..), applyWhen, readFileMayT, uniq)
+import Swarm.Util.Effect ((???))
 import Swarm.Util.Lens (makeLensesNoSigs)
 
 newtype Sha1 = Sha1 String
@@ -161,8 +161,8 @@ parseCodeFile ::
   FilePath ->
   m CodeToRun
 parseCodeFile filepath = do
-  contents <- sendIO $ TIO.readFile filepath
-  pt <- either (throwError . CustomFailure) return (processTermEither contents)
+  contents <- sendIO (readFileMayT SystemLocale filepath) ??? throwError (AssetNotLoaded (Data Script) filepath (DoesNotExist File))
+  pt <- either (throwError . CustomFailure) pure (processTermEither contents)
 
   let srcLoc = pt ^. sLoc
       strippedText = stripSrc srcLoc contents

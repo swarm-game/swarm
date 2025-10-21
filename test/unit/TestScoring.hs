@@ -3,7 +3,6 @@
 -- | High score records
 module TestScoring where
 
-import Data.Text.IO qualified as TIO
 import Data.Time.Calendar.OrdinalDate
 import Data.Time.LocalTime
 import Swarm.Game.Scenario.Scoring.Best
@@ -13,6 +12,8 @@ import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Language.Pipeline
 import Swarm.Language.Syntax
+import Swarm.Util (Encoding (..), readFileMayT)
+import Swarm.Util.Effect ((???))
 import System.FilePath ((</>))
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -59,7 +60,7 @@ testHighScores =
 
 compareAstSize :: Int -> FilePath -> TestTree
 compareAstSize expectedSize path = testCase (unwords ["size of", path]) $ do
-  contents <- TIO.readFile $ baseTestPath </> path
+  contents <- readFileMayT UTF8 (baseTestPath </> path) ??? assertFailure "Can't read file!"
   t <- case processTermEither contents of
     Right x -> return x
     Left y -> assertFailure (into @String y)
