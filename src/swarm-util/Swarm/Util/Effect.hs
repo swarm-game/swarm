@@ -74,3 +74,8 @@ forMW ::
   (a -> m (Either w b)) ->
   m (t b)
 forMW = flip traverseW
+
+-- | Handle an action producing a Maybe by specifying an alternative
+--   action in the Nothing case.
+(???) :: Monad m => m (Maybe a) -> m a -> m a
+m ??? z = m >>= maybe z pure

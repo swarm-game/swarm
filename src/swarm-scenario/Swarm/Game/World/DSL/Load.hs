@@ -42,12 +42,12 @@ loadWorld ::
   (Has (Throw SystemFailure) sig m) =>
   FilePath ->
   TerrainEntityMaps ->
-  (FilePath, String) ->
+  (FilePath, Text) ->
   m (Text, Some (TTerm '[]))
 loadWorld dir tem (fp, src) = do
   wexp <-
     liftEither . left (AssetNotLoaded (Data Worlds) fp . SystemFailure . CanNotParseMegaparsec) $
-      runParser parseWExp (into @Text src)
+      runParser parseWExp src
   t <-
     withThrow (AssetNotLoaded (Data Worlds) fp . SystemFailure . DoesNotTypecheck . prettyText @CheckErr) $
       runReader tem . runReader @WorldMap M.empty $

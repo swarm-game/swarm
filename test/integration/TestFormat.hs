@@ -10,7 +10,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Swarm.Language.Format
 import Swarm.Language.Parser.Core (LanguageVersion (SwarmLangLatest))
-import Swarm.Util (findAllWithExt, readFileMayT)
+import Swarm.Util (Encoding (..), findAllWithExt, readFileMayT)
 import Test.Tasty
 import Test.Tasty.HUnit
 import Witch (into)
@@ -30,7 +30,7 @@ testFormatting = do
 
   checkFormat :: FilePath -> TestTree
   checkFormat f = testCase f $ do
-    mcontent <- readFileMayT f
+    mcontent <- readFileMayT UTF8 f
     case mcontent of
       Nothing -> assertFailure $ "Failed to load " <> f
       Just content -> case formatSwarm defaultFormatCfg content of

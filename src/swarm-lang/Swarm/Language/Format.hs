@@ -23,7 +23,7 @@ import Swarm.Language.Parser.Core (LanguageVersion (..), defaultParserConfig, la
 import Swarm.Language.Parser.QQ (astQ)
 import Swarm.Language.Syntax
 import Swarm.Pretty (ppr)
-import Swarm.Util ((?))
+import Swarm.Util (Encoding (..), readFileMayT, writeFileT, (?))
 import System.Console.Terminal.Size qualified as Term
 import System.Exit (exitFailure)
 import System.IO (stderr)
@@ -34,9 +34,9 @@ import Prelude hiding (Foldable (..))
 -- | From where should the input be taken?
 data FormatInput = Stdin | InputFile FilePath
 
-getInput :: FormatInput -> IO Text
-getInput Stdin = T.getContents
-getInput (InputFile fp) = T.readFile fp
+getInput :: FormatInput -> IO (Maybe Text)
+getInput Stdin = Just <$> T.getContents
+getInput (InputFile fp) = readFileMayT SystemLocale fp
 
 showInput :: FormatInput -> Text
 showInput Stdin = "(input)"
@@ -57,19 +57,22 @@ data FormatConfig = FormatConfig
 -- | Validate and format swarm-lang code.
 formatSwarmIO :: FormatConfig -> IO ()
 formatSwarmIO cfg@(FormatConfig input output mWidth _) = do
-  content <- getInput input
-  mWindowWidth <- (fmap . fmap) Term.width Term.size
-  let w = mWidth <|> case output of Stdout -> mWindowWidth; _ -> Nothing
-  case formatSwarm cfg {formatWidth = w} content of
-    Right fmt -> case output of
-      Stdout -> T.putStrLn fmt
-      OutputFile outFile -> T.writeFile outFile fmt
-      Inplace -> case input of
-        Stdin -> T.putStrLn fmt
-        InputFile inFile -> T.writeFile inFile fmt
-    Left e -> do
-      T.hPutStrLn stderr $ showInput input <> ":" <> e
-      exitFailure
+  mcontent <- getInput input
+  case mcontent of
+    Nothing -> T.hPutStrLn stderr $ "Could not read from " <> showInput input
+    Just content -> do
+      mWindowWidth <- (fmap . fmap) Term.width Term.size
+      let w = mWidth <|> case output of Stdout -> mWindowWidth; _ -> Nothing
+      case formatSwarm cfg {formatWidth = w} content of
+        Right fmt -> case output of
+          Stdout -> T.putStrLn fmt
+          OutputFile outFile -> writeFileT SystemLocale outFile fmt
+          Inplace -> case input of
+            Stdin -> T.putStrLn fmt
+            InputFile inFile -> writeFileT SystemLocale inFile fmt
+        Left e -> do
+          T.hPutStrLn stderr $ showInput input <> ":" <> e
+          exitFailure
 
 formatSwarm :: FormatConfig -> Text -> Either Text Text
 formatSwarm (FormatConfig _ _ mWidth ver) content = case readTerm' cfg content of

@@ -27,7 +27,6 @@ import Data.Maybe (isJust)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.IO qualified as T
 import Data.Yaml (ParseException, decodeFileEither, prettyPrintParseException)
 import Swarm.Doc.Keyword (EditorType (..))
 import Swarm.Doc.Keyword qualified as Keyword
@@ -86,7 +85,8 @@ import Swarm.TUI.Model (
  )
 import Swarm.TUI.Model.DebugOption (DebugOption (LoadTestingScenarios))
 import Swarm.TUI.Model.StateUpdate (PersistentState (..), constructAppState, initPersistentState)
-import Swarm.Util (allPairs, applyWhen, findAllWithExt)
+import Swarm.Util (Encoding (..), allPairs, applyWhen, findAllWithExt, readFileMayT)
+import Swarm.Util.Effect ((???))
 import Swarm.Util.RingBuffer qualified as RB
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.FilePath (normalise, splitDirectories, (<.>), (</>))
@@ -152,7 +152,8 @@ exampleTests = testGroup "Process .sw files" . map exampleTest
 exampleTest :: FilePath -> TestTree
 exampleTest path =
   testCase ("processTerm for contents of " ++ show path) $ do
-    value <- processTerm <$> T.readFile path
+    content <- readFileMayT UTF8 path ??? assertFailure "Can't read file!"
+    let value = processTerm content
     either (assertFailure . into @String) (const $ return ()) value
 
 scenarioParseTests :: ScenarioInputs -> [FilePath] -> TestTree
@@ -591,7 +592,7 @@ testEditorFiles =
   testTextInFile whitespace name t fp = testCase name $ do
     let removeLW' = T.unlines . map (T.dropWhile isSpace) . T.lines
         removeLW = applyWhen whitespace removeLW'
-    f <- T.readFile fp
+    f <- maybe (assertFailure "Can't read file!") pure =<< readFileMayT UTF8 fp
     assertBool
       ( "EDITOR FILE IS NOT UP TO DATE!\n"
           <> "I could not find the text:\n"
