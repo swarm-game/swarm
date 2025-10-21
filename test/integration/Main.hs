@@ -205,10 +205,8 @@ data ShouldCheckBadErrors = CheckForBadErrors | AllowBadErrors deriving (Eq, Sho
 data TestType where
   -- | Default test with 1s timeout and standard checks.
   DefaultTest :: ScenarioType -> TestType
-
   -- | Custom timeout with standard checks.
   Timed :: ScenarioType -> Time -> TestType
-
   -- | Custom timeout and customized checks.
   Special :: ScenarioType -> Time -> ShouldCheckBadErrors -> (GameState -> Assertion) -> TestType
 
@@ -218,8 +216,8 @@ data ScenarioType
   | NonTutorial
 
 -- | Configuration record specifying how to test a particular scenario.
-data ScenarioTestConfig =
-  ScenarioTestConfig
+data ScenarioTestConfig
+  = ScenarioTestConfig
   { allowedTime :: Time
   , scenarioPath :: FilePath
   , checkBadErrors :: ShouldCheckBadErrors
@@ -245,7 +243,7 @@ scenarioTest file testType = singletonTest $ case testType of
   file' = normalizePath file
 
 -- | A set of Scenario test configurations. The semigroup and monoid instances are left-biased.
-newtype ScenarioTestSet = ScenarioTestSet { getScenarioTestSet :: S.Set ScenarioTestConfig }
+newtype ScenarioTestSet = ScenarioTestSet {getScenarioTestSet :: S.Set ScenarioTestConfig}
   deriving newtype (Semigroup, Monoid)
 
 singletonTest :: ScenarioTestConfig -> ScenarioTestSet
@@ -513,11 +511,13 @@ customTestScenarios =
 -- categories overlap.  Any given scenario may be in at most one of
 -- the special categories.
 noScenarioOverlap :: TestTree
-noScenarioOverlap = testGroup "Ensure custom scenario test categories do not overlap" $
-  map (uncurry pairTest) (allPairs categories)
+noScenarioOverlap =
+  testGroup "Ensure custom scenario test categories do not overlap" $
+    map (uncurry pairTest) (allPairs categories)
  where
-  pairTest (c1,s1) (c2,s2) = testCase ("[" ++ c1 ++ "] and [" ++ c2 ++ "] do not overlap") $
-    assertEqual "Non-null intersection!" S.empty (s1 `S.intersection` s2)
+  pairTest (c1, s1) (c2, s2) =
+    testCase ("[" ++ c1 ++ "] and [" ++ c2 ++ "] do not overlap") $
+      assertEqual "Non-null intersection!" S.empty (s1 `S.intersection` s2)
 
   categories :: [(String, S.Set FilePath)]
   categories =
