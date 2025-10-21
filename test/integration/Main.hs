@@ -356,7 +356,6 @@ expectFailScenarios :: M.Map FilePath String
 expectFailScenarios =
   M.fromList
     [ "Testing/231-requirements/231-command-transformer-reqs" ==> "Awaiting fix for #231"
-    , "Testing/687-watch-command" ==> "Awaiting fix for #2601"
     , "Challenges/wolf-goat-cabbage" ==> "Awaiting fix for #2602"
     ]
  where
