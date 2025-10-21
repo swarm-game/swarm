@@ -19,6 +19,7 @@ import Control.Monad.State (execStateT)
 import Data.Char (isSpace)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (Foldable (toList), find)
+import Data.Function (on)
 import Data.IntSet qualified as IS
 import Data.List (isPrefixOf, isSuffixOf, partition)
 import Data.Map qualified as M
@@ -158,18 +159,18 @@ scenarioParseTests :: ScenarioInputs -> [FilePath] -> TestTree
 scenarioParseTests scenarioInputs inputs =
   testGroup
     "Test scenarios parse"
-    (map (scenarioTest Parsed scenarioInputs) inputs)
+    (map (scenarioParseTest Parsed scenarioInputs) inputs)
 
 scenarioParseInvalidTests :: ScenarioInputs -> [FilePath] -> TestTree
 scenarioParseInvalidTests scenarioInputs inputs =
   testGroup
     "Test invalid scenarios fail to parse"
-    (map (scenarioTest Failed scenarioInputs) inputs)
+    (map (scenarioParseTest Failed scenarioInputs) inputs)
 
 data ParseResult = Parsed | Failed
 
-scenarioTest :: ParseResult -> ScenarioInputs -> FilePath -> TestTree
-scenarioTest expRes scenarioInputs path =
+scenarioParseTest :: ParseResult -> ScenarioInputs -> FilePath -> TestTree
+scenarioParseTest expRes scenarioInputs path =
   testCase ("parse scenario " ++ show path) (getScenario expRes scenarioInputs path)
 
 getScenario :: ParseResult -> ScenarioInputs -> FilePath -> IO ()
@@ -200,44 +201,55 @@ time = \case
 
 data ShouldCheckBadErrors = CheckForBadErrors | AllowBadErrors deriving (Eq, Show)
 
-data TestType
-  = DefaultTest ScenarioType
-  | Timed ScenarioType Time
-  | Special ScenarioType Time ShouldCheckBadErrors (GameState -> Assertion)
+-- | Different types of scenario integration tests.
+data TestType where
+  -- | Default test with 1s timeout and standard checks.
+  DefaultTest :: ScenarioType -> TestType
 
+  -- | Custom timeout with standard checks.
+  Timed :: ScenarioType -> Time -> TestType
+
+  -- | Custom timeout and customized checks.
+  Special :: ScenarioType -> Time -> ShouldCheckBadErrors -> (GameState -> Assertion) -> TestType
+
+-- | Tutorial scenarios are tested differently than other scenarios.
 data ScenarioType
   = Tutorial
   | NonTutorial
 
-data ScenarioTestData
-  = ScenarioTestData
-      Time
-      FilePath
-      ShouldCheckBadErrors
-      (GameState -> Assertion)
+-- | Configuration record specifying how to test a particular scenario.
+data ScenarioTestConfig =
+  ScenarioTestConfig
+  { allowedTime :: Time
+  , scenarioPath :: FilePath
+  , checkBadErrors :: ShouldCheckBadErrors
+  , checks :: GameState -> Assertion
+  }
 
-instance Eq ScenarioTestData where
-  (ScenarioTestData _ a _ _) == (ScenarioTestData _ b _ _) = a == b
+-- | Compare 'ScenarioTestConfig' values by scenario path.
+instance Eq ScenarioTestConfig where
+  (==) = (==) `on` scenarioPath
 
-instance Ord ScenarioTestData where
-  (ScenarioTestData _ a _ _) `compare` (ScenarioTestData _ b _ _) = a `compare` b
+-- | Compare 'ScenarioTestConfig' values by scenario path.
+instance Ord ScenarioTestConfig where
+  compare = compare `on` scenarioPath
 
-test :: FilePath -> TestType -> TestData
-test file testType = singletonTest $ case testType of
-  DefaultTest stype -> ScenarioTestData Default file' CheckForBadErrors (gameStateCheck stype)
-  Timed stype timed -> ScenarioTestData timed file' CheckForBadErrors (gameStateCheck stype)
+scenarioTest :: FilePath -> TestType -> ScenarioTestSet
+scenarioTest file testType = singletonTest $ case testType of
+  DefaultTest stype -> ScenarioTestConfig Default file' CheckForBadErrors (gameStateCheck stype)
+  Timed stype timed -> ScenarioTestConfig timed file' CheckForBadErrors (gameStateCheck stype)
   Special stype timed shouldCheckBadErrors verify ->
-    ScenarioTestData timed file' shouldCheckBadErrors $ \g ->
+    ScenarioTestConfig timed file' shouldCheckBadErrors $ \g ->
       gameStateCheck stype g >> verify g
  where
   file' = normalizePath file
 
 -- | A set of Scenario test configurations. The semigroup and monoid instances are left-biased.
-newtype TestData = TestData { getTestData :: S.Set ScenarioTestData }
+newtype ScenarioTestSet = ScenarioTestSet { getScenarioTestSet :: S.Set ScenarioTestConfig }
   deriving newtype (Semigroup, Monoid)
 
-singletonTest :: ScenarioTestData -> TestData
-singletonTest = TestData . S.singleton
+singletonTest :: ScenarioTestConfig -> ScenarioTestSet
+singletonTest = ScenarioTestSet . S.singleton
 
 isTutorial :: FilePath -> ScenarioType
 isTutorial f
@@ -249,11 +261,11 @@ gameStateCheck = \case
   Tutorial -> tutorialHasLog
   NonTutorial -> const $ pure ()
 
-mkTests :: PersistentState -> TestData -> TestTree
-mkTests ps (TestData list) = testGroup "Test scenario solutions" . map (testSolution ps) . S.toList $ list
+mkTests :: PersistentState -> ScenarioTestSet -> TestTree
+mkTests ps (ScenarioTestSet list) = testGroup "Test scenario solutions" . map (testSolution ps) . S.toList $ list
 
-testSolution :: PersistentState -> ScenarioTestData -> TestTree
-testSolution ps (ScenarioTestData s p shouldCheckBadErrors verify) = maybeExpectFail . testCase p $ do
+testSolution :: PersistentState -> ScenarioTestConfig -> TestTree
+testSolution ps (ScenarioTestConfig s p shouldCheckBadErrors verify) = maybeExpectFail . testCase p $ do
   cleanStore <- Metrics.newStore
   out <-
     runM . runThrow @SystemFailure $
@@ -298,10 +310,10 @@ normalizePath = normalizePrefix . normalizeSuffix . normalise
     | ".yaml" `isSuffixOf` fp = fp
     | otherwise = fp <.> "yaml"
 
--- Scenarios with no solution, which should not be tested.  These are
--- listed explicitly so that it's not possible to simply forget to add
--- a solution for a new scenario; one must explicitly choose to add it
--- to this list if no solution is intended.
+-- | Scenarios with no solution, which should not be tested.  These
+--   are listed explicitly so that it's not possible to simply forget
+--   to add a solution for a new scenario; one must explicitly choose
+--   to add it to this list if no solution is intended.
 noSolutionScenarios :: S.Set FilePath
 noSolutionScenarios =
   S.fromList . map normalizePath $
@@ -333,6 +345,14 @@ noSolutionScenarios =
     , "Testing/1356-portals/portals-and-waypoints"
     ]
 
+-- | Scenarios that are currently expected to fail for some reason.
+--
+--   Note, scenarios that are constructed in such a way that the
+--   objective is not completed (i.e. testing that a certain
+--   restriction works, or that a certain solution is not allowed)
+--   should use a custom test.  This group is only for scenarios that
+--   are currently failing but ideally should not, perhaps pending a
+--   fix.
 expectFailScenarios :: M.Map FilePath String
 expectFailScenarios =
   M.fromList
@@ -343,7 +363,9 @@ expectFailScenarios =
  where
   f ==> e = (normalizePath f, e)
 
-customTimeoutScenarios :: TestData
+-- | Scenarios that should be tested using default checks, but need a
+--   bit more than the standard 1 second to complete.
+customTimeoutScenarios :: ScenarioTestSet
 customTimeoutScenarios =
   mconcat
     [ "Tutorials/move" ==> 10
@@ -387,22 +409,23 @@ customTimeoutScenarios =
     , "Testing/836-pathfinding/836-automatic-waypoint-navigation" ==> 3
     ]
  where
-  p ==> n = let p' = normalizePath p in test p' (Timed (isTutorial p') (Sec n))
+  p ==> n = let p' = normalizePath p in scenarioTest p' (Timed (isTutorial p') (Sec n))
 
-customTestScenarios :: TestData
+-- | Scenarios with custom testing code.
+customTestScenarios :: ScenarioTestSet
 customTestScenarios =
   mconcat
-    [ test "Tutorials/debug" $ Special Tutorial Default CheckForBadErrors $ \g -> do
+    [ scenarioTest "Tutorials/debug" $ Special Tutorial Default CheckForBadErrors $ \g -> do
         -- printAllLogs g
         let robots = toList $ g ^. robotInfo . robotMap
             hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
             win = isJust $ find hints robots
         assertBool "Could not find a robot with winning instructions!" win
-    , test "Testing/Achievements/RobotIntoWater" $ Special NonTutorial Default CheckForBadErrors $ \g ->
+    , scenarioTest "Testing/Achievements/RobotIntoWater" $ Special NonTutorial Default CheckForBadErrors $ \g ->
         assertBool
           "Did not get RobotIntoWater achievement!"
           (isJust $ g ^? discovery . gameAchievements . at RobotIntoWater)
-    , test "Testing/475-wait-one" $ Special NonTutorial Default CheckForBadErrors $ \g -> do
+    , scenarioTest "Testing/475-wait-one" $ Special NonTutorial Default CheckForBadErrors $ \g -> do
         let t = g ^. temporal . ticks
             r1Waits = g ^?! robotInfo . robotMap . ix 1 . to waitingUntil
             active = IS.member 1 $ g ^. robotInfo . activeRobots
@@ -411,7 +434,7 @@ customTestScenarios =
         assertBool "Robot 1 should have waiting machine" $ isJust r1Waits
         assertBool "Robot 1 should be still active" active
         assertBool "Robot 1 should not be in waiting set" $ not waiting
-    , test "Testing/397-wrong-missing" $ Special NonTutorial Default CheckForBadErrors $ \g -> do
+    , scenarioTest "Testing/397-wrong-missing" $ Special NonTutorial Default CheckForBadErrors $ \g -> do
         let msgs =
               (g ^. messageInfo . messageQueue . to logToText)
                 <> (g ^.. robotInfo . robotMap . traverse . robotLog . to logToText . traverse)
@@ -421,7 +444,7 @@ customTestScenarios =
           not (any ("treads" `T.isInfixOf`) msgs)
         assertBool "Error message should mention GPS receiver" $
           any ("GPS receiver" `T.isInfixOf`) msgs
-    , test "Testing/1569-pathfinding-cache/1569-cache-invalidation-modes" $ Special NonTutorial Default CheckForBadErrors $ \g -> do
+    , scenarioTest "Testing/1569-pathfinding-cache/1569-cache-invalidation-modes" $ Special NonTutorial Default CheckForBadErrors $ \g -> do
         let cachingLog = g ^. pathCaching . pathCachingLog
             actualEntries = map (\(CacheLogEntry _ x) -> x) $ toList $ RB.getValues cachingLog
             expectedEntries =
@@ -437,7 +460,7 @@ customTestScenarios =
               , RetrievalAttempt Success
               ]
         assertEqual "Incorrect sequence of invalidations!" expectedEntries actualEntries
-    , test "Testing/1569-pathfinding-cache/1569-cache-invalidation-distance-limit" $ Special NonTutorial Default CheckForBadErrors $ \g -> do
+    , scenarioTest "Testing/1569-pathfinding-cache/1569-cache-invalidation-distance-limit" $ Special NonTutorial Default CheckForBadErrors $ \g -> do
         let cachingLog = g ^. pathCaching . pathCachingLog
             actualEntries = map (\(CacheLogEntry _ x) -> x) $ toList $ RB.getValues cachingLog
             expectedEntries =
@@ -453,14 +476,14 @@ customTestScenarios =
               , RetrievalAttempt Success
               ]
         assertEqual "Incorrect sequence of invalidations!" expectedEntries actualEntries
-    , test "Testing/1430-built-robot-ownership" $ Special NonTutorial Default CheckForBadErrors $ \g -> do
+    , scenarioTest "Testing/1430-built-robot-ownership" $ Special NonTutorial Default CheckForBadErrors $ \g -> do
         let r2 = g ^. robotInfo . robotMap . at 2
         let r3 = g ^. robotInfo . robotMap . at 3
         assertBool "The second built robot should be a system robot like it's parent." $
           maybe False (view systemRobot) r2
         assertBool "The third built robot should be a normal robot like base." $
           maybe False (not . view systemRobot) r3
-    , test "Testing/1341-command-count" $ Special NonTutorial Default CheckForBadErrors $ \g ->
+    , scenarioTest "Testing/1341-command-count" $ Special NonTutorial Default CheckForBadErrors $ \g ->
         case g ^. robotInfo . robotMap . at 0 of
           Nothing -> assertFailure "No base bot!"
           Just base -> do
@@ -472,12 +495,12 @@ customTestScenarios =
             assertEqual "Incorrect tangible command count." 7 $ view tangibleCommandCount counters
             assertEqual "Incorrect command count." 10 $ sum . M.elems $ view commandsHistogram counters
             assertEqual "Incorrect step count." 62 $ view lifetimeStepCount counters
-    , test "Testing/2240-overridden-entity-capabilities" $ Special NonTutorial Default CheckForBadErrors $ \g -> do
+    , scenarioTest "Testing/2240-overridden-entity-capabilities" $ Special NonTutorial Default CheckForBadErrors $ \g -> do
         let msgs = g ^.. robotInfo . robotMap . traverse . robotLog . to logToText . traverse
         assertBool "Error message should mention tank treads but not treads" $
           not (any ("- treads" `T.isInfixOf`) msgs)
             && any ("- tank treads" `T.isInfixOf`) msgs
-    , test "Testing/1592-shared-template-robot-say-logs" $ Special NonTutorial Default CheckForBadErrors $ \g -> do
+    , scenarioTest "Testing/1592-shared-template-robot-say-logs" $ Special NonTutorial Default CheckForBadErrors $ \g -> do
         let baseLogs = g ^.. baseRobot . robotLog . to logToText . traverse
         -- printAllLogs g
         assertEqual
@@ -500,11 +523,11 @@ noScenarioOverlap = testGroup "Ensure custom scenario test categories do not ove
   categories =
     [ ("No solutions", noSolutionScenarios)
     , ("Expected failures", M.keysSet expectFailScenarios)
-    , ("Custom timeouts", S.map getFP (getTestData customTimeoutScenarios))
-    , ("Custom tests", S.map getFP (getTestData customTestScenarios))
+    , ("Custom timeouts", S.map getFP (getScenarioTestSet customTimeoutScenarios))
+    , ("Custom tests", S.map getFP (getScenarioTestSet customTestScenarios))
     ]
 
-  getFP (ScenarioTestData _ fp _ _) = fp
+  getFP (ScenarioTestConfig _ fp _ _) = fp
 
 testScenarioSolutions :: [FilePath] -> PersistentState -> TestTree
 testScenarioSolutions scenarios ps = mkTests ps $ customTests <> defaultTests
@@ -512,7 +535,7 @@ testScenarioSolutions scenarios ps = mkTests ps $ customTests <> defaultTests
   customTests = customTestScenarios <> customTimeoutScenarios
 
   defaultTests = foldMap mkDefaultTest (filter shouldTest scenarios)
-  mkDefaultTest s = test s (DefaultTest $ isTutorial s)
+  mkDefaultTest s = scenarioTest s (DefaultTest $ isTutorial s)
 
   shouldTest s = s `S.notMember` noSolutionScenarios && not (isUnparseableTest s)
 
