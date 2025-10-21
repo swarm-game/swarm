@@ -10,14 +10,18 @@ objectives:
     prerequisite:
       not: stolen
   - id: stolen
+    optional: true
+    hidden: true
     goal:
       - Competitor steals a tree
     condition: |
       competitor <- robotnamed "competitor";
       as competitor {has "tree"}
 solution: |
-  watch forward;
+  watch forward;  // watch for planter robot to arrive
   wait 80;
+  watch forward;  // now watch for planted tree
+  wait 20;
   move;
   grab;
 robots:
