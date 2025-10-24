@@ -32,7 +32,7 @@ import Swarm.Language.Parser.Lex (
   tyVar,
  )
 import Swarm.Language.Parser.Record (parseRecord)
-import Swarm.Language.Syntax.Loc (lvVar)
+import Swarm.Language.Syntax.Loc (locVal)
 import Swarm.Language.Types
 import Text.Megaparsec (choice, optional, some, (<|>))
 
@@ -65,7 +65,7 @@ parseTypeMolecule =
   TyConApp <$> parseTyCon <*> many parseTypeAtom
     <|> parseTypeAtom
 
--- | A "type atom" consists of some atomic type snytax --- type
+-- | A "type atom" consists of some atomic type syntax --- type
 --   variables, things in brackets of some kind, or a lone type
 --   constructor.
 parseTypeAtom :: Parser Type
@@ -73,9 +73,11 @@ parseTypeAtom =
   TyVar <$> tyVar
     <|> TyConApp <$> parseTyCon <*> pure []
     <|> TyDelay <$> braces parseType
-    <|> TyRcd <$> brackets (M.fromList . (map . first) lvVar <$> parseRecord (symbol ":" *> parseType))
+    <|> TyRcd <$> brackets (toRecFieldsMap <$> parseRecord (symbol ":" *> parseType))
     <|> tyRec <$> (reserved "rec" *> tyVar) <*> (symbol "." *> parseType)
     <|> parens parseType
+ where
+  toRecFieldsMap = M.fromList . map (first locVal)
 
 -- | A type constructor.
 parseTyCon :: Parser TyCon

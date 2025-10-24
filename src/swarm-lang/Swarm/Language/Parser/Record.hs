@@ -10,7 +10,7 @@ module Swarm.Language.Parser.Record (
 
 import Swarm.Language.Parser.Core (Parser)
 import Swarm.Language.Parser.Lex (locTmVar, symbol)
-import Swarm.Language.Syntax.Loc (LocVar, lvVar)
+import Swarm.Language.Syntax.Loc (LocVar, locVal)
 import Swarm.Util (failT, findDup, squote)
 import Text.Megaparsec (sepBy)
 
@@ -24,6 +24,6 @@ parseRecord :: Parser a -> Parser [(LocVar, a)]
 parseRecord p = (parseBinding `sepBy` symbol ",") >>= fromListUnique
  where
   parseBinding = (,) <$> locTmVar <*> p
-  fromListUnique kvs = case findDup (map (lvVar . fst) kvs) of
+  fromListUnique kvs = case findDup (map (locVal . fst) kvs) of
     Nothing -> pure kvs
     Just x -> failT ["duplicate field name", squote x, "in record literal"]

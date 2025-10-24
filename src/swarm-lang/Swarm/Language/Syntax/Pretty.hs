@@ -110,18 +110,18 @@ instance PrettyPrec (Term' ty) where
               ConstMUnOp S -> pparens (p > pC) $ prettyPrec (succ pC) t2 <> ppr t1
               _ -> prettyPrecApp p t1 t2
       _ -> prettyPrecApp p t1 t2
-    SLet LSLet _ (LV _ x) mty _ _ t1 t2 ->
+    SLet LSLet _ (Loc _ x) mty _ _ t1 t2 ->
       sep
         [ prettyDefinition "let" x mty t1 <+> "in"
         , ppr t2
         ]
-    SLet LSDef _ (LV _ x) mty _ _ t1 t2 ->
+    SLet LSDef _ (Loc _ x) mty _ _ t1 t2 ->
       mconcat $
         sep [prettyDefinition "def" x mty t1, "end"]
           : case t2 of
             Syntax' _ (TConst Noop) _ _ -> []
             _ -> [hardline, hardline, ppr t2]
-    STydef (LV _ x) pty _ t1 ->
+    STydef (Loc _ x) pty _ t1 ->
       mconcat $
         prettyTydef x pty
           : case t1 of
@@ -130,10 +130,10 @@ instance PrettyPrec (Term' ty) where
     SBind Nothing _ _ _ t1 t2 ->
       pparens (p > 0) $
         prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
-    SBind (Just (LV _ x)) _ _ _ t1 t2 ->
+    SBind (Just (Loc _ x)) _ _ _ t1 t2 ->
       pparens (p > 0) $
         ppr x <+> "<-" <+> prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
-    SRcd m -> brackets $ hsep (punctuate "," (map (prettyEquality . first lvVar) m))
+    SRcd m -> brackets $ hsep (punctuate "," (map (prettyEquality . first locVal) m))
     SProj t x -> prettyPrec 11 t <> "." <> ppr x
     SAnnotate t pt ->
       pparens (p > 0) $
@@ -181,7 +181,7 @@ unchainLambdas :: Syntax' ty -> (Syntax' ty, [(Var, Maybe Type)])
 unchainLambdas = \case
   -- Peel off consecutive lambdas, being sure to accumulate any
   -- attached comments along the way so they attach to the body
-  Syntax' _ (SLam (LV _ x) mty body) coms _ -> ((x, mty) :) <$> unchainLambdas (body & sComments <>~ coms)
+  Syntax' _ (SLam (Loc _ x) mty body) coms _ -> ((x, mty) :) <$> unchainLambdas (body & sComments <>~ coms)
   body -> (body, [])
 
 prettyLambda :: (PrettyPrec a1, PrettyPrec a2) => (a1, Maybe a2) -> Doc ann

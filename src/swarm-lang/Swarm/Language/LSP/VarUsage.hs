@@ -44,7 +44,7 @@ instance Monoid Usage where
   mempty = Usage mempty mempty
 
 toErrPos :: Text -> VarUsage -> Maybe (J.Range, Text)
-toErrPos code (VarUsage (LV loc v) scope) = do
+toErrPos code (VarUsage (Loc loc v) scope) = do
   -- A leading underscore will suppress the unused variable warning
   guard $ not $ "_" `T.isPrefixOf` v
   rangePair <- case loc of
@@ -78,12 +78,12 @@ checkOccurrences ::
   BindingType ->
   [Syntax] ->
   Usage
-checkOccurrences bindings lv@(LV loc v) declType childSyntaxes =
+checkOccurrences bindings lc@(Loc loc v) declType childSyntaxes =
   Usage childUsages $ missing <> deeperMissing
  where
   deeperBindings = M.insertWith (<>) v (pure loc) bindings
   Usage childUsages deeperMissing = mconcat $ map (getUsage deeperBindings) childSyntaxes
-  missing = [VarUsage lv declType | lv `S.notMember` childUsages]
+  missing = [VarUsage lc declType | lc `S.notMember` childUsages]
 
 -- | Build up the bindings map as a function argument as
 -- we descend into the syntax tree.
@@ -97,7 +97,7 @@ getUsage bindings (CSyntax _pos t _comments) = case t of
    where
     myUsages = case M.lookup v bindings of
       Nothing -> mempty
-      Just (loc :| _) -> S.singleton $ LV loc v
+      Just (loc :| _) -> S.singleton $ Loc loc v
   SLam v _ s -> checkOccurrences bindings v Lambda [s]
   SApp s1 s2 -> getUsage bindings s1 <> getUsage bindings s2
   -- Warn on unused 'let' bindings...
@@ -110,7 +110,7 @@ getUsage bindings (CSyntax _pos t _comments) = case t of
     Just v -> checkOccurrences bindings v Bind [s1, s2]
     Nothing -> getUsage bindings s1 <> getUsage bindings s2
   SDelay s -> getUsage bindings s
-  SRcd m -> foldMap (\(LV _ x, mt) -> maybe (getUsage bindings (STerm (TVar x))) (getUsage bindings) mt) m
+  SRcd m -> foldMap (\(Loc _ x, mt) -> maybe (getUsage bindings (STerm (TVar x))) (getUsage bindings) mt) m
   SProj s _ -> getUsage bindings s
   SAnnotate s _ -> getUsage bindings s
   SSuspend s -> getUsage bindings s

@@ -77,12 +77,12 @@ extractTCtx :: Syntax' ty -> TCtx
 extractTCtx (Syntax' _ t _ _) = extractTCtxTerm t
  where
   extractTCtxTerm = \case
-    SLet _ _ (LV _ x) _ mty _ _ t2 -> maybe id (Ctx.addBinding x) mty (extractTCtx t2)
+    SLet _ _ (Loc _ x) _ mty _ _ t2 -> maybe id (Ctx.addBinding x) mty (extractTCtx t2)
     SBind mx _ mty _ c1 c2 ->
       maybe
         id
         (uncurry Ctx.addBinding)
-        ((,) . lvVar <$> mx <*> mty)
+        ((,) . locVal <$> mx <*> mty)
         (extractTCtx c1 <> extractTCtx c2)
     SAnnotate t1 _ -> extractTCtx t1
     _ -> mempty
@@ -94,12 +94,12 @@ extractReqCtx :: Syntax' ty -> ReqCtx
 extractReqCtx (Syntax' _ t _ _) = extractReqCtxTerm t
  where
   extractReqCtxTerm = \case
-    SLet _ _ (LV _ x) _ _ mreq _ t2 -> maybe id (Ctx.addBinding x) mreq (extractReqCtx t2)
+    SLet _ _ (Loc _ x) _ _ mreq _ t2 -> maybe id (Ctx.addBinding x) mreq (extractReqCtx t2)
     SBind mx _ _ mreq c1 c2 ->
       maybe
         id
         (uncurry Ctx.addBinding)
-        ((,) . lvVar <$> mx <*> mreq)
+        ((,) . locVal <$> mx <*> mreq)
         (extractReqCtx c1 <> extractReqCtx c2)
     SAnnotate t1 _ -> extractReqCtx t1
     _ -> mempty

@@ -29,7 +29,7 @@ data UnusedVar = UnusedVar S.Var VU.BindingType
   deriving (Eq, Show)
 
 simplifyWarning :: VU.VarUsage -> UnusedVar
-simplifyWarning (VU.VarUsage (S.LV _ v) scope) = UnusedVar v scope
+simplifyWarning (VU.VarUsage (S.Loc _ v) scope) = UnusedVar v scope
 
 testLSP :: TestTree
 testLSP =
