@@ -93,9 +93,9 @@ pattern TPair t1 t2 = SPair (STerm t1) (STerm t2)
 
 -- | Match a TLam without annotations.
 pattern TLam :: Var -> Maybe Type -> Term -> Term
-pattern TLam v ty t <- SLam (lvVar -> v) ty (STerm t)
+pattern TLam v ty t <- SLam (locVal -> v) ty (STerm t)
   where
-    TLam v ty t = SLam (LV NoLoc v) ty (STerm t)
+    TLam v ty t = SLam (Loc NoLoc v) ty (STerm t)
 
 -- | Match a TApp without annotations.
 pattern TApp :: Term -> Term -> Term
@@ -109,21 +109,21 @@ pattern (:$:) t1 s2 = SApp (STerm t1) s2
 
 -- | Match a TLet without annotations.
 pattern TLet :: LetSyntax -> Bool -> Var -> Maybe RawPolytype -> Maybe Polytype -> Maybe Requirements -> Term -> Term -> Term
-pattern TLet ls r v mty mpty mreq t1 t2 <- SLet ls r (lvVar -> v) mty mpty mreq (STerm t1) (STerm t2)
+pattern TLet ls r v mty mpty mreq t1 t2 <- SLet ls r (locVal -> v) mty mpty mreq (STerm t1) (STerm t2)
   where
-    TLet ls r v mty mpty mreq t1 t2 = SLet ls r (LV NoLoc v) mty mpty mreq (STerm t1) (STerm t2)
+    TLet ls r v mty mpty mreq t1 t2 = SLet ls r (Loc NoLoc v) mty mpty mreq (STerm t1) (STerm t2)
 
 -- | Match a STydef without annotations.
 pattern TTydef :: TDVar -> Polytype -> Maybe TydefInfo -> Term -> Term
-pattern TTydef v ty mtd t1 <- STydef (lvVar -> v) ty mtd (STerm t1)
+pattern TTydef v ty mtd t1 <- STydef (locVal -> v) ty mtd (STerm t1)
   where
-    TTydef v ty mtd t1 = STydef (LV NoLoc v) ty mtd (STerm t1)
+    TTydef v ty mtd t1 = STydef (Loc NoLoc v) ty mtd (STerm t1)
 
 -- | Match a TBind without annotations.
 pattern TBind :: Maybe Var -> Maybe Polytype -> Maybe Requirements -> Term -> Term -> Term
-pattern TBind mv mty mreq t1 t2 <- SBind (fmap lvVar -> mv) _ mty mreq (STerm t1) (STerm t2)
+pattern TBind mv mty mreq t1 t2 <- SBind (fmap locVal -> mv) _ mty mreq (STerm t1) (STerm t2)
   where
-    TBind mv mty mreq t1 t2 = SBind (LV NoLoc <$> mv) Nothing mty mreq (STerm t1) (STerm t2)
+    TBind mv mty mreq t1 t2 = SBind (Loc NoLoc <$> mv) Nothing mty mreq (STerm t1) (STerm t2)
 
 -- | Match a TDelay without annotations.
 pattern TDelay :: Term -> Term

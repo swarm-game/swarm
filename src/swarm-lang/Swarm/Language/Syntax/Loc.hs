@@ -66,10 +66,11 @@ srcLocEndsBefore :: SrcLoc -> SrcLoc -> Bool
 srcLocEndsBefore (SrcLoc _ a) (SrcLoc _ b) = a <= b
 srcLocEndsBefore _ _ = False
 
+-- | A value with associated source location.
+data Located v = Loc {lvSrcLoc :: SrcLoc, locVal :: v}
+  deriving (Eq, Ord, Functor, Show, Data, Generic, Hashable, FromJSON, ToJSON)
+
 -- | A variable with associated source location, used for variable
 --   binding sites. (Variable occurrences are a bare TVar which gets
 --   wrapped in a Syntax node, so we don't need LocVar for those.)
-data Located v = LV {lvSrcLoc :: SrcLoc, lvVar :: v}
-  deriving (Eq, Ord, Functor, Show, Data, Generic, Hashable, FromJSON, ToJSON)
-
 type LocVar = Located Var

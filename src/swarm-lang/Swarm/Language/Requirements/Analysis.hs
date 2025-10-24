@@ -157,7 +157,7 @@ requirements tdCtx ctx =
     TDelay t -> go t
     TRcd m -> add (singletonCap CRecord) *> forM_ m (go . expandEq)
      where
-      expandEq (LV _ x, Nothing) = TVar x
+      expandEq (Loc _ x, Nothing) = TVar x
       expandEq (_, Just t) = t
     TProj t _ -> add (singletonCap CRecord) *> go t
     -- A type ascription doesn't change requirements

@@ -660,7 +660,7 @@ stepCESK cesk = case cesk of
   Out _ s (FApp _ : _) -> badMachineState s "FApp of non-function"
   -- Start evaluating a record.  If it's empty, we're done.  Otherwise, focus
   -- on the first field and record the rest in a FRcd frame.
-  In (TRcd m) e s k -> return $ case map (first lvVar) m of
+  In (TRcd m) e s k -> return $ case map (first locVal) m of
     [] -> Out (VRcd M.empty) s k
     ((x, t) : fs) -> In (fromMaybe (TVar x) t) e s (FRcd e [] x fs : k)
   -- When we finish evaluating the last field, return a record value.

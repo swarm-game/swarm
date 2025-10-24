@@ -89,7 +89,7 @@ parseTermAtom2 =
           <*> (reserved "in" *> parseTerm)
         <|> do
           reserved "def"
-          locVar@(LV _srcLoc nameText) <- locTmVar
+          locVar@(Loc _srcLoc nameText) <- locTmVar
           mTy <- optional (symbol ":" *> parsePolytype)
           _ <- symbol "="
           body <- parseTerm
@@ -127,7 +127,7 @@ parseStock =
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
 sLet :: LetSyntax -> LocVar -> Maybe RawPolytype -> Syntax -> Syntax -> Term
-sLet ls x ty t1 = SLet ls (lvVar x `S.member` setOf freeVarsV t1) x ty Nothing mempty t1
+sLet ls x ty t1 = SLet ls (locVal x `S.member` setOf freeVarsV t1) x ty Nothing mempty t1
 
 sNoop :: Syntax
 sNoop = STerm (TConst Noop)
@@ -159,7 +159,7 @@ parseTerm = sepEndBy1 parseStmt (symbol ";") >>= mkBindChain
 
 mkBindChain :: [Stmt] -> Parser Syntax
 mkBindChain stmts = case last stmts of
-  Binder x _ -> return $ foldr mkBind (STerm (TApp (TConst Pure) (TVar (lvVar x)))) stmts
+  Binder x _ -> return $ foldr mkBind (STerm (TApp (TConst Pure) (TVar (locVal x)))) stmts
   BareTerm t -> return $ foldr mkBind t (init stmts)
  where
   mkBind (BareTerm t1) t2 = loc Nothing t1 t2 $ SBind Nothing Nothing Nothing Nothing t1 t2
