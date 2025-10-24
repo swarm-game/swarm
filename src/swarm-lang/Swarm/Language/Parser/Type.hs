@@ -62,9 +62,7 @@ parseType = makeExprParser parseTypeMolecule table
 --   recursion.
 parseTypeMolecule :: Parser Type
 parseTypeMolecule =
-  TyConApp
-    <$> parseTyCon
-    <*> many parseTypeAtom
+  TyConApp <$> parseTyCon <*> many parseTypeAtom
     <|> parseTypeAtom
 
 -- | A "type atom" consists of some atomic type syntax --- type
@@ -73,16 +71,10 @@ parseTypeMolecule =
 parseTypeAtom :: Parser Type
 parseTypeAtom =
   TyVar <$> tyVar
-    <|> TyConApp
-      <$> parseTyCon
-      <*> pure []
-    <|> TyDelay
-      <$> braces parseType
-    <|> TyRcd
-      <$> brackets (M.fromList . (map . first) locVal <$> parseRecord (symbol ":" *> parseType))
-    <|> tyRec
-      <$> (reserved "rec" *> tyVar)
-      <*> (symbol "." *> parseType)
+    <|> TyConApp <$> parseTyCon <*> pure []
+    <|> TyDelay <$> braces parseType
+    <|> TyRcd <$> brackets (M.fromList . (map . first) locVal <$> parseRecord (symbol ":" *> parseType))
+    <|> tyRec <$> (reserved "rec" *> tyVar) <*> (symbol "." *> parseType)
     <|> parens parseType
  where
   toRecFieldsMap = M.fromList . (map . first) $ locVal
@@ -91,10 +83,8 @@ parseTypeAtom =
 parseTyCon :: Parser TyCon
 parseTyCon = do
   choice (map (\b -> TCBase b <$ reservedCS (baseTyName b)) enumerate)
-    <|> TCCmd
-      <$ reservedCS "Cmd"
-    <|> TCUser
-      <$> tyName
+    <|> TCCmd <$ reservedCS "Cmd"
+    <|> TCUser <$> tyName
 
 -- | Close over a recursive type, replacing any bound occurrences
 --   of its variable in the body with de Bruijn indices.  Note that
