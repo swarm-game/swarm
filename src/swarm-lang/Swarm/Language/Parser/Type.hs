@@ -67,26 +67,25 @@ parseTypeMolecule =
     <*> many parseTypeAtom
     <|> parseTypeAtom
 
--- | A "type atom" consists of some atomic type snytax --- type
+-- | A "type atom" consists of some atomic type syntax --- type
 --   variables, things in brackets of some kind, or a lone type
 --   constructor.
 parseTypeAtom :: Parser Type
 parseTypeAtom =
-  TyVar
-    <$> tyVar
+  TyVar <$> tyVar
     <|> TyConApp
       <$> parseTyCon
       <*> pure []
     <|> TyDelay
       <$> braces parseType
     <|> TyRcd
-      <$> brackets (toRecFieldsMap <$> parseRecord (symbol ":" *> parseType))
+      <$> brackets (M.fromList . (map . first) locVal <$> parseRecord (symbol ":" *> parseType))
     <|> tyRec
       <$> (reserved "rec" *> tyVar)
       <*> (symbol "." *> parseType)
     <|> parens parseType
  where
-  toRecFieldsMap = M.fromList . (map . first) locVal
+  toRecFieldsMap = M.fromList . (map . first) $ locVal
 
 -- | A type constructor.
 parseTyCon :: Parser TyCon
