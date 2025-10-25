@@ -121,7 +121,7 @@ common ghc2021-extensions
     TypeOperators
 
 common base
-  build-depends: base >=4.18 && <4.23
+  build-depends: base >=4.18 && <4.22
 
 common AhoCorasick
   build-depends: AhoCorasick >=0.0.4 && <0.0.5
