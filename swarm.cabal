@@ -297,6 +297,9 @@ common pandoc
 common pandoc-types
   build-depends: pandoc-types >=1.23 && <1.24
 
+common parallel
+  build-depends: parallel >=3.2 && <3.3
+
 common parser-combinators
   build-depends: parser-combinators >=1.2 && <1.4
 
@@ -615,6 +618,7 @@ library swarm-scenario
     mtl,
     murmur3,
     palette,
+    parallel,
     parser-combinators,
     prettyprinter,
     random,
