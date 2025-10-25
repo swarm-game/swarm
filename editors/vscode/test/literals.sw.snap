@@ -1,0 +1,56 @@
+>def lit = \v. log (format v) end
+#^^^^ source.swarm keyword.control.dictionary.def
+#    ^^^ source.swarm keyword.control.dictionary.def entity.name.function
+#       ^ source.swarm keyword.control.dictionary.def
+#        ^ source.swarm keyword.control.dictionary.def keyword.control.dictionary.def.assignment
+#         ^ source.swarm
+#          ^ source.swarm keyword.operator.lambda
+#           ^ source.swarm keyword.operator.lambda variable.other
+#            ^ source.swarm keyword.operator.lambda
+#             ^ source.swarm
+#              ^^^ source.swarm keyword.other
+#                 ^ source.swarm
+#                  ^ source.swarm expression.group punctuation.paren.open
+#                   ^^^^^^ source.swarm expression.group keyword.other
+#                         ^ source.swarm expression.group
+#                          ^ source.swarm expression.group variable.parameter
+#                           ^ source.swarm expression.group punctuation.paren.close
+#                            ^ source.swarm
+#                             ^^^ source.swarm keyword.control.dictionary.def.end
+>
+>lit 15;
+#^^^ source.swarm variable.parameter
+#   ^ source.swarm
+#    ^^ source.swarm constant.numeric
+#      ^ source.swarm keyword.operator.chain
+>
+>lit 0xf;
+#^^^ source.swarm variable.parameter
+#   ^ source.swarm
+#    ^^^ source.swarm constant.numeric
+#       ^ source.swarm keyword.operator.chain
+>
+>lit 0b1111;
+#^^^ source.swarm variable.parameter
+#   ^ source.swarm
+#    ^^^^^^ source.swarm constant.numeric
+#          ^ source.swarm keyword.operator.chain
+>
+>lit " Hello ";
+#^^^ source.swarm variable.parameter
+#   ^ source.swarm
+#    ^ source.swarm string.quoted.double
+#     ^^^^^^^ source.swarm string.quoted.double
+#            ^ source.swarm string.quoted.double
+#             ^ source.swarm keyword.operator.chain
+>
+>lit "Hello\nWorld!";
+#^^^ source.swarm variable.parameter
+#   ^ source.swarm
+#    ^ source.swarm string.quoted.double
+#     ^^^^^ source.swarm string.quoted.double
+#          ^^ source.swarm string.quoted.double constant.character.escape.sequence.swarm
+#            ^^^^^^ source.swarm string.quoted.double
+#                  ^ source.swarm string.quoted.double
+#                   ^ source.swarm keyword.operator.chain
+>
