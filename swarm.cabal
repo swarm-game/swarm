@@ -1202,8 +1202,9 @@ executable swarm
     -hiedir=.hie/app/game
 
   default-language: Haskell2010
-  ghc-options: -threaded
-  default-extensions: ImportQualifiedPost
+  ghc-options:
+    -threaded
+    -with-rtsopts=-N
 
 executable swarm-scene
   import:
