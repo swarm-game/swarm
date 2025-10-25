@@ -1,4 +1,4 @@
-name: Haskell-CI-Windows
+name: Haskell-CI
 on:
   push:
     paths:
@@ -7,7 +7,7 @@ on:
       - '**.cabal'
       - '*.yaml'
       - 'data/**.yaml'
-      - '.github/workflows/haskell-ci-macos.yml'
+      - '.github/workflows/haskell-ci-windows.yml'
     branches:
       - "main"
   # reuse the same filter for pull-requests
@@ -19,16 +19,16 @@ on:
       - 'stack.yaml'
       - '*.yaml'
       - 'data/**.yaml'
-      - '.github/workflows/haskell-ci-macos.yml'
+      - '.github/workflows/haskell-ci-windows.yml'
     branches:
       - "main"
 jobs:
-  macos:
-    name: Haskell-CI - ${{ matrix.os }} - ghc-${{ matrix.ghc }}
+  windows:
+    name: Simple CI - ${{ matrix.os }} - ghc-${{ matrix.ghc }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest]
+        os: [windows-latest, macos-latest]
         cabal: ["3.16.0.0"]
         ghc: ["9.12.1"]
     timeout-minutes:
@@ -51,7 +51,7 @@ jobs:
       - name: Freeze
         run: cabal freeze
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         name: Cache ~/.cabal/store
         with:
           path: ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
@@ -61,7 +61,7 @@ jobs:
             ${{ runner.os }}-${{ matrix.ghc }}-
 
       - name: Install dependencies
-        run: cabal build all --only-dependencies
+        run: cabal build all --only-dependencies -j --semaphore
 
       - name: Build
         run: cabal build all
