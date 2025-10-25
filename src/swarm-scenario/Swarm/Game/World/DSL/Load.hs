@@ -21,7 +21,7 @@ import Swarm.Pretty (prettyText)
 import Swarm.ResourceLoading (getDataDirSafe)
 import Swarm.Util (acquireAllWithExt)
 import Swarm.Util.Effect (withThrow)
-import System.FilePath (dropExtension, joinPath, splitPath)
+import System.FilePath (dropExtension, takeFileName)
 import Witch (into)
 
 -- | Load and typecheck all world descriptions from `worlds/*.world`.
@@ -33,18 +33,17 @@ loadWorlds ::
 loadWorlds tem = do
   dir <- getDataDirSafe Worlds "worlds"
   worldFiles <- sendIO $ acquireAllWithExt dir "world"
-  ws <- mapM (loadWorld dir tem) worldFiles
+  ws <- mapM (loadWorld tem) worldFiles
   return . M.fromList $ ws
 
 -- | Load a file containing a world DSL term, throwing an exception if
 --   it fails to parse or typecheck.
 loadWorld ::
   (Has (Throw SystemFailure) sig m) =>
-  FilePath ->
   TerrainEntityMaps ->
   (FilePath, Text) ->
   m (Text, Some (TTerm '[]))
-loadWorld dir tem (fp, src) = do
+loadWorld tem (fp, src) = do
   wexp <-
     liftEither . left (AssetNotLoaded (Data Worlds) fp . SystemFailure . CanNotParseMegaparsec) $
       runParser parseWExp src
@@ -52,8 +51,4 @@ loadWorld dir tem (fp, src) = do
     withThrow (AssetNotLoaded (Data Worlds) fp . SystemFailure . DoesNotTypecheck . prettyText @CheckErr) $
       runReader tem . runReader @WorldMap M.empty $
         infer CNil wexp
-  return (into @Text (dropExtension (stripDir dir fp)), t)
-
--- | Strip a leading directory from a 'FilePath'.
-stripDir :: FilePath -> FilePath -> FilePath
-stripDir dir fp = joinPath (drop (length (splitPath dir)) (splitPath fp))
+  return (into @Text (dropExtension (takeFileName fp)), t)
