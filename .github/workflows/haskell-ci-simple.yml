@@ -51,7 +51,7 @@ jobs:
       - name: Freeze
         run: cabal freeze
 
-      - uses: actions/cache@v5
+      - uses: actions/cache@v4
         name: Cache ~/.cabal/store
         with:
           path: ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
