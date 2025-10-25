@@ -47,13 +47,13 @@ on:
     branches:
       - "main"
 jobs:
-  ci:
-    name: Haskell-CI - ${{ matrix.os }} - ${{ matrix.compiler }}
-    runs-on: ${{ matrix.runs-on }}
+  linux:
+    name: Haskell-CI - Linux - ${{ matrix.compiler }}
+    runs-on: ubuntu-24.04
     timeout-minutes:
       60
     container:
-      image: ${{ matrix.image }}
+      image: buildpack-deps:jammy
     continue-on-error: ${{ matrix.allow-failure }}
     strategy:
       matrix:
@@ -63,41 +63,21 @@ jobs:
             compilerVersion: 9.12.1
             setup-method: ghcup
             allow-failure: false
-            os: Mac
-            runs-on: macos-26
-            image: macOS-26-arm64
-          - compiler: ghc-9.12.1
-            compilerKind: ghc
-            compilerVersion: 9.12.1
-            setup-method: ghcup
-            allow-failure: false
-            os: Linux
-            runs-on: ubuntu-24.04
-            image: buildpack-deps:jammy
           - compiler: ghc-9.10.1
             compilerKind: ghc
             compilerVersion: 9.10.1
             setup-method: ghcup
             allow-failure: false
-            os: Linux
-            runs-on: ubuntu-24.04
-            image: buildpack-deps:jammy
           - compiler: ghc-9.8.2
             compilerKind: ghc
             compilerVersion: 9.8.2
             setup-method: ghcup
             allow-failure: false
-            os: Linux
-            runs-on: ubuntu-24.04
-            image: buildpack-deps:jammy
           - compiler: ghc-9.6.6
             compilerKind: ghc
             compilerVersion: 9.6.6
             setup-method: ghcup
             allow-failure: false
-            os: Linux
-            runs-on: ubuntu-24.04
-            image: buildpack-deps:jammy
       fail-fast: false
     steps:
       - name: apt-get install
