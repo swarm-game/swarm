@@ -38,6 +38,7 @@ module Swarm.Game.World.Pure (
 
 import Control.Arrow (second)
 import Control.Lens hiding (use)
+import Control.Parallel.Strategies (evalTuple2, parMap, rpar, rseq)
 import Data.Array qualified as A
 import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
@@ -135,11 +136,11 @@ loadRegion reg (World f t m) = (World f t' m, tileCs)
  where
   -- the range is applied to tile coordinates, so we are not loading a tile twice
   tileCs = filter (`M.notMember` t) $ range (over both tileCoords reg)
-  tiles = map loadTile tileCs
-  t' = List.foldl' (\hm (i, tile) -> M.insert i tile hm) t (zip tileCs tiles)
+  tiles = parMap (evalTuple2 rseq rpar) loadTile tileCs
+  t' = List.foldl' (\hm (i, tile) -> M.insert i (toStrict tile) hm) t (zip tileCs tiles)
 
-  loadTile :: TileCoords -> Strict.Pair (TerrainTile t) (EntityTile e)
-  loadTile tc = listArray tileBounds terrain Strict.:!: listArray tileBounds entities
+  loadTile :: TileCoords -> (TerrainTile t, EntityTile e)
+  loadTile tc = (listArray tileBounds terrain, listArray tileBounds entities)
    where
     tileCorner = tileOrigin tc
     runWF' = second toStrict . runWF f
