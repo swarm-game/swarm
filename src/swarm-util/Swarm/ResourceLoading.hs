@@ -27,8 +27,9 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw (Throw, liftEither, throwError)
 import Control.Exception (catch)
 import Control.Exception.Base (IOException)
-import Control.Monad (forM, when, (<=<))
+import Control.Monad (forM, guard, when, (<=<))
 import Data.Array (Array, listArray)
+import Data.Functor (($>))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
@@ -37,6 +38,7 @@ import Data.Text qualified as T
 import Paths_swarm (getDataDir)
 import Swarm.Failure
 import Swarm.Util
+import Swarm.Util.Effect ((???))
 import System.Directory (
   XdgDirectory (..),
   createDirectoryIfMissing,
@@ -54,6 +56,13 @@ data NameGenerator = NameGenerator
   , nameList :: Array Int Text
   }
 
+-- | Ensure that a given directory exists, wrapping it in 'Just' if it
+--   does exist and yielding 'Nothing' otherwise.
+guardDir :: Has (Lift IO) sig m => FilePath -> m (Maybe FilePath)
+guardDir dir = do
+  ex <- sendIO $ doesDirectoryExist dir
+  pure $ guard ex $> dir
+
 -- | Get subdirectory from swarm data directory.
 --
 -- This will first look in Cabal generated path and then
@@ -68,19 +77,11 @@ getDataDirSafe ::
   FilePath ->
   m FilePath
 getDataDirSafe asset p = do
-  d <- (`appDir` p) <$> sendIO getDataDir
-  de <- sendIO $ doesDirectoryExist d
-  if de
-    then return d
-    else do
-      xd <- (`appDir` p) <$> sendIO (getSwarmXdgDataSubdir False "data")
-      xde <- sendIO $ doesDirectoryExist xd
-      if xde then return xd else throwError $ AssetNotLoaded (Data asset) xd $ DoesNotExist Directory
+  tryDir getDataDir
+    ??? tryDir (getSwarmXdgDataSubdir False "data")
+    ??? throwError (AssetNotLoaded (Data asset) p $ DoesNotExist Directory)
  where
-  appDir r = \case
-    "" -> r
-    "." -> r
-    d -> r </> d
+  tryDir m = sendIO m >>= guardDir . normalise . (</> p)
 
 -- | Get file from swarm data directory.
 --
