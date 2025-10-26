@@ -29,7 +29,8 @@ import Swarm.Game.World.Coords
 import Prelude hiding (zipWith)
 
 newtype NonEmptyGrid c = NonEmptyGrid (NonEmpty (NonEmpty c))
-  deriving (Generic, Show, Eq, Functor, Foldable, Traversable, ToJSON)
+  deriving stock (Generic, Functor, Foldable, Traversable)
+  deriving newtype (Show, Eq, ToJSON)
 
 instance FunctorWithIndex Coords NonEmptyGrid where
   imap f (NonEmptyGrid g) =
