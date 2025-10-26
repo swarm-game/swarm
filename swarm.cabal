@@ -84,21 +84,32 @@ common common
     -Wno-star-is-type
     -Wpartial-fields
 
-  default-language: Haskell2010
-
 common stan-config
   ghc-options:
     -fwrite-ide-info
 
 -- Harmless extensions from GHC2021
-common ghc2021-extensions
+common ghc2024-extensions
   ghc-options:
     -Wprepositive-qualified-module
     -Wunused-packages
-
+  default-language: GHC2021
   default-extensions:
     -- Note we warn on prequalified
-    -- Not GHC2021, but until we get \cases we use \case a lot
+    -- GHC2024 additions
+    -- DataKinds
+    -- DerivingStrategies
+    -- DisambiguateRecordFields
+    -- ExplicitNamespaces
+    -- GADTs
+    -- MonoLocalBinds
+    -- LambdaCase
+    -- RoleAnnotations
+
+    -- Allow deriving to cut down on boilerplate
+    DeriveAnyClass
+    DerivingVia
+    -- TODO: ONDRA - Debugging
     BangPatterns
     DeriveAnyClass
     DeriveDataTypeable
@@ -119,6 +130,8 @@ common ghc2021-extensions
     TupleSections
     TypeApplications
     TypeOperators
+
+    
 
 common base
   build-depends: base >=4.18 && <4.22
@@ -425,7 +438,7 @@ common yaml
 
 library swarm-lang
   import:
-    stan-config, common, ghc2021-extensions,
+    stan-config, common, ghc2024-extensions,
     aeson,
     base,
     commonmark,
@@ -514,7 +527,7 @@ library swarm-lang
   ghc-options:
     -hiedir=.hie/src/swarm-lang
 
-  default-language: Haskell2010
+  default-language: GHC2021
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
     -- See discussion in #415
@@ -522,7 +535,7 @@ library swarm-lang
 
 library swarm-topography
   import:
-    stan-config, common, ghc2021-extensions,
+    stan-config, common, ghc2024-extensions,
     AhoCorasick,
     JuicyPixels,
     aeson,
@@ -582,7 +595,7 @@ library swarm-topography
   ghc-options:
     -hiedir=.hie/src/swarm-topography
 
-  default-language: Haskell2010
+  default-language: GHC2021
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
     -- See discussion in #415
@@ -590,7 +603,7 @@ library swarm-topography
 
 library swarm-scenario
   import:
-    stan-config, common, ghc2021-extensions,
+    stan-config, common, ghc2024-extensions,
     JuicyPixels,
     aeson,
     array,
@@ -698,7 +711,7 @@ library swarm-scenario
   ghc-options:
     -hiedir=.hie/src/swarm-scenario
 
-  default-language: Haskell2010
+  default-language: GHC2021
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
     -- See discussion in #415
@@ -706,7 +719,7 @@ library swarm-scenario
 
 library swarm-engine
   import:
-    stan-config, common, ghc2021-extensions,
+    stan-config, common, ghc2024-extensions,
     SHA,
     aeson,
     array,
@@ -800,7 +813,7 @@ library swarm-engine
   ghc-options:
     -hiedir=.hie/src/swarm-engine
 
-  default-language: Haskell2010
+  default-language: GHC2021
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
     -- See discussion in #415
@@ -808,7 +821,7 @@ library swarm-engine
 
 library swarm-web
   import:
-    stan-config, common, ghc2021-extensions,
+    stan-config, common, ghc2024-extensions,
     aeson,
     base,
     bytestring,
@@ -850,7 +863,7 @@ library swarm-web
   ghc-options:
     -hiedir=.hie/src/swarm-web
 
-  default-language: Haskell2010
+  default-language: GHC2021
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
     -- See discussion in #415
@@ -858,7 +871,7 @@ library swarm-web
 
 library swarm-tournament
   import:
-    stan-config, common, ghc2021-extensions,
+    stan-config, common, ghc2024-extensions,
     SHA,
     aeson,
     base,
@@ -913,11 +926,11 @@ library swarm-tournament
   ghc-options:
     -hiedir=.hie/src/swarm-tournament
 
-  default-language: Haskell2010
+  default-language: GHC2021
 
 library swarm-util
   import:
-    stan-config, common, ghc2021-extensions,
+    stan-config, common, ghc2024-extensions,
     aeson,
     array,
     base,
@@ -976,7 +989,7 @@ library swarm-util
   ghc-options:
     -hiedir=.hie/src/swarm-util
 
-  default-language: Haskell2010
+  default-language: GHC2021
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
     -- See discussion in #415
@@ -984,7 +997,7 @@ library swarm-util
 
 library swarm-doc
   import:
-    stan-config, common, ghc2021-extensions,
+    stan-config, common, ghc2024-extensions,
     aeson,
     base,
     containers,
@@ -1031,7 +1044,7 @@ library swarm-doc
   ghc-options:
     -hiedir=.hie/src/swarm-doc
 
-  default-language: Haskell2010
+  default-language: GHC2021
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
     -- See discussion in #415
@@ -1039,7 +1052,7 @@ library swarm-doc
 
 library swarm-tui
   import:
-    stan-config, common, ghc2021-extensions,
+    stan-config, common, ghc2024-extensions,
     aeson,
     array,
     base,
@@ -1153,7 +1166,7 @@ library swarm-tui
   ghc-options:
     -hiedir=.hie/src/swarm-tui
 
-  default-language: Haskell2010
+  default-language: GHC2021
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
     -- See discussion in #415
@@ -1161,7 +1174,7 @@ library swarm-tui
 
 executable swarm
   import:
-    stan-config, common, ghc2021-extensions,
+    stan-config, common, ghc2024-extensions,
     aeson,
     base,
     brick,
@@ -1201,14 +1214,14 @@ executable swarm
   ghc-options:
     -hiedir=.hie/app/game
 
-  default-language: Haskell2010
+  default-language: GHC2021
   ghc-options:
     -threaded
     -with-rtsopts=-N
 
 executable swarm-scene
   import:
-    stan-config, common, ghc2021-extensions,
+    stan-config, common, ghc2024-extensions,
     base,
     optparse-applicative,
 
@@ -1221,13 +1234,13 @@ executable swarm-scene
   ghc-options:
     -hiedir=.hie/app/scene
 
-  default-language: Haskell2010
+  default-language: GHC2021
   ghc-options: -threaded
   default-extensions: ImportQualifiedPost
 
 executable swarm-docs
   import:
-    stan-config, common, ghc2021-extensions,
+    stan-config, common, ghc2024-extensions,
     base,
     optparse-applicative,
     text,
@@ -1241,13 +1254,13 @@ executable swarm-docs
   ghc-options:
     -hiedir=.hie/app/doc
 
-  default-language: Haskell2010
+  default-language: GHC2021
   ghc-options: -threaded
   default-extensions: ImportQualifiedPost
 
 executable swarm-host-tournament
   import:
-    stan-config, common, ghc2021-extensions,
+    stan-config, common, ghc2024-extensions,
     base,
     optparse-applicative,
     sqlite-simple,
@@ -1264,13 +1277,13 @@ executable swarm-host-tournament
   ghc-options:
     -hiedir=.hie/app/tournament
 
-  default-language: Haskell2010
+  default-language: GHC2021
   ghc-options: -threaded
   default-extensions: ImportQualifiedPost
 
 test-suite swarm-unit
   import:
-    stan-config, common, ghc2021-extensions,
+    stan-config, common, ghc2024-extensions,
     QuickCheck,
     aeson,
     base,
@@ -1328,12 +1341,12 @@ test-suite swarm-unit
   ghc-options:
     -hiedir=.hie/test/unit
 
-  default-language: Haskell2010
+  default-language: GHC2021
   ghc-options: -threaded
 
 test-suite swarm-integration
   import:
-    stan-config, common, ghc2021-extensions,
+    stan-config, common, ghc2024-extensions,
     base,
     containers,
     ekg-core,
@@ -1366,12 +1379,12 @@ test-suite swarm-integration
   ghc-options:
     -hiedir=.hie/test/integration
 
-  default-language: Haskell2010
+  default-language: GHC2021
   ghc-options: -threaded
 
 test-suite tournament-host
   import:
-    stan-config, common, ghc2021-extensions,
+    stan-config, common, ghc2024-extensions,
     SHA,
     base,
     bytestring,
@@ -1392,12 +1405,12 @@ test-suite tournament-host
   ghc-options:
     -hiedir=.hie/test/tournament-host
 
-  default-language: Haskell2010
+  default-language: GHC2021
   ghc-options: -threaded
 
 test-suite standalone-topography
   import:
-    stan-config, common, ghc2021-extensions,
+    stan-config, common, ghc2024-extensions,
     JuicyPixels,
     MissingH,
     base,
@@ -1423,12 +1436,12 @@ test-suite standalone-topography
   ghc-options:
     -hiedir=.hie/test/standalone-topography/src
 
-  default-language: Haskell2010
+  default-language: GHC2021
   ghc-options: -threaded
 
 benchmark benchmark
   import:
-    stan-config, common, ghc2021-extensions,
+    stan-config, common, ghc2024-extensions,
     base,
     containers,
     extra,
@@ -1451,7 +1464,7 @@ benchmark benchmark
     swarm:swarm-topography,
     swarm:swarm-util,
 
-  default-language: Haskell2010
+  default-language: GHC2021
   ghc-options:
     -threaded
     -with-rtsopts=-A32m
