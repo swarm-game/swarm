@@ -41,7 +41,7 @@ import Swarm.Util (failT, showT)
 
 -- | A generic wrapper for computations which also depend on knowing a
 --   value of type @e@.
-newtype With e f a = E {runE :: e -> f a}
+newtype With e (f :: * -> *) a = E {runE :: e -> f a}
   deriving (Functor)
   deriving (Applicative, Monad, MonadFail, Alternative) via (ReaderT e f)
 
