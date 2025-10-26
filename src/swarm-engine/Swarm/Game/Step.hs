@@ -151,7 +151,7 @@ runActiveRobots = do
 -- restore it the next time we start a computation.
 updateBaseReplState :: HasGameStepState sig m => m ()
 updateBaseReplState = do
-  baseValue <- use . pre $ robotInfo . robotMap . ix 0 . folding getResult
+  baseValue <- use $ pre $ robotInfo . robotMap . ix 0 . folding getResult
   forM_ baseValue $ \v -> do
     res <- use $ gameControls . replStatus
     case res of
