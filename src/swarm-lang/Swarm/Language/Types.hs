@@ -252,7 +252,8 @@ instance PrettyPrec TyCon where
 -- | The arity of a type, /i.e./ the number of type parameters it
 --   expects.
 newtype Arity = Arity {getArity :: Int}
-  deriving (Eq, Ord, Show, Generic, Data, Hashable)
+  deriving stock (Generic, Data)
+  deriving newtype (Eq, Ord, Show, Hashable)
 
 instance ToJSON Arity where
   toJSON = genericToJSON optionsUnwrapUnary
@@ -328,7 +329,8 @@ instance Plated Type where
   plate = uniplate
 
 newtype IntVar = IntVar Int
-  deriving (Show, Data, Eq, Ord, Generic, Hashable)
+  deriving stock (Data, Generic)
+  deriving newtype (Show, Eq, Ord, Hashable)
 
 instance PrettyPrec IntVar where
   prettyPrec _ = ppr . mkVarName "u"
