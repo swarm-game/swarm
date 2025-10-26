@@ -135,7 +135,8 @@ import Swarm.Util.Effect ((???))
 import Swarm.Util.Lens (makeLensesNoSigs)
 
 newtype Sha1 = Sha1 String
-  deriving (Show, Eq, Ord, Generic, ToJSON)
+  deriving stock (Generic)
+  deriving newtype (Show, Eq, Ord, ToJSON)
 
 data SolutionSource
   = ScenarioSuggested
