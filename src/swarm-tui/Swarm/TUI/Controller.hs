@@ -490,8 +490,8 @@ handleModalEvent = \case
     modal <- preuse $ uiGameplay . uiDialogs . uiModal . _Just . modalType
     case modal of
       Just (MidScenarioModal TerrainPaletteModal) ->
-        refreshList $ uiGameplay . uiWorldEditor . terrainList
-      Just (MidScenarioModal EntityPaletteModal) -> refreshList $ uiGameplay . uiWorldEditor . entityPaintList
+        refreshList ev $ uiGameplay . uiWorldEditor . terrainList
+      Just (MidScenarioModal EntityPaletteModal) -> refreshList ev $ uiGameplay . uiWorldEditor . entityPaintList
       Just (MidScenarioModal GoalModal) -> case ev of
         V.EvKey (V.KChar '\t') [] -> uiGameplay . uiDialogs . uiGoal . focus %= focusNext
         _ -> do
@@ -511,7 +511,7 @@ handleModalEvent = \case
           case focusGetCurrent focused of
             Just (StructureWidgets w) -> case w of
               StructuresList ->
-                refreshList $ uiGameplay . uiDialogs . uiStructure . structurePanelListWidget
+                refreshList ev $ uiGameplay . uiDialogs . uiStructure . structurePanelListWidget
               StructureSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
             _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       Just (MidScenarioModal RobotsModal) -> do
@@ -531,7 +531,7 @@ handleModalEvent = \case
       _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
    where
     refreshGoalList lw = nestEventM' lw $ handleListEventWithSeparators ev shouldSkipSelection
-    refreshList z = Brick.zoom z $ BL.handleListEvent ev
+    refreshList ev' z = Brick.zoom z $ BL.handleListEvent ev'
 
 -- | Quit a game.
 --

@@ -137,19 +137,19 @@ insertGitHubTokens ::
 insertGitHubTokens gitHubUsername gitHubTokens = do
   conn <- ask
   currentTime <- liftIO getCurrentTime
-  let expirationOf = mkExpirationTime currentTime
   liftIO $ do
     execute
       conn
       "REPLACE INTO github_tokens (alias, github_access_token, github_access_token_expires_at, github_refresh_token, github_refresh_token_expires_at) VALUES (?, ?, ?, ?, ?);"
       ( gitHubUsername
       , token $ accessToken gitHubTokens
-      , expirationOf accessToken
+      , mkExpirationTime currentTime accessToken
       , token $ refreshToken gitHubTokens
-      , expirationOf refreshToken
+      , mkExpirationTime currentTime refreshToken
       )
     return ()
  where
+  mkExpirationTime :: UTCTime -> (ReceivedTokens -> Expirable a) -> UTCTime
   mkExpirationTime currTime accessor =
     addUTCTime (fromIntegral $ expirationSeconds $ accessor gitHubTokens) currTime
 
