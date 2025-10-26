@@ -110,6 +110,7 @@ updateBest newPlayMetric (BestRecords oldA oldB oldC oldD) =
     (bestSize oldC sourceTextLength)
     (bestSize oldD astSize)
  where
+  f :: Ord a => Metric ProgressStats -> (ProgressStats -> Maybe a) -> Metric ProgressStats
   f x y = chooseBetter y newPlayMetric x
   bestTime x y = f x (Just . view (scenarioAttemptMetrics . scenarioDurationMetrics . y))
   bestSize x y = f x (fmap y . view (scenarioAttemptMetrics . scenarioCodeMetrics))

@@ -24,6 +24,7 @@ import Control.Monad.Extra (guarded)
 import Control.Monad.Logger
 import Control.Monad.Trans (MonadIO)
 import Data.Aeson
+import Data.Aeson.Types (Parser)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.Tuple.Extra (both)
@@ -55,7 +56,8 @@ import Swarm.Util.Erasable (erasableToMaybe)
 import Swarm.Util.Yaml
 
 newtype OneBitColor = OneBitColor Bool
-  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
+  deriving stock Generic
+  deriving newtype (Eq, Ord, Show, FromJSON, ToJSON)
 
 instance ToPixel OneBitColor where
   toPixel (OneBitColor b) = case b of
@@ -71,10 +73,9 @@ instance ToPixel ColorableCell where
   toPixel (Hex x) = toPixel x
 
 instance FromJSON ColorableCell where
-  parseJSON x =
-    try OneBit
-      <|> try Hex
+  parseJSON x = try OneBit <|> try Hex
    where
+    try :: FromJSON a => (a -> b) -> Parser b
     try f = f <$> parseJSON x
 
 instance FromJSONE e ColorableCell
