@@ -113,11 +113,15 @@ overlaySingleStructure ::
   MergedStructure (Maybe a) ->
   (MergedStructure (Maybe a), Pose) ->
   MergedStructure (Maybe a)
-overlaySingleStructure (MergedStructure inputArea inputPlacements inputWaypoints) (MergedStructure overlayArea overlayPlacements overlayWaypoints, pose@(Pose loc orientation)) = MergedStructure mergedArea mergedPlacements mergedWaypoints
+overlaySingleStructure
+  (MergedStructure inputArea inputPlacements inputWaypoints)
+  (MergedStructure overlayArea overlayPlacements overlayWaypoints, pose@(Pose loc orientation))
+  = MergedStructure mergedArea mergedPlacements mergedWaypoints
  where
   mergedWaypoints = inputWaypoints <> map (fmap $ placeOnArea overlayArea) overlayWaypoints
   mergedPlacements = inputPlacements <> map (placeOnArea overlayArea) overlayPlacements
   mergedArea = overlayGridExpanded inputArea pose overlayArea
+  placeOnArea :: HasLocation l => PositionedGrid (Maybe a) -> l -> l
   placeOnArea (PositionedGrid _ overArea) =
     offsetLoc (coerce loc)
       . modifyLoc (reorientLandmark orientation $ getGridDimensions overArea)
