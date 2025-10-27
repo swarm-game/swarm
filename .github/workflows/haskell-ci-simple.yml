@@ -1,4 +1,4 @@
-name: Haskell-CI-Windows
+name: Haskell-CI
 on:
   push:
     paths:
@@ -24,13 +24,13 @@ on:
       - "main"
 jobs:
   windows:
-    name: Haskell-CI - ${{ matrix.os }} - ghc-${{ matrix.ghc }}
+    name: Simple CI - ${{ matrix.os }} - ghc-${{ matrix.ghc }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest]
-        cabal: ["3.10.2.0"]
-        ghc: ["9.8.2"]
+        os: [windows-latest, macos-latest]
+        cabal: ["3.16.0.0"]
+        ghc: ["9.12.1"]
     timeout-minutes:
       60
 
@@ -61,7 +61,7 @@ jobs:
             ${{ runner.os }}-${{ matrix.ghc }}-
 
       - name: Install dependencies
-        run: cabal build all --only-dependencies
+        run: cabal build all --only-dependencies -j --semaphore
 
       - name: Build
         run: cabal build all
