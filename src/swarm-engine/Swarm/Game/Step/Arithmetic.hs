@@ -59,34 +59,43 @@ compareValues = \cases
     (<>) <$> compareValues v11 v21 <*> compareValues v12 v22
   (VRcd m1) (VRcd m2) ->
     mconcat <$> (zipWithM compareValues `on` M.elems) m1 m2
-  v1 v2 -> incompatCmp v1 v2
+  v1 v2 ->
+    if incomparable v1 || incomparable v2
+      then incomparableErr v1 v2
+      else incompatCmpErr v1 v2
+
+-- | Check if comparing types which cannot be compared (e.g. functions, etc.)
+incomparable :: Value -> Bool
+incomparable = \case
+  VClo {} -> True
+  VCApp {} -> True
+  VBind {} -> True
+  VDelay {} -> True
+  VRef {} -> True
+  VIndir {} -> True
+  VRequirements {} -> True
+  VSuspend {} -> True
+  VExc {} -> True
+  VBlackhole {} -> True
+  VType {} -> True
+  _ -> False
 
 -- | Values with different types were compared; this should not be
 --   possible since the type system should catch it.
-incompatCmp :: Has (Throw Exn) sig m => Value -> Value -> m a
-incompatCmp v1 v2 =
+incompatCmpErr :: Has (Throw Exn) sig m => Value -> Value -> m a
+incompatCmpErr v1 v2 =
   throwError $
     Fatal $
-      T.unwords [message, prettyValue v1, "and", prettyValue v2]
- where
-  message =
-    if incomparable v1 || incomparable v2
-      then "Comparison is undefined for"
-      else "Incompatible comparison of"
-  -- comparing types which cannot be compared (e.g. functions, etc.)
-  incomparable = \case
-    VClo {} -> True
-    VCApp {} -> True
-    VBind {} -> True
-    VDelay {} -> True
-    VRef {} -> True
-    VIndir {} -> True
-    VRequirements {} -> True
-    VSuspend {} -> True
-    VExc {} -> True
-    VBlackhole {} -> True
-    VType {} -> True
-    _ -> False
+      T.unwords ["Incompatible comparison of ", prettyValue v1, "and", prettyValue v2]
+
+-- | Values were compared of a type which cannot be compared
+--   (e.g. functions, etc.).
+incomparableErr :: Has (Throw Exn) sig m => Value -> Value -> m a
+incomparableErr v1 v2 =
+  throwError $
+    cmdExn
+      Lt
+      ["Comparison is undefined for ", prettyValue v1, "and", prettyValue v2]
 
 ------------------------------------------------------------
 -- Arithmetic
