@@ -37,7 +37,7 @@ import Swarm.Language.Syntax (Const)
 -- of some set of capabilities.
 -- For example, @e@ could be a list of ingredients needed to exercise a
 -- capability, or a set of devices capable of providing a capability.
-newtype Capabilities e = Capabilities { getMap :: Map Capability e }
+newtype Capabilities e = Capabilities {getMap :: Map Capability e}
   deriving stock (Generic, Functor, Foldable, Traversable)
   deriving newtype (Show, Eq, ToJSON, Hashable)
 
@@ -84,7 +84,7 @@ instance (Ord e, Semigroup e) => Monoid (Capabilities e) where
   mempty = Capabilities mempty
 
 -- | Exercising a capability may have a cost, in the form of entities that must be consumed each time it is used.
-newtype ExerciseCost e = ExerciseCost { ingredients :: IngredientList e }
+newtype ExerciseCost e = ExerciseCost {ingredients :: IngredientList e}
   deriving stock (Generic, Functor, Foldable, Traversable)
   deriving newtype (Eq, Show, FromJSON, ToJSON, Hashable)
 

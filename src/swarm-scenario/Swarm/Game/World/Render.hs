@@ -56,7 +56,7 @@ import Swarm.Util.Erasable (erasableToMaybe)
 import Swarm.Util.Yaml
 
 newtype OneBitColor = OneBitColor Bool
-  deriving stock Generic
+  deriving stock (Generic)
   deriving newtype (Eq, Ord, Show, FromJSON, ToJSON)
 
 instance ToPixel OneBitColor where

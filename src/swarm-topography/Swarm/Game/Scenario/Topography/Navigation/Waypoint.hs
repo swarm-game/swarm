@@ -43,7 +43,7 @@ data Originated a = Originated
   deriving (Show, Eq, Functor)
 
 newtype WaypointName = WaypointName T.Text
-  deriving stock Generic
+  deriving stock (Generic)
   deriving newtype (Show, Eq, Ord, FromJSON, ToJSON, ToJSONKey)
 
 -- | Metadata about a waypoint

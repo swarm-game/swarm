@@ -93,20 +93,20 @@ common ghc2024-extensions
   ghc-options:
     -Wprepositive-qualified-module
     -Wunused-packages
+
   default-language: GHC2021
   default-extensions:
-    -- GHC2024 additions
+    -- GHC2024 additions + Allow deriving to cut down on boilerplate
     DataKinds
+    DeriveAnyClass
     DerivingStrategies
+    DerivingVia
     DisambiguateRecordFields
     ExplicitNamespaces
     GADTs
-    MonoLocalBinds
     LambdaCase
+    MonoLocalBinds
     RoleAnnotations
-    -- Allow deriving to cut down on boilerplate
-    DeriveAnyClass
-    DerivingVia
 
 common base
   build-depends: base >=4.18 && <4.22

@@ -8,8 +8,8 @@ import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 
-newtype StructureName = StructureName { getStructureName :: Text }
-  deriving Generic
+newtype StructureName = StructureName {getStructureName :: Text}
+  deriving (Generic)
   deriving newtype (Eq, Ord, Show, FromJSON, ToJSON)
 
 data NamedArea a = NamedArea
