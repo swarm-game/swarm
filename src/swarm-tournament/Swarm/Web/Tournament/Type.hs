@@ -1,4 +1,3 @@
-{-# LANGUAGE DataKinds #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
