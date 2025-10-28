@@ -176,7 +176,7 @@ robots:
       - [1, strange loop]
       - [1, solar panel]
     program: |
-      run "data/scenarios/Challenges/_dna/lab.sw"
+      run "data/scenarios/Challenges/Story/_dna/lab.sw"
   - name: topchecker
     system: true
     dir: east
@@ -184,7 +184,7 @@ robots:
       invisible: true
       attr: 'robot'
     program: |
-      run "data/scenarios/Challenges/_dna/topchecker.sw"
+      run "data/scenarios/Challenges/Story/_dna/topchecker.sw"
   - name: mirrorbot
     system: true
     dir: south
@@ -192,7 +192,7 @@ robots:
       invisible: true
       attr: 'robot'
     program: |
-      run "data/scenarios/Challenges/_dna/mirrorbot.sw"
+      run "data/scenarios/Challenges/Story/_dna/mirrorbot.sw"
   - name: resetter
     description: resets the apparatus after completion by watching the switch
     system: true
@@ -201,7 +201,7 @@ robots:
       invisible: true
       attr: 'robot'
     program: |
-      run "data/scenarios/Challenges/_dna/resetter.sw"
+      run "data/scenarios/Challenges/Story/_dna/resetter.sw"
   - name: keeper
     description: keeps track of cloned specimens
     system: true
@@ -210,7 +210,7 @@ robots:
       invisible: true
       attr: 'robot'
 solution: |
-  run "data/scenarios/Challenges/_dna/solution.sw"
+  run "data/scenarios/Challenges/Story/_dna/solution.sw"
 structures:
   - name: pond
     recognize:

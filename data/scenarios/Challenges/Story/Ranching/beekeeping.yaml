@@ -120,9 +120,9 @@ robots:
       char: 'Q'
       attr: bee
     program: |
-      run "scenarios/Challenges/Ranching/_beekeeping/queenbee.sw"
+      run "scenarios/Challenges/Story/Ranching/_beekeeping/queenbee.sw"
 solution: |
-  run "scenarios/Challenges/Ranching/_beekeeping/solution.sw"
+  run "scenarios/Challenges/Story/Ranching/_beekeeping/solution.sw"
 structures:
   - name: beehive
     recognize: [north]

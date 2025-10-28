@@ -48,9 +48,9 @@ robots:
     display:
       invisible: true
     program: |
-      run "scenarios/Challenges/_combo-lock/setup.sw"
+      run "scenarios/Challenges/Algorithmic/_combo-lock/setup.sw"
 solution: |
-  run "scenarios/Challenges/_combo-lock/solution.sw"
+  run "scenarios/Challenges/Algorithmic/_combo-lock/solution.sw"
 entities:
   - name: gate
     display:

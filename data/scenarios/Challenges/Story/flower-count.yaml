@@ -77,7 +77,7 @@ objectives:
       truelove <- robotNamed "truelove";
       as truelove { has "flower" }
 solution: |
-  run "scenarios/Challenges/_flower-count/solution.sw"
+  run "scenarios/Challenges/Story/_flower-count/solution.sw"
 robots:
   - name: base
     dir: north
@@ -132,7 +132,7 @@ robots:
     devices:
       - logger
     program: |
-      run "scenarios/Challenges/_flower-count/judge.sw"
+      run "scenarios/Challenges/Story/_flower-count/judge.sw"
   - name: truelove
     system: true
     display:

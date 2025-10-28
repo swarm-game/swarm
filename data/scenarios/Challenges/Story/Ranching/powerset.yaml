@@ -88,9 +88,9 @@ robots:
       - [6, watermelon]
       - [7, orange]
     program: |
-      run "scenarios/Challenges/Ranching/_powerset/setup.sw"
+      run "scenarios/Challenges/Story/Ranching/_powerset/setup.sw"
 solution: |
-  run "scenarios/Challenges/Ranching/_powerset/solution.sw"
+  run "scenarios/Challenges/Story/Ranching/_powerset/solution.sw"
 entities:
   - name: rocket skates
     display:

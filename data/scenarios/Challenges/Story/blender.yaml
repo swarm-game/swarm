@@ -23,7 +23,7 @@ objectives:
     hidden: true
     optional: true
     condition: |
-      // run "scenarios/Challenges/_blender/apprehension-checker.sw"
+      // run "scenarios/Challenges/Story/_blender/apprehension-checker.sw"
       def hasMetBase = \r.
           let basename = "base" in
           x <- as r {whoami};
@@ -93,7 +93,7 @@ robots:
       char: 'X'
       attr: robot
     program: |
-      run "scenarios/Challenges/_blender/patrol-clockwise.sw"
+      run "scenarios/Challenges/Story/_blender/patrol-clockwise.sw"
   - name: cw_robot_down
     system: true
     dir: south
@@ -102,7 +102,7 @@ robots:
       char: 'X'
       attr: robot
     program: |
-      run "scenarios/Challenges/_blender/patrol-clockwise.sw"
+      run "scenarios/Challenges/Story/_blender/patrol-clockwise.sw"
   - name: ccw_robot
     system: true
     dir: north
@@ -111,7 +111,7 @@ robots:
       char: 'X'
       attr: robot
     program: |
-      run "scenarios/Challenges/_blender/patrol-counter-clockwise.sw"
+      run "scenarios/Challenges/Story/_blender/patrol-counter-clockwise.sw"
   - name: ccw_robot_down
     system: true
     dir: south
@@ -120,9 +120,9 @@ robots:
       char: 'X'
       attr: robot
     program: |
-      run "scenarios/Challenges/_blender/patrol-counter-clockwise.sw"
+      run "scenarios/Challenges/Story/_blender/patrol-counter-clockwise.sw"
 solution: |
-  run "scenarios/Challenges/_blender/solution.sw"
+  run "scenarios/Challenges/Story/_blender/solution.sw"
 entities:
   - name: granite boulder
     display:

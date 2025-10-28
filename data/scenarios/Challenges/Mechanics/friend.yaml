@@ -55,7 +55,7 @@ robots:
     devices:
       - logger
     program: |
-      run "scenarios/Challenges/_friend/cat.sw"
+      run "scenarios/Challenges/Mechanics/_friend/cat.sw"
 objectives:
   - goal:
       - There's a cat wandering around in the field.  Bring it back to your base.  If you give it something it likes, perhaps you can get it to follow you.
@@ -65,7 +65,7 @@ objectives:
       baseLoc <- as base {whereami};
       pure (catLoc == baseLoc)
 solution: |
-  run "scenarios/Challenges/_friend/friend-solution.sw"
+  run "scenarios/Challenges/Mechanics/_friend/friend-solution.sw"
 entities:
   - name: fish
     display:

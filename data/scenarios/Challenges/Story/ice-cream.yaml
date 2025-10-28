@@ -68,9 +68,9 @@ robots:
     inventory:
       - [1, bitcoin]
     program: |
-      run "scenarios/Challenges/_ice-cream/customer.sw"
+      run "scenarios/Challenges/Story/_ice-cream/customer.sw"
 solution: |
-  run "scenarios/Challenges/_ice-cream/solution.sw"
+  run "scenarios/Challenges/Story/_ice-cream/solution.sw"
 entities:
   - name: scoop
     display:

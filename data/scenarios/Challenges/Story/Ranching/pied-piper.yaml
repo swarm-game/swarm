@@ -67,7 +67,7 @@ robots:
     devices:
       - logger
     program: |
-      run "scenarios/Challenges/Ranching/_pied-piper/rat.sw"
+      run "scenarios/Challenges/Story/Ranching/_pied-piper/rat.sw"
     walkable:
       never:
         - ladder
@@ -124,7 +124,7 @@ objectives:
         pure $ l == "tunnel";
       }
 solution: |
-  run "scenarios/Challenges/Ranching/_pied-piper/solution.sw"
+  run "scenarios/Challenges/Story/Ranching/_pied-piper/solution.sw"
 entities:
   - name: seed spreader
     display:

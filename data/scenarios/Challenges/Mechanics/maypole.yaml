@@ -54,9 +54,9 @@ robots:
       - [1, maypole 2]
       - [1, maypole 3]
     program: |
-      run "scenarios/Challenges/_maypole/monitor.sw"
+      run "scenarios/Challenges/Mechanics/_maypole/monitor.sw"
 solution: |
-  run "scenarios/Challenges/_maypole/solution.sw"
+  run "scenarios/Challenges/Mechanics/_maypole/solution.sw"
 entities:
   - name: dizzy
     display:

@@ -106,9 +106,9 @@ robots:
     display:
       invisible: true
     program: |
-      run "scenarios/Challenges/_gallery/setup.sw"
+      run "scenarios/Challenges/Algorithmic/_gallery/setup.sw"
 solution: |
-  run "scenarios/Challenges/_gallery/solution.sw"
+  run "scenarios/Challenges/Algorithmic/_gallery/solution.sw"
 entities:
   - name: wall
     display:

@@ -57,7 +57,7 @@ objectives:
       judge <- robotNamed "judge";
       as judge { has "X" }
 solution: |
-  run "scenarios/Challenges/_telephone/solution.sw"
+  run "scenarios/Challenges/Mechanics/_telephone/solution.sw"
 robots:
   - name: base
     dir: north
@@ -90,7 +90,7 @@ robots:
       char: 'Ξ'
       priority: 8
     program: |
-      run "scenarios/Challenges/_telephone/shuttle.sw"
+      run "scenarios/Challenges/Mechanics/_telephone/shuttle.sw"
   - name: photocopier
     system: true
     dir: east
@@ -101,14 +101,14 @@ robots:
       - [100, 'O']
       - [100, 'X']
     program: |
-      run "scenarios/Challenges/_telephone/photocopier.sw"
+      run "scenarios/Challenges/Mechanics/_telephone/photocopier.sw"
   - name: judge
     system: true
     dir: east
     devices:
       - logger
     program: |
-      run "scenarios/Challenges/_telephone/judge.sw"
+      run "scenarios/Challenges/Mechanics/_telephone/judge.sw"
 attrs:
   - name: greyborder
     fg: '#cccccc'

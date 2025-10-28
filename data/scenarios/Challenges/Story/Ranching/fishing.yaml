@@ -157,7 +157,7 @@ robots:
       char: W
       invisible: false
     program: |
-      run "scenarios/Challenges/Ranching/_fishing/hauler.sw"
+      run "scenarios/Challenges/Story/Ranching/_fishing/hauler.sw"
   - name: shark
     dir: [1, 0]
     system: true
@@ -166,9 +166,9 @@ robots:
       attr: shark
       invisible: false
     program: |
-      run "scenarios/Challenges/Ranching/_fishing/shark.sw"
+      run "scenarios/Challenges/Story/Ranching/_fishing/shark.sw"
 solution: |
-  run "scenarios/Challenges/Ranching/_fishing/solution.sw"
+  run "scenarios/Challenges/Story/Ranching/_fishing/solution.sw"
 structures:
   - name: rubbish enclosure
     recognize: [north, south]

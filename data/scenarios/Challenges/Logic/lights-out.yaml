@@ -95,9 +95,9 @@ robots:
     display:
       invisible: true
     program: |
-      run "scenarios/Challenges/_lights-out/assistant.sw";
+      run "scenarios/Challenges/Logic/_lights-out/assistant.sw";
 solution: |
-  run "scenarios/Challenges/_lights-out/solution.sw"
+  run "scenarios/Challenges/Logic/_lights-out/solution.sw"
 entities:
   - name: pending-off
     display:

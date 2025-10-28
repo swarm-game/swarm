@@ -15,7 +15,7 @@ objectives:
         pure $ foodCount >= 2;
       }
 solution: |
-  run "scenarios/Challenges/_dimsum/solution.sw"
+  run "scenarios/Challenges/Algorithmic/_dimsum/solution.sw"
 attrs:
   - name: barrier
     fg: "#222222"
@@ -54,7 +54,7 @@ robots:
       - scanner
       - spatula
     program: |
-      run "scenarios/Challenges/_dimsum/cook.sw"
+      run "scenarios/Challenges/Algorithmic/_dimsum/cook.sw"
   - name: patron
     dir: [0, 1]
     system: false
@@ -75,7 +75,7 @@ robots:
     inventory:
       - [2, bitcoin]
     program: |
-      run "scenarios/Challenges/_dimsum/patron.sw"
+      run "scenarios/Challenges/Algorithmic/_dimsum/patron.sw"
 entities:
   - name: wall
     display:

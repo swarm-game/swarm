@@ -70,7 +70,7 @@ robots:
       - [5, strange loop]
       - [5, treads]
 solution: |
-  run "scenarios/Challenges/Sokoban/_foresight/solution.sw"
+  run "scenarios/Challenges/Logic/Sokoban/_foresight/solution.sw"
 entities:
   - name: monolith
     display:

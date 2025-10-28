@@ -80,7 +80,7 @@ entities:
       - z-tile
     properties: [known, pickable]
 solution: |
-  run "scenarios/Challenges/_pack-tetrominoes/solution.sw"
+  run "scenarios/Challenges/Mechanics/_pack-tetrominoes/solution.sw"
 structures:
   - name: tee
     recognize: [north, south, east, west]
