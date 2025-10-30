@@ -16,6 +16,10 @@ objectives:
       - |
         **TIP:** Newly built robots start out facing the same
         direction as their parent, which in the tutorials will always be north.
+      - |
+        **TIP:** If you make a mistake, not to worry.  You have enough materials
+        for several tries; or, you can always hit **Ctrl+Q** and
+        select "Start over".
     condition: |
       try {
         teleport self (0,-1);
