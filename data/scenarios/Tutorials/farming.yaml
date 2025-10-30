@@ -15,8 +15,8 @@ objectives:
         you now have a few `harvester`{=entity}s, a few `lambda`{=entity}s, a few `logger`{=entity}s,
         some `branch predictor`{=entity}s which
         allow robots to evaluate conditional expressions, and some
-        `strange loop`{=entity}s which enable recursive functions.  For example,
-        one simple, useful recursive function is
+        `strange loop`{=entity}s which enable recursive functions.  In
+        addition to while loops, another simple, useful recursive function is
       - |
         ```
         def forever = \c. c ; forever c end
