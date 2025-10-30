@@ -34,6 +34,20 @@ entities:
       char: 'W'
     description:
       - Do `place "win"` once you are done with this challenge.
+      - |
+        Some expressions for you to try:
+      - |
+        `north`
+      - |
+        `move; move`
+      - |
+        `grab`
+      - |
+        `make`
+      - |
+        `3`
+      - |
+        `"tree"`
     properties: [known, pickable]
 solution: |
   place "win"
