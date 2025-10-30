@@ -7,14 +7,14 @@ objectives:
       - |
         In the previous tutorial challenge, you learned how to use `require`{=snippet}
         to require specific devices to be equipped.
-        Sometimes, instead of requiring entities to be equiped as devices, you need them to be stocked in your inventory.
+        Sometimes, instead of requiring entities to be equipped as devices, you need them to be stocked in your inventory.
       - |
         In this case, you can write `stock <int> <name>`{=snippet} to ensure that a certain number
         of copies of a certain entity are placed in your inventory. For example:
         ```
         build {stock 2 "flower"; move; place "flower"; move; place "flower"}
         ```
-        This would build a robot with two `flower`{=entity}s in its inventory which the robot can then place.
+        This would build a robot with two `flower`{=entity}s in its inventory which the robot can then `place`.
       - Your goal in this challenge is to cover the entire 4x4 gray area with `rock`{=entity}s!
       - |
         **TIP:** You can define commands to simplify your task, for example:

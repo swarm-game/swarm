@@ -15,7 +15,7 @@ objectives:
         ```
         build {require "boat"; move}
         ```
-        Then a `boat`{=entity} will be equipped on the new robot in addition to `treads`{=entity}.
+        then a `boat`{=entity} will be equipped on the new robot in addition to `treads`{=entity}.
       - |
         Unlike other devices used so far in the tutorial, `boat`{=entity} does not provide any commands,
         but robots that have it equipped will not drown in the `water`{=entity}.
