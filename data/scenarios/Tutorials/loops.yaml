@@ -39,7 +39,8 @@ solution: |
     turn east; move;
     follow;
     grab; turn back; move;
-    follow
+    follow;
+    give base "gold"
   }
 robots:
   - name: base
