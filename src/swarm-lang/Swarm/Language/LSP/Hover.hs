@@ -9,50 +9,30 @@ module Swarm.Language.LSP.Hover (
   renderDoc,
   treeToMarkdown,
 
-  -- * Finding source location
-  narrowToPosition,
-  pathToPosition,
-  lspToRopePosition,
-
   -- * Explaining source position
   explain,
-) where
+)
+where
 
-import Control.Applicative ((<|>))
-import Control.Lens (un, (^.))
-import Control.Monad (guard, void)
-import Data.Foldable (asum)
+import Control.Lens ((^.))
+import Control.Monad (void)
 import Data.Graph
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe, isNothing, mapMaybe)
+import Data.Maybe (isNothing)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.Lines qualified as R
 import Data.Text.Utf16.Rope.Mixed qualified as R
 import Language.LSP.Protocol.Types qualified as J
 import Language.LSP.VFS
+import Swarm.Language.LSP.Position
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Pipeline (processParsedTerm)
 import Swarm.Language.Syntax
-import Swarm.Language.TDVar (tdVarName)
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types
-import Swarm.Pretty (prettyText, prettyTextLine)
+import Swarm.Pretty (prettyText)
 import Swarm.Util qualified as U
-
-withinBound :: Int -> SrcLoc -> Bool
-withinBound pos (SrcLoc s e) = pos >= s && pos < e
-withinBound _ NoLoc = False
-
-ropeToLspPosition :: R.Position -> J.Position
-ropeToLspPosition (R.Position l c) =
-  J.Position (fromIntegral l) (fromIntegral c)
-
-lspToRopePosition :: J.Position -> R.Position
-lspToRopePosition (J.Position myLine myCol) =
-  R.Position (fromIntegral myLine) (fromIntegral myCol)
 
 showHoverInfo ::
   J.NormalizedUri ->
@@ -78,89 +58,6 @@ showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
             finalPos = posToRange myRope (found ^. sLoc)
          in (,finalPos) . treeToMarkdown 0 $ explain found
 
-posToRange :: R.Rope -> SrcLoc -> Maybe J.Range
-posToRange myRope foundSloc = do
-  (s, e) <- case foundSloc of
-    SrcLoc s e -> Just (s, e)
-    _ -> Nothing
-  let (startRope, _) = R.charSplitAt (fromIntegral s) myRope
-      (endRope, _) = R.charSplitAt (fromIntegral e) myRope
-  return $
-    J.Range
-      (ropeToLspPosition $ R.charLengthAsPosition startRope)
-      (ropeToLspPosition $ R.charLengthAsPosition endRope)
-
--- | Find the most specific term for a given
--- position within the code.
-narrowToPosition ::
-  ExplainableType ty =>
-  -- | parent term
-  Syntax' ty ->
-  -- | absolute offset within the file.
-  Int ->
-  Syntax' ty
-narrowToPosition s i = NE.last $ pathToPosition s i
-
--- | Find the most specific term for a given
--- position within the code, recording the terms along the way for later processing.
-
--- The list is nonempty because at minimum we can return the element of the syntax we are currently processing.
-pathToPosition ::
-  forall ty.
-  ExplainableType ty =>
-  -- | parent term
-  Syntax' ty ->
-  -- | absolute offset within the file
-  Int ->
-  NonEmpty (Syntax' ty)
-pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
- where
-  innerPath :: Syntax' ty -> Maybe [Syntax' ty]
-  innerPath (Syntax' _ t _ ty) = case t of
-    SLam lv _ s -> d (locVarToSyntax' lv $ getInnerType ty) <|> d s
-    SApp s1 s2 -> d s1 <|> d s2
-    SLet _ _ lv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
-    SBind mlv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
-    STydef typ typBody _ti s1 -> d s1 <|> Just [locVarToSyntax' (tdVarName <$> typ) $ fromPoly typBody]
-    SPair s1 s2 -> d s1 <|> d s2
-    SDelay s -> d s
-    SRcd m -> asum . map d . mapMaybe snd $ m
-    SProj s1 _ -> d s1
-    SAnnotate s _ -> d s
-    SRequirements _ s -> d s
-    SParens s -> d s
-    -- atoms - return their position and end recursion
-    TUnit -> mempty
-    TConst {} -> mempty
-    TDir {} -> mempty
-    TInt {} -> mempty
-    TText {} -> mempty
-    TBool {} -> mempty
-    TVar {} -> mempty
-    TStock {} -> mempty
-    TRequire {} -> mempty
-    TType {} -> mempty
-    -- these should not show up in surface language
-    TRef {} -> mempty
-    TRobot {} -> mempty
-    TAntiInt {} -> mempty
-    TAntiText {} -> mempty
-    TAntiSyn {} -> mempty
-    SSuspend {} -> mempty
-
-  d = descend pos
-  -- try and decend into the syntax element if it is contained with position
-  descend ::
-    ExplainableType ty =>
-    Int ->
-    Syntax' ty ->
-    Maybe [Syntax' ty]
-  descend p s1@(Syntax' l1 _ _ _) = do
-    guard $ withinBound p l1
-    pure $ case innerPath s1 of
-      Nothing -> [s1]
-      Just iss -> s1 : iss
-
 renderDoc :: Int -> Text -> Text
 renderDoc d t
   | d == 0 = t
@@ -172,48 +69,7 @@ treeToMarkdown :: Int -> Tree Text -> Text
 treeToMarkdown d (Node t children) =
   T.unlines $ renderDoc d t : map (treeToMarkdown $ d + 1) children
 
-class Show t => ExplainableType t where
-  fromPoly :: Polytype -> t
-
-  -- | Pretty print the type.
-  prettyType :: t -> Text
-
-  -- | Strip the type of its outermost layer.
-  --
-  -- This allows us to strip lambda or command type
-  -- and get the type of the bound variable.
-  getInnerType :: t -> t
-
-  -- | Check if this type is same as the given 'Polytype'.
-  --
-  -- We use it to not print same type twice (e.g. inferred and generic).
-  eq :: t -> Polytype -> Bool
-
-instance ExplainableType () where
-  fromPoly = const ()
-  prettyType = const "?"
-  getInnerType = id
-  eq _ _ = False
-
-instance ExplainableType Polytype where
-  fromPoly = id
-  prettyType = prettyTextLine
-  getInnerType = fmap $ \case
-    (l :->: _r) -> l
-    (TyCmd t) -> t
-    t -> t
-  eq = (==)
-
-instance ExplainableType RawPolytype where
-  fromPoly = forgetQ
-  prettyType = prettyTextLine
-  getInnerType = fmap $ \case
-    (l :->: _r) -> l
-    (TyCmd t) -> t
-    t -> t
-  eq r t = r == forgetQ t
-
-explain :: ExplainableType ty => Syntax' ty -> Tree Text
+explain :: (ExplainableType ty) => Syntax' ty -> Tree Text
 explain trm = case trm ^. sTerm of
   TUnit -> literal "The unit value."
   TConst c -> literal . constGenSig c $ briefDoc (constDoc $ constInfo c)
@@ -282,7 +138,7 @@ explain trm = case trm ^. sTerm of
 --
 -- Note that 'Force' is often inserted internally, so
 -- if it shows up here we drop it.
-explainFunction :: ExplainableType ty => Syntax' ty -> Tree Text
+explainFunction :: (ExplainableType ty) => Syntax' ty -> Tree Text
 explainFunction s =
   case unfoldApps s of
     (Syntax' _ (TConst Force) _ _ :| [innerT]) -> explain innerT
@@ -298,7 +154,7 @@ explainFunction s =
           (map explain params)
       ]
 
-explainDefinition :: ExplainableType ty => LetSyntax -> Bool -> LocVar -> ty -> Maybe RawPolytype -> Text
+explainDefinition :: (ExplainableType ty) => LetSyntax -> Bool -> LocVar -> ty -> Maybe RawPolytype -> Text
 explainDefinition ls isRecursive (Loc _s var) ty maybeTypeAnnotation =
   typeSignature var ty $
     T.unwords
@@ -310,7 +166,7 @@ explainDefinition ls isRecursive (Loc _s var) ty maybeTypeAnnotation =
       , "a type annotation on the variable."
       ]
 
-typeSignature :: ExplainableType ty => Var -> ty -> Text -> Text
+typeSignature :: (ExplainableType ty) => Var -> ty -> Text -> Text
 typeSignature v typ body = T.unlines ["```", short, "```", body]
  where
   short = v <> ": " <> prettyType typ

@@ -8,39 +8,28 @@
 -- See the docs/EDITORS.md to learn how to use it.
 module Swarm.Language.LSP where
 
-import Control.Applicative ((<|>))
 import Control.Lens (to, (^.))
 import Control.Monad (void)
 import Control.Monad.IO.Class
-import Data.Foldable (traverse_)
 import Data.Int (Int32)
-import Data.List.NonEmpty qualified as NE
-import Data.Map qualified as M
-import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text.IO qualified as Text
-import Data.Text.Lines qualified as R
-import Data.Text.Utf16.Rope.Mixed qualified as R
-import Debug.Trace (traceShow)
 import Language.LSP.Diagnostics
 import Language.LSP.Protocol.Lens qualified as LSP
 import Language.LSP.Protocol.Message qualified as LSP
-import Language.LSP.Protocol.Types (Definition (Definition))
-import Language.LSP.Protocol.Types qualified as J
 import Language.LSP.Protocol.Types qualified as LSP
 import Language.LSP.Server
 import Language.LSP.VFS (VirtualFile (..), virtualFileText)
+import Swarm.Language.LSP.Definition qualified as D
 import Swarm.Language.LSP.Hover qualified as H
 import Swarm.Language.LSP.VarUsage qualified as VU
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Parser.Util (getLocRange, showErrorPos)
-import Swarm.Language.Pipeline (processParsedTerm, processParsedTerm')
-import Swarm.Language.Syntax (LocVar, Located (LV, lvSrcLoc), SrcLoc (..), Syntax, Syntax' (Syntax'), Term' (SLet, STydef, TVar), Var, lvSrcLoc, lvVar)
-import Swarm.Language.Syntax.AST (Term' (..))
-import Swarm.Language.TDVar (TDVar (TDVar, tdVarName))
+import Swarm.Language.Pipeline (processParsedTerm')
+import Swarm.Language.Syntax.Loc (SrcLoc (NoLoc, SrcLoc))
 import Swarm.Language.Typecheck (ContextualTypeErr (..))
-import Swarm.Language.Types (Polytype)
 import Swarm.Language.Value (emptyEnv)
 import Swarm.Pretty (prettyText)
 import System.IO (stderr)
@@ -197,108 +186,10 @@ handlers =
             doc = uri ^. to LSP.toNormalizedUri
             pos = req ^. LSP.params . LSP.position
         mdoc <- getVirtualFile doc
-        let (defs, path) = maybe ([], []) (findDefinition doc pos) mdoc
+        let (defs, path) = maybe ([], []) (D.findDefinition doc pos) mdoc
         debug $ from $ show path
         case defs of
           [] -> responder . Right . LSP.InR . LSP.InR $ LSP.Null
           [def'] -> responder . Right . LSP.InL . LSP.Definition . LSP.InL $ LSP.Location uri def'
           defs' -> responder . Right . LSP.InL . LSP.Definition . LSP.InR $ LSP.Location uri <$> defs'
     ]
-
-findDefinition ::
-  J.NormalizedUri ->
-  J.Position ->
-  VirtualFile ->
-  ([J.Range], [Syntax' Polytype])
-findDefinition _ p vf@(VirtualFile _ _ myRope) =
-  either
-    (const ([], []))
-    ( \t -> case t of
-        Nothing -> ([], [])
-        Just t' -> findDef t'
-    )
-    (readTerm' defaultParserConfig content)
- where
-  content = virtualFileText vf
-  absolutePos =
-    R.charLength . fst $ R.charSplitAtPosition (H.lspToRopePosition p) myRope
-
-  findDef :: Syntax -> ([LSP.Range], [Syntax' Polytype])
-  findDef stx =
-    case processParsedTerm stx of
-      Left _e -> ([], [])
-      Right pt -> do
-        let path = H.pathToPosition pt $ fromIntegral absolutePos
-
-        -- The last element in the path is the thing we are looking for
-        -- get it's name
-        let usage = usageName $ NE.last path
-        case usage of
-          Nothing -> ([], NE.toList path)
-          Just u -> do
-            let pathTerms = concatMap syntaxVars $! (NE.drop 1 . NE.reverse $ path)
-            (mapMaybe (maybeDefPosition u) pathTerms, NE.toList path)
-
-  -- take a syntax element that we want to find the defintion for and
-  -- a possible syntax element that contains it's defintion
-  -- if this is the matching definition return the position
-  maybeDefPosition :: Var -> (SrcLoc, Var) -> Maybe LSP.Range
-  maybeDefPosition name' (pos, name)
-    | name == name' = posToRange myRope pos
-    | otherwise = Nothing
-
-usageName :: Syntax' a -> Maybe Var
-usageName (Syntax' _ (TVar name) _ _) = Just name
-usageName _ = Nothing
-
-syntaxVars :: Syntax' a -> [(SrcLoc, Var)]
-syntaxVars (Syntax' _ t _ _) = case t of
-  (SLet _ _ lv _ _ _ _ _) -> [lvToLoc lv]
-  (STydef lv _ _ _) -> [(lvSrcLoc lv, tdVarName $ lvVar lv)]
-  (SApp s1 _) -> syntaxVars s1
-  (SLam lv _ _) -> [lvToLoc lv]
-  (SPair s1 s2) -> syntaxVars s1 ++ syntaxVars s2
-  (SBind mLV _ _ _ _ _) -> maybeToList (lvToLoc <$> mLV)
-  (SDelay s) -> syntaxVars s
-  -- (SRcd m) -> M.foldrWithKey (\_ s acc -> maybe [] syntaxVars s ++ acc) [] m
-  SRcd {} -> mempty
-  SProj {} -> mempty
-  SAnnotate {} -> mempty
-  SSuspend {} -> mempty
-  SParens {} -> mempty
-  (SRequirements _ _) -> mempty
-  TUnit {} -> mempty
-  TConst {} -> mempty
-  TDir {} -> mempty
-  TInt {} -> mempty
-  TAntiInt {} -> mempty
-  TText {} -> mempty
-  TAntiText {} -> mempty
-  TAntiSyn {} -> mempty
-  TBool {} -> mempty
-  TRobot {} -> mempty
-  TRef {} -> mempty
-  TRequire {} -> mempty
-  TStock {} -> mempty
-  TType {} -> mempty
- where
-  lvToLoc lv = (lvSrcLoc lv, lvVar lv)
-
-varName :: LocVar -> Var
-varName (LV _ n) = n
-
-posToRange :: R.Rope -> SrcLoc -> Maybe J.Range
-posToRange myRope foundSloc = do
-  (s, e) <- case foundSloc of
-    SrcLoc s e -> Just (s, e)
-    _ -> Nothing
-  let (startRope, _) = R.charSplitAt (fromIntegral s) myRope
-      (endRope, _) = R.charSplitAt (fromIntegral e) myRope
-  return $
-    J.Range
-      (ropeToLspPosition $ R.charLengthAsPosition startRope)
-      (ropeToLspPosition $ R.charLengthAsPosition endRope)
-
-ropeToLspPosition :: R.Position -> J.Position
-ropeToLspPosition (R.Position l c) =
-  J.Position (fromIntegral l) (fromIntegral c)

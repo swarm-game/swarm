@@ -475,6 +475,8 @@ library swarm-lang
     Swarm.Language.LSP
     Swarm.Language.LSP.Hover
     Swarm.Language.LSP.VarUsage
+    Swarm.Language.LSP.Definition
+    Swarm.Language.LSP.Position
     Swarm.Language.Parser
     Swarm.Language.Parser.Comment
     Swarm.Language.Parser.Core
