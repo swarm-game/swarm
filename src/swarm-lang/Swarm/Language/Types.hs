@@ -146,6 +146,7 @@ import Data.Eq.Deriving (deriveEq1)
 import Data.Fix
 import Data.Foldable (fold)
 import Data.Functor.Classes (Eq1)
+import Data.Functor.Compose (Compose)
 import Data.Hashable (Hashable (..))
 import Data.Hashable.Lifted (Hashable1)
 import Data.Kind qualified
@@ -167,6 +168,7 @@ import GHC.Generics (Generic, Generic1)
 import Prettyprinter (align, braces, brackets, concatWith, flatAlt, hsep, pretty, punctuate, softline, (<+>))
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
+import Swarm.Language.Syntax.Loc (Located)
 import Swarm.Language.TDVar (TDVar, mkTDVar, mkTDVar', tdVarName)
 import Swarm.Language.Var (Var)
 import Swarm.Pretty (PrettyPrec (..), pparens, pparens', ppr, prettyBinding)
@@ -322,7 +324,7 @@ instance FromJSON1 TypeF where
 --   annoying to manually apply and match against 'Fix' constructors
 --   everywhere, so we provide pattern synonyms that allow us to work
 --   with 'Type' as if it were defined in a directly recursive way.
-type Type = Fix TypeF
+type Type = Fix (Compose Located TypeF)
 
 instance Plated Type where
   plate = uniplate
