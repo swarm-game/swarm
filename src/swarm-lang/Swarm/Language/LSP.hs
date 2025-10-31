@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -14,10 +13,13 @@ import Control.Monad.IO.Class
 import Data.Int (Int32)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Text.IO qualified as Text
 import Language.LSP.Diagnostics
 import Language.LSP.Protocol.Lens qualified as LSP
+import Language.LSP.Protocol.Message (TResponseError (TResponseError))
 import Language.LSP.Protocol.Message qualified as LSP
+import Language.LSP.Protocol.Types (ErrorCodes (..))
 import Language.LSP.Protocol.Types qualified as LSP
 import Language.LSP.Server
 import Language.LSP.VFS (VirtualFile (..), virtualFileText)
@@ -186,10 +188,12 @@ handlers =
             doc = uri ^. to LSP.toNormalizedUri
             pos = req ^. LSP.params . LSP.position
         mdoc <- getVirtualFile doc
-        let (defs, path) = maybe ([], []) (D.findDefinition doc pos) mdoc
-        debug $ from $ show path
+        let defs = maybe D.Unsupported (D.findDefinition doc pos) mdoc
         case defs of
-          [] -> responder . Right . LSP.InR . LSP.InR $ LSP.Null
-          [def'] -> responder . Right . LSP.InL . LSP.Definition . LSP.InL $ LSP.Location uri def'
-          defs' -> responder . Right . LSP.InL . LSP.Definition . LSP.InR $ LSP.Location uri <$> defs'
+          D.Unsupported -> responder . Left $ TResponseError (LSP.InR ErrorCodes_MethodNotFound) "Unsupported find definition" Nothing
+          D.PError e -> responder . Left $ TResponseError (LSP.InR ErrorCodes_ParseError) (T.pack $ show e) Nothing
+          D.TError e -> responder . Left $ TResponseError (LSP.InR ErrorCodes_ParseError) (T.pack $ show e) Nothing
+          D.NotFound -> responder . Right . LSP.InR . LSP.InR $ LSP.Null
+          D.Found [def] -> responder . Right . LSP.InL . LSP.Definition . LSP.InL $ LSP.Location uri def
+          D.Found defs' -> responder . Right . LSP.InL . LSP.Definition . LSP.InR $ LSP.Location uri <$> defs'
     ]

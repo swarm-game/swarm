@@ -2,69 +2,71 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Language.LSP.Definition (
   findDefinition,
+  DefinitionResult (..),
 ) where
 
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (mapMaybe, maybeToList)
+import Data.Maybe (maybeToList)
 import Data.Text.Utf16.Rope.Mixed qualified as R
+import Debug.Trace (traceShow)
 import Language.LSP.Protocol.Types qualified as J
 import Language.LSP.Protocol.Types qualified as LSP
 import Language.LSP.VFS (VirtualFile (VirtualFile), virtualFileText)
 import Swarm.Language.LSP.Position qualified as P
 import Swarm.Language.Parser (readTerm')
-import Swarm.Language.Parser.Core (defaultParserConfig)
+import Swarm.Language.Parser.Core (ParserError, defaultParserConfig)
 import Swarm.Language.Pipeline (processParsedTerm)
-import Swarm.Language.Syntax (LocVar, Located (..), SrcLoc, Syntax, Syntax' (Syntax'), Term' (..), Var)
+import Swarm.Language.Syntax (Located (..), SrcLoc, Syntax, Syntax' (Syntax'), Term' (..), Var)
 import Swarm.Language.TDVar (tdVarName)
-import Swarm.Language.Types (Polytype)
+import Swarm.Language.Typecheck (ContextualTypeErr)
+
+data DefinitionResult = TError ContextualTypeErr | PError ParserError | Unsupported | NotFound | Found [J.Range]
 
 findDefinition ::
   J.NormalizedUri ->
   J.Position ->
   VirtualFile ->
-  ([J.Range], [Syntax' Polytype])
+  DefinitionResult
 findDefinition _ p vf@(VirtualFile _ _ myRope) =
   either
-    (const ([], []))
-    ( \t -> case t of
-        Nothing -> ([], [])
-        Just t' -> findDef t'
-    )
+    PError
+    (maybe Unsupported findDef)
     (readTerm' defaultParserConfig content)
  where
   content = virtualFileText vf
   absolutePos =
     R.charLength . fst $ R.charSplitAtPosition (P.lspToRopePosition p) myRope
 
-  findDef :: Syntax -> ([LSP.Range], [Syntax' Polytype])
+  -- build a list from the syntax tree and starting from the position of the cursor (the bottom).
+  -- search for the matching definition.
+  findDef :: Syntax -> DefinitionResult
   findDef stx =
     case processParsedTerm stx of
-      Left _e -> ([], [])
+      Left e -> TError e
       Right pt -> do
         let path = P.pathToPosition pt $ fromIntegral absolutePos
-
-        -- The last element in the path is the thing we are looking for
-        -- get it's name
         let usage = usageName $ NE.last path
+
         case usage of
-          Nothing -> ([], NE.toList path)
+          Nothing -> Unsupported
           Just u -> do
-            let pathTerms = concatMap syntaxVars $! (NE.drop 1 . NE.reverse $ path)
-            (mapMaybe (maybeDefPosition u) pathTerms, NE.toList path)
+            let pathTerms = concatMap syntaxVars (NE.drop 1 . NE.reverse $ path)
+            traceShow pathTerms maybe NotFound Found (traverse (maybeDefPosition u) pathTerms)
 
   -- take a syntax element that we want to find the defintion for and
   -- a possible syntax element that contains it's defintion
   -- if this is the matching definition return the position
   maybeDefPosition :: Var -> (SrcLoc, Var) -> Maybe LSP.Range
-  maybeDefPosition name' (pos, name)
+  maybeDefPosition name (pos, name')
     | name == name' = P.posToRange myRope pos
     | otherwise = Nothing
 
 -- | find the name of the syntax element if it is a value level variable
 -- TODO if we want to support more jump to definitions we should extend this
 usageName :: Syntax' a -> Maybe Var
-usageName (Syntax' _ (TVar name) _ _) = Just name
-usageName _ = Nothing
+usageName (Syntax' _ t _ _) = case t of
+  (TVar n) -> Just n
+  _ -> Nothing
 
 syntaxVars :: Syntax' a -> [(SrcLoc, Var)]
 syntaxVars (Syntax' _ t _ _) = case t of
