@@ -65,6 +65,7 @@ robots:
       - logger
       - 3D printer
       - dictionary
+      - toolkit
     inventory:
       - [8, compass]
       - [8, solar panel]
@@ -75,6 +76,7 @@ robots:
       - [8, lambda]
       - [8, strange loop]
       - [8, branch predictor]
+      - [8, toolkit]
 entities:
 known: [rock, gold]
 world:
