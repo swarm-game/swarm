@@ -46,6 +46,7 @@ mkOffsets pos (RowWidth w) =
     (subtractPosFrom 0)
     (subtractPosFrom rightMostShapeRowIndex)
  where
+  subtractPosFrom :: Applicative f => Int32 -> f Int32
   subtractPosFrom minuend = pure $ minuend - pos
   rightMostShapeRowIndex = w - 1
 

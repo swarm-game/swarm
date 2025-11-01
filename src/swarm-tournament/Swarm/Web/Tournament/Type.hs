@@ -1,4 +1,3 @@
-{-# LANGUAGE DataKinds #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -24,7 +23,7 @@ import Swarm.Game.World (Seed)
 import System.Time.Extra
 
 newtype UserAlias = UserAlias TL.Text
-  deriving (Generic, ToJSON)
+  deriving newtype (ToJSON)
 
 instance ToField UserAlias where
   toField (UserAlias x) = toField x

@@ -102,7 +102,6 @@ import Data.Text (Text)
 import Data.Text qualified as T (drop, take)
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
-import GHC.Generics (Generic)
 import Swarm.Effect qualified as Effect
 import Swarm.Failure
 import Swarm.Game.CESK (Store, emptyStore, store, suspendedEnv)
@@ -135,7 +134,7 @@ import Swarm.Util.Effect ((???))
 import Swarm.Util.Lens (makeLensesNoSigs)
 
 newtype Sha1 = Sha1 String
-  deriving (Show, Eq, Ord, Generic, ToJSON)
+  deriving newtype (Show, Eq, Ord, ToJSON)
 
 data SolutionSource
   = ScenarioSuggested

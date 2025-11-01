@@ -113,14 +113,18 @@ overlaySingleStructure ::
   MergedStructure (Maybe a) ->
   (MergedStructure (Maybe a), Pose) ->
   MergedStructure (Maybe a)
-overlaySingleStructure (MergedStructure inputArea inputPlacements inputWaypoints) (MergedStructure overlayArea overlayPlacements overlayWaypoints, pose@(Pose loc orientation)) = MergedStructure mergedArea mergedPlacements mergedWaypoints
- where
-  mergedWaypoints = inputWaypoints <> map (fmap $ placeOnArea overlayArea) overlayWaypoints
-  mergedPlacements = inputPlacements <> map (placeOnArea overlayArea) overlayPlacements
-  mergedArea = overlayGridExpanded inputArea pose overlayArea
-  placeOnArea (PositionedGrid _ overArea) =
-    offsetLoc (coerce loc)
-      . modifyLoc (reorientLandmark orientation $ getGridDimensions overArea)
+overlaySingleStructure
+  (MergedStructure inputArea inputPlacements inputWaypoints)
+  (MergedStructure overlayArea overlayPlacements overlayWaypoints, pose@(Pose loc orientation)) =
+    MergedStructure mergedArea mergedPlacements mergedWaypoints
+   where
+    mergedWaypoints = inputWaypoints <> map (fmap $ placeOnArea overlayArea) overlayWaypoints
+    mergedPlacements = inputPlacements <> map (placeOnArea overlayArea) overlayPlacements
+    mergedArea = overlayGridExpanded inputArea pose overlayArea
+    placeOnArea :: HasLocation l => PositionedGrid (Maybe a) -> l -> l
+    placeOnArea (PositionedGrid _ overArea) =
+      offsetLoc (coerce loc)
+        . modifyLoc (reorientLandmark orientation $ getGridDimensions overArea)
 
 -- | Given the structure graph, ensure that the graph is not cyclic and that all placements are valid
 validateGraph :: M.Map PathToRoot (AnnotatedStructure (Maybe a)) -> Either Text (M.Map PathToRoot (AnnotatedStructure (Maybe a)))

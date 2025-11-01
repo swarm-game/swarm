@@ -24,12 +24,12 @@ import Data.Maybe (fromMaybe)
 import Data.Semigroup
 import Data.Tuple.Extra (both)
 import Data.Vector qualified as V
-import GHC.Generics (Generic)
 import Swarm.Game.World.Coords
 import Prelude hiding (zipWith)
 
 newtype NonEmptyGrid c = NonEmptyGrid (NonEmpty (NonEmpty c))
-  deriving (Generic, Show, Eq, Functor, Foldable, Traversable, ToJSON)
+  deriving stock (Functor, Foldable, Traversable)
+  deriving newtype (Show, Eq, ToJSON)
 
 instance FunctorWithIndex Coords NonEmptyGrid where
   imap f (NonEmptyGrid g) =

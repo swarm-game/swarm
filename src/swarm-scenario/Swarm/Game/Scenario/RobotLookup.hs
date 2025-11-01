@@ -1,4 +1,3 @@
-{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -22,7 +21,8 @@ import Swarm.Util.Yaml
 ------------------------------------------------------------
 
 newtype RobotName = RobotName Text
-  deriving (Show, Eq, Ord, Generic, FromJSON)
+  deriving stock (Generic)
+  deriving newtype (Show, Eq, Ord, FromJSON)
 
 -- | A robot template paired with its definition's index within
 -- the Scenario file
