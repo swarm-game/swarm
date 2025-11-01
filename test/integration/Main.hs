@@ -356,7 +356,7 @@ expectFailScenarios :: M.Map FilePath String
 expectFailScenarios =
   M.fromList
     [ "Testing/231-requirements/231-command-transformer-reqs" ==> "Awaiting fix for #231"
-    , "Challenges/wolf-goat-cabbage" ==> "Awaiting fix for #2602"
+    , "Challenges/Logic/wolf-goat-cabbage" ==> "Awaiting fix for #2602"
     ]
  where
   f ==> e = (normalizePath f, e)
@@ -371,32 +371,32 @@ customTimeoutScenarios =
     , "Tutorials/farming" ==> 5
     , "Fun/snake" ==> 20
     , "Fun/horton" ==> 10
-    , "Challenges/2048" ==> 10
-    , "Challenges/word-search" ==> 6
-    , "Challenges/bridge-building" ==> 10
-    , "Challenges/ice-cream" ==> 5
-    , "Challenges/combo-lock" ==> 10
-    , "Challenges/wave" ==> 15
-    , "Challenges/arbitrage" ==> 3
-    , "Challenges/bucket-brigade" ==> 5
-    , "Challenges/gopher" ==> 20
-    , "Challenges/hackman" ==> 5
-    , "Challenges/blender" ==> 5
-    , "Challenges/dna" ==> 20
-    , "Challenges/hanoi" ==> 10
-    , "Challenges/lights-out" ==> 3
-    , "Challenges/Sliding Puzzles/3x3" ==> 40
-    , "Challenges/dimsum" ==> 10
-    , "Challenges/gallery" ==> 20
-    , "Challenges/telephone" ==> 20
-    , "Challenges/flower-count" ==> 20
-    , "Challenges/photocopier" ==> 30
+    , "Challenges/Algorithmic/2048" ==> 10
+    , "Challenges/Algorithmic/word-search" ==> 6
+    , "Challenges/Story/bridge-building" ==> 10
+    , "Challenges/Story/ice-cream" ==> 5
+    , "Challenges/Algorithmic/combo-lock" ==> 10
+    , "Challenges/Mechanics/wave" ==> 15
+    , "Challenges/Story/arbitrage" ==> 3
+    , "Challenges/Mechanics/bucket-brigade" ==> 5
+    , "Challenges/Story/gopher" ==> 20
+    , "Challenges/Story/hackman" ==> 5
+    , "Challenges/Story/blender" ==> 5
+    , "Challenges/Story/dna" ==> 20
+    , "Challenges/Logic/hanoi" ==> 10
+    , "Challenges/Logic/lights-out" ==> 3
+    , "Challenges/Logic/Sliding Puzzles/3x3" ==> 40
+    , "Challenges/Algorithmic/dimsum" ==> 10
+    , "Challenges/Algorithmic/gallery" ==> 20
+    , "Challenges/Mechanics/telephone" ==> 20
+    , "Challenges/Story/flower-count" ==> 20
+    , "Challenges/Mechanics/photocopier" ==> 30
     , "Challenges/Mazes/invisible_maze" ==> 2
-    , "Challenges/Ranching/beekeeping" ==> 60
-    , "Challenges/Ranching/powerset" ==> 20
-    , "Challenges/Ranching/fishing" ==> 10
-    , "Challenges/Ranching/gated-paddock" ==> 30
-    , "Challenges/Ranching/pied-piper" ==> 30
+    , "Challenges/Story/Ranching/beekeeping" ==> 60
+    , "Challenges/Story/Ranching/powerset" ==> 20
+    , "Challenges/Story/Ranching/fishing" ==> 10
+    , "Challenges/Story/Ranching/gated-paddock" ==> 30
+    , "Challenges/Story/Ranching/pied-piper" ==> 30
     , "Testing/479-atomic-race" ==> 2
     , "Testing/479-atomic" ==> 5
     , "Testing/490-harvest" ==> 5

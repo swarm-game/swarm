@@ -1,0 +1,101 @@
+version: 1
+name: Photocopier
+author: Brent Yorgey
+description: |
+  Copy an invisible pattern
+creative: false
+objectives:
+  - id: photocopy
+    goal:
+      - |
+        Inside the left-hand rectangular frame is a pattern drawn with
+        `invisible pixel`{=entity}s.  Your job is to copy the invisible pattern
+        on the left into the frame on the right.  Empty cells on the
+        left should be drawn with black pixels on the right, and cells
+        containing invisible pixels on the left should be drawn with
+        white pixels on the right.
+    condition: |
+      judge <- robotNamed "judge";
+      as judge { has "gold" }
+solution: |
+  run "scenarios/Challenges/Mechanics/_photocopier/solution.sw"
+robots:
+  - name: base
+    dir: north
+    devices:
+      - solar panel
+      - treads
+      - logger
+      - scanner
+      - branch predictor
+      - grabber
+      - compass
+      - lambda
+      - dictionary
+      - ADT calculator
+      - comparator
+      - counter
+      - strange loop
+      - clock
+      - GPS receiver
+    inventory:
+      - [100, pixel (W)]
+      - [100, pixel (B)]
+  - name: judge
+    system: true
+    dir: east
+    devices:
+      - logger
+    program: |
+      run "scenarios/Challenges/Mechanics/_photocopier/judge.sw"
+entities:
+  - name: pixel (W)
+    display:
+      attr: entity
+      char: '█'
+    description:
+      - A white pixel.
+    properties: [known]
+  - name: pixel (B)
+    display:
+      attr: black
+      char: '█'
+    description:
+      - A black pixel.
+    properties: [known]
+  - name: invisible pixel
+    display:
+      invisible: true
+    description:
+      - An invisible pixel.
+    properties: [known]
+  - name: frame
+    display:
+      char: '+'
+      attr: entity
+    description:
+      - A frame.
+    properties: [known, boundary]
+known: [wall]
+world:
+  dsl: |
+    {grass}
+  upperleft: [-2, 2]
+  palette:
+    'b': [grass, null, base]
+    '.': [grass]
+    '+': [grass, frame]
+    'x': [grass, invisible pixel]
+    'j': [grass, null, judge]
+    chars: 'A-Z0-9'
+  map: |
+    ..01234567........01234567.
+    .++++++++++......++++++++++
+    0+bxx.....+......+........+
+    1+..xx....+......+........+
+    2+...xx...+......+........+
+    3+..xxxx..+......+........+
+    4+.xx..xx.+......+........+
+    5+xx....xx+......+j.......+
+    .++++++++++......++++++++++
+    ...SOURCE...........COPY...

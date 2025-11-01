@@ -1,0 +1,9 @@
+chess_horse.yaml
+teleport.yaml
+wave.yaml
+maypole.yaml
+pack-tetrominoes.yaml
+bucket-brigade.yaml
+friend.yaml
+photocopier.yaml
+telephone.yaml
