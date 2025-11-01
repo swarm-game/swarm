@@ -162,7 +162,7 @@ instance FromJSON Objective where
 
 -- | TODO: #1044 Could also add an "ObjectiveFailed" constructor...
 newtype Announcement = ObjectiveCompleted Objective
-  deriving stock (Show, Generic)
+  deriving stock (Show)
   deriving newtype (ToJSON)
 
 ------------------------------------------------------------

@@ -58,7 +58,7 @@ import Prelude hiding (lookup)
 --   functional, without the need to thread around some kind of
 --   globally unique ID generation effect.
 newtype CtxHash = CtxHash {getCtxHash :: Int}
-  deriving stock (Data, Generic)
+  deriving stock (Data)
   deriving newtype (Eq, Ord, Num, ToJSONKey, FromJSONKey)
   deriving (Semigroup, Monoid) via Sum Int
 
@@ -320,7 +320,7 @@ buildCtxMap m (CtxTree h s) = do
       CtxUnion s1 s2 -> buildCtxMap m s1 *> buildCtxMap m s2
 
 newtype ConstHash v t = ConstHash CtxHash
-  deriving newtype (Eq, Show, Generic, ToJSON, FromJSON)
+  deriving newtype (Eq, Show, ToJSON, FromJSON)
 
 -- | "Dehydrate" a context map by replacing the actual context trees
 --   with single structure layers containing only hashes.  A

@@ -241,8 +241,8 @@ instance FromJSON Growth where
 --   two stages).  The actual time for each stage will be chosen
 --   uniformly at random between these two values.
 newtype GrowthTime = GrowthTime (Integer, Integer)
-  deriving stock (Generic)
-  deriving newtype (Eq, Ord, Show, Read, Hashable, FromJSON, ToJSON)
+  deriving stock (Generic, Eq, Ord, Show, Read)
+  deriving anyclass (Hashable, FromJSON, ToJSON)
 
 -- | The default growth time (100, 200) for a growable entity with no
 --   growth time specification.

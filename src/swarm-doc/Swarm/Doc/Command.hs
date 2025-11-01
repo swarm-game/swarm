@@ -37,7 +37,6 @@ data CommandEntry = CommandEntry
   deriving (Generic, ToJSON)
 
 newtype CommandCatalog = CommandCatalog {entries :: [CommandEntry]}
-  deriving stock (Generic)
   deriving newtype (ToJSON)
 
 instance SD.ToSample CommandCatalog where

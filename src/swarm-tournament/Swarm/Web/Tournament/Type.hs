@@ -23,7 +23,6 @@ import Swarm.Game.World (Seed)
 import System.Time.Extra
 
 newtype UserAlias = UserAlias TL.Text
-  deriving stock (Generic)
   deriving newtype (ToJSON)
 
 instance ToField UserAlias where
