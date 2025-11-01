@@ -32,7 +32,9 @@ entities:
       char: 'W'
     description:
       - Do `place "win"` once you are done with this challenge.
-      - "Some other expressions for you to try:"
+      - "Some expressions for you to try:"
+      - |
+        `turn 1`{=snippet}
       - |
         `turn move`{=snippet}
       - |
