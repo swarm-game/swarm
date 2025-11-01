@@ -29,7 +29,8 @@ queue_rules:
           - check-success=Haskell-CI - Linux - ghc-9.10.1
           - check-success=Haskell-CI - Linux - ghc-9.8.2
           - check-success=Haskell-CI - Linux - ghc-9.6.6
-          - check-success=Haskell-CI - windows-latest - ghc-9.8.2
+          - check-success=Simple CI - windows-latest - ghc-9.12.1
+          - check-success=Simple CI - macos-latest - ghc-9.12.1
 
 pull_request_rules:
 - actions:
@@ -61,7 +62,8 @@ pull_request_rules:
       - check-success=Haskell-CI - Linux - ghc-9.10.1
       - check-success=Haskell-CI - Linux - ghc-9.8.2
       - check-success=Haskell-CI - Linux - ghc-9.6.6
-      - check-success=Haskell-CI - windows-latest - ghc-9.8.2
+      - check-success=Simple CI - windows-latest - ghc-9.12.1
+      - check-success=Simple CI - macos-latest - ghc-9.12.1
   - label=merge me
   - ! '#approved-reviews-by>=1'
   - ! '#changes-requested-reviews-by=0'
