@@ -5,13 +5,15 @@ description: |
 objectives:
   - goal:
       - |
-        The 4x4 gray square contains 4 `very small rock`{=entity}s --- so
-        small they cannot be seen!  Your goal is to collect all of
-        them and bring them back to your base; you win when you have
-        all 4.  There is one rock in each row and column, but
-        otherwise you can't be sure where they are.  Your best bet is
-        to sweep over the entire 4x4 square and pick up a `very small rock`{=entity}
-        any time you detect one.
+        Before making more progress in the world, you'll need to learn
+        how to use a few more language features. The 4x4 gray square
+        contains 4 `very small rock`{=entity}s --- so small they
+        cannot be seen!  Your goal is to collect all of them and bring
+        them back to your base; you win when you have all 4.  There is
+        one rock in each row and column, but otherwise you can't be
+        sure where they are.  Your best bet is to sweep over the
+        entire 4x4 square and pick up a `very small rock`{=entity} any
+        time you detect one.
       - |
         The `ishere` command, with type `Text -> Cmd Bool`{=type}, can be used
         for detecting the presence of a specific item such as a `very small rock`{=entity}.

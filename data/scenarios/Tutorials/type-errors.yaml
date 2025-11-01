@@ -13,6 +13,8 @@ objectives:
       - |
         `turn move`{=snippet}
       - |
+        `3 + "hi"`{=snippet}
+      - |
         `place tree`{=snippet} (without double quotes around `tree`{=snippet})
       - |
         `move move`{=snippet}
@@ -30,6 +32,17 @@ entities:
       char: 'W'
     description:
       - Do `place "win"` once you are done with this challenge.
+      - "Some expressions for you to try:"
+      - |
+        `turn 1`{=snippet}
+      - |
+        `turn move`{=snippet}
+      - |
+        `3 + "hi"`{=snippet}
+      - |
+        `place tree`{=snippet}
+      - |
+        `move move`{=snippet}
     properties: [known, pickable]
 solution: |
   place "win"

@@ -15,6 +15,7 @@ def.yaml
 lambda.yaml
 require.yaml
 stock.yaml
-conditionals.yaml
 world101.yaml
+conditionals.yaml
+loops.yaml
 farming.yaml
