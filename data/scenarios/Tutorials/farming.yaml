@@ -11,21 +11,16 @@ objectives:
         are somewhat rare in the wild.  Therefore, it makes sense to farm
         them in order to create a reliable supply.
       - |
-        In this scenario, you are a bit farther along: in particular,
+        In this example scenario, you are a bit farther along: in particular,
         you now have a few `harvester`{=entity}s, a few `lambda`{=entity}s, a few `logger`{=entity}s,
         some `branch predictor`{=entity}s which
         allow robots to evaluate conditional expressions, and some
-        `strange loop`{=entity}s which enable recursive functions.  In
-        addition to while loops, another simple, useful recursive function is
+        `strange loop`{=entity}s which enable recursive functions.
       - |
-        ```
-        def forever = \c. c ; forever c end
-        ```
-      - |
-        Your goal is to acquire 256 `lambda`{=entity}s.  Of course, in order to
-        accomplish this in a reasonable amount of time, it makes sense to plant
+        Your goal is to acquire 256 `lambda`{=entity}s.  Of course,
+        now that you know how to write conditionals and loops, it makes sense to plant
         a field of `lambda`{=entity}s and then program one or more robots to
-        harvest them in an automated way.
+        harvest them in an automated way!
       - |
         **TIP:** the `ishere` command can be used to test for the presence of a
         (fully-grown) `lambda`{=entity}, and the `has` command can be used to test whether
@@ -41,7 +36,7 @@ objectives:
       - Congratulations!  You have completed the most difficult simulated exercise and are ready to begin exploring the new planet in earnest.  Of course there is much more remaining to explore in the world, and many additional programming language features to unlock.
       - |
         To finally complete this tutorial, there is only one thing left for you to do:
-        use one of your lambdas to make some delicious `curry`{=entity}.
+        use your `lambda`{=entity}s to make some delicious `curry`{=entity}.
       - Afterwards, you will return to the menu where you can select "Classic game" for the complete game experience.  Or, play a "Creative game" if you just want to play around with programming robots, without any constraints or need to collect resources.  You could also choose to redo some tutorial scenarios, or explore the other challenge scenarios listed in the menu.
       - Now go forth and build your swarm!
     condition: |

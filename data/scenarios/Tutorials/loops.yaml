@@ -17,10 +17,21 @@ objectives:
         handy here. However, the Swarm language does not have loops,
         only recursion, which is enabled by the `strange loop`{=entity}
         device.  You can use recursion to implement your own control
-        structures.  For example, try filling in the `...`{=snippet}
-        below to implement your own while loop function:
+        structures.  For example, a simple loop that repeats forever
+        can be written like this:
+        ```
+        def forever : Cmd Unit -> Cmd Unit = \body.
+          body; forever body
+        end
+        ```
       - |
-        `def while : Cmd Bool -> Cmd Unit -> Cmd Unit = \cond. \body. ... end`{=snippet}
+        Now replace the `pure ()` below with your own code to
+        implement a while loop function:
+        ```
+        def while : Cmd Bool -> Cmd Unit -> Cmd Unit = \cond. \body.
+          pure ()
+        end
+        ```
       - |
         This function should take a condition (a `Cmd Bool`{=type}, for
         example, `ishere "rock"`) and a command, and execute the
