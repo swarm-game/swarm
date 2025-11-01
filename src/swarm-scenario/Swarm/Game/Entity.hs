@@ -240,7 +240,9 @@ instance FromJSON Growth where
 --   and maximum amount of time taken by one growth stage (there are
 --   two stages).  The actual time for each stage will be chosen
 --   uniformly at random between these two values.
-newtype GrowthTime = GrowthTime (Integer, Integer)
+newtype GrowthTime
+  = -- | TODO: #2626 Refactor to use named fields
+    GrowthTime (Integer, Integer)
   deriving stock (Generic, Eq, Ord, Show, Read)
   deriving anyclass (Hashable, FromJSON, ToJSON)
 
