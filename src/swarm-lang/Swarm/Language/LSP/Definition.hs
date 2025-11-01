@@ -1,14 +1,22 @@
--- | LSP support for finding and jumping to definitions
+{-# LANGUAGE OverloadedStrings #-}
+
+-- LSP support for finding and jumping to definitions
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Language.LSP.Definition (
   findDefinition,
   DefinitionResult (..),
 ) where
 
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.Functor (($>))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (maybeToList)
+import Data.Text (Text)
+import Data.Text qualified as T
+import Data.Text.IO qualified as Text
 import Data.Text.Utf16.Rope.Mixed qualified as R
 import Debug.Trace (traceShow)
+import GHC.IO (unsafePerformIO)
 import Language.LSP.Protocol.Types qualified as J
 import Language.LSP.Protocol.Types qualified as LSP
 import Language.LSP.VFS (VirtualFile (VirtualFile), virtualFileText)
@@ -19,6 +27,7 @@ import Swarm.Language.Pipeline (processParsedTerm)
 import Swarm.Language.Syntax (Located (..), SrcLoc, Syntax, Syntax' (Syntax'), Term' (..), Var)
 import Swarm.Language.TDVar (tdVarName)
 import Swarm.Language.Typecheck (ContextualTypeErr)
+import System.IO (stderr)
 
 data DefinitionResult = TError ContextualTypeErr | PError ParserError | Unsupported | NotFound | Found [J.Range]
 
@@ -51,7 +60,9 @@ findDefinition _ p vf@(VirtualFile _ _ myRope) =
           Nothing -> Unsupported
           Just u -> do
             let pathTerms = concatMap syntaxVars (NE.drop 1 . NE.reverse $ path)
-            traceShow pathTerms maybe NotFound Found (traverse (maybeDefPosition u) pathTerms)
+            unsafePerformIO $
+              debug (T.pack $ show pathTerms)
+                $> maybe NotFound Found (traverse (maybeDefPosition u) pathTerms)
 
   -- take a syntax element that we want to find the defintion for and
   -- a possible syntax element that contains it's defintion
@@ -60,6 +71,9 @@ findDefinition _ p vf@(VirtualFile _ _ myRope) =
   maybeDefPosition name (pos, name')
     | name == name' = P.posToRange myRope pos
     | otherwise = Nothing
+
+debug :: (MonadIO m) => Text -> m ()
+debug msg = liftIO $ Text.hPutStrLn stderr $ "[swarm-lsp] " <> msg
 
 -- | find the name of the syntax element if it is a value level variable
 -- TODO if we want to support more jump to definitions we should extend this
