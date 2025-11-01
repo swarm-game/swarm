@@ -6,6 +6,7 @@ diff-friendly-import-export: true
 let-style: inline
 respectful: true
 single-constraint-parens: auto
+sort-deriving-clauses: true
 haddock-style: single-line
 newlines-between-decls: 1
 reexports:

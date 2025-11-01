@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Tick (
