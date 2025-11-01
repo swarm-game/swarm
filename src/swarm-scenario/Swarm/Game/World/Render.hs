@@ -12,6 +12,7 @@ module Swarm.Game.World.Render (
   doRenderCmd,
   getRenderableGrid,
   renderImage,
+  textGrid,
 ) where
 
 import Codec.Picture
@@ -188,8 +189,11 @@ doRenderCmd opts@(RenderOpts _ asPng _ _) mapPath =
 
 renderScenarioMap :: RenderOpts -> FilePath -> IO [String]
 renderScenarioMap opts fp = simpleErrorHandle $ do
-  ThumbnailRenderContext grid _ <- getRenderableGridFromPath opts fp
-  return $ getRows $ getCellChar <$> grid
+  thumbCtx <- getRenderableGridFromPath opts fp
+  return $ textGrid thumbCtx
+
+textGrid :: ThumbnailRenderContext -> [String]
+textGrid (ThumbnailRenderContext grid _) = getRows $ getCellChar <$> grid
 
 data ThumbnailRenderContext
   = ThumbnailRenderContext

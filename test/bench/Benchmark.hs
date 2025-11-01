@@ -20,7 +20,7 @@ import Swarm.Game.Cosmetic.Display (defaultRobotDisplay)
 import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, mkRobot)
 import Swarm.Game.Robot.Walk (emptyExceptions)
-import Swarm.Game.Scenario (loadStandaloneScenario)
+import Swarm.Game.Scenario (loadStandaloneScenario, Scenario)
 import Swarm.Game.Scenario.Status
 import Swarm.Game.State (GameState, creativeMode, landscape, zoomRobots)
 import Swarm.Game.State.Initialize (scenarioToGameStateForTests)
@@ -35,7 +35,10 @@ import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax
 import Swarm.Util (parens, showT)
 import Swarm.Util.Erasable
-import Test.Tasty.Bench (Benchmark, bcompare, bench, bgroup, defaultMain, whnfAppIO)
+import Test.Tasty.Bench (Benchmark, bcompare, bench, bgroup, defaultMain, whnfAppIO, nfAppIO)
+import Swarm.Game.World.Render
+import Control.Carrier.Lift (runM)
+import Swarm.Game.Scenario.Topography.Area (AreaDimensions(AreaDimensions))
 
 -- | The program of a robot that does nothing.
 idleProgram :: TSyntax
@@ -161,6 +164,16 @@ mkGameState prog robotMaker numRobots = do
 runGame :: Int -> GameState -> IO ()
 runGame numGameTicks = evalStateT (replicateM_ numGameTicks . runMetricIO $ runTimeIO gameTick)
 
+-- --------
+
+getClassicScenario :: IO Scenario
+getClassicScenario = simpleErrorHandle $ fst <$> loadStandaloneScenario "data/scenarios/classic.yaml"
+
+scenarioPreview :: RenderComputationContext -> Scenario -> IO [String]
+scenarioPreview ctx s = runM $ textGrid <$> getRenderableGrid ctx s
+
+-- --------
+
 main :: IO ()
 main = do
   idlers <- mkGameStates largeRobotNumbers idleProgram
@@ -169,6 +182,9 @@ main = do
   movers <- mkGameStates robotNumbers moverProgram
   wavesInlined <- mkGameStates robotNumbers $ waveProgram True
   wavesWithDef <- mkGameStates robotNumbers $ waveProgram False
+
+  classic <- getClassicScenario
+
   -- In theory we should force the evaluation of these game states to normal
   -- form before running the benchmarks. In practice, the first of the many
   -- criterion runs for each of these benchmarks doesn't look like an outlier.
@@ -189,8 +205,17 @@ main = do
                 )
             ]
         ]
+    , bgroup "classic world DSL" (bgroupPreview classic)
     ]
  where
+  bgroupPreview sc =
+    [ benchPreview sc (AreaDimensions side side)
+    | side <- [10, 100, 200, 400, 800]
+    ]
+  prettyDim (AreaDimensions w h) = show w <> "x" <> show h
+  benchPreview sc dim = bench (prettyDim dim) $ nfAppIO
+    (scenarioPreview $ RenderComputationContext (Just 0) (Just dim)) sc
+
   bgroupTicks label ticks bots =
     bgroup newLabel $ toBenchmarks ticks bots
    where
