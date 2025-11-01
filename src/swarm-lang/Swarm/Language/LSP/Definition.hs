@@ -10,7 +10,7 @@ module Swarm.Language.LSP.Definition (
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Functor (($>))
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (maybeToList)
+import Data.Maybe (mapMaybe, maybeToList)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as Text
@@ -60,9 +60,9 @@ findDefinition _ p vf@(VirtualFile _ _ myRope) =
           Nothing -> Unsupported
           Just u -> do
             let pathTerms = concatMap syntaxVars (NE.drop 1 . NE.reverse $ path)
-            unsafePerformIO $
-              debug (T.pack $ show pathTerms)
-                $> maybe NotFound Found (traverse (maybeDefPosition u) pathTerms)
+            case mapMaybe (maybeDefPosition u) pathTerms of
+              [] -> NotFound
+              ranges -> Found ranges
 
   -- take a syntax element that we want to find the defintion for and
   -- a possible syntax element that contains it's defintion
