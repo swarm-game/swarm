@@ -1,0 +1,270 @@
+version: 1
+name: Art museum
+author: Karl Ostmo
+description: |
+  Rearrange sculpture exhibit
+creative: false
+attrs:
+  - name: bust1
+    fg: "#008800"
+  - name: bust2
+    fg: "#ff8888"
+  - name: bust3
+    fg: "#0000ff"
+  - name: bust4
+    fg: "#880088"
+  - name: bust5
+    fg: "#884444"
+  - name: bust6
+    fg: "#00ffff"
+  - name: bust7
+    fg: "#880000"
+  - name: bust8
+    fg: "#ff0000"
+  - name: bust9
+    fg: "#000088"
+  - name: bust10
+    fg: "#884488"
+  - name: bust11
+    fg: "#ffff00"
+  - name: bust12
+    fg: "#008888"
+  - name: bust13
+    fg: "#ff00ff"
+  - name: bust14
+    fg: "#448844"
+  - name: bust15
+    fg: "#444488"
+  - name: bust16
+    fg: "#00ff00"
+objectives:
+  - teaser: Rearrange
+    goal:
+      - |
+        A prankster has wreaked mischief in the hall of presidential busts!
+        The sculptures just happen now to be in order of your personal presidential preference.
+      - |
+        Put the exhibits back into chronological order before the museum opens.
+      - |
+        The museum also sells replicas, and it so happens that the inventory of earlier
+        presidents are invariably understocked relative to later ones.
+    condition: |
+      def ensureMonotonicDecreasing = \itemCount. \prevOrdinal.
+        maybeEntity <- scan down;
+        case maybeEntity (\_. pure $ itemCount == 0) (\item.
+            myCount <- count item;
+            if (myCount <= prevOrdinal) {
+              move;
+              ensureMonotonicDecreasing (itemCount - 1) myCount;
+            } {
+              pure false;
+            };
+        );
+        end;
+
+      def λmatch = \f. \p. match p f end
+      def λcase = \f. \g. \s. case s f g end
+
+      def length : (rec l. Unit + a * l) -> Int = λcase
+        (\_. 0)
+        (λmatch \_. \rest. 1 + length rest)
+      end
+
+      j <- robotnamed "judge";
+      as j {
+        // Flag that setup is done
+        hasBitcoin <- has "bitcoin";
+        if hasBitcoin {
+          let busts = tagmembers "bust" in
+          let bustCount = length busts in
+          ensureMonotonicDecreasing bustCount $ bustCount + 1;
+        } {
+          pure false;
+        }
+      };
+robots:
+  - name: base
+    dir: east
+    devices:
+      - ADT calculator
+      - branch predictor
+      - comparator
+      - counter
+      - dozer blade
+      - dictionary
+      - Elmer's glue
+      - lambda
+      - linotype
+      - logger
+      - keyboard
+      - scanner
+      - strange loop
+      - treads
+  - name: judge
+    system: true
+    dir: east
+    display:
+      invisible: true
+    program: |
+      run "scenarios/Challenges/Algorithmic/_gallery/setup.sw"
+solution: |
+  run "scenarios/Challenges/Algorithmic/_gallery/solution.sw"
+entities:
+  - name: wall
+    display:
+      char: 'w'
+    description:
+      - Building boundary
+    properties: [known, unwalkable]
+  - name: George Washington
+    display:
+      char: '@'
+      attr: bust1
+    description:
+      - The first president
+    properties: [known, pushable]
+    tags: [bust]
+  - name: John Adams
+    display:
+      char: '@'
+      attr: bust2
+    description:
+      - The second president
+    properties: [known, pushable]
+    tags: [bust]
+  - name: Thomas Jefferson
+    display:
+      char: '@'
+      attr: bust3
+    description:
+      - The third president
+    properties: [known, pushable]
+    tags: [bust]
+  - name: James Madison
+    display:
+      char: '@'
+      attr: bust4
+    description:
+      - The fourth president
+    properties: [known, pushable]
+    tags: [bust]
+  - name: James Monroe
+    display:
+      char: '@'
+      attr: bust5
+    description:
+      - The fifth president
+    properties: [known, pushable]
+    tags: [bust]
+  - name: John Quincy Adams
+    display:
+      char: '@'
+      attr: bust6
+    description:
+      - The sixth president
+    properties: [known, pushable]
+    tags: [bust]
+  - name: Andrew Jackson
+    display:
+      char: '@'
+      attr: bust7
+    description:
+      - The seventh president
+    properties: [known, pushable]
+    tags: [bust]
+  - name: Martin Van Buren
+    display:
+      char: '@'
+      attr: bust8
+    description:
+      - The eighth president
+    properties: [known, pushable]
+    tags: [bust]
+  - name: William Henry Harrison
+    display:
+      char: '@'
+      attr: bust9
+    description:
+      - The ninth president
+    properties: [known, pushable]
+    tags: [bust]
+  - name: John Tyler
+    display:
+      char: '@'
+      attr: bust10
+    description:
+      - The tenth president
+    properties: [known, pushable]
+    tags: [bust]
+  - name: James K. Polk
+    display:
+      char: '@'
+      attr: bust11
+    description:
+      - The eleventh president
+    properties: [known, pushable]
+    tags: [bust]
+  - name: Zachary Taylor
+    display:
+      char: '@'
+      attr: bust12
+    description:
+      - The twelfth president
+    properties: [known, pushable]
+    tags: [bust]
+  - name: Millard Fillmore
+    display:
+      char: '@'
+      attr: bust13
+    description:
+      - The thirteenth president
+    properties: [known, pushable]
+    tags: [bust]
+  - name: Franklin Pierce
+    display:
+      char: '@'
+      attr: bust14
+    description:
+      - The fourteenth president
+    properties: [known, pushable]
+    tags: [bust]
+  - name: James Buchanan
+    display:
+      char: '@'
+      attr: bust15
+    description:
+      - The fifteenth president
+    properties: [known, pushable]
+    tags: [bust]
+  - name: Abraham Lincoln
+    display:
+      char: '@'
+      attr: bust16
+    description:
+      - The sixteenth president
+    properties: [known, pushable]
+    tags: [bust]
+known: []
+world:
+  dsl: |
+    overlay
+    [ {terrain: stone}
+    , if (x/5 + (-y)/5) % 2 == 0 then {terrain: dirt} else {blank}
+    , if (((3 - y) % 20)/11 + ((x + 3) % 20)/11) == 0 then {terrain: grass} else {blank}
+    ]
+  upperleft: [0, 11]
+  palette:
+    'B': [stone, null, base]
+    'j': [stone, null, judge]
+    'x': [stone]
+    'd': [dirt]
+    '.': [stone]
+    'w': [stone, wall]
+  map: |
+    wwwwwwwwwwwwwwwwwwwwwwwwww
+    w........................w
+    w...dddddddddddddddddd...w
+    w.B.djxxxxxxxxxxxxxxxd...w
+    w...dddddddddddddddddd...w
+    w........................w
+    wwwwwwwwwwwwwwwwwwwwwwwwww

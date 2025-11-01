@@ -1,0 +1,147 @@
+version: 1
+name: Tetrominoes
+description: |
+  Pack tetrominoes into a rectangle
+creative: false
+attrs:
+  - name: q-tile
+    fg: "#ffff00"
+  - name: z-tile
+    fg: "#ff0000"
+  - name: i-tile
+    fg: "#00ffff"
+  - name: j-tile
+    fg: "#0000ff"
+  - name: t-tile
+    fg: "#ff00ff"
+objectives:
+  - teaser: Place all
+    goal:
+      - |
+        Place all five tetrominoes.
+    condition: |
+      def found = \s.
+        fs <- structures s;
+        pure $ case fs (\_. false) (\_. true);
+        end;
+
+      foundT <- found "tee";
+      foundJ <- found "jay";
+      foundI <- found "line";
+      foundZ <- found "zee";
+      foundQ <- found "square";
+      pure $ foundT && foundJ && foundI && foundZ && foundQ;
+robots:
+  - name: base
+    dir: east
+    devices:
+      - grabber
+      - treads
+    inventory:
+      - [4, z-tile]
+      - [4, j-tile]
+      - [4, i-tile]
+      - [4, q-tile]
+      - [4, t-tile]
+entities:
+  - name: q-tile
+    display:
+      char: 'q'
+      attr: q-tile
+    description:
+      - q-tile
+    properties: [known, pickable]
+  - name: j-tile
+    display:
+      char: 'j'
+      attr: j-tile
+    description:
+      - j-tile
+    properties: [known, pickable]
+  - name: i-tile
+    display:
+      char: 'i'
+      attr: i-tile
+    description:
+      - i-tile
+    properties: [known, pickable]
+  - name: t-tile
+    display:
+      char: 't'
+      attr: t-tile
+    description:
+      - t-tile
+    properties: [known, pickable]
+  - name: z-tile
+    display:
+      char: 'z'
+      attr: z-tile
+    description:
+      - z-tile
+    properties: [known, pickable]
+solution: |
+  run "scenarios/Challenges/Mechanics/_pack-tetrominoes/solution.sw"
+structures:
+  - name: tee
+    recognize: [north, south, east, west]
+    description: "Tee tetromino"
+    structure:
+      mask: '.'
+      palette:
+        'x': [stone, t-tile]
+      map: |
+        .x.
+        xxx
+  - name: square
+    recognize: [north]
+    description: "Square tetromino"
+    structure:
+      mask: '.'
+      palette:
+        'x': [stone, q-tile]
+      map: |
+        xx
+        xx
+  - name: line
+    recognize: [north, east]
+    description: "Line tetromino"
+    structure:
+      mask: '.'
+      palette:
+        'x': [stone, i-tile]
+      map: |
+        xxxx
+  - name: jay
+    recognize: [north, east, south, west]
+    description: "Jay tetromino"
+    structure:
+      mask: '.'
+      palette:
+        'x': [stone, j-tile]
+      map: |
+        xxx
+        ..x
+  - name: zee
+    recognize: [north, east]
+    description: "Zee tetromino"
+    structure:
+      mask: '.'
+      palette:
+        'x': [stone, z-tile]
+      map: |
+        xx.
+        .xx
+known: [boulder]
+world:
+  name: root
+  dsl: |
+    {boulder}
+  palette:
+    '.': [grass, erase]
+    'B': [grass, erase, base]
+  upperleft: [0, 0]
+  map: |
+    ......
+    ......
+    ......
+    B.....

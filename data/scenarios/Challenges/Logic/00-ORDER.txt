@@ -1,0 +1,5 @@
+wolf-goat-cabbage.yaml
+hanoi.yaml
+lights-out.yaml
+Sokoban
+Sliding Puzzles

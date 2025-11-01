@@ -1,0 +1,202 @@
+version: 1
+name: Word search
+author: Karl Ostmo
+description: |
+  Find the word
+seed: 2
+creative: false
+objectives:
+  - goal:
+      - Use the `drill` command (e.g. `drill down` when on top of the intended letter) to mark the sequence of letters that spells `C`{=entity}`O`{=entity}`W`{=entity} within the designated playfield.
+      - |
+        The sequence may appear horizontally in either the
+        leftward or rightward direction,
+        or vertically in either the upward or downward direction.
+        Diagonal appearances are not valid.
+    condition: |
+      foundStructures <- structures "cow";
+      pure $ case foundStructures (\_. false) (\_. true);
+robots:
+  - name: base
+    display:
+      attr: flower
+    dir: west
+    devices:
+      - treads
+      - ADT calculator
+      - branch predictor
+      - GPS receiver
+      - clock
+      - comparator
+      - counter
+      - dictionary
+      - lambda
+      - logger
+      - mirror
+      - net
+      - scanner
+      - strange loop
+      - string
+      - highlighter
+    inventory:
+      - [3, ink]
+  - name: lettersetter
+    system: true
+    dir: east
+    display:
+      invisible: true
+    inventory:
+      - [376, capital C]
+      - [376, capital O]
+      - [376, capital W]
+    program: |
+      run "scenarios/Challenges/Algorithmic/_word-search/create-puzzle.sw"
+solution: |
+  // Hard-coded for seed=2:
+  def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+  def waitUntilUnblocked =
+    x <- blocked;
+    if x {
+        wait 1;
+        waitUntilUnblocked;
+    } {};
+    end;
+  waitUntilUnblocked;
+  doN 11 move;
+  turn right;
+  doN 2 move;
+  drill down;
+  move;
+  drill down;
+  move;
+  drill down;
+  // run "scenarios/Challenges/Algorithmic/_word-search/solution.sw"
+entities:
+  - name: capital C
+    display:
+      char: 'C'
+    description:
+      - C is for California
+  - name: capital O
+    display:
+      char: 'O'
+    description:
+      - O is for Oklahoma
+  - name: capital W
+    display:
+      char: 'W'
+    description:
+      - W is for Washington
+  - name: lowercase c
+    display:
+      char: 'c'
+      attr: gold
+    description:
+      - c is for cantaloupe
+  - name: lowercase o
+    display:
+      char: 'o'
+      attr: gold
+    description:
+      - o is for orange
+  - name: lowercase w
+    display:
+      char: 'w'
+      attr: gold
+    description:
+      - w is for watermelon
+  - name: highlighter
+    display:
+      char: 'P'
+      attr: gold
+    capabilities: [drill]
+    description:
+      - Instrument for marking found words
+    properties: [known, pickable]
+  - name: ink
+    display:
+      char: 'K'
+      attr: gold
+    description:
+      - Ink for marking found words
+    properties: [known, pickable]
+structures:
+  - name: cow
+    recognize: [north, south, east, west]
+    structure:
+      palette:
+        'c': [dirt, lowercase c]
+        'o': [dirt, lowercase o]
+        'w': [dirt, lowercase w]
+      map: |
+        cow
+recipes:
+  - in:
+      - [1, capital C]
+      - [1, ink]
+    out:
+      - [1, lowercase c]
+    required:
+      - [1, highlighter]
+  - in:
+      - [1, capital O]
+      - [1, ink]
+    out:
+      - [1, lowercase o]
+    required:
+      - [1, highlighter]
+  - in:
+      - [1, capital W]
+      - [1, ink]
+    out:
+      - [1, lowercase w]
+    required:
+      - [1, highlighter]
+  - in:
+      - [1, lowercase c]
+    out:
+      - [1, capital C]
+      - [1, ink]
+    required:
+      - [1, highlighter]
+  - in:
+      - [1, lowercase o]
+    out:
+      - [1, capital O]
+      - [1, ink]
+    required:
+      - [1, highlighter]
+  - in:
+      - [1, lowercase w]
+    out:
+      - [1, capital W]
+      - [1, ink]
+    required:
+      - [1, highlighter]
+known: [boulder]
+world:
+  dsl: |
+    {dirt}
+  upperleft: [0, 0]
+  palette:
+    '@': [stone, boulder]
+    '.': [grass]
+    'a': [grass, null, lettersetter]
+    '#': [dirt]
+    Ω: [stone, null, base]
+  map: |
+    a........................###
+    .........................###
+    .........................###
+    .........................###
+    .........................###
+    .........................###
+    .........................###
+    .........................###
+    .........................###
+    .........................@@@
+    .........................@Ω@
+    .........................@@@
+    .........................###
+    .........................###
+    .........................###

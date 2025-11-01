@@ -25,7 +25,7 @@ import Test.Tasty.HUnit (Assertion, assertEqual, testCase)
 
 main :: IO ()
 main = do
-  scenariosMap <- buildScenariosMap $ pure "data/scenarios/Challenges/arbitrage.yaml"
+  scenariosMap <- buildScenariosMap $ pure "data/scenarios/Challenges/Story/arbitrage.yaml"
   let appData = mkAppData scenariosMap
   defaultMain $
     testGroup
@@ -92,7 +92,7 @@ testSolutionUpload :: LocalFileLookup -> Tournament.AppData -> Assertion
 testSolutionUpload fileLookup appData =
   uploadForm appData "/api/private/upload/solution" form
  where
-  solutionFilePath = "data/scenarios/Challenges/_arbitrage/solution.sw"
+  solutionFilePath = "data/scenarios/Challenges/Story/_arbitrage/solution.sw"
   Sha1 scenarioSha1 = NE.head $ NEM.keys fileLookup
   form =
     [ partBS "scenario" $ fromString scenarioSha1
