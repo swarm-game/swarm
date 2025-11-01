@@ -693,7 +693,7 @@ testLanguagePipeline =
             "Error inside function application + argument #2220"
             ( process
                 "id 3 3"
-                "1:1: Unbound variable id\n\n  - While checking a function applied to an argument: _ 3\n  - While checking a function applied to an argument: _ 3"
+                "1:1: Undefined variable id\n\n  - While checking a function applied to an argument: _ 3\n  - While checking a function applied to an argument: _ 3"
             )
         , testCase
             "Error inside function application + argument #2220"

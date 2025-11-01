@@ -518,7 +518,7 @@ instance PrettyPrec TypeErr where
     EscapedSkolem x ->
       "Skolem variable" <+> ppr x <+> "would escape its scope"
     UnboundVar x ->
-      "Unbound variable" <+> ppr x
+      "Undefined variable" <+> ppr x
     UnboundType x ->
       "Undefined type" <+> ppr x
     DefNotTopLevel t ->
@@ -1287,11 +1287,11 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
     -- > let y : Int = 3 in y + 2
     -- 5
     -- > y
-    -- 1:1: Unbound variable y
+    -- 1:1: Undefined variable y
     -- > let y = 3 in def x = 5 end; pure (x + y)
     -- 8
     -- > y
-    -- 1:1: Unbound variable y
+    -- 1:1: Undefined variable y
     -- > x
     -- 5
     let mreqs = case ls of

@@ -1,0 +1,90 @@
+version: 1
+name: Loops
+description: |
+  Learn how to implement loops.
+objectives:
+  - goal:
+      - |
+        The previous tutorial taught you how to use conditional
+        expressions; this one will guide you through using loops.
+      - |
+        To the east of your base lies a path of `rock`{=entity}s.  The
+        path extends in a straight line for an unknown distance, and at
+        the end of the path lies a lump of `gold`{=entity}.  You must
+        program a robot to go and fetch it!
+      - |
+        Some kind of `while`{=snippet} loop would obviously come in
+        handy here. However, the Swarm language does not have loops,
+        only recursion, which is enabled by the `strange loop`{=entity}
+        device.  You can use recursion to implement your own control
+        structures.  For example, a simple loop that repeats forever
+        can be written like this:
+        ```
+        def forever : Cmd Unit -> Cmd Unit = \body.
+          body; forever body
+        end
+        ```
+      - |
+        Now replace the `pure ()` below with your own code to
+        implement a while loop function:
+        ```
+        def while : Cmd Bool -> Cmd Unit -> Cmd Unit = \cond. \body.
+          pure ()
+        end
+        ```
+      - |
+        This function should take a condition (a `Cmd Bool`{=type}, for
+        example, `ishere "rock"`) and a command, and execute the
+        command repeatedly as long as the condition returns `True`.
+    condition: |
+      try {as base {has "gold"}} {pure false}
+solution: |
+  def while : Cmd Bool -> Cmd a -> Cmd Unit = \test. \body.
+    b <- test;
+    if b {body; while test body} {}
+  end
+
+  def follow = while (ishere "rock") move end
+
+  build {
+    turn east; move;
+    follow;
+    grab; turn back; move;
+    follow;
+    give base "gold"
+  }
+robots:
+  - name: base
+    heavy: true
+    loc: [0, 0]
+    dir: north
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - logger
+      - 3D printer
+      - dictionary
+      - toolkit
+    inventory:
+      - [8, compass]
+      - [8, solar panel]
+      - [8, logger]
+      - [8, treads]
+      - [8, grabber]
+      - [8, scanner]
+      - [8, lambda]
+      - [8, strange loop]
+      - [8, branch predictor]
+      - [8, toolkit]
+entities:
+known: [rock, gold]
+world:
+  scrollable: false
+  dsl: |
+    let path_len = 173 in
+    overlay
+    [ {grass}
+    , mask (y == 0 && x > 0 && x < path_len) {rock}
+    , mask (y == 0 && x == path_len) {gold}
+    ]
