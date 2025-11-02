@@ -118,7 +118,7 @@ common JuicyPixels
   build-depends: JuicyPixels >=3.3 && <3.4
 
 common QuickCheck
-  build-depends: QuickCheck >=2.14 && <2.17
+  build-depends: QuickCheck >=2.14 && <2.18
 
 common SHA
   build-depends: SHA >=1.6.4 && <1.6.5
@@ -136,7 +136,7 @@ common boolexpr
   build-depends: boolexpr >=0.2 && <0.3
 
 common brick
-  build-depends: brick >=2.1.1 && <2.10
+  build-depends: brick >=2.1.1 && <2.11
 
 common brick-list-skip
   build-depends: brick-list-skip >=0.1.1.2 && <0.2
@@ -382,7 +382,7 @@ common vector
   build-depends: vector >=0.12 && <0.14
 
 common vty
-  build-depends: vty >=6.1 && <6.5
+  build-depends: vty >=6.1 && <6.6
 
 common vty-crossplatform
   build-depends: vty-crossplatform >=0.4 && <0.5
