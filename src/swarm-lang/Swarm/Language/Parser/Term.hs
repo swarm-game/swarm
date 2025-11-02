@@ -103,15 +103,11 @@ parseTermAtom2 =
     <|> parseLoc (SDelay <$> braces parseTerm)
     <|> parseLoc (view antiquoting >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
 
--- | Parse the contents of a @require@ statement: either requiring a device, or
---   requiring inventory stock.
+-- | Parse the contents of a @require@ statement.
 parseRequire :: Parser Term
-parseRequire =
-  asum
-    [ TRequire <$> (textLiteral <?> "device name in double quotes")
-    , parseStock
-    ]
+parseRequire = TRequire <$> (textLiteral <?> "device name in double quotes")
 
+-- | Parse the contents of a @stock@ statement.
 parseStock :: Parser Term
 parseStock =
   (TStock . fromIntegral <$> integer)
