@@ -76,7 +76,6 @@ debug :: (MonadIO m) => Text -> m ()
 debug msg = liftIO $ Text.hPutStrLn stderr $ "[swarm-lsp] " <> msg
 
 -- | find the name of the syntax element if it is a value level variable
--- TODO if we want to support more jump to definitions we should extend this
 usageName :: Syntax' a -> Maybe Var
 usageName (Syntax' _ t _ _) = case t of
   (TVar n) -> Just n
