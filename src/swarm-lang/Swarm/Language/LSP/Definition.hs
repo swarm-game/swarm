@@ -15,7 +15,6 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as Text
 import Data.Text.Utf16.Rope.Mixed qualified as R
-import Debug.Trace (traceShow)
 import GHC.IO (unsafePerformIO)
 import Language.LSP.Protocol.Types qualified as J
 import Language.LSP.Protocol.Types qualified as LSP
@@ -71,9 +70,6 @@ findDefinition _ p vf@(VirtualFile _ _ myRope) =
   maybeDefPosition name (pos, name')
     | name == name' = P.posToRange myRope pos
     | otherwise = Nothing
-
-debug :: (MonadIO m) => Text -> m ()
-debug msg = liftIO $ Text.hPutStrLn stderr $ "[swarm-lsp] " <> msg
 
 -- | find the name of the syntax element if it is a value level variable
 usageName :: Syntax' a -> Maybe Var
