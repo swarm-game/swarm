@@ -12,5 +12,9 @@ description of the changes in your pull request.
   when your PR is merged.
 
 - If your PR is a substantial user-facing change (i.e. something other
-  than a typo fix, refactoring, etc.), give it the CHANGELOG label to
+  than a typo fix, refactoring, etc.), give it the `CHANGELOG` label to
   suggest it for mention in the next release changelog.
+
+- If your PR will break existing swarm-lang code, give it the
+  `BREAKING` label, so we remember to include it in the `swarm format`
+  mode that auto-updates old code.
