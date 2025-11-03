@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 -- LSP support for finding and jumping to definitions
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Language.LSP.Definition (
