@@ -1811,8 +1811,9 @@ execConst runChildProg c vs s k = do
     m ()
   doPlantSeed terrainHere loc e = do
     when ((e `hasProperty` Growable) && isAllowedInBiome terrainHere e) $ do
-      let Growth maybeMaturesTo maybeSpread (GrowthTime (minT, maxT)) =
+      let Growth maybeMaturesTo maybeSpread growthTime =
             (e ^. entityGrowth) ? defaultGrowth
+          growthRange = growthTime ^. to growthDuration
 
       em <- use $ landscape . terrainAndEntities . entityMap
       let seedEntity = fromMaybe e $ (`lookupEntityName` em) =<< maybeMaturesTo
@@ -1827,7 +1828,7 @@ execConst runChildProg c vs s k = do
       -- Grow a new entity from a seed.
       addSeedBot
         seedEntity
-        (minT, maxT)
+        growthRange
         seedlingCount
         (fromIntegral radius)
         loc

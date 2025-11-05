@@ -19,6 +19,7 @@ module Swarm.Game.Entity (
   -- * Entity properties
   EntityName,
   EntityProperty (..),
+  TickRange (..),
   GrowthTime (..),
   GrowthSpread (..),
   Growth (..),
@@ -236,20 +237,37 @@ instance FromJSON Growth where
       growthTime <- v .: "duration"
       pure Growth {..}
 
+-- | A closed interval describing a range of tick counts shared by several
+--   time-based mechanics such as growth and combustion.
+data TickRange = TickRange
+  { tickRangeMin :: Integer
+  , tickRangeMax :: Integer
+  }
+  deriving stock (Eq, Ord, Show, Read, Generic)
+  deriving anyclass (Hashable)
+
+instance FromJSON TickRange where
+  parseJSON v = do
+    (low, high) <- parseJSON v
+    pure $ TickRange low high
+
+instance ToJSON TickRange where
+  toJSON TickRange {..} = toJSON (tickRangeMin, tickRangeMax)
+
 -- | How long an entity takes to regrow.  This represents the minimum
 --   and maximum amount of time taken by one growth stage (there are
 --   two stages).  The actual time for each stage will be chosen
 --   uniformly at random between these two values.
-newtype GrowthTime
-  = -- | TODO: #2626 Refactor to use named fields
-    GrowthTime (Integer, Integer)
+newtype GrowthTime = GrowthTime
+  { growthDuration :: TickRange
+  }
   deriving stock (Generic, Eq, Ord, Show, Read)
-  deriving anyclass (Hashable, FromJSON, ToJSON)
+  deriving newtype (Hashable, FromJSON, ToJSON)
 
 -- | The default growth time (100, 200) for a growable entity with no
 --   growth time specification.
 defaultGrowthTime :: GrowthTime
-defaultGrowthTime = GrowthTime (100, 200)
+defaultGrowthTime = GrowthTime (TickRange 100 200)
 
 defaultGrowth :: Growth
 defaultGrowth = Growth Nothing Nothing defaultGrowthTime
@@ -261,7 +279,7 @@ data Combustibility = Combustibility
   --   If this rate is denoted \(\lambda\), the probability of
   --   ignition over a period of \(t\) ticks is \(1 - e^{-\lambda t}\).
   --   See <https://math.stackexchange.com/a/1243629>.
-  , duration :: (Integer, Integer)
+  , duration :: TickRange
   -- ^ min and max tick counts for combustion to persist
   , delay :: Integer
   -- ^ Delay until this entity may start igniting its neighbors.
@@ -286,7 +304,7 @@ instance FromJSON Combustibility where
 --   * delay of 0
 --   * product @ash@
 defaultCombustibility :: Combustibility
-defaultCombustibility = Combustibility 0.5 (100, 200) 0 (Just "ash")
+defaultCombustibility = Combustibility 0.5 (TickRange 100 200) 0 (Just "ash")
 
 ------------------------------------------------------------
 -- Entity
