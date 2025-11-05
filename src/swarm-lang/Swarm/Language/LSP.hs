@@ -194,5 +194,5 @@ handlers =
           D.PError e -> responder . Left $ TResponseError (LSP.InR ErrorCodes_ParseError) (T.pack $ show e) Nothing
           D.TError e -> responder . Left $ TResponseError (LSP.InR ErrorCodes_ParseError) (T.pack $ show e) Nothing
           D.NotFound -> responder . Right . LSP.InR . LSP.InR $ LSP.Null
-          D.Found defs' -> responder . Right . LSP.InL . LSP.Definition . LSP.InR $ LSP.Location uri <$> defs'
+          D.Found defs' -> responder . Right . LSP.InL . LSP.Definition . LSP.InL $ LSP.Location uri defs'
     ]

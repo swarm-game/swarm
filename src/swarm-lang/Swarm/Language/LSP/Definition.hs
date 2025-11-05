@@ -20,7 +20,7 @@ import Swarm.Language.Syntax (Located (..), SrcLoc, Syntax, Syntax' (Syntax'), T
 import Swarm.Language.TDVar (tdVarName)
 import Swarm.Language.Typecheck (ContextualTypeErr)
 
-data DefinitionResult = TError ContextualTypeErr | PError ParserError | Unsupported | NotFound | Found [J.Range]
+data DefinitionResult = TError ContextualTypeErr | PError ParserError | Unsupported | NotFound | Found J.Range
 
 findDefinition ::
   J.NormalizedUri ->
@@ -50,10 +50,10 @@ findDefinition _ p vf@(VirtualFile _ _ myRope) =
         case usage of
           Nothing -> Unsupported
           Just u -> do
-            let pathTerms = concatMap syntaxVars (NE.drop 1 . NE.reverse $ path)
+            let pathTerms = mapMaybe boundVars (NE.drop 1 . NE.reverse $ path)
             case mapMaybe (maybeDefPosition u) pathTerms of
               [] -> NotFound
-              ranges -> Found ranges
+              ranges -> Found $ head ranges
 
   -- take a syntax element that we want to find the defintion for and
   -- a possible syntax element that contains it's defintion
@@ -69,16 +69,16 @@ usageName (Syntax' _ t _ _) = case t of
   (TVar n) -> Just n
   _ -> Nothing
 
-syntaxVars :: Syntax' a -> [(SrcLoc, Var)]
-syntaxVars (Syntax' _ t _ _) = case t of
-  (SLet _ _ lv _ _ _ _ _) -> [lvToLoc lv]
-  (STydef lv _ _ _) -> [(lvSrcLoc lv, tdVarName $ locVal lv)]
-  (SApp s1 _) -> syntaxVars s1
-  (SLam lv _ _) -> [lvToLoc lv]
-  (SPair s1 s2) -> syntaxVars s1 ++ syntaxVars s2
-  (SBind mLV _ _ _ _ _) -> maybeToList (lvToLoc <$> mLV)
-  (SDelay s) -> syntaxVars s
-  (SRcd m) -> foldr foldRecord [] m
+boundVars :: Syntax' a -> Maybe (SrcLoc, Var)
+boundVars (Syntax' _ t _ _) = case t of
+  (SLet _ _ lv _ _ _ _ _) -> Just $ lvToLoc lv
+  (SLam lv _ _) -> Just $ lvToLoc lv
+  (SBind mLV _ _ _ _ _) -> lvToLoc <$> mLV
+  STydef {} -> mempty
+  SApp {} -> mempty
+  SPair {} -> mempty
+  SDelay s -> mempty
+  SRcd {} -> mempty
   SProj {} -> mempty
   SAnnotate {} -> mempty
   SSuspend {} -> mempty
@@ -101,5 +101,3 @@ syntaxVars (Syntax' _ t _ _) = case t of
   TType {} -> mempty
  where
   lvToLoc lv = (lvSrcLoc lv, locVal lv)
-
-  foldRecord (lv, ms) acc = lvToLoc lv : (maybe [] syntaxVars ms ++ acc)
