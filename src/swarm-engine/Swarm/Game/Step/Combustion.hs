@@ -94,7 +94,9 @@ addCombustionBot inputEntity combustibility ts loc = do
   let botInventory = fromMaybe [] $ do
         e <- (`lookupEntityName` em) =<< maybeCombustionProduct
         return $ pure (1, e)
-  combustionDurationRand <- uniform durationRange
+  combustionDurationRand <-
+    uniform
+      (tickRangeMin durationRange, tickRangeMax durationRange)
   let combustionProg = combustionProgram combustionDurationRand combustibility
   zoomRobots
     . addTRobot (initMachine combustionProg)

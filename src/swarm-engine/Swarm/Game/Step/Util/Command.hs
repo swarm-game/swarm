@@ -463,13 +463,13 @@ applyRobotUpdates =
 addSeedBot ::
   Has (State GameState) sig m =>
   Entity ->
-  (Integer, Integer) ->
+  TickRange ->
   Integer ->
   Integer ->
   Cosmic Location ->
   TimeSpec ->
   m ()
-addSeedBot e (minT, maxT) seedlingCount seedlingRadius loc ts =
+addSeedBot e TickRange {tickRangeMin = minT, tickRangeMax = maxT} seedlingCount seedlingRadius loc ts =
   zoomRobots
     . addTRobot (initMachine seedProg)
     $ mkRobot
