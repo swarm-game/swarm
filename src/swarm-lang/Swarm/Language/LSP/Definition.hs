@@ -66,7 +66,7 @@ boundVars (Syntax' _ t _ _) = case t of
   STydef {} -> mempty
   SApp {} -> mempty
   SPair {} -> mempty
-  SDelay s -> mempty
+  SDelay {} -> mempty
   SRcd {} -> mempty
   SProj {} -> mempty
   SAnnotate {} -> mempty
