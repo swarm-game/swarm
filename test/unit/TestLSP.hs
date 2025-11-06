@@ -9,7 +9,7 @@ module TestLSP (testLSP) where
 
 import Control.Monad (unless)
 import Data.Text (Text)
-import Swarm.Language.LSP.Hover (narrowToPosition)
+import Swarm.Language.LSP.Position (narrowToPosition)
 import Swarm.Language.LSP.VarUsage qualified as VU
 import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ
