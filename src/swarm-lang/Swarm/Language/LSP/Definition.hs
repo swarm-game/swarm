@@ -8,17 +8,15 @@ where
 
 import Data.Foldable (find)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (mapMaybe, maybeToList)
+import Data.Maybe (mapMaybe)
 import Data.Text.Utf16.Rope.Mixed qualified as R
 import Language.LSP.Protocol.Types qualified as J
-import Language.LSP.Protocol.Types qualified as LSP
 import Language.LSP.VFS (VirtualFile (VirtualFile), virtualFileText)
 import Swarm.Language.LSP.Position qualified as P
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (ParserError, defaultParserConfig)
 import Swarm.Language.Pipeline (processParsedTerm)
 import Swarm.Language.Syntax (Located (..), SrcLoc, Syntax, Syntax' (Syntax'), Term' (..), Var)
-import Swarm.Language.TDVar (tdVarName)
 import Swarm.Language.Typecheck (ContextualTypeErr)
 
 data DefinitionResult = TError ContextualTypeErr | PError ParserError | Unsupported | NotFound | Found J.Range
