@@ -13,20 +13,24 @@ import Control.Monad.IO.Class
 import Data.Int (Int32)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Text.IO qualified as Text
 import Language.LSP.Diagnostics
 import Language.LSP.Protocol.Lens qualified as LSP
+import Language.LSP.Protocol.Message (TResponseError (TResponseError))
 import Language.LSP.Protocol.Message qualified as LSP
+import Language.LSP.Protocol.Types (ErrorCodes (..))
 import Language.LSP.Protocol.Types qualified as LSP
 import Language.LSP.Server
 import Language.LSP.VFS (VirtualFile (..), virtualFileText)
+import Swarm.Language.LSP.Definition qualified as D
 import Swarm.Language.LSP.Hover qualified as H
 import Swarm.Language.LSP.VarUsage qualified as VU
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Parser.Util (getLocRange, showErrorPos)
 import Swarm.Language.Pipeline (processParsedTerm')
-import Swarm.Language.Syntax (SrcLoc (..))
+import Swarm.Language.Syntax.Loc (SrcLoc (NoLoc, SrcLoc))
 import Swarm.Language.Typecheck (ContextualTypeErr (..))
 import Swarm.Language.Value (emptyEnv)
 import Swarm.Pretty (prettyText)
@@ -179,4 +183,16 @@ handlers =
               (markdownText, maybeRange) <- H.showHoverInfo doc pos vf
               return $ LSP.Hover (LSP.InL $ LSP.MarkupContent LSP.MarkupKind_Markdown markdownText) maybeRange
         responder . Right . LSP.maybeToNull $ maybeHover
+    , requestHandler LSP.SMethod_TextDocumentDefinition $ \req responder -> do
+        let uri = req ^. LSP.params . LSP.textDocument . LSP.uri
+            doc = uri ^. to LSP.toNormalizedUri
+            pos = req ^. LSP.params . LSP.position
+        mdoc <- getVirtualFile doc
+        let defs = maybe D.Unsupported (D.findDefinition doc pos) mdoc
+        case defs of
+          D.Unsupported -> responder . Left $ TResponseError (LSP.InR ErrorCodes_MethodNotFound) "Unsupported find definition" Nothing
+          D.PError e -> responder . Left $ TResponseError (LSP.InR ErrorCodes_ParseError) (T.pack $ show e) Nothing
+          D.TError e -> responder . Left $ TResponseError (LSP.InR ErrorCodes_ParseError) (T.pack $ show e) Nothing
+          D.NotFound -> responder . Right . LSP.InR . LSP.InR $ LSP.Null
+          D.Found defs' -> responder . Right . LSP.InL . LSP.Definition . LSP.InL $ LSP.Location uri defs'
     ]
