@@ -19,6 +19,7 @@ import Swarm.App (appMain, defaultMetrics)
 import Swarm.Language.Format
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Parser.Core (LanguageVersion (..))
+import Swarm.Language.Pipeline.Cmdline
 import Swarm.ResourceLoading (getSwarmConfigIniFile)
 import Swarm.TUI.Model (AppOpts (..), ColorMode (..), RunOpts (..))
 import Swarm.TUI.Model.DebugOption
@@ -44,6 +45,7 @@ data CLI
   | -- | Print list of bindings, optionally initializing the INI configuration file.
     ListKeybinding Bool KeybindingPrint
   | Format FormatConfig
+  | Check CheckConfig
   | LSP
   | Version
 
@@ -53,6 +55,7 @@ cliParser =
     ( mconcat
         [ command "run" (info (Run <$> appOpts <**> helper) (progDesc "Run the Swarm game (default)"))
         , command "format" (info (Format <$> parseFormat) (progDesc "Format a file"))
+        , command "check" (info (Check <$> parseCheck) (progDesc "Parse and typecheck a file"))
         , command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
         , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
         , command "keybindings" (info (ListKeybinding <$> initKeybindingConfig <*> printKeyMode <**> helper) (progDesc "List the keybindings"))
@@ -108,6 +111,9 @@ cliParser =
 
   parseFormat :: Parser FormatConfig
   parseFormat = FormatConfig <$> input <*> output <*> optional widthOpt <*> langVer <**> helper
+
+  parseCheck :: Parser CheckConfig
+  parseCheck = CheckConfig <$> input <**> helper
 
   seed :: Parser (Maybe Int)
   seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
@@ -242,5 +248,6 @@ main = do
     Run opts -> appMain opts
     ListKeybinding initialize p -> printKeybindings initialize p
     Format cfg -> formatSwarmIO cfg
+    Check cfg -> checkSwarmIO cfg
     LSP -> lspMain
     Version -> showVersion

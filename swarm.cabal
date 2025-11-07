@@ -476,6 +476,7 @@ library swarm-lang
     Swarm.Language.Parser.Util
     Swarm.Language.Parser.Value
     Swarm.Language.Pipeline
+    Swarm.Language.Pipeline.Cmdline
     Swarm.Language.Pipeline.QQ
     Swarm.Language.Requirements
     Swarm.Language.Requirements.Analysis
