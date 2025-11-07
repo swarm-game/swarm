@@ -25,6 +25,7 @@ import Swarm.TUI.Model.DebugOption
 import Swarm.TUI.Model.KeyBindings (KeybindingPrint (..), showKeybindings)
 import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond)
 import Swarm.Util (Encoding (..), writeFileT)
+import Swarm.Util.InputSource
 import Swarm.Version
 import Swarm.Web (defaultPort)
 import System.IO (hPrint, stderr)
@@ -79,7 +80,7 @@ cliParser =
   addToDebug :: Set.Set DebugOption -> AppOpts -> AppOpts
   addToDebug cheatMode ao = ao {debugOptions = cheatMode `Set.union` debugOptions ao}
 
-  input :: Parser FormatInput
+  input :: Parser InputSource
   input =
     flag' Stdin (long "stdin" <> help "Read code from stdin")
       <|> (InputFile <$> strArgument (metavar "FILE"))
