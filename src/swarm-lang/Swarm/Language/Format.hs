@@ -21,9 +21,9 @@ import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (LanguageVersion (..), defaultParserConfig, languageVersion)
 import Swarm.Language.Parser.QQ (astQ)
 import Swarm.Language.Syntax
-import Swarm.Pretty (ppr)
+import Swarm.Pretty (ppr, prettyText)
 import Swarm.Util (Encoding (..), writeFileT, (?))
-import Swarm.Util.InputSource (InputSource (..), getInput, showInput)
+import Swarm.Util.InputSource (InputSource (..), getInput)
 import System.Console.Terminal.Size qualified as Term
 import System.Exit (exitFailure)
 import System.IO (stderr)
@@ -48,7 +48,7 @@ formatSwarmIO :: FormatConfig -> IO ()
 formatSwarmIO cfg@(FormatConfig input output mWidth _) = do
   mcontent <- getInput input
   case mcontent of
-    Nothing -> T.hPutStrLn stderr $ "Could not read from " <> showInput input
+    Nothing -> T.hPutStrLn stderr $ "Could not read from " <> prettyText input
     Just content -> do
       mWindowWidth <- (fmap . fmap) Term.width Term.size
       let w = mWidth <|> case output of Stdout -> mWindowWidth; _ -> Nothing
@@ -60,7 +60,7 @@ formatSwarmIO cfg@(FormatConfig input output mWidth _) = do
             Stdin -> T.putStrLn fmt
             InputFile inFile -> writeFileT SystemLocale inFile fmt
         Left e -> do
-          T.hPutStrLn stderr $ showInput input <> ":" <> e
+          T.hPutStrLn stderr $ prettyText input <> ":" <> e
           exitFailure
 
 formatSwarm :: FormatConfig -> Text -> Either Text Text

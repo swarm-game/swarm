@@ -8,7 +8,8 @@ module Swarm.Language.Pipeline.Cmdline where
 
 import Data.Text.IO qualified as T
 import Swarm.Language.Pipeline (processTerm)
-import Swarm.Util.InputSource
+import Swarm.Pretty (prettyText)
+import Swarm.Util.InputSource (InputSource, getInput)
 import System.Exit (exitFailure)
 import System.IO (stderr)
 
@@ -17,10 +18,10 @@ newtype CheckConfig = CheckConfig {checkInput :: InputSource}
 -- | Validate swarm-lang code.
 checkSwarmIO :: CheckConfig -> IO ()
 checkSwarmIO (CheckConfig input) = do
-  T.putStrLn $ "Checking " <> showInput input <> " ..."
+  T.putStrLn $ "Checking " <> prettyText input <> " ..."
   mcontent <- getInput input
   case mcontent of
-    Nothing -> T.hPutStrLn stderr $ "Could not read from " <> showInput input
+    Nothing -> T.hPutStrLn stderr $ "Could not read from " <> prettyText input
     Just content -> do
       case processTerm content of
         Right _ -> T.putStrLn "OK."

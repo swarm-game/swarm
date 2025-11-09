@@ -9,6 +9,7 @@ module Swarm.Util.InputSource where
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
+import Swarm.Pretty (PrettyPrec (..), ppr)
 import Swarm.Util (Encoding (..), readFileMayT)
 
 -- | From where should the input be taken?
@@ -19,7 +20,7 @@ getInput :: InputSource -> IO (Maybe Text)
 getInput Stdin = Just <$> T.getContents
 getInput (InputFile fp) = readFileMayT SystemLocale fp
 
--- | Display an input source.
-showInput :: InputSource -> Text
-showInput Stdin = "(input)"
-showInput (InputFile fp) = T.pack fp
+instance PrettyPrec InputSource where
+  prettyPrec _ = \case
+    Stdin -> "(input)"
+    InputFile fp -> ppr (T.pack fp)
