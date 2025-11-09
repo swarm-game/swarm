@@ -45,16 +45,10 @@ parseDirection = asum (map alternative allDirs) <?> "direction constant"
 -- | Parse Const as reserved words (e.g. @Fail <$ reserved "fail"@)
 parseConst :: Parser Const
 parseConst = do
-  ver <- view languageVersion
-  asum (map (alternative ver) consts) <?> "built-in user function"
+  asum (map alternative consts) <?> "built-in user function"
  where
   consts = filter isUserFunc allConst
-  alternative ver c = c <$ reserved (syntax $ constInfo' ver c)
-
-  -- Version 0.6 of the language had a constant named @return@, which
-  -- is now renamed to @pure@
-  constInfo' SwarmLang0_6 Pure = (constInfo Pure) {syntax = "return"}
-  constInfo' _ c = constInfo c
+  alternative c = c <$ reserved (syntax $ constInfo c)
 
 -- | Parse an atomic term, optionally trailed by record projections like @t.x.y.z@.
 --   Record projection binds more tightly than function application.
@@ -109,16 +103,11 @@ parseTermAtom2 =
     <|> parseLoc (SDelay <$> braces parseTerm)
     <|> parseLoc (view antiquoting >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
 
--- | Parse the contents of a @require@ statement: either requiring a device, or
---   (if parsing v0.6) requiring inventory stock.
+-- | Parse the contents of a @require@ statement.
 parseRequire :: Parser Term
-parseRequire = do
-  ver <- view languageVersion
-  asum
-    [ TRequire <$> (textLiteral <?> "device name in double quotes")
-    , guard (ver == SwarmLang0_6) *> parseStock
-    ]
+parseRequire = TRequire <$> (textLiteral <?> "device name in double quotes")
 
+-- | Parse the contents of a @stock@ statement.
 parseStock :: Parser Term
 parseStock =
   (TStock . fromIntegral <$> integer)
