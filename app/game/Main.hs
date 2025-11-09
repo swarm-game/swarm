@@ -19,12 +19,14 @@ import Swarm.App (appMain, defaultMetrics)
 import Swarm.Language.Format
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Parser.Core (LanguageVersion (..))
+import Swarm.Language.Pipeline.Cmdline
 import Swarm.ResourceLoading (getSwarmConfigIniFile)
 import Swarm.TUI.Model (AppOpts (..), ColorMode (..), RunOpts (..))
 import Swarm.TUI.Model.DebugOption
 import Swarm.TUI.Model.KeyBindings (KeybindingPrint (..), showKeybindings)
 import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond)
 import Swarm.Util (Encoding (..), writeFileT)
+import Swarm.Util.InputSource
 import Swarm.Version
 import Swarm.Web (defaultPort)
 import System.IO (hPrint, stderr)
@@ -43,6 +45,7 @@ data CLI
   | -- | Print list of bindings, optionally initializing the INI configuration file.
     ListKeybinding Bool KeybindingPrint
   | Format FormatConfig
+  | Check CheckConfig
   | LSP
   | Version
 
@@ -52,6 +55,7 @@ cliParser =
     ( mconcat
         [ command "run" (info (Run <$> appOpts <**> helper) (progDesc "Run the Swarm game (default)"))
         , command "format" (info (Format <$> parseFormat) (progDesc "Format a file"))
+        , command "check" (info (Check <$> parseCheck) (progDesc "Parse and typecheck a file"))
         , command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
         , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
         , command "keybindings" (info (ListKeybinding <$> initKeybindingConfig <*> printKeyMode <**> helper) (progDesc "List the keybindings"))
@@ -79,7 +83,7 @@ cliParser =
   addToDebug :: Set.Set DebugOption -> AppOpts -> AppOpts
   addToDebug cheatMode ao = ao {debugOptions = cheatMode `Set.union` debugOptions ao}
 
-  input :: Parser FormatInput
+  input :: Parser InputSource
   input =
     flag' Stdin (long "stdin" <> help "Read code from stdin")
       <|> (InputFile <$> strArgument (metavar "FILE"))
@@ -107,6 +111,9 @@ cliParser =
 
   parseFormat :: Parser FormatConfig
   parseFormat = FormatConfig <$> input <*> output <*> optional widthOpt <*> langVer <**> helper
+
+  parseCheck :: Parser CheckConfig
+  parseCheck = CheckConfig <$> input <**> helper
 
   seed :: Parser (Maybe Int)
   seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
@@ -241,5 +248,6 @@ main = do
     Run opts -> appMain opts
     ListKeybinding initialize p -> printKeybindings initialize p
     Format cfg -> formatSwarmIO cfg
+    Check cfg -> checkSwarmIO cfg
     LSP -> lspMain
     Version -> showVersion

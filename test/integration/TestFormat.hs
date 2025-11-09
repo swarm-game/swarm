@@ -11,6 +11,7 @@ import Data.Text qualified as T
 import Swarm.Language.Format
 import Swarm.Language.Parser.Core (LanguageVersion (SwarmLangLatest))
 import Swarm.Util (Encoding (..), findAllWithExt, readFileMayT)
+import Swarm.Util.InputSource (InputSource (Stdin))
 import Test.Tasty
 import Test.Tasty.HUnit
 import Witch (into)

@@ -476,6 +476,7 @@ library swarm-lang
     Swarm.Language.Parser.Util
     Swarm.Language.Parser.Value
     Swarm.Language.Pipeline
+    Swarm.Language.Pipeline.Cmdline
     Swarm.Language.Pipeline.QQ
     Swarm.Language.Requirements
     Swarm.Language.Requirements.Analysis
@@ -952,6 +953,7 @@ library swarm-util
     Swarm.Util.Effect
     Swarm.Util.Erasable
     Swarm.Util.Graph
+    Swarm.Util.InputSource
     Swarm.Util.JSON
     Swarm.Util.Lens
     Swarm.Util.OccurrenceEncoder

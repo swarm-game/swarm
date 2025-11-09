@@ -14,7 +14,6 @@ import Data.Foldable (foldl')
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
-import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Prettyprinter
 import Prettyprinter.Render.Text qualified as RT
@@ -22,8 +21,9 @@ import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (LanguageVersion (..), defaultParserConfig, languageVersion)
 import Swarm.Language.Parser.QQ (astQ)
 import Swarm.Language.Syntax
-import Swarm.Pretty (ppr)
-import Swarm.Util (Encoding (..), readFileMayT, writeFileT, (?))
+import Swarm.Pretty (ppr, prettyText)
+import Swarm.Util (Encoding (..), writeFileT, (?))
+import Swarm.Util.InputSource (InputSource (..), getInput)
 import System.Console.Terminal.Size qualified as Term
 import System.Exit (exitFailure)
 import System.IO (stderr)
@@ -31,24 +31,13 @@ import Text.Megaparsec.Error (errorBundlePretty)
 import Witch (into)
 import Prelude hiding (Foldable (..))
 
--- | From where should the input be taken?
-data FormatInput = Stdin | InputFile FilePath
-
-getInput :: FormatInput -> IO (Maybe Text)
-getInput Stdin = Just <$> T.getContents
-getInput (InputFile fp) = readFileMayT SystemLocale fp
-
-showInput :: FormatInput -> Text
-showInput Stdin = "(input)"
-showInput (InputFile fp) = T.pack fp
-
 -- | Where should the formatted code be output?
 data FormatOutput = Stdout | OutputFile FilePath | Inplace
 
 type FormatWidth = Int
 
 data FormatConfig = FormatConfig
-  { formatInput :: FormatInput
+  { formatInput :: InputSource
   , formatOutput :: FormatOutput
   , formatWidth :: Maybe FormatWidth
   , formatLanguageVersion :: LanguageVersion
@@ -59,7 +48,7 @@ formatSwarmIO :: FormatConfig -> IO ()
 formatSwarmIO cfg@(FormatConfig input output mWidth _) = do
   mcontent <- getInput input
   case mcontent of
-    Nothing -> T.hPutStrLn stderr $ "Could not read from " <> showInput input
+    Nothing -> T.hPutStrLn stderr $ "Could not read from " <> prettyText input
     Just content -> do
       mWindowWidth <- (fmap . fmap) Term.width Term.size
       let w = mWidth <|> case output of Stdout -> mWindowWidth; _ -> Nothing
@@ -71,7 +60,7 @@ formatSwarmIO cfg@(FormatConfig input output mWidth _) = do
             Stdin -> T.putStrLn fmt
             InputFile inFile -> writeFileT SystemLocale inFile fmt
         Left e -> do
-          T.hPutStrLn stderr $ showInput input <> ":" <> e
+          T.hPutStrLn stderr $ prettyText input <> ":" <> e
           exitFailure
 
 formatSwarm :: FormatConfig -> Text -> Either Text Text
