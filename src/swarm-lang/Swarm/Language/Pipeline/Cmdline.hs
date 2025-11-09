@@ -18,7 +18,7 @@ newtype CheckConfig = CheckConfig {checkInput :: InputSource}
 -- | Validate swarm-lang code.
 checkSwarmIO :: CheckConfig -> IO ()
 checkSwarmIO (CheckConfig input) = do
-  T.putStrLn $ "Checking " <> prettyText input <> " ..."
+  T.putStr $ "Checking " <> prettyText input <> " ... "
   mcontent <- getInput input
   case mcontent of
     Nothing -> T.hPutStrLn stderr $ "Could not read from " <> prettyText input
@@ -26,5 +26,6 @@ checkSwarmIO (CheckConfig input) = do
       case processTerm content of
         Right _ -> T.putStrLn "OK."
         Left err -> do
-          T.putStrLn err
+          T.putStrLn "error:"
+          T.hPutStrLn stderr err
           exitFailure
