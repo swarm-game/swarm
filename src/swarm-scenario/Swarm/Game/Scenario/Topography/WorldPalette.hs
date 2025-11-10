@@ -122,8 +122,6 @@ prepForJson (PaletteAndMaskChar (StructurePalette _ _ suggestedPalette) maybeMas
 
   unassignedCharacters :: Set.Set Char
   unassignedCharacters =
-    -- TODO (#1149): How can we efficiently use the Unicode categories (in "Data.Char")
-    -- to generate this pool?
     Set.difference availableCharacterPool usedCharacters
    where
     usedCharacters =
