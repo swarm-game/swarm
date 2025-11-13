@@ -319,7 +319,8 @@ populateInventoryList (Just r) = do
 
 -- | Command-line options for configuring the app.
 data AppOpts = AppOpts
-  { userSeed :: Maybe Seed
+  { version :: Bool
+  , userSeed :: Maybe Seed
   -- ^ Explicit seed chosen by the user.
   , userScenario :: Maybe FilePath
   -- ^ Scenario the user wants to play.
@@ -368,6 +369,7 @@ defaultAppOpts =
     , userWebPort = Nothing
     , userMetricsPort = Nothing
     , repoGitInfo = Nothing
+    , version = False
     }
 
 --------------------------------------------------

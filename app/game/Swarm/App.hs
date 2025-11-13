@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 {- HLINT ignore "Use underscore" -}
 
@@ -12,6 +13,9 @@ module Swarm.App (
   app,
   appMain,
   EventHandler,
+  commitInfo,
+  gitInfo,
+  showVersion,
 
   -- * Metrics
   defaultMetrics,
@@ -34,7 +38,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
-import GitHash (GitInfo)
+import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
 import Graphics.Vty qualified as V
 import Graphics.Vty.CrossPlatform qualified as V
 import Network.Socket qualified as Net
@@ -48,6 +52,7 @@ import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI (uiAttrMap)
 import Swarm.TUI.View
 import Swarm.Version (getNewerReleaseVersion)
+import Swarm.Version qualified as V (version)
 import Swarm.Web
 import System.Exit
 import System.IO (stderr)
@@ -68,9 +73,24 @@ app eventHandler =
     , appAttrMap = view $ uiState . uiAttrMap
     }
 
+gitInfo :: Maybe GitInfo
+gitInfo = either (const Nothing) Just $$tGitInfoCwdTry
+
+commitInfo :: String
+commitInfo = case gitInfo of
+  Nothing -> ""
+  Just git -> " (" <> giBranch git <> "@" <> take 10 (giHash git) <> ")"
+
+showVersion :: IO ()
+showVersion = do
+  putStrLn $ "Swarm game - " <> V.version <> commitInfo
+  up <- getNewerReleaseVersion gitInfo
+  either (T.hPutStrLn stderr . snd) (putStrLn . ("New upstream release: " <>)) up
+
 -- | The main @IO@ computation which initializes the state, sets up
 --   some communication channels, and runs the UI.
 appMain :: AppOpts -> IO ()
+appMain AppOpts {version = True} = showVersion
 appMain opts = do
   chan <- createChannel
   res <- runM . runThrow $ initAppState opts (Just chan)
@@ -179,8 +199,8 @@ sendFrameEvents chan = void . forkIO . forever $ do
 
 -- | Get newer upstream version and send event to channel.
 sendUpstreamVersion :: BChan AppEvent -> Maybe GitInfo -> IO ()
-sendUpstreamVersion chan gitInfo = void . forkIO $ do
-  upRel <- getNewerReleaseVersion gitInfo
+sendUpstreamVersion chan info = void . forkIO $ do
+  upRel <- getNewerReleaseVersion info
   writeBChan chan (UpstreamVersion upRel)
 
 -- | Log and save the web port or log web startup failure.
