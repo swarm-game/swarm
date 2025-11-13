@@ -1,7 +1,6 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -12,10 +11,9 @@ import Data.Foldable qualified
 import Data.List.Extra (enumerate)
 import Data.Set qualified as Set
 import Data.Text.IO qualified as T
-import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Options.Applicative.Help hiding (color, fullDesc)
-import Swarm.App (appMain, defaultMetrics)
+import Swarm.App (appMain, commitInfo, defaultMetrics, gitInfo)
 import Swarm.Language.Format
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Parser.Core (LanguageVersion (..))
@@ -27,18 +25,9 @@ import Swarm.TUI.Model.KeyBindings (KeybindingPrint (..), showKeybindings)
 import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond)
 import Swarm.Util (Encoding (..), writeFileT)
 import Swarm.Util.InputSource
-import Swarm.Version
+import Swarm.Version qualified as V
 import Swarm.Web (defaultPort)
-import System.IO (hPrint, stderr)
 import Text.Read (readMaybe)
-
-gitInfo :: Maybe GitInfo
-gitInfo = either (const Nothing) Just $$tGitInfoCwdTry
-
-commitInfo :: String
-commitInfo = case gitInfo of
-  Nothing -> ""
-  Just git -> " (" <> giBranch git <> "@" <> take 10 (giHash git) <> ")"
 
 data CLI
   = Run AppOpts
@@ -47,7 +36,6 @@ data CLI
   | Format FormatConfig
   | Check CheckConfig
   | LSP
-  | Version
 
 cliParser :: Parser CLI
 cliParser =
@@ -57,7 +45,6 @@ cliParser =
         , command "format" (info (Format <$> parseFormat) (progDesc "Format a file"))
         , command "check" (info (Check <$> parseCheck) (progDesc "Parse and typecheck a file"))
         , command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
-        , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
         , command "keybindings" (info (ListKeybinding <$> initKeybindingConfig <*> printKeyMode <**> helper) (progDesc "List the keybindings"))
         ]
     )
@@ -66,6 +53,7 @@ cliParser =
   appOpts :: Parser AppOpts
   appOpts = do
     let repoGitInfo = gitInfo
+    version <- parseVersion
     userSeed <- seed
     userScenario <- scenario
     runOpts <- run <|> replay <|> autoplay
@@ -117,6 +105,9 @@ cliParser =
 
   seed :: Parser (Maybe Int)
   seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
+
+  parseVersion :: Parser Bool
+  parseVersion = switch (long "version" <> short 'v' <> help "This is the version")
 
   webPort :: Parser (Maybe Int)
   webPort =
@@ -213,16 +204,10 @@ cliInfo :: ParserInfo CLI
 cliInfo =
   info
     (cliParser <**> helper)
-    ( header ("Swarm game - " <> version <> commitInfo)
+    ( header ("Swarm game - " <> V.version <> commitInfo)
         <> progDesc "To play the game simply run without any command."
         <> fullDesc
     )
-
-showVersion :: IO ()
-showVersion = do
-  putStrLn $ "Swarm game - " <> version <> commitInfo
-  up <- getNewerReleaseVersion gitInfo
-  either (hPrint stderr) (putStrLn . ("New upstream release: " <>)) up
 
 printKeybindings :: Bool -> KeybindingPrint -> IO ()
 printKeybindings initialize p = do
@@ -250,4 +235,3 @@ main = do
     Format cfg -> formatSwarmIO cfg
     Check cfg -> checkSwarmIO cfg
     LSP -> lspMain
-    Version -> showVersion
