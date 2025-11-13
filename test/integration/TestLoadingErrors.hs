@@ -3,7 +3,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- XXX
+-- Test for runtime errors during loading.
 module TestLoadingErrors (testNoLoadingErrors, checkNoRuntimeErrors) where
 
 import Control.Lens (view, (^.))
