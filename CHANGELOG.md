@@ -1,5 +1,67 @@
 # Revision history for swarm
 
+## **0.8.0.0** - 2025-11-XX
+
+### Breaking changes
+
+* The types of `atomic` and `instant` changed from `Cmd a -> Cmd a` to
+  `{Cmd a} -> Cmd a` ([#2552](https://github.com/swarm-game/swarm/pull/2552))
+
+### Bugfixes
+
+* Fix file I/O to properly take encoding into account ([#2594](https://github.com/swarm-game/swarm/pull/2594))
+
+### Features + Enhancements
+
+#### Commands
+
+* The `watch` command now watches for robots as well as entities ([#2538](https://github.com/swarm-game/swarm/pull/2538))
+
+#### Entities + Recipes
+
+* Include combustion products in recipe graph analysis ([#2553](https://github.com/swarm-game/swarm/pull/2553))
+
+#### Tutorials + Scenarios
+
+* Simple photocopier challenge ([#2492](https://github.com/swarm-game/swarm/pull/2492))
+
+#### Achievements
+
+* Grant achievement for unequipping a welder ([#2564](https://github.com/swarm-game/swarm/pull/2564))
+* Destroy base if it has `life support system` unequipped for 256 ticks ([#2505](https://github.com/swarm-game/swarm/pull/2505))
+
+#### Scenario mechanics and authoring improvements
+
+* Optional `chars` palette field to specify auto-generated character entities ([#2494](https://github.com/swarm-game/swarm/pull/2494))
+
+#### LSP
+
+* Jump to definition support for value-level names ([#2583](https://github.com/swarm-game/swarm/pull/2583))
+
+#### UI enhancements
+
+* Add proper Swarm history replay ([#2482](https://github.com/swarm-game/swarm/pull/2482))
+* Update tab completion to work at the cursor, not just at the end of REPL input ([#2543](https://github.com/swarm-game/swarm/pull/2543))
+* Auto-insert matching close quotes at the REPL ([#2547](https://github.com/swarm-game/swarm/pull/2547))
+* Inventory search looks at entity descriptions in addition to names ([#2582](https://github.com/swarm-game/swarm/pull/2582))
+* Reset info panel scroll when clicking on an inventory item ([#2486](https://github.com/swarm-game/swarm/pull/2486))
+* Pop out entity description on `Enter` keypress on info panel ([#2485](https://github.com/swarm-game/swarm/pull/2485))
+
+#### Performance + metrics
+
+* View chunk caching for faster world drawing ([#2515](https://github.com/swarm-game/swarm/pull/2515))
+* Load world tiles in parallel ([#2555](https://github.com/swarm-game/swarm/pull/2555))
+* Optimize structure composition ([#2487](https://github.com/swarm-game/swarm/pull/2487))
+* Add metrics via `ekg` ([#2512](https://github.com/swarm-game/swarm/pull/2512))
+    * World metrics ([#2573](https://github.com/swarm-game/swarm/pull/2573))
+    * Total and active robots metrics ([#2517](https://github.com/swarm-game/swarm/pull/2517))
+
+#### Command line options
+
+* New `swarm check` subcommand for parsing and typechecking code from
+  the command-line ([#2640](https://github.com/swarm-game/swarm/pull/2640))
+
+
 ## **0.7.0.0** - 2025-06-03
 
 ### Breaking changes
