@@ -1342,8 +1342,12 @@ test-suite swarm-integration
 
   main-is: Main.hs
   other-modules:
+    TestEditorFiles
     TestFormat
+    TestLoadingErrors
     TestRecipeCoverage
+    TestScenarioParse
+    TestScenarioSolutions
 
   type: exitcode-stdio-1.0
   build-depends:
