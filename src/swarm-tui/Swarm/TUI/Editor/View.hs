@@ -69,7 +69,6 @@ drawWorldEditor toplevelFocusRing uig =
   worldEditor = uig ^. uiWorldEditor
   maybeAreaBounds = worldEditor ^. editingBounds . boundsRect
 
-  -- TODO (#1150): Use withFocusRing?
   mkFormControl n w =
     clickable n $ transformation w
    where
