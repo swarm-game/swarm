@@ -9,7 +9,7 @@ module TestScenarioSolutions (noScenarioOverlap, testScenarioSolutions) where
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens (Ixed (ix), at, to, view, (&), (.~), (^.), (^..), (^?), (^?!))
-import Control.Monad (forM_, unless, when)
+import Control.Monad (unless, when)
 import Control.Monad.State (execStateT)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (Foldable (toList), find)
@@ -27,7 +27,7 @@ import Swarm.Failure (SystemFailure)
 import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
 import Swarm.Game.CESK (initMachine)
 import Swarm.Game.Entity (lookupByName)
-import Swarm.Game.Robot (equippedDevices, robotName, systemRobot)
+import Swarm.Game.Robot (equippedDevices, systemRobot)
 import Swarm.Game.Robot.Activity (commandsHistogram, lifetimeStepCount, tangibleCommandCount)
 import Swarm.Game.Robot.Concrete (activityCounts, machine, robotLog, waitingUntil)
 import Swarm.Game.State (
@@ -128,10 +128,10 @@ isTutorial f
 -- | Configuration record specifying how to test a particular scenario.
 data ScenarioTestConfig
   = ScenarioTestConfig
-  { allowedTime :: Time
+  { _allowedTime :: Time
   , scenarioPath :: FilePath
-  , checkBadErrors :: ShouldCheckBadErrors
-  , checks :: GameState -> Assertion
+  , _checkBadErrors :: ShouldCheckBadErrors
+  , _checks :: GameState -> Assertion
   }
 
 -- | Compare 'ScenarioTestConfig' values by scenario path.
@@ -449,8 +449,8 @@ noBadErrors g =
  where
   bad = badErrorsInLogs g
 
-printAllLogs :: GameState -> IO ()
-printAllLogs g =
-  forM_ (g ^. robotInfo . robotMap) $ \r -> do
-    putStrLn $ "-- ROBOT: " ++ T.unpack (r ^. robotName)
-    forM_ (r ^. robotLog) (putStrLn . T.unpack . view leText)
+-- printAllLogs :: GameState -> IO ()
+-- printAllLogs g =
+--   forM_ (g ^. robotInfo . robotMap) $ \r -> do
+--     putStrLn $ "-- ROBOT: " ++ T.unpack (r ^. robotName)
+--     forM_ (r ^. robotLog) (putStrLn . T.unpack . view leText)
