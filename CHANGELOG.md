@@ -1,6 +1,6 @@
 # Revision history for swarm
 
-## **0.8.0.0** - 2025-11-XX
+## **0.8.0.0** - 2025-11-16
 
 ### Breaking changes
 
