@@ -19,5 +19,10 @@
 	"devDependencies": {
 		"@types/vscode": "^1.106.0",
 		"@vscode/test-electron": "^2.5.2"
+	},
+	"scripts": {
+		"build": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --minify",
+		"build-dev": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap",
+		"watch": "npm run build-dev -- --watch"
 	}
 }

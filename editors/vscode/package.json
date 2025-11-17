@@ -17,7 +17,7 @@
     "categories": [
         "Programming Languages"
     ],
-    "main": "./client/out/extension",
+    "main": "./client/out/extension.js",
     "contributes": {
         "languages": [
             {
@@ -54,11 +54,11 @@
     },
     "scripts": {
         "gen-syntax": "npx js-yaml ./syntaxes/swarm.tmLanguage.yaml > ./syntaxes/swarm.tmLanguage.json",
-        "vscode:prepublish": "npm run esbuild-base -- --minify",
-        "esbuild-base": "esbuild ./client/src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
-        "esbuild": "npm run esbuild-base -- --sourcemap",
-        "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
-        "test-compile": "tsc -p client",
+
+        "build": "npm --prefix client run build",
+        
+        "vscode:prepublish": "npm run build",
+
         "test": "vscode-tmgrammar-snap test/*.sw"
     }
 }
