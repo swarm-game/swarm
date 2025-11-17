@@ -2,9 +2,8 @@
 {
 	"name": "swarm-lsp-client",
 	"description": "VSCode part of the swarm language server",
-	"author": "Ondřej Šebek",
 	"license": "MIT",
-	"version": "0.1.2",
+	"version": "0.2.0",
 	"publisher": "swarm-game",
 	"repository": {
 		"type": "git",

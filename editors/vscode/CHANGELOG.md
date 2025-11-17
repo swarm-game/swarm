@@ -2,6 +2,9 @@
 
 All notable changes to the "swarm-language" extension will be documented in this file.
 
+## version 0.2.0
+* Update language version, dependencies and VSCode CI workflows
+
 ## version 0.1.3
 * Fix numeric literal parsing
 * Fix operator parsing
