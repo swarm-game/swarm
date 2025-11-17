@@ -2,9 +2,8 @@
 {
 	"name": "swarm-lsp-client",
 	"description": "VSCode part of the swarm language server",
-	"author": "Ondřej Šebek",
 	"license": "MIT",
-	"version": "0.1.2",
+	"version": "0.2.0",
 	"publisher": "swarm-game",
 	"repository": {
 		"type": "git",
@@ -14,10 +13,15 @@
 		"vscode": "^1.75.0"
 	},
 	"dependencies": {
-		"vscode-languageclient": "^9.0.1"
+		"vscode-languageclient": "^10.0.0-next.18"
 	},
 	"devDependencies": {
-		"@types/vscode": "^1.75.1",
-		"@vscode/test-electron": "^2.3.9"
+		"@types/vscode": "^1.106.0",
+		"@vscode/test-electron": "^2.5.2"
+	},
+	"scripts": {
+		"build": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --minify",
+		"build-dev": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap",
+		"watch": "npm run build-dev -- --watch"
 	}
 }
