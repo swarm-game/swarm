@@ -24,13 +24,13 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [16]
+        node-version: [20]
         os: [ubuntu-latest]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v1
+      uses: actions/setup-node@v6
       with:
         node-version: ${{ matrix.node-version }}
     - run: |
@@ -40,11 +40,9 @@ jobs:
         cd client                   && \
         npm update                  && \
         npm clean-install           && \
-        tsc --build .               && \
         cd ..                       && \
         npm run gen-syntax          && \
-        npm clean-install           && \
-        npm run build --if-present
+        npm run build
     - run: |
         cd editors/vscode
         npm test
