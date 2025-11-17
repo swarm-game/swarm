@@ -274,7 +274,7 @@ handleMainAchievementsEvent l e = case e of
     uiState . uiMenu .= AchievementsMenu l'
   _ -> pure ()
  where
-  returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Messages)
+  returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Achievements)
 
 handleMainMessagesEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMainMessagesEvent = \case
