@@ -20,7 +20,7 @@ import Swarm.Pretty (prettyText)
 import Swarm.ResourceLoading (getDataDirSafe)
 import Swarm.Util (acquireAllWithExt)
 import Swarm.Util.Effect (withThrow)
-import System.FilePath (dropExtension, joinPath, splitPath)
+import System.FilePath (dropExtension, takeFileName)
 import Witch (into)
 
 -- | Load and typecheck all world descriptions from `worlds/*.world`.

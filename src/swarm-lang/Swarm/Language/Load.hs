@@ -39,7 +39,7 @@ import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Language.Syntax.Util (Erasable (..))
 import Swarm.Language.Types (TCtx, TDCtx, UCtx)
 import Swarm.Pretty (prettyText)
-import Swarm.Util (readFileMayT, showT)
+import Swarm.Util (Encoding (SystemLocale), readFileMayT, showT)
 import Swarm.Util.Graph (findCycle)
 import Witch (into)
 
@@ -257,7 +257,7 @@ readLoc loc = do
       T.decodeUtf8' (getResponseBody resp) & withBadImport CanNotDecodeUTF8
 
     -- Read from disk
-    _ -> sendIO (readFileMayT path) >>= maybe (badImport (DoesNotExist File)) pure
+    _ -> sendIO (readFileMayT SystemLocale path) >>= maybe (badImport (DoesNotExist File)) pure
 
   -- Finally, try to parse the contents
   readTerm' (defaultParserConfig & importLoc ?~ loc) src

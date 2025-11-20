@@ -887,7 +887,7 @@ inferTop ::
   Has (Error ContextualTypeErr) sig m =>
   TCtx -> ReqCtx -> TDCtx -> SourceMap Resolved -> Syntax Resolved -> m (SyntaxWithImports Typed)
 inferTop ctx reqCtx tdCtx srcMap =
-  fmap (uncurry (SyntaxWithImports Nothing))   -- XXX SyntaxWithImports Nothing?
+  fmap (uncurry (SyntaxWithImports Nothing)) -- XXX SyntaxWithImports Nothing?
     . runTC ctx reqCtx tdCtx Ctx.empty srcMap
     . infer
 
@@ -896,7 +896,7 @@ checkTop ::
   Has (Error ContextualTypeErr) sig m =>
   TCtx -> ReqCtx -> TDCtx -> SourceMap Resolved -> Syntax Resolved -> Type -> m (SyntaxWithImports Typed)
 checkTop ctx reqCtx tdCtx srcMap t =
-  fmap (uncurry (SyntaxWithImports Nothing))  -- XXX SyntaxWithImports Nothing?
+  fmap (uncurry (SyntaxWithImports Nothing)) -- XXX SyntaxWithImports Nothing?
     . runTC ctx reqCtx tdCtx Ctx.empty srcMap
     . check t
     . toU
@@ -1138,10 +1138,10 @@ collectDefs ::
   m (UCtx, TDCtx)
 collectDefs (Syntax _ (SLet LSDef _ x _ _ _ body t) _ _) = do
   ty' <- generalize (body ^. sType)
-  first (Ctx.singleton (lvVar x) ty' <>) <$> collectDefs t
+  first (Ctx.singleton (locVal x) ty' <>) <$> collectDefs t
 collectDefs (Syntax _ (SImportIn _ t) _ _) = collectDefs t
 collectDefs (Syntax _ (STydef x _ (Just tdInfo) t) _ _) =
-  second (addBindingTD (lvVar x) tdInfo) <$> collectDefs t
+  second (addBindingTD (locVal x) tdInfo) <$> collectDefs t
 collectDefs _ = pure (Ctx.empty, emptyTDCtx)
 
 -- | Infer the type of a module, i.e. import, by (1) typechecking and

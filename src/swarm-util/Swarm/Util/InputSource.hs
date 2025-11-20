@@ -20,6 +20,11 @@ getInput :: InputSource -> IO (Maybe Text)
 getInput Stdin = Just <$> T.getContents
 getInput (InputFile fp) = readFileMayT SystemLocale fp
 
+inputSourceToMaybe :: InputSource -> Maybe FilePath
+inputSourceToMaybe = \case
+  Stdin -> Nothing
+  InputFile f -> Just f
+
 instance PrettyPrec InputSource where
   prettyPrec _ = \case
     Stdin -> "(input)"

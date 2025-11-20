@@ -24,17 +24,16 @@ import Data.Text (Text)
 import Data.Text.Lines qualified as R
 import Data.Text.Utf16.Rope.Mixed qualified as R
 import Language.LSP.Protocol.Types qualified as J
-import Swarm.Language.Syntax (SwarmType, locVarToSyntax)
+import Swarm.Language.Syntax (SrcLoc (..), SwarmType, locVarToSyntax)
 import Swarm.Language.Syntax.AST (Syntax (..), Term (..))
 import Swarm.Language.TDVar (tdVarName)
 import Swarm.Language.Types
 import Swarm.Pretty (prettyTextLine)
-import Swarm.Util.SrcLoc (SrcLoc (..))
 
 posToRange :: R.Rope -> SrcLoc -> Maybe J.Range
 posToRange myRope foundSloc = do
   (s, e) <- case foundSloc of
-    SrcLoc s e -> Just (s, e)
+    SrcLoc _ s e -> Just (s, e)
     _ -> Nothing
   let (startRope, _) = R.charSplitAt (fromIntegral s) myRope
       (endRope, _) = R.charSplitAt (fromIntegral e) myRope
@@ -131,6 +130,8 @@ pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
     SAnnotate s _ -> d s
     SRequirements _ s -> d s
     SParens s -> d s
+    -- TODO: what to do with import here?
+    SImportIn {} -> mempty
     -- atoms - return their position and end recursion
     TUnit -> mempty
     TConst {} -> mempty

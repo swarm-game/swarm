@@ -111,7 +111,7 @@ instance FromJSONE (WorldParseDependencies Raw) (WorldDescription Raw) where
   parseJSONE = withObjectE "world description" $ \v -> do
     WorldParseDependencies worldMap scenarioLevelStructureDefs rm tem <- getE
 
-    let withDeps :: With (TerrainEntityMaps, RobotMap) f a -> With e' f a
+    let withDeps :: With (TerrainEntityMaps, RobotMap Raw) f a -> With e' f a
         withDeps = localE (const (tem, rm))
     palette <-
       fmap generateCharEntities . withDeps $

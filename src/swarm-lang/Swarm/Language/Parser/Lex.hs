@@ -268,7 +268,7 @@ tyVar = identifier IDTyVar
 --   separate name resolution pass later that assigns correct version
 --   numbers to user type names.
 tyName :: Parser TDVar
-tyName = lvVar <$> locTyName
+tyName = locVal <$> locTyName
 
 -- | Parse a term variable, which can start in any case and just
 --   cannot be the same (case-insensitively) as a lowercase reserved
