@@ -1218,7 +1218,6 @@ execConst runChildProg c vs s k = do
             time <- use $ temporal . ticks
             return $ Waiting (addTicks (numItems + 1) time) (mkReturn ())
       _ -> badConst
-
     -- run can take both types of text inputs
     -- with and without file extension as in
     -- "./path/to/file.sw" and "./path/to/file"
