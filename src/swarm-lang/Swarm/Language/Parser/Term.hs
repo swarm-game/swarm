@@ -17,7 +17,6 @@ import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
-import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Language.Parser.Core
 import Swarm.Language.Parser.Import
