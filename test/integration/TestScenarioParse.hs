@@ -11,6 +11,7 @@ import Control.Monad (forM_)
 import Data.List (partition)
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.Game.Scenario (Scenario, ScenarioInputs)
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.FilePath (splitDirectories)
 import Test.Tasty

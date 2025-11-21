@@ -130,7 +130,7 @@ validateSubmittedSolution (CommonValidationArgs solnTimeout persistenceArgs) sce
         . decodeUtf8'
         . LBS.toStrict
         $ fileContent file
-    res <- liftIO . runError @SystemFailure $ requireNonEmptyTerm =<< processSource solText Nothing
+    res <- liftIO . runError @SystemFailure $ requireNonEmptyTerm =<< processSource Nothing solText Nothing
     soln <- withExceptT (SolutionParseError . prettyText) . except $ res
     gs <- withExceptT ScenarioRetrievalFailure $ do
       scenarioContent <-

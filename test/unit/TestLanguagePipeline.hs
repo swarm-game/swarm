@@ -792,7 +792,7 @@ testLanguagePipeline =
 
   processCompare :: (Text -> Text -> Bool) -> Text -> Text -> Assertion
   processCompare cmp code expect =
-    runError @SystemFailure (processSource code Nothing) >>= \case
+    runError @SystemFailure (processSource Nothing code Nothing) >>= \case
       Left e
         | not (T.null expect) && cmp expect (prettyText e) -> pure ()
         | otherwise ->

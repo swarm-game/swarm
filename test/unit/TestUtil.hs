@@ -38,7 +38,7 @@ eval g = either (return . (g,hypotheticalRobot undefined 0,) . Left) (evalPT g) 
 processTerm1 :: Text -> IO (Either Text (SyntaxWithImports Elaborated))
 processTerm1 txt =
   fmap (first prettyText) . runError @SystemFailure $
-    processSource txt Nothing >>= requireNonEmptyTerm
+    processSource Nothing txt Nothing >>= requireNonEmptyTerm
 
 evalPT :: GameState -> SyntaxWithImports Elaborated -> IO (GameState, Robot Instantiated, Either Text (Value, Int))
 evalPT g t = evalCESK g (initMachine t)

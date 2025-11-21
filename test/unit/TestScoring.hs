@@ -63,8 +63,9 @@ testHighScores =
 
 compareAstSize :: Int -> FilePath -> TestTree
 compareAstSize expectedSize path = testCase (unwords ["size of", path]) $ do
+  let filePath = baseTestPath </> path
   contents <- readFileMayT UTF8 (baseTestPath </> path) ??? assertFailure "Can't read file!"
-  src <- runError @SystemFailure $ requireNonEmptyTerm =<< processSource contents Nothing
+  src <- runError @SystemFailure $ requireNonEmptyTerm =<< processSource (Just filePath) contents Nothing
   t <- either (assertFailure . prettyString) (pure . getSyntax) src
   assertEqual "incorrect size" expectedSize (measureAstSize t)
 

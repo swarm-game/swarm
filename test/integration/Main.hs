@@ -19,7 +19,6 @@ import Swarm.Game.Scenario.Scoring.GenericMetrics (Metric (..), Progress (..))
 import Swarm.Game.ScenarioInfo (ScenarioInfo, ScenarioStatus (..), scenarioStatus)
 import Swarm.Game.State.Runtime (eventLog, stdGameConfigInputs)
 import Swarm.Game.State.Substate (initState)
-import Swarm.Language.Phase (Raw)
 import Swarm.Language.Pipeline (processSource, requireNonEmptyTerm)
 import Swarm.Pretty (prettyString)
 import Swarm.TUI.Model (debugOptions, defaultAppOpts)
@@ -74,7 +73,7 @@ exampleTest :: FilePath -> TestTree
 exampleTest path =
   testCase ("processTerm for contents of " ++ show path) $ do
     content <- readFileMayT UTF8 path ??? assertFailure "Can't read file!"
-    res <- runError @SystemFailure (processSource content Nothing >>= requireNonEmptyTerm)
+    res <- runError @SystemFailure (processSource (Just path) content Nothing >>= requireNonEmptyTerm)
     either (assertFailure . prettyString) (const $ pure ()) res
 
 ------------------------------------------------------------

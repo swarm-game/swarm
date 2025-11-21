@@ -57,12 +57,12 @@ extractReqCtx :: Syntax phase -> ReqCtx
 extractReqCtx (Syntax _ t _ _) = extractReqCtxTerm t
  where
   extractReqCtxTerm = \case
-    SLet _ _ (LV _ x) _ _ mreq _ t2 -> maybe id (Ctx.addBinding x) mreq (extractReqCtx t2)
+    SLet _ _ (Loc _ x) _ _ mreq _ t2 -> maybe id (Ctx.addBinding x) mreq (extractReqCtx t2)
     SBind mx _ _ mreq c1 c2 ->
       maybe
         id
         (uncurry Ctx.addBinding)
-        ((,) . lvVar <$> mx <*> mreq)
+        ((,) . locVal <$> mx <*> mreq)
         (extractReqCtx c1 <> extractReqCtx c2)
     SAnnotate t1 _ -> extractReqCtx t1
     _ -> mempty
