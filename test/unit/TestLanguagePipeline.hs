@@ -777,7 +777,7 @@ testLanguagePipeline =
             "recursive import is not re-exported"
             ( process
                 "import \"data/test/import/f.sw\"; pure (f + g)"
-                "1:43: Unbound variable g"
+                "1:43: Undefined variable g"
             )
         , testCase
             "import from URL"
