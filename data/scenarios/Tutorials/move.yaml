@@ -142,7 +142,7 @@ robots:
   #################
   - name: check
     system: true
-    program: instant {import "scenarios/Tutorials/move_check.sw"; main}
+    program: instant {import "move_check.sw"; main}
   #################
   ## WALLS       ##
   #################
@@ -150,21 +150,21 @@ robots:
     system: true
     program: |
       instant {
-        import "scenarios/Tutorials/move_surveil.sw";
+        import "move_surveil.sw";
         main [entity="wall", room=1]
       }
   - name: 2P wall
     system: true
     program: |
       instant {
-        import "scenarios/Tutorials/move_surveil.sw";
+        import "move_surveil.sw";
         main [entity="wall", room=2]
       }
   - name: 3P wall
     system: true
     program: |
       instant {
-        import "scenarios/Tutorials/move_surveil.sw";
+        import "move_surveil.sw";
         main [entity="wall", room=3]
       }
   #################
@@ -174,21 +174,21 @@ robots:
     system: true
     program: |
       instant {
-        import "scenarios/Tutorials/move_surveil.sw";
+        import "move_surveil.sw";
         main [entity="flower", room=1]
       }
   - name: 2P flower
     system: true
     program: |
       instant {
-        import "scenarios/Tutorials/move_surveil.sw";
+        import "move_surveil.sw";
         main [entity="flower", room=2]
       }
   - name: 3P flower
     system: true
     program: |
       instant {
-        import "scenarios/Tutorials/move_surveil.sw";
+        import "move_surveil.sw";
         main [entity="flower", room=3]
       }
 entities:

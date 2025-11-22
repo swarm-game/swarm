@@ -96,7 +96,7 @@ invisible :: Lens' Display Bool
 childInheritance :: Lens' Display ChildInheritance
 
 instance FromJSON Display where
-  parseJSON v = runE (parseJSONE v) (defaultEntityDisplay ' ')
+  parseJSON v = runE (parseJSONE v) (defaultEntityDisplay ' ') Nothing
 
 instance FromJSONE Display Display where
   parseJSONE = withObjectE "Display" $ \v -> do

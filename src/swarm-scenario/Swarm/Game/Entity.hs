@@ -612,10 +612,11 @@ instance FromJSON Entity where
 -- | If we have access to an 'EntityMap', we can parse the name of an
 --   'Entity' as a string and look it up in the map.
 instance FromJSONE EntityMap Entity where
-  parseJSONE = withTextE "entity name" $ \name ->
-    E $ \em -> case lookupEntityName name em of
+  parseJSONE = withTextE "entity name" $ \name -> do
+    em <- getE
+    case lookupEntityName name em of
       Nothing -> failT ["Unknown entity:", name]
-      Just e -> return e
+      Just e -> pure e
 
 instance ToJSON Entity where
   toJSON e =

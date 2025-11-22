@@ -399,15 +399,9 @@ instance FromJSONE TerrainEntityMaps (Robot Raw) where
 
     -- Parse the robot program but also store the original text, for
     -- use in displaying error messages while typechecking
-
-    -- XXX Note the use of Nothing below in (Nothing,txt,) .  This means
-    -- the provenance of the code is recorded as Nothing.  If we could
-    -- obtain here the location of the .yaml file from which this JSON was loaded,
-    -- we could use that as the provenance, so that any local imports in the program
-    -- would be interpreted relative to the location of the .yaml file.
-    -- Not currently sure how to do that, though.
+    prov <- getProvenance
     prog <- case KM.lookup "program" v of
-      Just progV -> liftE $ Ae.withText "program" (\txt -> (fmap . fmap) (Nothing,txt,) (v .:? "program")) progV
+      Just progV -> liftE $ Ae.withText "program" (\txt -> (fmap . fmap) (prov,txt,) (v .:? "program")) progV
       _ -> pure Nothing
 
     mkRobot Nothing
