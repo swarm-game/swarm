@@ -885,18 +885,31 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 --   fully type-annotated version of the term.
 inferTop ::
   Has (Error ContextualTypeErr) sig m =>
-  TCtx -> ReqCtx -> TDCtx -> SourceMap Resolved -> Syntax Resolved -> m (SyntaxWithImports Typed)
-inferTop ctx reqCtx tdCtx srcMap =
-  fmap (uncurry (SyntaxWithImports Nothing)) -- XXX SyntaxWithImports Nothing?
+  Maybe FilePath ->
+  TCtx ->
+  ReqCtx ->
+  TDCtx ->
+  SourceMap Resolved ->
+  Syntax Resolved ->
+  m (SyntaxWithImports Typed)
+inferTop provenance ctx reqCtx tdCtx srcMap =
+  fmap (uncurry (SyntaxWithImports provenance))
     . runTC ctx reqCtx tdCtx Ctx.empty srcMap
     . infer
 
 -- | Top level type checking function.
 checkTop ::
   Has (Error ContextualTypeErr) sig m =>
-  TCtx -> ReqCtx -> TDCtx -> SourceMap Resolved -> Syntax Resolved -> Type -> m (SyntaxWithImports Typed)
-checkTop ctx reqCtx tdCtx srcMap t =
-  fmap (uncurry (SyntaxWithImports Nothing)) -- XXX SyntaxWithImports Nothing?
+  Maybe FilePath ->
+  TCtx ->
+  ReqCtx ->
+  TDCtx ->
+  SourceMap Resolved ->
+  Syntax Resolved ->
+  Type ->
+  m (SyntaxWithImports Typed)
+checkTop provenance ctx reqCtx tdCtx srcMap t =
+  fmap (uncurry (SyntaxWithImports provenance))
     . runTC ctx reqCtx tdCtx Ctx.empty srcMap
     . check t
     . toU

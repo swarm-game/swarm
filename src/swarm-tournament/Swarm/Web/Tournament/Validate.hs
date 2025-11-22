@@ -176,7 +176,7 @@ initScenarioObject scenarioInputs content = do
   rawScenario <-
     withExceptT ScenarioParseFailure $
       except $
-        parseEither (parseJSONE' scenarioInputs) rawYaml
+        parseEither (parseJSONE' Nothing scenarioInputs) rawYaml
   res <- runError @SystemFailure $ process (rawScenario :: Scenario Raw)
   withExceptT (ScenarioParseFailure . prettyString) (except res)
 

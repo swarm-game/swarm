@@ -91,6 +91,7 @@ processTerm prov txt t menv = do
   SyntaxWithImports _ srcMapTy tTy <-
     withError (typeErrToSystemFailure txt) $
       inferTop
+        prov
         (e ^. envTypes)
         (e ^. envReqs)
         (e ^. envTydefs)
@@ -119,6 +120,7 @@ processTermNoImports txt t menv = do
   SyntaxWithImports _ _ tTy <-
     withError (typeErrToSystemFailure txt) $
       inferTop
+        Nothing
         (e ^. envTypes)
         (e ^. envReqs)
         (e ^. envTydefs)
@@ -152,7 +154,7 @@ class Processable t where
 instance Processable SyntaxWithImports where
   process (SyntaxWithImports prov _ t) = do
     SyntaxWithImports _ srcMapRes tRes <- resolve prov t
-    SyntaxWithImports _ srcMapTy tTy <- withError (typeErrToSystemFailure "") . inferTop mempty mempty emptyTDCtx srcMapRes $ tRes
+    SyntaxWithImports _ srcMapTy tTy <- withError (typeErrToSystemFailure "") . inferTop prov mempty mempty emptyTDCtx srcMapRes $ tRes
     pure $ SyntaxWithImports prov (M.map elaborateModule srcMapTy) (elaborate tTy)
 
 -- | Process syntax, but deliberately throw away information about
