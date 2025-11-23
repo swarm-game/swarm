@@ -130,7 +130,7 @@ pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
     SAnnotate s _ -> d s
     SRequirements _ s -> d s
     SParens s -> d s
-    -- TODO: what to do with import here?
+    -- TODO (#2660): what to do with import here?
     SImportIn {} -> mempty
     -- atoms - return their position and end recursion
     TUnit -> mempty
