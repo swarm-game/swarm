@@ -855,6 +855,20 @@ data TDCtx = TDCtx
 emptyTDCtx :: TDCtx
 emptyTDCtx = TDCtx Ctx.empty M.empty
 
+-- | Right-biased union two 'TDCtx' values, under the assumption that
+--   they come from different modules.  In particular, none of the
+--   variables from the second TDCtx can shadow variables from the
+--   same module, so they do not need to be given new version numbers.
+--   We can simply union the contexts.
+unionTDCtx :: TDCtx -> TDCtx -> TDCtx
+unionTDCtx (TDCtx ctx1 res1) (TDCtx ctx2 res2) = TDCtx (ctx1 <> ctx2) (M.union res2 res1)
+
+instance Semigroup TDCtx where
+  (<>) = unionTDCtx
+
+instance Monoid TDCtx where
+  mempty = emptyTDCtx
+
 -- | Look up a variable in the type definition context.
 lookupTD :: TDVar -> TDCtx -> Maybe TydefInfo
 lookupTD x = Ctx.lookup x . getTDCtx
@@ -876,14 +890,6 @@ addBindingTD v info (TDCtx tdCtx tdVersions) =
 --   additional binding, via 'addBindingTD'.
 withBindingTD :: Has (Reader TDCtx) sig m => TDVar -> TydefInfo -> m a -> m a
 withBindingTD v info = local (addBindingTD v info)
-
--- | Right-biased union two 'TDCtx' values, under the assumption that
---   they come from different modules.  In particular, none of the
---   variables from the second TDCtx can shadow variables from the
---   same module, so they do not need to be given new version numbers.
---   We can simply union the contexts.
-unionTDCtx :: TDCtx -> TDCtx -> TDCtx
-unionTDCtx (TDCtx ctx1 res1) (TDCtx ctx2 res2) = TDCtx (ctx1 <> ctx2) (M.union res2 res1)
 
 -- | Locally extend the ambient type definition context with
 --   additional bindings.

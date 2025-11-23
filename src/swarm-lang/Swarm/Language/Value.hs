@@ -166,6 +166,8 @@ data Env = Env
 instance Eq Env where
   (==) = (==) `on` hash
 
+makeLenses ''Env
+
 -- ~~~~ Note [Env Show and Eq instances]
 -- Env contains values, which can be e.g. closures, which
 -- contain more Envs.  Normally, in memory, there is a lot of sharing,
@@ -175,7 +177,9 @@ instance Eq Env where
 -- do not have a derived Eq instance since it would be incredibly
 -- inefficient and there is no good reason to use it.  See #2197.
 
-makeLenses ''Env
+instance Semigroup Env where
+  Env t1 r1 v1 td1 sm1 <> Env t2 r2 v2 td2 sm2 =
+    Env (t1 <> t2) (r1 <> r2) (v1 <> v2) (td1 <> td2) (sm1 <> sm2)
 
 -- | Create an environment which is empty except for an initial SourceMap.
 envFromSrcMap :: SourceMap Elaborated -> Env
