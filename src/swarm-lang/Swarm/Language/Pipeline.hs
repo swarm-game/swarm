@@ -97,7 +97,6 @@ processTerm prov txt t menv = do
         (e ^. envTydefs)
         (srcMapRes <> eraseSourceMap (e ^. envSourceMap))
         tRes
-  -- XXX what srcMap to use here?  Make sure, and write a note about it
   pure $ SyntaxWithImports prov (fmap elaborateModule srcMapTy) (elaborate tTy)
 
 -- | Like 'processTerm', but don't allow any imports that need to be

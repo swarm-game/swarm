@@ -121,8 +121,8 @@ data LocatedTCFrame = LocatedTCFrame SrcLoc TCFrame
   deriving (Show)
 
 instance PrettyPrec LocatedTCFrame where
-  -- XXX: print the SrcLoc somehow, need access to the original
-  -- source text though
+  -- TODO (#2452): To pretty-print the SrcLoc, we would need access to
+  -- the original source text.
   prettyPrec p (LocatedTCFrame _ f) = prettyPrec p f
 
 -- | A typechecking stack keeps track of what we are currently in the
