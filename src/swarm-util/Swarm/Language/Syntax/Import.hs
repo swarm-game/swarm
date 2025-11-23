@@ -251,22 +251,23 @@ unresolveImportDir (ImportDir a p) = ImportDir (unresolve a) p
 --   This is not meant to be exported, but is used as part of the
 --   smart constructor 'mkImportDir'.
 --
---  >>> canonicalizeImportDir (ImportDir Home ["."])
---  ImportDir {importAnchor = Home, importPath = []}
---  >>> canonicalizeImportDir (ImportDir Home ["a","b"])
---  ImportDir {importAnchor = Home, importPath = ["a","b"]}
---  >>> canonicalizeImportDir (ImportDir Home ["a","..","b"])
---  ImportDir {importAnchor = Home, importPath = ["b"]}
---  >>> canonicalizeImportDir (ImportDir Home ["a","..","..","b"])
---  ImportDir {importAnchor = Home, importPath = ["b"]}
---  >>> canonicalizeImportDir (ImportDir (Local 0) ["a", "..", "b"])
---  ImportDir {importAnchor = Local 0, importPath = ["b"]}
---  >>> canonicalizeImportDir (ImportDir (Local 0) ["a", "..", "..", "b"])
---  ImportDir {importAnchor = Local 1, importPath = ["b"]}
---  >>> canonicalizeImportDir (ImportDir (Local 0) ["a", "..", "..", "b", ".", "c"])
---  ImportDir {importAnchor = Local 1, importPath = ["b","c"]}
---  >>> canonicalizeImportDir (ImportDir (Local 1) ["a", "..", "..", "b", "c", "..", "d", "..", "..", ".."])
---  ImportDir {importAnchor = Local 3, importPath = []}
+-- >>> :set -XOverloadedStrings
+-- >>> mkImportDir Home ["."]
+-- ImportDir (Left Home_) []
+-- >>> mkImportDir Home ["a","b"]
+-- ImportDir (Left Home_) ["a","b"]
+-- >>> mkImportDir Home ["a","..","b"]
+-- ImportDir (Left Home_) ["b"]
+-- >>> mkImportDir Home ["a","..","..","b"]
+-- ImportDir (Left Home_) ["b"]
+-- >>> mkImportDir (Local 0) ["a", "..", "b"]
+-- ImportDir (Left (Local_ 0)) ["b"]
+-- >>> mkImportDir (Local 0) ["a", "..", "..", "b"]
+-- ImportDir (Left (Local_ 1)) ["b"]
+-- >>> mkImportDir (Local 0) ["a", "..", "..", "b", ".", "c"]
+-- ImportDir (Left (Local_ 1)) ["b","c"]
+-- >>> mkImportDir (Local 1) ["a", "..", "..", "b", "c", "..", "d", "..", "..", ".."]
+-- ImportDir (Left (Local_ 3)) []
 canonicalizeImportDir :: ImportDir Raw -> ImportDir Raw
 canonicalizeImportDir (ImportDir a p) = case (a, canonicalizeDir (0, [], p)) of
   (Local n, (m, p')) -> ImportDir (Local (n + m)) p'
