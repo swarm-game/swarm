@@ -139,12 +139,13 @@ formatIncapableFix = \case
 -- >>> import Control.Carrier.Throw.Either (runThrow)
 -- >>> import Control.Algebra (run)
 -- >>> import Swarm.Failure (LoadingFailure)
+-- >>> import Swarm.Language.Phase (Raw)
 -- >>> import qualified Data.Set as S
 -- >>> :set -XTypeApplications
 -- >>> w = mkEntity (defaultEntityDisplay 'l') "magic wand" mempty mempty (S.singleton $ CExecute Appear)
 -- >>> r = mkEntity (defaultEntityDisplay 'o') "the one ring" mempty mempty (S.singleton $ CExecute Appear)
 -- >>> m = fromRight mempty . run . runThrow @LoadingFailure $ buildEntityMap [w,r]
--- >>> incapableError cs t = putStr . unpack $ formatIncapable m FixByEquip cs t
+-- >>> incapableError cs t = putStr . unpack $ formatIncapable @Raw m FixByEquip cs t
 --
 -- >>> incapableError (R.singletonCap CGod) (TConst As)
 -- Thou shalt not utter such blasphemy:
