@@ -36,6 +36,7 @@ import Brick.Widgets.List (handleListEvent, listElements)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.TabularList.Grid qualified as BG
 import Control.Applicative ((<|>))
+import Control.Carrier.Error.Either (run, runError)
 import Control.Category ((>>>))
 import Control.Lens as Lens
 import Control.Monad (forM_, unless, void, when)
@@ -56,6 +57,7 @@ import Data.Text.Zipper qualified as TZ
 import Data.Text.Zipper.Generic.Words qualified as TZ
 import Data.Vector qualified as V
 import Graphics.Vty qualified as V
+import Swarm.Failure (SystemFailure (..))
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec, FSuspend))
 import Swarm.Game.Entity hiding (empty)
@@ -80,13 +82,11 @@ import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Parser.Lex (reservedWords)
 import Swarm.Language.Parser.Util (showErrorPos)
-import Swarm.Language.Pipeline (processParsedTerm')
+import Swarm.Language.Pipeline (processTermNoImports)
 import Swarm.Language.Syntax hiding (Key)
-import Swarm.Language.Typecheck (
-  ContextualTypeErr (..),
- )
 import Swarm.Language.Value (Value (VKey), emptyEnv, envTypes)
 import Swarm.Log
+import Swarm.Pretty (prettyString)
 import Swarm.ResourceLoading (getSwarmHistoryPath)
 import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Controller.EventHandlers.Robot (showEntityDescription)
@@ -656,7 +656,7 @@ runBaseWebCode uinput ureply = do
       gameState . gameControls . replListener .= ureply . Complete . T.unpack
       runBaseCode uinput
         >>= liftIO . ureply . \case
-          Left err -> Rejected . ParseError $ T.unpack err
+          Left err -> Rejected . ParseError $ prettyString err
           Right () -> InProgress
 
 -- | Handle a user input event for the REPL.
@@ -889,12 +889,22 @@ validateREPLForm s =
           let env = fromMaybe emptyEnv $ s ^? gameState . baseEnv
               (theType, errSrcLoc) = case readTerm' defaultParserConfig uinput of
                 Left err ->
-                  let ((_y1, x1), (_y2, x2), _msg) = showErrorPos err
-                   in (Nothing, Left (SrcLoc x1 x2))
+                  let (((_y1, x1), (_y2, x2)), _msg) = showErrorPos err
+                   in (Nothing, Left (SrcLoc Nothing x1 x2))
                 Right Nothing -> (Nothing, Right ())
-                Right (Just theTerm) -> case processParsedTerm' env theTerm of
-                  Right t -> (Just (t ^. sType), Right ())
-                  Left err -> (Nothing, Left (cteSrcLoc err))
+                Right (Just theTerm) ->
+                  -- Explicitly ignore REPL entries with imports,
+                  -- to avoid slow I/O while the user is typing,
+                  -- but don't signal an error.  Any imports will
+                  -- be properly resolved and checked when the
+                  -- user hits enter.
+                  let res = run . runError @SystemFailure $ processTermNoImports uinput theTerm (Just env)
+                   in case res of
+                        Right t -> (Just (t ^. sType), Right ())
+                        Left (DoesNotTypecheck loc _) -> (Nothing, Left loc)
+                        -- Don't signal an error if the REPL entry contained an import
+                        Left (DisallowedImport _) -> (Nothing, Right ())
+                        _ -> (Nothing, Right ())
            in s
                 & uiGameplay . uiREPL . replValid .~ errSrcLoc
                 & uiGameplay . uiREPL . replType .~ theType
@@ -905,10 +915,7 @@ validateREPLForm s =
 
 -- | Update our current position in the REPL history.
 adjReplHistIndex :: TimeDir -> ScenarioState -> ScenarioState
-adjReplHistIndex d s =
-  s
-    & uiGameplay . uiREPL %~ moveREPL
-    & validateREPLForm
+adjReplHistIndex d s = validateREPLForm (s & uiGameplay . uiREPL %~ moveREPL)
  where
   moveREPL :: REPLState -> REPLState
   moveREPL theRepl =

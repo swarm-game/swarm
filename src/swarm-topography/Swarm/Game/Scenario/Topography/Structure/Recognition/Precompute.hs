@@ -89,7 +89,7 @@ mkAutomatons ::
   (Ord a, Hashable a) =>
   (b -> NonEmptyGrid (AtomicKeySymbol a)) ->
   [NamedArea b] ->
-  Either RedundantOrientations (RecognizerAutomatons b a)
+  Either RedundantOrientations (RecognizerAutomatons a b)
 mkAutomatons extractor rawGrids = do
   onlyNonempties <- mapM checkSymmetry extractedItems
   let rotatedGrids = concatMap (extractGrids . grid) onlyNonempties
@@ -109,9 +109,9 @@ mkAutomatons extractor rawGrids = do
     countsMap = histogram . catMaybes . NE.toList $ allMembersNE entGrid
 
 extractOrientedGrid ::
-  ExtractedArea b a ->
+  ExtractedArea a b ->
   AbsoluteDir ->
-  StructureWithGrid b a
+  StructureWithGrid a b
 extractOrientedGrid (ExtractedArea x neGrid) d =
   StructureWithGrid d w $
     ExtractedArea x $
@@ -124,8 +124,8 @@ extractOrientedGrid (ExtractedArea x neGrid) d =
 -- redundant by rotational symmetry have been excluded
 -- (i.e. at Scenario validation time).
 extractGrids ::
-  ExtractedArea b a ->
-  [StructureWithGrid b a]
+  ExtractedArea a b ->
+  [StructureWithGrid a b]
 extractGrids x =
   map (extractOrientedGrid x) orientations
  where
@@ -135,8 +135,8 @@ extractGrids x =
 -- vetted; the 'ensureStructureIntact' function will subsequently
 -- filter this list.
 lookupStaticPlacements ::
-  StaticStructureInfo b a ->
-  [FoundStructure b a]
+  StaticStructureInfo a b ->
+  [FoundStructure a b]
 lookupStaticPlacements (StaticStructureInfo theAutomatons thePlacements) =
   concatMap f $ M.toList thePlacements
  where
@@ -158,9 +158,9 @@ lookupStaticPlacements (StaticStructureInfo theAutomatons thePlacements) =
 -- Returns the first observed mismatch cell otherwise.
 ensureStructureIntact ::
   (Monad s, Hashable a) =>
-  FoundRegistry b a ->
+  FoundRegistry a b ->
   GenericEntLocator s a ->
-  FoundStructure b a ->
+  FoundStructure a b ->
   s (Maybe (StructureIntactnessFailure a))
 ensureStructureIntact registry entLoader (PositionedStructure upperLeft (StructureWithGrid _ _ (ExtractedArea _ g))) = do
   fmap leftToMaybe . runExceptT $ mapM checkLoc allLocPairs

@@ -6,8 +6,8 @@
 -- Test provided scenario solutions.
 module TestScenarioSolutions (noScenarioOverlap, testScenarioSolutions) where
 
+import Control.Carrier.Error.Either (runError)
 import Control.Carrier.Lift (runM)
-import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens (Ixed (ix), at, to, view, (&), (.~), (^.), (^..), (^?), (^?!))
 import Control.Monad (unless, when)
 import Control.Monad.State (execStateT)
@@ -173,7 +173,7 @@ testSolution :: PersistentState -> ScenarioTestConfig -> TestTree
 testSolution ps (ScenarioTestConfig s p shouldCheckBadErrors verify) = maybeExpectFail . testCase p $ do
   cleanStore <- Metrics.newStore
   out <-
-    runM . runThrow @SystemFailure $
+    runM . runError @SystemFailure $
       constructAppState
         (resetMetrics cleanStore ps)
         (defaultAppOpts {userScenario = Just p})

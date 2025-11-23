@@ -13,6 +13,7 @@ module Swarm.Util.Yaml (
   localE,
   withE,
   getE,
+  getProvenance,
   FromJSONE (..),
   decodeFileEitherE,
   (..:),
@@ -35,24 +36,25 @@ import Data.Yaml as Y
 import Swarm.Util (failT, showT)
 
 ------------------------------------------------------------
--- WithEntities wrapper
+-- With wrapper
 ------------------------------------------------------------
 
 -- | A generic wrapper for computations which also depend on knowing a
---   value of type @e@.
-newtype With e (f :: * -> *) a = E {runE :: e -> f a}
+--   value of type @e@, and possibly the provenance of the information.
+newtype With e (f :: * -> *) a = E {runE :: e -> Maybe FilePath -> f a}
   deriving (Functor)
-  deriving (Applicative, Monad, MonadFail, Alternative) via (ReaderT e f)
+  deriving (Applicative, Monad, MonadFail, Alternative) via (ReaderT e (ReaderT (Maybe FilePath) f))
 
 -- | A 'ParserE' is a YAML 'Parser' that can also depend on knowing an
---   value of type @e@.  The @E@ used to stand for @EntityMap@, but now
---   that it is generalized, it stands for Environment.
+--   value of type @e@, as well as the provenance of the yaml being
+--   parsed.  The @E@ used to stand for @EntityMap@, but now that it
+--   is generalized, it stands for Environment.
 type ParserE e = With e Parser
 
 -- | Lift a computation that does not care about the environment
---   value.
+--   value or provenance.
 liftE :: Functor f => f a -> With e f a
-liftE = E . const
+liftE = E . const . const
 
 -- | Locally modify an environment.
 localE :: (e' -> e) -> With e f a -> With e' f a
@@ -63,8 +65,11 @@ withE :: Semigroup e => e -> With e f a -> With e f a
 withE e = localE (<> e)
 
 -- | Get the current environment.
-getE :: (Monad f) => With e f e
-getE = E return
+getE :: Applicative f => With e f e
+getE = E (const . pure)
+
+getProvenance :: Applicative f => With e f (Maybe FilePath)
+getProvenance = E (const pure)
 
 ------------------------------------------------------------
 -- FromJSONE
@@ -82,8 +87,8 @@ class FromJSONE e a where
   default parseJSONE :: FromJSON a => Value -> ParserE e a
   parseJSONE = liftE . parseJSON
 
-  parseJSONE' :: e -> Value -> Parser a
-  parseJSONE' e = ($ e) . runE . parseJSONE
+  parseJSONE' :: Maybe FilePath -> e -> Value -> Parser a
+  parseJSONE' p e = ($ p) . ($ e) . runE . parseJSONE
 
 instance FromJSONE e Int
 
@@ -111,7 +116,7 @@ decodeFileEitherE e file = do
   res <- decodeFileEither file :: IO (Either ParseException Value)
   return $ case res of
     Left err -> Left err
-    Right v -> first AesonException $ parseEither (parseJSONE' e) v
+    Right v -> first AesonException $ parseEither (parseJSONE' (Just file) e) v
 
 ------------------------------------------------------------
 -- Accessors
@@ -120,12 +125,12 @@ decodeFileEitherE e file = do
 -- | A variant of '.:' for 'ParserE': project out a field of an
 --   'Object', passing along the extra environment.
 (..:) :: FromJSONE e a => Object -> Text -> ParserE e a
-v ..: x = E $ \e -> explicitParseField (parseJSONE' e) v (fromText x)
+v ..: x = E $ \e p -> explicitParseField (parseJSONE' p e) v (fromText x)
 
 -- | A variant of '.:?' for 'ParserE': project out an optional field of an
 --   'Object', passing along the extra environment.
 (..:?) :: FromJSONE e a => Object -> Text -> ParserE e (Maybe a)
-v ..:? x = E $ \e -> explicitParseFieldMaybe (parseJSONE' e) v (fromText x)
+v ..:? x = E $ \e p -> explicitParseFieldMaybe (parseJSONE' p e) v (fromText x)
 
 -- | A variant of '.!=' for any functor.
 (..!=) :: Functor f => f (Maybe a) -> a -> f a
@@ -138,7 +143,7 @@ p ..!= a = fromMaybe a <$> p
 withThingE ::
   (forall b. String -> (thing -> Parser b) -> Value -> Parser b) ->
   (String -> (thing -> ParserE e a) -> Value -> ParserE e a)
-withThingE withThing name f = E . (\v es -> withThing name (($ es) . runE . f) v)
+withThingE withThing name f = E . (\v es p -> withThing name (($ p) . ($ es) . runE . f) v)
 
 -- | @'withTextE' name f value@ applies @f@ to the 'Text' when @value@ is
 --   a @String@ and fails otherwise.

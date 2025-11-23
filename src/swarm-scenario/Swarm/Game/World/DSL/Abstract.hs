@@ -27,8 +27,6 @@ data BTerm :: Type -> Type where
   BApp :: BTerm (a -> b) -> BTerm a -> BTerm b
   BConst :: Const a -> BTerm a
 
-deriving instance Show (BTerm t)
-
 instance Applicable BTerm where
   ($$) = BApp
 
