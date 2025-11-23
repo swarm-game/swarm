@@ -54,7 +54,7 @@ import Swarm.Language.Var (LocVar, Var)
 -- $setup
 -- >>> import Control.Lens ((^.))
 -- >>> import Swarm.Language.Syntax.Constants
--- >>> import Swarm.Util.SrcLoc
+-- >>> import Swarm.Language.Syntax.Loc
 -- >>> import Swarm.Language.Syntax.Pattern
 -- >>> import Swarm.Language.Syntax.AST
 
