@@ -18,6 +18,7 @@ import Control.Effect.State (State, get, modify)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Lens ((?~))
 import Control.Monad (forM_)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Data (Data, Typeable)
 import Data.Function ((&))
 import Data.Hashable (Hashable)
@@ -30,6 +31,8 @@ import Data.Text.Encoding qualified as T
 import GHC.Generics (Generic)
 import Network.HTTP.Simple (getResponseBody, httpBS, parseRequest)
 import Swarm.Failure (Asset (..), AssetData (..), Entry (..), LoadingFailure (..), SystemFailure (..))
+import Swarm.Language.InternCache
+import Swarm.Language.InternCache qualified as IC
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig, importLoc, runParser)
 import Swarm.Language.Parser.Import (parseImportLocationRaw)
@@ -41,11 +44,8 @@ import Swarm.Language.Types (TCtx, TDCtx, UCtx)
 import Swarm.Pretty (prettyText)
 import Swarm.Util (Encoding (SystemLocale), readFileMayT, showT)
 import Swarm.Util.Graph (findCycle)
-import Witch (into)
-import Swarm.Language.InternCache
-import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.IO.Unsafe (unsafePerformIO)
-import Swarm.Language.InternCache qualified as IC
+import Witch (into)
 
 type ResLoc = ImportLoc Import.Resolved
 
@@ -174,7 +174,7 @@ resolveImports parent = runAccum S.empty . traverseSyntax pure (resolveImport pa
 
 -- | Cache imported modules. TODO: fix for module tree
 moduleCache :: (MonadIO m) => InternCache m (ImportLoc Import.Resolved) (Module Resolved)
-moduleCache = unsafePerformIO $ hoist liftIO <$> IC.newInternCache @IO @(ImportLoc Import.Resolved) @(Module Resolved) 
+moduleCache = unsafePerformIO $ hoist liftIO <$> IC.newInternCache @IO @(ImportLoc Import.Resolved) @(Module Resolved)
 {-# NOINLINE moduleCache #-}
 
 -- | Given a parent directory relative to which any local imports
@@ -194,33 +194,34 @@ resolveImport parent loc = do
   -- Compute the canonicalized location for the import, and record it
   canonicalLoc <- resolveImportLoc (unresolveImportDir parent <//> loc)
   add $ S.singleton canonicalLoc
-  
+
   sendIO (IC.lookupCached moduleCache canonicalLoc) >>= \case
     Just cachedModule -> do
       sendIO $ putStr "C\a"
       modify @(SourceMap Resolved) (M.insert canonicalLoc cachedModule)
-    Nothing -> M.lookup canonicalLoc <$> get @(SourceMap Resolved) >>= \case
-      Just _ -> pure () -- Already loaded - do nothing
-      Nothing -> do
-        -- Record this import loc in the source map using a temporary, empty module,
-        -- to prevent it from attempting to load itself recursively
-        modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module Nothing () mempty)
+    Nothing ->
+      M.lookup canonicalLoc <$> get @(SourceMap Resolved) >>= \case
+        Just _ -> pure () -- Already loaded - do nothing
+        Nothing -> do
+          -- Record this import loc in the source map using a temporary, empty module,
+          -- to prevent it from attempting to load itself recursively
+          modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module Nothing () mempty)
 
-        -- Read it from network/disk
-        mt <- readLoc canonicalLoc
+          -- Read it from network/disk
+          mt <- readLoc canonicalLoc
 
-        -- Recursively resolve any imports it contains
-        mres <- traverse (resolveImports (importDir canonicalLoc)) mt
-        -- sequence :: Maybe (Set a, b) -> (Set a, Maybe b)
-        let (imps, mt') = sequence mres
+          -- Recursively resolve any imports it contains
+          mres <- traverse (resolveImports (importDir canonicalLoc)) mt
+          -- sequence :: Maybe (Set a, b) -> (Set a, Maybe b)
+          let (imps, mt') = sequence mres
 
-        -- Finally, record the loaded module in the SourceMap.
-        let m = Module mt' () imps
-        modify @(SourceMap Resolved) (M.insert canonicalLoc m)
-        sendIO $ IC.insertCached moduleCache canonicalLoc m
+          -- Finally, record the loaded module in the SourceMap.
+          let m = Module mt' () imps
+          modify @(SourceMap Resolved) (M.insert canonicalLoc m)
+          sendIO $ IC.insertCached moduleCache canonicalLoc m
 
-        -- Make sure imports are pure, i.e. contain ONLY defs + imports.
-        validateImport canonicalLoc m
+          -- Make sure imports are pure, i.e. contain ONLY defs + imports.
+          validateImport canonicalLoc m
 
   pure canonicalLoc
 
@@ -245,7 +246,7 @@ validateImport loc = maybe (pure ()) validate . moduleTerm
 
 -- | Cache file contents for import location.
 fileCache :: (MonadIO m) => InternCache m (ImportLoc Import.Resolved) Text
-fileCache = unsafePerformIO $ hoist liftIO <$> IC.newInternCache @IO @(ImportLoc Import.Resolved) @Text 
+fileCache = unsafePerformIO $ hoist liftIO <$> IC.newInternCache @IO @(ImportLoc Import.Resolved) @Text
 {-# NOINLINE fileCache #-}
 
 -- | Try to read and parse a term from a specific import location,
@@ -256,18 +257,18 @@ readLoc ::
   m (Maybe (Syntax Raw))
 readLoc loc = do
   -- Try to read the file from network/disk, depending on the anchor
-  src <- sendIO (IC.lookupCached fileCache loc) >>= \case
-    Just cachedSrc -> pure cachedSrc
-    Nothing -> do
-      s <- case importAnchor loc of
-        Web_ {} -> readFromNet
-        _ -> readFromDisk
-      _ <- sendIO $ IC.insertCached fileCache loc s
-      pure s
+  src <-
+    sendIO (IC.lookupCached fileCache loc) >>= \case
+      Just cachedSrc -> pure cachedSrc
+      Nothing -> do
+        s <- case importAnchor loc of
+          Web_ {} -> readFromNet
+          _ -> readFromDisk
+        _ <- sendIO $ IC.insertCached fileCache loc s
+        pure s
   -- Finally, try to parse the contents
   readTerm' (defaultParserConfig & importLoc ?~ loc) src
     & withBadImport (SystemFailure . CanNotParseMegaparsec)
-
  where
   path = locToFilePath loc
   badImport :: Has (Throw SystemFailure) sig m => LoadingFailure -> m a
