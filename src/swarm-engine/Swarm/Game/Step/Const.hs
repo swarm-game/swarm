@@ -443,7 +443,8 @@ execConst runChildProg c vs s k = do
 
         -- Speculatively unequip the item
         equippedDevices %= delete item
-        robotInventory %= insert item
+        unless (item `hasProperty` Unrecoverable) $
+          robotInventory %= insert item
 
         -- If the base unequips the life support system, show a
         -- warning and start a countdown.

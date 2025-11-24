@@ -183,6 +183,8 @@ data EntityProperty
     --   it disappears
     Evanescent
   | -- | Robots automatically know what this is without having to scan it.
+    Unrecoverable
+  | -- | Unequipping this entity makes it unrecoverable and removed from inventory
     Known
   | -- | Text can be printed on this entity with the
     --   'Swarm.Language.Syntax.Print' command (and erased with
