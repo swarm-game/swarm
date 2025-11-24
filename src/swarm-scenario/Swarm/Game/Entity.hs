@@ -182,9 +182,9 @@ data EntityProperty
   | -- | If robots try to 'Swarm.Language.Syntax.Place' this,
     --   it disappears
     Evanescent
-  | -- | Robots automatically know what this is without having to scan it.
-    Unrecoverable
   | -- | Unequipping this entity makes it unrecoverable and removed from inventory
+    Unrecoverable
+  | -- | Robots automatically know what this is without having to scan it.
     Known
   | -- | Text can be printed on this entity with the
     --   'Swarm.Language.Syntax.Print' command (and erased with
