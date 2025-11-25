@@ -440,10 +440,11 @@ execConst runChildProg c vs s k = do
       [VText itemName] -> do
         item <- ensureEquipped itemName
         myID <- use robotID
+        let recoverable = not (item `hasProperty` Unrecoverable)
 
         -- Speculatively unequip the item
         equippedDevices %= delete item
-        unless (item `hasProperty` Unrecoverable) $
+        when recoverable $
           robotInventory %= insert item
 
         -- If the base unequips the life support system, show a
@@ -472,7 +473,7 @@ execConst runChildProg c vs s k = do
             -- If unequipping the device would somehow result in the
             -- path being blocked, don't allow it; re-equip the device
             -- and throw an exception.
-            robotInventory %= delete item
+            when recoverable $ robotInventory %= delete item
             equippedDevices %= insert item
             throwError . cmdExn Unequip $
               ["You can't unequip the", item ^. entityName, "right now!"]
