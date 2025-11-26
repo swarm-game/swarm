@@ -956,7 +956,6 @@ library swarm-util
     Swarm.Effect.Metric
     Swarm.Effect.Time
     Swarm.Failure
-    Swarm.Language.InternCache
     Swarm.Language.Phase
     Swarm.Language.Syntax.Direction
     Swarm.Language.Syntax.Import
@@ -968,6 +967,7 @@ library swarm-util
     Swarm.Util.Erasable
     Swarm.Util.Graph
     Swarm.Util.InputSource
+    Swarm.Util.InternCache
     Swarm.Util.JSON
     Swarm.Util.Lens
     Swarm.Util.OccurrenceEncoder
