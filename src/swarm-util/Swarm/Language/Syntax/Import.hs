@@ -21,7 +21,8 @@ module Swarm.Language.Syntax.Import (
   RAnchor (..),
   UAnchor (..),
   Unresolvable,
-  pattern Absolute,
+  pattern Root,
+  pattern Drive,
   pattern Web,
   pattern Local,
   pattern Home,
@@ -64,7 +65,7 @@ import GHC.Generics
 import Prettyprinter (hcat, pretty, punctuate, slash)
 import Swarm.Pretty
 import System.Directory (doesFileExist, getCurrentDirectory, getHomeDirectory)
-import System.FilePath (joinPath, splitDirectories, (</>))
+import System.FilePath (joinPath, pathSeparator, splitDirectories, (</>))
 import Witch (into)
 
 ------------------------------------------------------------
@@ -79,12 +80,14 @@ type data ImportPhase where
 ------------------------------------------------------------
 -- Anchor
 
--- | A fully resolved anchor can only be one of two things: 'Absolute'
---   (the filesystem root), or 'Web', representing a site root like
---   @https://github.com/@.
+-- | A fully resolved anchor can be 'Root' (the filesystem root),
+--   'Drive' (a drive letter on Windows), or 'Web', representing a
+--   site root like @https://github.com/@.
 data RAnchor where
-  -- | Absolute, /i.e./ relative to the filesystem root.
-  Absolute_ :: RAnchor
+  -- | The filesystem root.
+  Root_ :: RAnchor
+  -- | A drive letter, e.g. 'D:\\'
+  Drive_ :: Char -> RAnchor
   -- | A web address.  The text represents scheme + authority, /e.g./
   -- "https://github.com"
   Web_ :: Text -> RAnchor
@@ -113,8 +116,11 @@ type family Anchor (phase :: ImportPhase) = result | result -> phase where
   Anchor Raw = Either UAnchor RAnchor
   Anchor Resolved = RAnchor
 
-pattern Absolute :: Anchor Raw
-pattern Absolute = Right Absolute_
+pattern Root :: Anchor Raw
+pattern Root = Right Root_
+
+pattern Drive :: Char -> Anchor Raw
+pattern Drive c = Right (Drive_ c)
 
 pattern Web :: Text -> Anchor Raw
 pattern Web t = Right (Web_ t)
@@ -125,14 +131,15 @@ pattern Local n = Left (Local_ n)
 pattern Home :: Anchor Raw
 pattern Home = Left Home_
 
-{-# COMPLETE Absolute, Web, Local, Home #-}
+{-# COMPLETE Root, Drive, Web, Local, Home #-}
 
 instance PrettyPrec (Either UAnchor RAnchor) where
   prettyPrec p = either (prettyPrec p) (prettyPrec p)
 
 instance PrettyPrec RAnchor where
   prettyPrec _ = \case
-    Absolute_ -> mempty
+    Root_ -> mempty
+    Drive_ c -> pretty [c, ':']
     Web_ w -> pretty w
 
 instance PrettyPrec UAnchor where
@@ -143,7 +150,8 @@ instance PrettyPrec UAnchor where
 -- | Turn an 'Anchor' into a concrete 'FilePath' (or URL).
 anchorToFilePath :: Anchor Resolved -> FilePath
 anchorToFilePath = \case
-  Absolute_ -> "/"
+  Root_ -> [pathSeparator]
+  Drive_ c -> [c, ':', pathSeparator]
   Web_ w -> into @FilePath w
 
 -- | Turn any anchor into a raw anchor.
@@ -222,7 +230,8 @@ withImportDir f (ImportDir a p) = f a p
 --   https://github.com/dhall-lang/dhall-lang/blob/master/standard/imports.md#chaining-directories
 --   for inspiration.
 instance Semigroup (ImportDir Raw) where
-  _ <> d@(ImportDir Absolute _) = d
+  _ <> d@(ImportDir Root _) = d
+  _ <> d@(ImportDir (Drive {}) _) = d
   _ <> d@(ImportDir (Web {}) _) = d
   _ <> d@(ImportDir Home _) = d
   ImportDir a p1 <> ImportDir (Local n) p2 = mkImportDir a (p1 ++ replicate n ".." ++ p2)
@@ -327,14 +336,18 @@ d1 <//> ImportLoc d2 f = ImportLoc (d1 <> d2) f
 -- | Resolve an import directory, turning it into an absolute path.
 resolveImportDir :: Has (Lift IO) sig m => ImportDir Raw -> m (ImportDir Resolved)
 resolveImportDir (ImportDir a p) = case a of
+  Local n -> mkAbsolute . reverse . drop n . reverse . splitDirectories <$> sendIO getCurrentDirectory
+  Home -> mkAbsolute . splitDirectories <$> sendIO getHomeDirectory
   Web t -> pure $ ImportDir (Web_ t) p
-  Local n -> do
-    cwd <- drop 1 . reverse . drop n . reverse . splitDirectories <$> sendIO getCurrentDirectory
-    pure $ ImportDir Absolute_ (map (into @Text) cwd ++ p)
-  Home -> do
-    home <- drop 1 . splitDirectories <$> sendIO getHomeDirectory
-    pure $ ImportDir Absolute_ (map (into @Text) home ++ p)
-  Absolute -> pure $ ImportDir Absolute_ p
+  Root -> pure $ ImportDir Root_ p
+  Drive c -> pure $ ImportDir (Drive_ c) p
+ where
+  readAnchor (d : ':' : _) = Drive_ d
+  readAnchor _ = Root_
+
+  mkAbsolute = \case
+    [] -> ImportDir Root_ p
+    (root : dirs) -> ImportDir (readAnchor root) (map (into @Text) dirs ++ p)
 
 -- | Check whether a given 'ImportLoc' in fact exists.  Note that, for
 --   the sake of efficiency, this simply assumes that any 'Web'
