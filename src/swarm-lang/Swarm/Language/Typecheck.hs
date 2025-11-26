@@ -216,11 +216,12 @@ fromInferredModule ::
   ) =>
   Module Inferred ->
   m (Module Typed)
-fromInferredModule (Module t (ctx, tdCtx) imps) =
+fromInferredModule (Module t (ctx, tdCtx) imps time) =
   Module
     <$> traverse fromInferredSyntax t
     <*> ((,tdCtx) <$> traverse (checkPredicative . fromU) ctx)
     <*> pure imps
+    <*> pure time
 
 -- | Finalize the typechecking process by generalizing over free
 --   unification variables and ensuring that no bound unification
@@ -430,7 +431,7 @@ instance HasBindings (Syntax Inferred) where
   applyBindings (Syntax l t cs u) = Syntax l <$> applyBindings t <*> pure cs <*> applyBindings u
 
 instance HasBindings (Module Inferred) where
-  applyBindings (Module t ctx imps) = Module <$> applyBindings t <*> applyBindings ctx <*> pure imps
+  applyBindings (Module t ctx imps time) = Module <$> applyBindings t <*> applyBindings ctx <*> pure imps <*> pure time
 
 ------------------------------------------------------------
 -- Converting between mono- and polytypes
@@ -1172,14 +1173,14 @@ inferModule ::
   , Has (Error ContextualTypeErr) sig m
   ) =>
   Module Resolved -> m (Module Inferred)
-inferModule (Module ms _ _imps) = do
+inferModule (Module ms _ _imps time) = do
   -- Infer the type of the term
   mt <- traverse infer ms
 
   -- Now, if the term has top-level definitions, collect up their
   -- types and put them in the context.
   ctx <- maybe (pure (Ctx.empty, emptyTDCtx)) collectDefs mt
-  pure $ Module mt ctx ()
+  pure $ Module mt ctx () time
 
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype
