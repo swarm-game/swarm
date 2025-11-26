@@ -1260,6 +1260,7 @@ displayProperties = displayList . mapMaybe showProperty
   showProperty Opaque = Just "opaque"
   showProperty Boundary = Just "boundary"
   showProperty Evanescent = Just "evanescent"
+  showProperty Unrecoverable = Just "unrecoverable"
   -- Most things are pickable so we don't show that.
   showProperty Pickable = Nothing
   -- 'Known' is just a technical detail of how we handle some entities
