@@ -41,8 +41,9 @@ module Swarm.Language.Syntax.Import (
   importAnchor,
 
   -- ** Utilities
-  anchorToFilePath,
-  dirToFilePath,
+  anchorToPath,
+  dirToPath,
+  locToPath,
   locToFilePath,
   (<//>),
   unresolveImportDir,
@@ -60,6 +61,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Data.Aeson (FromJSON, ToJSON, ToJSONKey)
 import Data.Data (Data (..), Typeable)
 import Data.Hashable (Hashable (..))
+import Data.List (intercalate)
 import Data.Text (Text)
 import GHC.Generics
 import Prettyprinter (hcat, pretty, punctuate, slash)
@@ -147,12 +149,21 @@ instance PrettyPrec UAnchor where
     Local_ n -> hcat $ punctuate slash (replicate n "..")
     Home_ -> "~"
 
--- | Turn an 'Anchor' into a concrete 'FilePath' (or URL).
-anchorToFilePath :: Anchor Resolved -> FilePath
-anchorToFilePath = \case
+-- | A concrete representation of a path: either a local path or a URL.
+data Path = File FilePath | URL String
+  deriving (Eq, Ord, Show)
+
+pathToString :: Path -> String
+pathToString = \case
+  File f -> f
+  URL u -> u
+
+-- | Turn an 'Anchor' into a concrete path.
+anchorToPath :: Anchor Resolved -> String
+anchorToPath = \case
   Root_ -> [pathSeparator]
   Drive_ c -> [c, ':', pathSeparator]
-  Web_ w -> into @FilePath w
+  Web_ w -> into @String w
 
 -- | Turn any anchor into a raw anchor.
 class Unresolvable (phase :: ImportPhase) where
@@ -241,10 +252,14 @@ instance Semigroup (ImportDir Raw) where
 instance Monoid (ImportDir Raw) where
   mempty = ImportDir (Local 0) []
 
--- | Turn an 'ImportDir' into a concrete 'FilePath' (or URL).
-dirToFilePath :: ImportDir Resolved -> FilePath
-dirToFilePath = withImportDir $ \a p ->
-  anchorToFilePath a </> joinPath (map (into @FilePath) p)
+-- | Turn an 'ImportDir' into a concrete path.
+dirToPath :: ImportDir Resolved -> Path
+dirToPath = withImportDir $ \a p ->
+  case a of
+    -- URLs must specifically use front slashes as separators
+    Web_ {} -> URL $ intercalate "/" (anchorToPath a : map (into @FilePath) p)
+    -- Otherwise, use whatever is appropriate for the OS
+    _ -> File $ anchorToPath a </> joinPath (map (into @FilePath) p)
 
 -- | Turn any import dir back into a raw one.
 unresolveImportDir :: Unresolvable phase => ImportDir phase -> ImportDir Raw
@@ -320,9 +335,16 @@ instance PrettyPrec (Anchor phase) => PrettyPrec (ImportLoc phase) where
 importAnchor :: ImportLoc phase -> Anchor phase
 importAnchor = withImportDir const . importDir
 
--- | Turn an 'ImportLoc' into a concrete 'FilePath' (or URL).
+-- | Turn an 'ImportLoc' into a concrete path.
+locToPath :: ImportLoc Resolved -> Path
+locToPath (ImportLoc d f) =
+  case dirToPath d of
+    File dp -> File (dp </> into @FilePath f)
+    URL url -> URL (url ++ "/" ++ into @String f)
+
+-- | Turn an 'ImportLoc' into a concrete FilePath (or URL).
 locToFilePath :: ImportLoc Resolved -> FilePath
-locToFilePath (ImportLoc d f) = dirToFilePath d </> into @FilePath f
+locToFilePath = pathToString . locToPath
 
 -- | Append an import location to the end of an import dir, resulting
 --   in a new import location.  That is, interpret the import location
@@ -355,11 +377,9 @@ resolveImportDir (ImportDir a p) = case a of
 --   actually be checked.  This means, for example, that web imports
 --   must have an `.sw` extension fully written out.
 doesLocationExist :: (Has (Lift IO) sig m) => ImportLoc Resolved -> m Bool
-doesLocationExist loc = do
-  let fp = locToFilePath loc
-  case importAnchor loc of
-    Web_ {} -> pure True
-    _ -> sendIO $ doesFileExist fp
+doesLocationExist loc = case locToPath loc of
+  URL _ -> pure True
+  File fp -> sendIO $ doesFileExist fp
 
 -- | Resolve an import location, by turning the path into an absolute
 --   path, and optionally adding a .sw suffix to the file name.
