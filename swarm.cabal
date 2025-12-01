@@ -1450,7 +1450,6 @@ benchmark benchmark
 
   type: exitcode-stdio-1.0
   build-depends:
-    fused-effects,
     swarm:swarm-engine,
     swarm:swarm-lang,
     swarm:swarm-scenario,
