@@ -946,6 +946,7 @@ library swarm-util
   visibility: public
   -- cabal-gild: discover src/swarm-util
   exposed-modules:
+    Control.Carrier.Accum.ActuallyStrict
     Data.BoolExpr.Simplify
     Swarm.Effect
     Swarm.Effect.Metric
