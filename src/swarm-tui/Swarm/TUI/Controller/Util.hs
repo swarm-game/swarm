@@ -37,7 +37,7 @@ import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (CDebug))
-import Swarm.Language.Load (SyntaxWithImports (..))
+import Swarm.Language.Module (Module, moduleTerm)
 import Swarm.Language.Pipeline (processSource)
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Value (emptyEnv)
@@ -264,20 +264,20 @@ allHandlers eEmbed f = map handleEvent1 enumerate
  where
   handleEvent1 e1 = let (n, a) = f e1 in onEvent (eEmbed e1) n a
 
-runBaseTerm :: (MonadState ScenarioState m) => Maybe (SyntaxWithImports Elaborated) -> m ()
-runBaseTerm = mapM_ startBaseProgram
- where
-  -- The player typed something at the REPL and hit Enter; this
-  -- function takes the resulting term (if the REPL
-  -- input is valid) and sets up the base robot to run it.
-  startBaseProgram t = do
-    -- Set the REPL status to Working
-    gameState . gameControls . replStatus .= REPLWorking (getSyntax t ^. sType) Nothing
-    -- Set up the robot's CESK machine to evaluate/execute the
-    -- given term.
-    gameState . baseRobot . machine %= continue t
-    -- Finally, be sure to activate the base robot.
-    gameState %= execState (zoomRobots $ activateRobot 0)
+-- | The player typed something at the REPL and hit Enter; this
+--   function takes the resulting term (if the REPL
+--   input is valid) and sets up the base robot to run it.
+runBaseTerm :: (MonadState ScenarioState m) => Module Elaborated -> m ()
+runBaseTerm m = do
+  -- Set the REPL status to Working
+  case moduleTerm m of
+    Nothing -> pure ()
+    Just t -> gameState . gameControls . replStatus .= REPLWorking (t ^. sType) Nothing
+  -- Set up the robot's CESK machine to evaluate/execute the
+  -- given term.
+  gameState . baseRobot . machine %= continue m
+  -- Finally, be sure to activate the base robot.
+  gameState %= execState (zoomRobots $ activateRobot 0)
 
 -- | Set the REPL to the given text and REPL prompt type.
 modifyResetREPL :: Text -> REPLPrompt -> REPLState -> REPLState
@@ -300,12 +300,12 @@ runBaseCode uinput = do
   resetREPL T.empty (CmdPrompt [])
   env <- fromMaybe emptyEnv <$> preuse (gameState . baseEnv)
 
-  res <- liftIO $ Fused.runError @SystemFailure $ processSource Nothing uinput (Just env)
+  res <- liftIO $ Fused.runError @SystemFailure $ processSource Nothing (Just env) uinput
 
   case res of
-    Right mt -> do
+    Right m -> do
       uiGameplay . uiREPL . replHistory . replHasExecutedManualInput .= True
-      runBaseTerm mt
+      runBaseTerm m
       return (Right ())
     Left err -> do
       addREPLHistItem REPLError (prettyText err)

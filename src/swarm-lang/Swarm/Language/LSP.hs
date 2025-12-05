@@ -28,7 +28,7 @@ import Swarm.Failure (SystemFailure (..))
 import Swarm.Language.LSP.Definition qualified as D
 import Swarm.Language.LSP.Hover qualified as H
 import Swarm.Language.LSP.VarUsage qualified as VU
-import Swarm.Language.Load (SyntaxWithImports (..))
+import Swarm.Language.Module (moduleTerm)
 import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Pipeline (processSource)
 import Swarm.Language.Syntax (SrcLoc (..), eraseRaw)
@@ -87,10 +87,10 @@ validateSwarmCode doc version content = do
   flushDiagnosticsBySource 0 (Just diagnosticSourcePrefix)
 
   let provenance = fmap LSP.fromNormalizedFilePath . LSP.uriToNormalizedFilePath $ doc
-  res <- liftIO . runError $ processSource provenance content Nothing
-  let (errors, warnings) = case res of
+  res <- liftIO . runError $ processSource provenance Nothing content
+  let (errors, warnings) = case moduleTerm <$> res of
         Right Nothing -> ([], [])
-        Right (Just (SyntaxWithImports _ _ term)) -> ([], unusedWarnings)
+        Right (Just term) -> ([], unusedWarnings)
          where
           VU.Usage _ problems = VU.getUsage mempty (eraseRaw term)
           unusedWarnings = mapMaybe (VU.toErrPos content) problems

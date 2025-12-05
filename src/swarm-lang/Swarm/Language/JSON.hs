@@ -13,14 +13,14 @@ module Swarm.Language.JSON where
 import Control.Lens (view)
 import Data.Aeson (FromJSON (..), ToJSON (..), genericToJSON, withText)
 import Data.Aeson qualified as Ae
-import Data.Map qualified as M
 import GHC.Generics (Generic)
-import Swarm.Language.Load (Module, ModuleCtx, ModuleImports, SyntaxWithImports (..))
+import Swarm.Language.Module (Module (..), ModuleCtx, ModuleImports, ModuleProvenance (..))
 import Swarm.Language.Parser (readNonemptyTerm)
 import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (Raw), SwarmType, Syntax, Term, Unresolvable, sTerm)
 import Swarm.Language.Value (Env, Value (..))
 import Swarm.Pretty (PrettyPrec, prettyText)
 import Swarm.Util.JSON (optionsMinimize)
+import Swarm.Util.Yaml (FromJSONE (..), getE, liftE, runE)
 import Witch (into)
 
 instance FromJSON (Term Raw) where
@@ -37,11 +37,19 @@ instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFo
 
 deriving instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), ToJSON (ModuleCtx phase), ToJSON (ModuleImports phase), Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => ToJSON (Module phase)
 
-instance FromJSON (SyntaxWithImports Raw) where
-  parseJSON v = SyntaxWithImports Nothing M.empty <$> parseJSON @(Syntax Raw) v
+instance FromJSON (Module Raw) where
+  parseJSON v = runE (parseJSONE v) NoProvenance Nothing
 
-instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), ToJSON (ModuleCtx phase), ToJSON (ModuleImports phase), Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => ToJSON (SyntaxWithImports phase) where
-  toJSON = toJSON . getSyntax
+instance FromJSONE ModuleProvenance (Module Raw) where
+  parseJSONE v =
+    Module
+      <$> (Just <$> liftE (parseJSON @(Syntax Raw) v))
+      <*> pure ()
+      <*> pure ()
+      <*> pure Nothing
+      <*> getE
+
+-- SyntaxWithImports Nothing _ <$> parseJSON @(Syntax Raw) v
 
 instance ToJSON Value where
   toJSON = genericToJSON optionsMinimize

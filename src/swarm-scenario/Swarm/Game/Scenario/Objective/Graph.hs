@@ -26,7 +26,7 @@ import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Logic as L
-import Swarm.Language.Load (ModuleCtx, ModuleImports)
+import Swarm.Language.Module (ModuleCtx, ModuleImports)
 import Swarm.Language.Syntax (Anchor, ImportPhaseFor, SwarmType)
 import Swarm.Util.Graph (isAcyclicGraph)
 

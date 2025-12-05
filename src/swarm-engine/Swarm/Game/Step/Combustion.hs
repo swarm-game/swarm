@@ -37,7 +37,7 @@ import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Inspect
 import Swarm.Game.Universe
-import Swarm.Language.Load (SyntaxWithImports)
+import Swarm.Language.Module (Module)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction (Direction)
@@ -143,7 +143,7 @@ addCombustionBot inputEntity combustibility ts loc = do
 -- 3. Spawn more robots whose sole purpose is to observe for changes to neighbor
 --    cells. This would avoid polluting the logic of the currently burning cell
 --    with logic to manage probabilities of combustion propagation.
-combustionProgram :: Integer -> Combustibility -> SyntaxWithImports Elaborated
+combustionProgram :: Integer -> Combustibility -> Module Elaborated
 combustionProgram combustionDuration (Combustibility _ _ _ maybeCombustionProduct) =
   [tmQ|
     wait $int:combustionDuration;
@@ -228,7 +228,7 @@ addIgnitionBot ignitionDelay inputEntity ts loc =
       ts
 
 -- Triggers the ignition of the entity underfoot with some delay.
-ignitionProgram :: Integer -> SyntaxWithImports Elaborated
+ignitionProgram :: Integer -> Module Elaborated
 ignitionProgram waitTime =
   [tmQ|
     wait $int:waitTime;

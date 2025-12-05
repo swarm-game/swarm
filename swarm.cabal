@@ -376,6 +376,9 @@ common transformers
 common unicode-show
   build-depends: unicode-show >=0.1 && <0.2
 
+common unliftio
+  build-depends: unliftio >=0.2 && <0.3
+
 common unordered-containers
   build-depends: unordered-containers >=0.2.14 && <0.3
 
@@ -425,6 +428,7 @@ library swarm-lang
     containers,
     data-fix,
     deriving-compat,
+    directory,
     extra,
     free,
     fused-effects,
@@ -443,6 +447,7 @@ library swarm-lang
     terminal-size,
     text,
     text-rope,
+    time,
     unicode-show,
     vector,
     vty,
@@ -456,6 +461,7 @@ library swarm-lang
     Swarm.Effect.Unify.Common
     Swarm.Effect.Unify.Fast
     Swarm.Effect.Unify.Naive
+    Swarm.Language.Cache
     Swarm.Language.Capability
     Swarm.Language.Context
     Swarm.Language.Elaborate
@@ -469,6 +475,7 @@ library swarm-lang
     Swarm.Language.LSP.Position
     Swarm.Language.LSP.VarUsage
     Swarm.Language.Load
+    Swarm.Language.Module
     Swarm.Language.Parser
     Swarm.Language.Parser.Comment
     Swarm.Language.Parser.Core
@@ -937,7 +944,10 @@ library swarm-util
     servant-docs,
     template-haskell,
     text,
+    time,
     transformers,
+    unliftio,
+    unordered-containers,
     vector,
     witch,
     witherable,
@@ -963,6 +973,7 @@ library swarm-util
     Swarm.Util.Erasable
     Swarm.Util.Graph
     Swarm.Util.InputSource
+    Swarm.Util.InternCache
     Swarm.Util.JSON
     Swarm.Util.Lens
     Swarm.Util.OccurrenceEncoder

@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -68,6 +69,7 @@ module Swarm.Game.CESK (
   CESK (..),
 
   -- ** Construction
+  idleMachine,
   initMachine,
   continue,
   cancel,
@@ -81,11 +83,10 @@ module Swarm.Game.CESK (
   cont,
 ) where
 
-import Control.Lens (Lens', Traversal', lens, traversal, (%~), (&), (.~), (^.))
+import Control.Lens (Lens', Traversal', lens, traversal, (^.))
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
-import Data.Map qualified as M
 import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..), encloseSep, hsep, (<+>))
 import Swarm.Game.Entity (Entity)
@@ -94,7 +95,7 @@ import Swarm.Game.Ingredients (Count)
 import Swarm.Game.Tick
 import Swarm.Game.World (WorldUpdate (..))
 import Swarm.Language.Elaborate (insertSuspend)
-import Swarm.Language.Load (SyntaxWithImports (..))
+import Swarm.Language.Module (Module, moduleTerm)
 import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
@@ -329,12 +330,18 @@ cont = lens get set
     Waiting t c -> Waiting t (set c k)
     Suspended v e s _ -> Suspended v e s k
 
+-- | The idle machine which does nothing.
+idleMachine :: CESK
+idleMachine = Out VUnit emptyStore []
+
 -- | Create a brand new CESK machine to evaluate a given term.  We
 --   always initialize the machine with a single FExec frame as the
 --   continuation; if the given term does not have a command type, we
 --   wrap it in @pure@.
-initMachine :: SyntaxWithImports Elaborated -> CESK
-initMachine (SyntaxWithImports _ srcMap t) = In (prepareTerm V.emptyEnv t) (V.envFromSrcMap srcMap) emptyStore [FExec]
+initMachine :: Module Elaborated -> CESK
+initMachine m = case moduleTerm m of
+  Nothing -> idleMachine
+  Just t -> In (prepareTerm V.emptyEnv t) V.emptyEnv emptyStore [FExec]
 
 -- | Load a program into an existing robot CESK machine: either
 --   continue from a suspended state, or, as a fallback, start from
@@ -342,8 +349,11 @@ initMachine (SyntaxWithImports _ srcMap t) = In (prepareTerm V.emptyEnv t) (V.en
 --
 --   Also insert a @suspend@ primitive at the end, so the resulting
 --   term is suitable for execution by the base (REPL) robot.
-continue :: SyntaxWithImports Elaborated -> CESK -> CESK
-continue (SyntaxWithImports _ srcMap t) = \case
+--
+--   If the module is empty, do nothing.
+continue :: Module Elaborated -> CESK -> CESK
+continue (moduleTerm -> Nothing) = id
+continue (moduleTerm -> Just t) = \case
   -- The normal case is when we are continuing from a suspended state. We:
   --
   --   (1) insert a suspend call at the end of the term, so that in
@@ -358,14 +368,12 @@ continue (SyntaxWithImports _ srcMap t) = \case
   --   term will be discarded).  If the term succeeds, the extra
   --   FRestoreEnv frame will be discarded.
   Suspended _ e s k ->
-    let e' = e & envSourceMap %~ M.union srcMap
-     in In (insertSuspend $ prepareTerm e' t) e' s (FExec : FRestoreEnv e : k)
+    In (insertSuspend $ prepareTerm e t) e s (FExec : FRestoreEnv e : k)
   -- In any other state, just start with an empty environment.  This
   -- happens e.g. when running a program on the base robot for the
   -- very first time.
   cesk ->
-    let e = V.emptyEnv & envSourceMap .~ srcMap
-     in In (insertSuspend $ prepareTerm e t) e (cesk ^. store) (FExec : (cesk ^. cont))
+    In (insertSuspend $ prepareTerm V.emptyEnv t) V.emptyEnv (cesk ^. store) (FExec : (cesk ^. cont))
 
 -- | Prepare a term for evaluation by a CESK machine in the given
 --   environment: erase all type annotations, and optionally wrap it

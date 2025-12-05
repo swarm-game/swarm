@@ -8,13 +8,13 @@
 module Swarm.Language.Elaborate where
 
 import Control.Lens (transform, (^.))
-import Swarm.Language.Load (Module (..))
+import Swarm.Language.Module (Module (..))
 import Swarm.Language.Phase
 import Swarm.Language.Syntax
 import Unsafe.Coerce (unsafeCoerce)
 
 elaborateModule :: Module Typed -> Module Elaborated
-elaborateModule (Module t ctx imps) = Module (fmap elaborate t) ctx imps
+elaborateModule (Module t ctx imps time prov) = Module (fmap elaborate t) ctx imps time prov
 
 -- | Perform some elaboration / rewriting on a fully type-annotated
 --   term.  This currently performs such operations as rewriting @if@

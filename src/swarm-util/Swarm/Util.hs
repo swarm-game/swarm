@@ -43,6 +43,7 @@ module Swarm.Util (
   writeFileT,
   findAllWithExt,
   acquireAllWithExt,
+  getModificationTimeMay,
 
   -- * Text utilities
   isIdentChar,
@@ -115,6 +116,7 @@ import Data.Set qualified as S
 import Data.Text (Text, toUpper)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
+import Data.Time.Clock
 import Data.Tuple (swap)
 import Data.Yaml
 import Language.Haskell.TH
@@ -122,7 +124,7 @@ import Language.Haskell.TH.Syntax (lift)
 import NLP.Minimorph.English qualified as MM
 import NLP.Minimorph.Util ((<+>))
 import System.Clock (TimeSpec)
-import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
+import System.Directory (doesDirectoryExist, doesFileExist, getModificationTime, listDirectory)
 import System.FilePath (normalise, takeExtension, (</>))
 import System.IO hiding (readFile, writeFile)
 import System.IO.Error (catchIOError)
@@ -423,6 +425,9 @@ acquireAllWithExt dir ext = findAllWithExt dir ext >>= wither addContent
  where
   addContent :: FilePath -> IO (Maybe (FilePath, Text))
   addContent path = (fmap . fmap) (path,) (readFileMayT UTF8 path)
+
+getModificationTimeMay :: FilePath -> IO (Maybe UTCTime)
+getModificationTimeMay = catchIO . getModificationTime
 
 -- | Turns any IO error into Nothing.
 catchIO :: IO a -> IO (Maybe a)

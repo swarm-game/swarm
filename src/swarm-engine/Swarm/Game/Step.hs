@@ -80,7 +80,7 @@ import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
 import Swarm.Game.Tick
 import Swarm.Language.Capability
-import Swarm.Language.Load (SyntaxWithImports, moduleTerm)
+import Swarm.Language.Module (Module, moduleTerm)
 import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Value
@@ -447,7 +447,7 @@ evalT ::
   ( HasGameStepState sig m
   , Has (Throw Exn) sig m
   ) =>
-  SyntaxWithImports Elaborated ->
+  Module Elaborated ->
   m Value
 evalT = evaluateCESK . initMachine
 
@@ -719,18 +719,17 @@ stepCESK cesk = case cesk of
   In (TImportIn loc t) e s k -> do
     -- TODO (#2658): cache evaluated imports so we can just look up
     -- the associated environment instead of re-evaluating every time
-    -- we encounter the same import.
-    return $ case M.lookup loc (e ^. envSourceMap) of
+    -- we encounter the same import.  XXX fix me!
+    return $ case M.lookup loc M.empty of
       -- The import should have already been typechecked at this point, so
       -- if it's not found in the source map, there must be a bug somewhere.
       Nothing ->
-        let resolvedImports
-              | null (e ^. envSourceMap) = ["  (SourceMap is empty)"]
-              | otherwise =
-                  "  Resolved imports:"
-                    : map
-                      (T.append "  - " . into @Text . locToFilePath)
-                      (M.keys $ e ^. envSourceMap)
+        let resolvedImports = ["  (SourceMap is empty)"]
+            -- \| otherwise =
+            --     "  Resolved imports:"
+            --       : map
+            --         (T.append "  - " . into @Text . locToFilePath)
+            --         (M.keys $ e ^. envSourceMap)
 
             errMsg =
               T.unlines $

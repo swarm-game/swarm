@@ -78,7 +78,8 @@ import Swarm.Effect.Unify.Fast qualified as U
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Kindcheck (KindError (..), processPolytype, processType)
-import Swarm.Language.Load (Module (..), SourceMap, SyntaxWithImports (..))
+import Swarm.Language.Load (SourceMap)
+import Swarm.Language.Module (Module (..))
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Requirements.Analysis (requirements)
@@ -216,11 +217,13 @@ fromInferredModule ::
   ) =>
   Module Inferred ->
   m (Module Typed)
-fromInferredModule (Module t (ctx, tdCtx) imps) =
+fromInferredModule (Module t (ctx, tdCtx) imps time prov) =
   Module
     <$> traverse fromInferredSyntax t
     <*> ((,tdCtx) <$> traverse (checkPredicative . fromU) ctx)
     <*> pure imps
+    <*> pure time
+    <*> pure prov
 
 -- | Finalize the typechecking process by generalizing over free
 --   unification variables and ensuring that no bound unification
@@ -241,9 +244,8 @@ finalizeInferred =
 -- | Run a top-level inference computation, either throwing a
 --   'ContextualTypeErr' or returning a fully resolved 'Syntax Typed',
 --   along with a type-checked 'SourceMap' containing any new modules
---   recursively imported by the given term.  Note the returned
---   SourceMap will NOT include anything contained in the given
---   parameter SourceMap.
+--   recursively imported by the given term, which were not already in
+--   the global module cache.
 runTC ::
   Has (Throw ContextualTypeErr) sig m =>
   TCtx ->
@@ -430,7 +432,7 @@ instance HasBindings (Syntax Inferred) where
   applyBindings (Syntax l t cs u) = Syntax l <$> applyBindings t <*> pure cs <*> applyBindings u
 
 instance HasBindings (Module Inferred) where
-  applyBindings (Module t ctx imps) = Module <$> applyBindings t <*> applyBindings ctx <*> pure imps
+  applyBindings (Module t ctx imps time prov) = Module <$> applyBindings t <*> applyBindings ctx <*> pure imps <*> pure time <*> pure prov
 
 ------------------------------------------------------------
 -- Converting between mono- and polytypes
@@ -880,37 +882,33 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 ------------------------------------------------------------
 -- Type inference / checking
 
--- | Top-level type inference function: given a context of definition
---   types, type synonyms, and a term, either return a type error or a
---   fully type-annotated version of the term.
+-- | Top-level type inference: given a context of definition types,
+--   XXX, type synonyms, and a term, either return a type error or a
+--   fully type-annotated version of the term, along with any XXX
 inferTop ::
   Has (Error ContextualTypeErr) sig m =>
-  Maybe FilePath ->
   TCtx ->
   ReqCtx ->
   TDCtx ->
   SourceMap Resolved ->
   Syntax Resolved ->
-  m (SyntaxWithImports Typed)
-inferTop provenance ctx reqCtx tdCtx srcMap =
-  fmap (uncurry (SyntaxWithImports provenance))
-    . runTC ctx reqCtx tdCtx Ctx.empty srcMap
+  m (SourceMap Typed, Syntax Typed)
+inferTop ctx reqCtx tdCtx srcMap =
+  runTC ctx reqCtx tdCtx Ctx.empty srcMap
     . infer
 
--- | Top level type checking function.
+-- | Top-level type checking function.
 checkTop ::
   Has (Error ContextualTypeErr) sig m =>
-  Maybe FilePath ->
   TCtx ->
   ReqCtx ->
   TDCtx ->
   SourceMap Resolved ->
   Syntax Resolved ->
   Type ->
-  m (SyntaxWithImports Typed)
-checkTop provenance ctx reqCtx tdCtx srcMap t =
-  fmap (uncurry (SyntaxWithImports provenance))
-    . runTC ctx reqCtx tdCtx Ctx.empty srcMap
+  m (SourceMap Typed, Syntax Typed)
+checkTop ctx reqCtx tdCtx srcMap t =
+  runTC ctx reqCtx tdCtx Ctx.empty srcMap
     . check t
     . toU
 
@@ -1112,6 +1110,8 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     c' <- check c iuty
     return $ Syntax l (SAnnotate c' (forgetQ qpty)) cs iuty
 
+  -- XXX update import checking below to look up in the global cache
+
   -- To infer @import m in e@, first make sure we have loaded and
   -- typechecked the import, then infer @e@ in an extended context.
   SImportIn loc t1 -> do
@@ -1172,14 +1172,14 @@ inferModule ::
   , Has (Error ContextualTypeErr) sig m
   ) =>
   Module Resolved -> m (Module Inferred)
-inferModule (Module ms _ _imps) = do
+inferModule (Module ms _ _imps time prov) = do
   -- Infer the type of the term
   mt <- traverse infer ms
 
   -- Now, if the term has top-level definitions, collect up their
   -- types and put them in the context.
   ctx <- maybe (pure (Ctx.empty, emptyTDCtx)) collectDefs mt
-  pure $ Module mt ctx ()
+  pure $ Module mt ctx () time prov
 
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype

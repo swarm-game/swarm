@@ -83,7 +83,7 @@ import Swarm.Game.Location (Heading, Location, toHeading)
 import Swarm.Game.Robot.Walk
 import Swarm.Game.Universe
 import Swarm.Language.JSON ()
-import Swarm.Language.Load (SyntaxWithImports)
+import Swarm.Language.Module (Module)
 import Swarm.Language.Pipeline (Processable (..), processTerm)
 import Swarm.Language.Syntax (Phase (..), Syntax)
 import Swarm.Language.Text.Markdown (Document)
@@ -136,10 +136,10 @@ type instance RobotLogUpdatedMember Elaborated = ()
 
 type family RobotMachine (phase :: Phase) :: Data.Kind.Type
 type instance RobotMachine Raw = Maybe (Maybe FilePath, Text, Syntax Raw)
-type instance RobotMachine Resolved = Maybe (SyntaxWithImports Resolved)
-type instance RobotMachine Inferred = Maybe (SyntaxWithImports Inferred)
-type instance RobotMachine Typed = Maybe (SyntaxWithImports Typed)
-type instance RobotMachine Elaborated = Maybe (SyntaxWithImports Elaborated)
+type instance RobotMachine Resolved = Maybe (Module Resolved)
+type instance RobotMachine Inferred = Maybe (Module Inferred)
+type instance RobotMachine Typed = Maybe (Module Typed)
+type instance RobotMachine Elaborated = Maybe (Module Elaborated)
 
 -- | A value of type 'Robot' is a record representing the state of a
 --   single robot.
@@ -168,7 +168,7 @@ data Robot (phase :: Phase) = Robot
 instance Processable Robot where
   process (Robot e d c l upd loc i p h m s sd a ra u ca) =
     Robot e d c l upd loc i p h
-      <$> traverse (\(prov, src, t) -> processTerm prov src t Nothing) m
+      <$> traverse (\(prov, src, t) -> processTerm prov src Nothing t) m
       <*> pure s
       <*> pure sd
       <*> pure a

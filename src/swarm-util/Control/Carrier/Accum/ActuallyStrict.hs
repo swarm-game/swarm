@@ -3,6 +3,10 @@
 -- As of fused-effects-1.1.2.5, the "strict" Accum carrier is not
 -- actually strict in the accumulated value.  This version adds calls
 -- to `seq` in the Applicative and Monad instances so that it is.
+--
+-- Once https://github.com/fused-effects/fused-effects/pull/468 is
+-- merged upstream + released, we should get rid of this vendored copy and use
+-- the upstream version.
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}

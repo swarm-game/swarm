@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -17,96 +18,37 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.State (State, get, modify)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Lens ((?~))
-import Control.Monad (forM_)
-import Data.Data (Data, Typeable)
+import Control.Monad (forM_, when)
 import Data.Function ((&))
-import Data.Hashable (Hashable)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text.Encoding qualified as T
-import GHC.Generics (Generic)
+import Data.Time.Clock
 import Network.HTTP.Simple (getResponseBody, httpBS, parseRequest)
 import Swarm.Failure (Asset (..), AssetData (..), Entry (..), LoadingFailure (..), SystemFailure (..))
+import Swarm.Language.Cache
+import Swarm.Language.Module
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig, importLoc, runParser)
 import Swarm.Language.Parser.Import (parseImportLocationRaw)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Import hiding (ImportPhase (..))
 import Swarm.Language.Syntax.Import qualified as Import
-import Swarm.Language.Syntax.Util (Erasable (..))
-import Swarm.Language.Types (TCtx, TDCtx, UCtx)
 import Swarm.Pretty (prettyText)
-import Swarm.Util (Encoding (SystemLocale), readFileMayT, showT)
+import Swarm.Util (Encoding (SystemLocale), getModificationTimeMay, readFileMayT, showT)
 import Swarm.Util.Graph (findCycle)
 import Witch (into)
-
-type ResLoc = ImportLoc Import.Resolved
-
--- | The context for a module, containing names and types of things
---   defined in the module (once typechecking has run).
-type family ModuleCtx (phase :: Phase) where
-  ModuleCtx Raw = ()
-  ModuleCtx Resolved = ()
-  ModuleCtx Inferred = (UCtx, TDCtx)
-  ModuleCtx Typed = (TCtx, TDCtx)
-  ModuleCtx Elaborated = (TCtx, TDCtx)
-  ModuleCtx Instantiated = (TCtx, TDCtx)
-
--- | A module only needs to record its imports during resolution, so
---   we can do cyclic import detection.  After that we no longer
---   require the information.
-type family ModuleImports (phase :: Phase) where
-  ModuleImports Raw = ()
-  ModuleImports Resolved = Set (ImportLoc Import.Resolved)
-  ModuleImports Inferred = ()
-  ModuleImports Typed = ()
-  ModuleImports Elaborated = ()
-  ModuleImports Instantiated = ()
-
--- | A 'Module' is a (possibly empty) AST, along with a context for
---   any definitions contained in it, and a list of transitive,
---   canonicalized imports.
-data Module phase = Module
-  { moduleTerm :: Maybe (Syntax phase)
-  -- ^ The contents of the module.
-  , moduleCtx :: ModuleCtx phase
-  -- ^ The context of names defined in this module and their types.
-  , moduleImports :: ModuleImports phase
-  -- ^ The moduleImports are mostly for convenience, e.g. for checking modules for cycles.
-  }
-  deriving (Generic)
-
-deriving instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase), Show (ModuleCtx phase), Show (ModuleImports phase)) => Show (Module phase)
-deriving instance (Eq (ModuleImports phase), Eq (ModuleCtx phase), Eq (SwarmType phase), Eq (Anchor (ImportPhaseFor phase))) => Eq (Module phase)
-deriving instance (Eq (Anchor (ImportPhaseFor phase)), Data (Anchor (ImportPhaseFor phase)), Typeable phase, Typeable (ImportPhaseFor phase), Data (ModuleCtx phase), Data (ModuleImports phase), Data (SwarmType phase)) => Data (Module phase)
-deriving instance (Hashable (ModuleImports phase), Hashable (ModuleCtx phase), Hashable (SwarmType phase), Hashable (Anchor (ImportPhaseFor phase)), Generic (Anchor (ImportPhaseFor phase))) => Hashable (Module phase)
-
-instance Erasable Module where
-  erase (Module t _ _) = Module (erase <$> t) () S.empty
-  eraseRaw (Module t _ _) = Module (eraseRaw <$> t) () ()
 
 -- | A SourceMap associates canonical 'ImportLocation's to modules.
 type SourceMap phase = Map (ImportLoc (ImportPhaseFor phase)) (Module phase)
 
--- | An AST paired with information about its recursive imports and
---   its provenance.
-data SyntaxWithImports phase = SyntaxWithImports
-  { getProvenance :: Maybe FilePath
-  , getSourceMap :: SourceMap phase
-  , getSyntax :: Syntax phase
-  }
-  deriving (Generic)
-
-deriving instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase), Show (ModuleCtx phase), Show (ModuleImports phase)) => Show (SyntaxWithImports phase)
-deriving instance (Eq (Anchor (ImportPhaseFor phase)), Eq (SwarmType phase), Eq (ModuleCtx phase), Eq (ModuleImports phase)) => Eq (SyntaxWithImports phase)
-deriving instance (Ord (Anchor (ImportPhaseFor phase)), Data (Anchor (ImportPhaseFor phase)), Typeable phase, Typeable (ImportPhaseFor phase), Data (ModuleCtx phase), Data (ModuleImports phase), Data (SwarmType phase)) => Data (SyntaxWithImports phase)
-
--- | Recursively resolve and load all the imports contained in raw
+-- | Recursively load and resolve all the imports contained in raw
 --   syntax, returning the same syntax with resolved/canonicalized
---   imports as well as a SourceMap containing all the loaded imports.
+--   imports, along with a SourceMap containing any recursively loaded
+--   imports which were not in the cache.
 resolve ::
   (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) =>
   -- | Provenance of the source, and location relative to which
@@ -115,7 +57,7 @@ resolve ::
   Maybe FilePath ->
   -- | Raw syntax to be resolved.
   Syntax Raw ->
-  m (SyntaxWithImports Resolved)
+  m (SourceMap Resolved, Syntax Resolved)
 resolve prov s = do
   cur <- sendIO . resolveImportDir $
     case prov of
@@ -123,9 +65,14 @@ resolve prov s = do
       Just fp -> case runParser parseImportLocationRaw (into @Text fp) of
         Left _ -> currentDir
         Right (loc, _) -> importDir loc
-  (resMap, (_, s')) <- runState mempty . resolveImports cur $ s
+
+  -- XXX do we need this impSet?  Maybe we need it to check for cycles?
+  (resMap, (impSet, s')) <- runState mempty . resolveImports cur $ s
+  -- XXX the resMap might not actually contain all modules.  Need to
+  -- get the graph from cache etc.
   checkImportCycles resMap
-  pure $ SyntaxWithImports prov resMap s'
+
+  pure (resMap, s')
 
 -- | Resolve a term without requiring any I/O, throwing an error if
 --   any 'import' statements are encountered.
@@ -133,15 +80,13 @@ resolve' ::
   (Has (Throw SystemFailure) sig m) => Syntax Raw -> m (Syntax Resolved)
 resolve' = traverseSyntax pure (throwError . DisallowedImport)
 
--- | Erase type annotations from a fully processed 'SourceMap'.
-eraseSourceMap :: SourceMap Elaborated -> SourceMap Resolved
-eraseSourceMap = M.map erase
+type ResLoc = ImportLoc Import.Resolved
 
 -- | Convert a 'SourceMap' into a suitable form for 'findCycle'.
 toImportGraph :: SourceMap Resolved -> [(ResLoc, ResLoc, [ResLoc])]
 toImportGraph = map processNode . M.assocs
  where
-  processNode (imp, Module _ _ imps) = (imp, imp, S.toList imps)
+  processNode (imp, m) = (imp, imp, S.toList (moduleImports m))
 
 -- | Check a 'SourceMap' to ensure that it contains no import cycles.
 checkImportCycles ::
@@ -173,6 +118,7 @@ resolveImports parent = runAccum S.empty . traverseSyntax pure (resolveImport pa
 --   transitively.  Also return a canonicalized version of the import
 --   location.
 resolveImport ::
+  forall sig m.
   ( Has (Throw SystemFailure) sig m
   , Has (State (SourceMap Resolved)) sig m
   , Has (Accum (Set (ImportLoc Import.Resolved))) sig m
@@ -184,34 +130,64 @@ resolveImport ::
 resolveImport parent loc = do
   -- Compute the canonicalized location for the import, and record it
   canonicalLoc <- resolveImportLoc (unresolveImportDir parent <//> loc)
+
+  -- Note, the purpose of this set is not to track which imports have
+  -- been loaded yet; rather, the purpose is simply to record the
+  -- complete set of imports for a given module.
+  --
+  -- XXX do we actually use the resulting set?  It seems like
+  -- currently we don't; however, perhaps we should change
+  -- SyntaxWithImports to record it?
   add $ S.singleton canonicalLoc
 
-  srcMap <- get @(SourceMap Resolved)
-  resMod <- case M.lookup canonicalLoc srcMap of
-    Just m -> pure m -- Already loaded - do nothing
+  -- Check whether the module needs to be loaded (either because it is
+  -- not in the cache, or the version on disk is newer than the
+  -- version in the cache).
+  needsLoad <- moduleNeedsLoad canonicalLoc
+  -- If it does, import it and stick it in the ambient SourceMap
+  when needsLoad $ importModule canonicalLoc
+  pure canonicalLoc
+
+-- | Load a module from a specific import location, i.e. from disk or
+--   over the network, as well as recursively loading any modules it
+--   transitively imports.
+importModule ::
+  ( Has (Throw SystemFailure) sig m
+  , Has (State (SourceMap Resolved)) sig m
+  , Has (Accum (Set (ImportLoc Import.Resolved))) sig m
+  , Has (Lift IO) sig m
+  ) =>
+  ImportLoc Import.Resolved ->
+  m ()
+importModule canonicalLoc =
+  -- Even though we know the module is not in the module cache, we
+  -- still have to look it up in the SourceMap to see if it's
+  -- already there---which can happen if a module transitively
+  -- imports itself.  This prevents getting stuck in infinite
+  -- recursion.
+  M.lookup canonicalLoc <$> get @(SourceMap Resolved) >>= \case
+    Just _ -> pure ()
     Nothing -> do
       -- Record this import loc in the source map using a temporary, empty module,
       -- to prevent it from attempting to load itself recursively
-      modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module Nothing () mempty)
+      modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module Nothing () mempty Nothing NoProvenance)
 
       -- Read it from network/disk
-      mt <- readLoc canonicalLoc
+      (mt, mtime) <- readLoc canonicalLoc
 
       -- Recursively resolve any imports it contains
       mres <- traverse (resolveImports (importDir canonicalLoc)) mt
       -- sequence :: Maybe (Set a, b) -> (Set a, Maybe b)
       let (imps, mt') = sequence mres
 
-      -- Finally, record the loaded module in the SourceMap.
-      let m = Module mt' () imps
+      -- Build the final resolved module.
+      let m = Module mt' () imps mtime (FromImport canonicalLoc)
+
+      -- Make sure imports are pure, i.e. contain ONLY defs + imports.
+      validateImport canonicalLoc m
+
+      -- Add the module to the SourceMap.
       modify @(SourceMap Resolved) (M.insert canonicalLoc m)
-
-      pure m
-
-  -- Make sure imports are pure, i.e. contain ONLY defs + imports.
-  validateImport canonicalLoc resMod
-
-  pure canonicalLoc
 
 -- | Validate the source code of the import to ensure that it contains
 --   *only* imports and definitions.  This is so we do not have to worry
@@ -233,32 +209,39 @@ validateImport loc = maybe (pure ()) validate . moduleTerm
     t -> throwError $ ImpureImport loc (prettyText t)
 
 -- | Try to read and parse a term from a specific import location,
---   either over the network or on disk.
+--   either over the network or on disk.  Return the term as well as
+--   the time it was last modified, if there is one.
 readLoc ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   ImportLoc Import.Resolved ->
-  m (Maybe (Syntax Raw))
+  m (Maybe (Syntax Raw), Maybe UTCTime)
 readLoc loc = do
-  let path = locToFilePath loc
-      badImport :: Has (Throw SystemFailure) sig m => LoadingFailure -> m a
-      badImport = throwError . AssetNotLoaded (Data Script) path
-      withBadImport :: Has (Throw SystemFailure) sig m => (e -> LoadingFailure) -> Either e a -> m a
-      withBadImport f = either (badImport . f) pure
-
   -- Try to read the file from network/disk, depending on the anchor
-  src <- case importAnchor loc of
-    -- Read from network
-    Web_ {} -> do
-      -- Try to parse the URL
-      req <- parseRequest (into @String path) & withBadImport (BadURL . showT)
-      -- Send HTTP request
-      resp <- sendIO $ httpBS req
-      -- Try to decode the response
-      T.decodeUtf8' (getResponseBody resp) & withBadImport CanNotDecodeUTF8
-
-    -- Read from disk
-    _ -> sendIO (readFileMayT SystemLocale path) >>= maybe (badImport (DoesNotExist File)) pure
-
+  (src, mtime) <- case importAnchor loc of
+    Web_ {} -> readFromNet
+    _ -> readFromDisk
   -- Finally, try to parse the contents
-  readTerm' (defaultParserConfig & importLoc ?~ loc) src
-    & withBadImport (SystemFailure . CanNotParseMegaparsec)
+  syn <-
+    readTerm' (defaultParserConfig & importLoc ?~ loc) src
+      & withBadImport (SystemFailure . CanNotParseMegaparsec)
+  pure (syn, mtime)
+ where
+  path = locToFilePath loc
+  badImport :: Has (Throw SystemFailure) sig m => LoadingFailure -> m a
+  badImport = throwError . AssetNotLoaded (Data Script) path
+  withBadImport :: Has (Throw SystemFailure) sig m => (e -> LoadingFailure) -> Either e a -> m a
+  withBadImport f = either (badImport . f) pure
+  readFromDisk = do
+    mcontent <- sendIO (readFileMayT SystemLocale path)
+    content <- maybe (badImport (DoesNotExist File)) pure mcontent
+    mt <- sendIO $ getModificationTimeMay path
+    pure (content, mt)
+  readFromNet = do
+    -- Try to parse the URL
+    req <- parseRequest (into @String path) & withBadImport (BadURL . showT)
+    -- Send HTTP request
+    resp <- sendIO $ httpBS req
+    -- Try to decode the response
+    content <- T.decodeUtf8' (getResponseBody resp) & withBadImport CanNotDecodeUTF8
+    time <- sendIO getCurrentTime
+    pure (content, Just time)

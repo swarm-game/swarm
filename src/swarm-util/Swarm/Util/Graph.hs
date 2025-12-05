@@ -12,11 +12,17 @@ module Swarm.Util.Graph (
 
 import Control.Monad (forM_)
 import Control.Monad.ST
+import Control.Monad.Trans.State (State, evalState, gets, modify)
 import Data.Array ((!))
 import Data.Array.ST
 import Data.Graph (SCC (..), Vertex, graphFromEdges)
+import Data.HashMap.Strict qualified as HM
+import Data.Hashable (Hashable)
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
+import Data.Map qualified as M
+import Data.Set (Set)
+import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Util
@@ -36,13 +42,13 @@ isAcyclicGraph =
 --   Note this is different than just keeping track of which vertices
 --   have been visited at all; visited vertices remain visited when
 --   DFS backtracks, but the DFSPath gets shorter again.
-data DFSPath = DFSPath IntSet [Vertex]
+data DFSPath v = DFSPath (Set v) [v]
 
-emptyDFSPath :: DFSPath
-emptyDFSPath = DFSPath IS.empty []
+emptyDFSPath :: DFSPath v
+emptyDFSPath = DFSPath S.empty []
 
-appendPath :: DFSPath -> Vertex -> DFSPath
-appendPath (DFSPath s p) v = DFSPath (IS.insert v s) (v : p)
+appendPath :: Ord v => DFSPath v -> v -> DFSPath v
+appendPath (DFSPath s p) v = DFSPath (S.insert v s) (v : p)
 
 -- | Find a cycle in a directed graph (if any exist) via DFS.
 --
@@ -61,30 +67,38 @@ appendPath (DFSPath s p) v = DFSPath (IS.insert v s) (v : p)
 -- >>> findCycle [("a",3,[1]), ("b",1,[0,3]), ("c",2,[1]), ("d",0,[2])]
 -- Just ["d","c","b","d"]
 findCycle :: Ord key => [(a, key, [key])] -> Maybe [a]
-findCycle es = runST $ do
-  visited <- newArray (0, n - 1) False
-  (fmap . map) (fst3 . v2l) <$> dfsL visited emptyDFSPath [0 .. n - 1]
+findCycle g = findCycleImplicit vs (labels M.!) (neighbors M.!) -- XXX M.!
  where
-  n = length es
-  (g, v2l, _) = graphFromEdges es
-  fst3 (a, _, _) = a
+  vs = map (\(_, v, _) -> v) g
+  labels = M.fromList (map (\(a, v, _) -> (v, a)) g)
+  neighbors = M.fromList (map (\(_, v, nbrs) -> (v, nbrs)) g)
 
-  dfsL :: STUArray s Vertex Bool -> DFSPath -> [Vertex] -> ST s (Maybe [Vertex])
-  dfsL _ _ [] = pure Nothing
-  dfsL visited path (v : vs) = do
-    found <- dfs visited path v
+-- | A more generic version of 'findCycle' which takes as input an
+--   implicit graph description: a list of vertices, a function
+--   mapping vertices to labels, and a function mapping each vertex to
+--   its (outgoing) neighbors.
+findCycleImplicit :: forall v a. Ord v => [v] -> (v -> a) -> (v -> [v]) -> Maybe [a]
+findCycleImplicit vertices label neighbors = flip evalState S.empty $ do
+  (fmap . map) label <$> dfsL emptyDFSPath vertices
+ where
+  dfsL :: DFSPath v -> [v] -> State (Set v) (Maybe [v])
+  dfsL _ [] = pure Nothing
+  dfsL path (v : vs) = do
+    found <- dfs path v
     case found of
-      Nothing -> dfsL visited path vs
+      Nothing -> dfsL path vs
       Just cyc -> pure (Just cyc)
 
-  dfs :: STUArray s Vertex Bool -> DFSPath -> Vertex -> ST s (Maybe [Vertex])
-  dfs visited p@(DFSPath pathMembers path) v
-    | v `IS.member` pathMembers = pure . Just . (v :) . reverse . (v :) $ takeWhile (/= v) path
+  dfs :: DFSPath v -> v -> State (Set v) (Maybe [v])
+  dfs p@(DFSPath pathMembers path) v
+    | v `S.member` pathMembers = pure . Just . (v :) . reverse . (v :) $ takeWhile (/= v) path
     | otherwise = do
-        vis <- readArray visited v
+        vis <- gets (S.member v)
         case vis of
           True -> pure Nothing
-          False -> dfsL visited (appendPath p v) (g ! v)
+          False -> do
+            modify (S.insert v)
+            dfsL (appendPath p v) (neighbors v)
 
 failOnCyclicGraph ::
   Ord key =>
