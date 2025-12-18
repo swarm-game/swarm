@@ -11,16 +11,10 @@ module Swarm.Util.Graph (
 ) where
 
 import Control.Monad (forM_)
-import Control.Monad.ST
 import Control.Monad.Trans.State (State, evalState, gets, modify)
-import Data.Array ((!))
-import Data.Array.ST
-import Data.Graph (SCC (..), Vertex, graphFromEdges)
-import Data.HashMap.Strict qualified as HM
-import Data.Hashable (Hashable)
-import Data.IntSet (IntSet)
-import Data.IntSet qualified as IS
+import Data.Graph (SCC (..))
 import Data.Map qualified as M
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
@@ -50,36 +44,35 @@ emptyDFSPath = DFSPath S.empty []
 appendPath :: Ord v => DFSPath v -> v -> DFSPath v
 appendPath (DFSPath s p) v = DFSPath (S.insert v s) (v : p)
 
--- | Find a cycle in a directed graph (if any exist) via DFS.
+-- | Find a cycle in a directed graph (if any exist) via DFS. Returns
+--   an ordered list of vertices in the cycle, repeating the first and
+--   last vertex.
 --
--- >>> findCycle [("a", 0, [0])]
+-- >>> findCycle [("a", ["a"])]
 -- Just ["a","a"]
--- >>> findCycle [("a", 0, [1]), ("b", 1, [])]
+-- >>> findCycle [("a", ["b"]), ("b", [])]
 -- Nothing
--- >>> findCycle [("a", 0, [1]), ("b", 1, [0])]
+-- >>> findCycle [("a", ["b"]), ("b", ["a"])]
 -- Just ["a","b","a"]
--- >>> findCycle [("a", 0, [1]), ("b", 1, [2]), ("c", 2, [1])]
+-- >>> findCycle [("a", ["b"]), ("b", ["c"]), ("c", ["b"])]
 -- Just ["b","c","b"]
--- >>> findCycle [("a",3,[1]), ("b",1,[0,3]), ("c",2,[1]), ("d",0,[])]
--- Just ["b","a","b"]
--- >>> findCycle [("a",3,[]), ("b",1,[0,3]), ("c",2,[1]), ("d",0,[])]
+-- >>> findCycle [("a",["b"]), ("b",["d","a"]), ("c",["b"]), ("d",[])]
+-- Just ["a","b","a"]
+-- >>> findCycle [("a",[]), ("b",["d","a"]), ("c",["b"]), ("d",[])]
 -- Nothing
--- >>> findCycle [("a",3,[1]), ("b",1,[0,3]), ("c",2,[1]), ("d",0,[2])]
--- Just ["d","c","b","d"]
-findCycle :: Ord key => [(a, key, [key])] -> Maybe [a]
-findCycle g = findCycleImplicit vs (labels M.!) (neighbors M.!) -- XXX M.!
+-- >>> findCycle [("a",["b"]), ("b",["d","a"]), ("c",["b"]), ("d",["c"])]
+-- Just ["b","d","c","b"]
+findCycle :: Ord v => [(v, [v])] -> Maybe [v]
+findCycle g = findCycleImplicit (map fst g) (fromMaybe [] . (neighbors M.!?))
  where
-  vs = map (\(_, v, _) -> v) g
-  labels = M.fromList (map (\(a, v, _) -> (v, a)) g)
-  neighbors = M.fromList (map (\(_, v, nbrs) -> (v, nbrs)) g)
+  neighbors = M.fromList g
 
 -- | A more generic version of 'findCycle' which takes as input an
 --   implicit graph description: a list of vertices, a function
 --   mapping vertices to labels, and a function mapping each vertex to
 --   its (outgoing) neighbors.
-findCycleImplicit :: forall v a. Ord v => [v] -> (v -> a) -> (v -> [v]) -> Maybe [a]
-findCycleImplicit vertices label neighbors = flip evalState S.empty $ do
-  (fmap . map) label <$> dfsL emptyDFSPath vertices
+findCycleImplicit :: forall v. Ord v => [v] -> (v -> [v]) -> Maybe [v]
+findCycleImplicit vertices neighbors = flip evalState S.empty $ dfsL emptyDFSPath vertices
  where
   dfsL :: DFSPath v -> [v] -> State (Set v) (Maybe [v])
   dfsL _ [] = pure Nothing
@@ -100,11 +93,15 @@ findCycleImplicit vertices label neighbors = flip evalState S.empty $ do
             modify (S.insert v)
             dfsL (appendPath p v) (neighbors v)
 
+-- | Convenience function which checks a given graph for directed
+--   cycles, and outputs a custom error message if a directed cycle is
+--   found, using the given name for the graph and a method for
+--   displaying vertices.
 failOnCyclicGraph ::
-  Ord key =>
+  Ord v =>
   Text ->
-  (a -> Text) ->
-  [(a, key, [key])] ->
+  (v -> Text) ->
+  [(v, [v])] ->
   Either Text ()
 failOnCyclicGraph graphType keyFunction gEdges =
   forM_ (findCycle gEdges) $ \cyc ->

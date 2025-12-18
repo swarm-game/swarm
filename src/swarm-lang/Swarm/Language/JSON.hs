@@ -43,7 +43,7 @@ instance FromJSON (Module Raw) where
 instance FromJSONE ModuleProvenance (Module Raw) where
   parseJSONE v =
     Module
-      <$> (Just <$> liftE (parseJSON @(Syntax Raw) v))
+      <$> liftE (Just <$> parseJSON @(Syntax Raw) v)
       <*> pure ()
       <*> pure ()
       <*> pure Nothing

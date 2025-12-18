@@ -83,10 +83,10 @@ resolve' = traverseSyntax pure (throwError . DisallowedImport)
 type ResLoc = ImportLoc Import.Resolved
 
 -- | Convert a 'SourceMap' into a suitable form for 'findCycle'.
-toImportGraph :: SourceMap Resolved -> [(ResLoc, ResLoc, [ResLoc])]
+toImportGraph :: SourceMap Resolved -> [(ResLoc, [ResLoc])]
 toImportGraph = map processNode . M.assocs
  where
-  processNode (imp, m) = (imp, imp, S.toList (moduleImports m))
+  processNode (imp, m) = (imp, S.toList (moduleImports m))
 
 -- | Check a 'SourceMap' to ensure that it contains no import cycles.
 checkImportCycles ::
