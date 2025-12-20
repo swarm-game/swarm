@@ -126,9 +126,12 @@ processTerm prov txt menv tm = do
   -- we might as well.
   time <- sendIO getCurrentTime
 
-  -- Package up elaborated term as a Module.  XXX note that we put in empty ctx
-  -- because we won't ever use need this for checking... ???
-  let modElab = Module (Just tmElab) (mempty, mempty) () (Just time) (maybe NoProvenance FromFile prov)
+  -- Package up elaborated term as a Module.  Note that we put an
+  -- empty context in the resulting Module, which is not really
+  -- correct, but since we are processing a top-level term, we won't
+  -- ever use this module as an import to some other module, so the
+  -- context is not really needed.
+  let modElab = Module (Just tmElab) mempty () (Just time) (maybe NoProvenance FromFile prov)
 
   -- Return the elaborated module.
   pure modElab
@@ -190,12 +193,13 @@ class Processable t where
   process :: (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) => t Raw -> m (t Elaborated)
 
 instance Processable Module where
-  process _ = undefined -- XXX
-
---   process (SyntaxWithImports prov _ t) = do
---     SyntaxWithImports _ srcMapRes tRes <- resolve prov t
---     SyntaxWithImports _ srcMapTy tTy <- withError (typeErrToSystemFailure "") . inferTop prov mempty mempty emptyTDCtx srcMapRes $ tRes
---     pure $ SyntaxWithImports prov (M.map elaborateModule srcMapTy) (elaborate tTy)
+  process = \case
+    Module Nothing _ _ ts prov -> pure $ Module Nothing mempty () ts prov
+    Module (Just t) _ _ _ prov -> processTerm (fileProv prov) "" Nothing t
+   where
+    fileProv = \case
+      FromFile f -> Just f
+      _ -> Nothing
 
 -- | Process syntax, but deliberately throw away information about
 --   imports.  Used e.g. for processing code embedded in markdown.
