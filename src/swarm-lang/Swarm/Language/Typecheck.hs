@@ -882,9 +882,10 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 ------------------------------------------------------------
 -- Type inference / checking
 
--- | Top-level type inference: given a context of definition types,
---   XXX, type synonyms, and a term, either return a type error or a
---   fully type-annotated version of the term, along with any XXX
+-- | Top-level type inference: given a context of variable types +
+--   requirements, type synonyms, a map of recursive imports that need
+--   to be typechecked, and a term, return fully type-annotated
+--   versions of the recursive imports and the term itself.
 inferTop ::
   Has (Error ContextualTypeErr) sig m =>
   TCtx ->
@@ -1172,14 +1173,14 @@ inferModule ::
   , Has (Error ContextualTypeErr) sig m
   ) =>
   Module Resolved -> m (Module Inferred)
-inferModule (Module ms _ _imps time prov) = do
+inferModule (Module ms _ imps time prov) = do
   -- Infer the type of the term
   mt <- traverse infer ms
 
   -- Now, if the term has top-level definitions, collect up their
   -- types and put them in the context.
   ctx <- maybe (pure (Ctx.empty, emptyTDCtx)) collectDefs mt
-  pure $ Module mt ctx () time prov
+  pure $ Module mt ctx imps time prov
 
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype

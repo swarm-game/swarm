@@ -24,6 +24,7 @@ module Swarm.Language.Pipeline (
   processSyntax,
 ) where
 
+import Data.Set qualified as S
 import Control.Algebra (Has)
 import Control.Carrier.Lift (sendIO)
 import Control.Effect.Error (Error, throwError)
@@ -101,7 +102,7 @@ processTerm prov txt menv tm = do
 
   -- Resolve + recursively collect up any imports that aren't already
   -- cached
-  (srcMapRes, tmRes) <- resolve prov tm
+  (srcMapRes, (imps, tmRes)) <- resolve prov tm
 
   -- Typecheck term + collected imports
   (srcMapTy, tmTy) <-
@@ -131,7 +132,7 @@ processTerm prov txt menv tm = do
   -- correct, but since we are processing a top-level term, we won't
   -- ever use this module as an import to some other module, so the
   -- context is not really needed.
-  let modElab = Module (Just tmElab) mempty () (Just time) (maybe NoProvenance FromFile prov)
+  let modElab = Module (Just tmElab) mempty imps (Just time) (maybe NoProvenance FromFile prov)
 
   -- Return the elaborated module.
   pure modElab
@@ -161,7 +162,7 @@ processTermNoImports txt tm menv = do
         (e ^. envTydefs)
         M.empty
         tmRes
-  pure $ Module (Just $ elaborate tmTy) (mempty, mempty) () Nothing NoProvenance
+  pure $ Module (Just $ elaborate tmTy) (mempty, mempty) S.empty Nothing NoProvenance
 
 ------------------------------------------------------------
 -- Utility adapters for processTerm
@@ -194,7 +195,7 @@ class Processable t where
 
 instance Processable Module where
   process = \case
-    Module Nothing _ _ ts prov -> pure $ Module Nothing mempty () ts prov
+    Module Nothing _ _ ts prov -> pure $ Module Nothing mempty S.empty ts prov
     Module (Just t) _ _ _ prov -> processTerm (fileProv prov) "" Nothing t
    where
     fileProv = \case

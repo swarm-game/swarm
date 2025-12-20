@@ -7,11 +7,14 @@
 module Swarm.Util.Graph (
   isAcyclicGraph,
   findCycle,
+  findCycleImplicit,
   failOnCyclicGraph,
 ) where
 
+import Data.Functor.Identity (runIdentity)
 import Control.Monad (forM_)
-import Control.Monad.Trans.State (State, evalState, gets, modify)
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.State (StateT, evalStateT, gets, modify)
 import Data.Graph (SCC (..))
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
@@ -63,7 +66,7 @@ appendPath (DFSPath s p) v = DFSPath (S.insert v s) (v : p)
 -- >>> findCycle [("a",["b"]), ("b",["d","a"]), ("c",["b"]), ("d",["c"])]
 -- Just ["b","d","c","b"]
 findCycle :: Ord v => [(v, [v])] -> Maybe [v]
-findCycle g = findCycleImplicit (map fst g) (fromMaybe [] . (neighbors M.!?))
+findCycle g = runIdentity $ findCycleImplicit (map fst g) (pure . fromMaybe [] . (neighbors M.!?))
  where
   neighbors = M.fromList g
 
@@ -71,10 +74,10 @@ findCycle g = findCycleImplicit (map fst g) (fromMaybe [] . (neighbors M.!?))
 --   implicit graph description: a list of vertices, a function
 --   mapping vertices to labels, and a function mapping each vertex to
 --   its (outgoing) neighbors.
-findCycleImplicit :: forall v. Ord v => [v] -> (v -> [v]) -> Maybe [v]
-findCycleImplicit vertices neighbors = flip evalState S.empty $ dfsL emptyDFSPath vertices
+findCycleImplicit :: forall v m. (Ord v, Monad m) => [v] -> (v -> m [v]) -> m (Maybe [v])
+findCycleImplicit vertices neighbors = flip evalStateT S.empty $ dfsL emptyDFSPath vertices
  where
-  dfsL :: DFSPath v -> [v] -> State (Set v) (Maybe [v])
+  dfsL :: DFSPath v -> [v] -> StateT (Set v) m (Maybe [v])
   dfsL _ [] = pure Nothing
   dfsL path (v : vs) = do
     found <- dfs path v
@@ -82,7 +85,7 @@ findCycleImplicit vertices neighbors = flip evalState S.empty $ dfsL emptyDFSPat
       Nothing -> dfsL path vs
       Just cyc -> pure (Just cyc)
 
-  dfs :: DFSPath v -> v -> State (Set v) (Maybe [v])
+  dfs :: DFSPath v -> v -> StateT (Set v) m (Maybe [v])
   dfs p@(DFSPath pathMembers path) v
     | v `S.member` pathMembers = pure . Just . (v :) . reverse . (v :) $ takeWhile (/= v) path
     | otherwise = do
@@ -91,7 +94,7 @@ findCycleImplicit vertices neighbors = flip evalState S.empty $ dfsL emptyDFSPat
           True -> pure Nothing
           False -> do
             modify (S.insert v)
-            dfsL (appendPath p v) (neighbors v)
+            lift (neighbors v) >>= dfsL (appendPath p v)
 
 -- | Convenience function which checks a given graph for directed
 --   cycles, and outputs a custom error message if a directed cycle is

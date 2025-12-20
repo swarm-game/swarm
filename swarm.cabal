@@ -449,6 +449,7 @@ library swarm-lang
     text-rope,
     time,
     unicode-show,
+    unordered-containers,
     vector,
     vty,
     witch,

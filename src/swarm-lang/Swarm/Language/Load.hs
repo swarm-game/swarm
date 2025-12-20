@@ -20,6 +20,7 @@ import Control.Effect.Throw (Throw, throwError)
 import Control.Lens ((?~))
 import Control.Monad (forM_, when)
 import Data.Function ((&))
+import Data.HashSet qualified as HS
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
@@ -39,7 +40,8 @@ import Swarm.Language.Syntax.Import hiding (ImportPhase (..))
 import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Pretty (prettyText)
 import Swarm.Util (Encoding (SystemLocale), getModificationTimeMay, readFileMayT, showT)
-import Swarm.Util.Graph (findCycle)
+import Swarm.Util.Graph (findCycleImplicit)
+import Swarm.Util.InternCache qualified as IC
 import Witch (into)
 
 -- | A SourceMap associates canonical 'ImportLocation's to modules.
@@ -57,7 +59,7 @@ resolve ::
   Maybe FilePath ->
   -- | Raw syntax to be resolved.
   Syntax Raw ->
-  m (SourceMap Resolved, Syntax Resolved)
+  m (SourceMap Resolved, (Set (ImportLoc Import.Resolved), Syntax Resolved))
 resolve prov s = do
   cur <- sendIO . resolveImportDir $
     case prov of
@@ -66,13 +68,12 @@ resolve prov s = do
         Left _ -> currentDir
         Right (loc, _) -> importDir loc
 
-  -- XXX do we need this impSet?  Maybe we need it to check for cycles?
   (resMap, (impSet, s')) <- runState mempty . resolveImports cur $ s
-  -- XXX the resMap might not actually contain all modules.  Need to
-  -- get the graph from cache etc.
+
+  -- Check for cycles in the resulting import graph
   checkImportCycles resMap
 
-  pure (resMap, s')
+  pure (resMap, (impSet, s'))
 
 -- | Resolve a term without requiring any I/O, throwing an error if
 --   any 'import' statements are encountered.
@@ -82,20 +83,40 @@ resolve' = traverseSyntax pure (throwError . DisallowedImport)
 
 type ResLoc = ImportLoc Import.Resolved
 
--- | Convert a 'SourceMap' into a suitable form for 'findCycle'.
-toImportGraph :: SourceMap Resolved -> [(ResLoc, [ResLoc])]
-toImportGraph = map processNode . M.assocs
- where
-  processNode (imp, m) = (imp, S.toList (moduleImports m))
+-- -- | Convert a 'SourceMap' into a suitable form for 'findCycle'.
+-- toImportGraph :: SourceMap Resolved -> [(ResLoc, [ResLoc])]
+-- toImportGraph = map processNode . M.assocs
+--  where
+--   processNode (imp, m) = (imp, S.toList (moduleImports m))
 
--- | Check a 'SourceMap' to ensure that it contains no import cycles.
+-- | Given a 'SourceMap' containing newly loaded + resolved modules,
+--   ensure that the resulting import graph contains no import cycles.
+--   In particular, we look for cycles in the graph that results from
+--   the union of the resMap and the global module cache---biased to
+--   the resMap when there is overlap, since in that case we have just
+--   reloaded a module which is going to replace the one in the module
+--   cache once we finish typechecking + elaborating it.
 checkImportCycles ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   SourceMap Resolved ->
   m ()
 checkImportCycles srcMap = do
-  forM_ (findCycle (toImportGraph srcMap)) $ \importCycle ->
+  -- Get all import locations in the module cache
+  cachedLocs <- HS.toList <$> IC.cachedKeysSet moduleCache
+  -- Combine with import locations that were just loaded
+  let vs = S.toList $ M.keysSet srcMap `S.union` S.fromList cachedLocs
+  -- Find cycles in the combined graph
+  mcyc <- findCycleImplicit vs neighbors
+
+  -- Finally, throw an error if a cycle was found
+  forM_ mcyc $ \importCycle ->
     throwError $ ImportCycle (map locToFilePath importCycle)
+ where
+  neighbors loc = case M.lookup loc srcMap of
+    Just m -> pure . S.toList $ moduleImports m
+    Nothing -> do
+      mm <- IC.lookupCached moduleCache loc
+      pure $ maybe [] (S.toList . moduleImports) mm
 
 -- | Given a parent directory relative to which any local imports
 --   should be interpreted, traverse some raw syntax, recursively

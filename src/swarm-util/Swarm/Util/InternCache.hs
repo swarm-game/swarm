@@ -8,6 +8,7 @@ module Swarm.Util.InternCache (
   newInternCache,
   lookupCached,
   insertCached,
+  cachedKeysSet,
   intern,
   hoist,
   fetchCached,
@@ -21,6 +22,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Hashable (Hashable)
+import Data.HashSet (HashSet)
 import System.Mem.Weak
 import UnliftIO.STM
 
@@ -35,6 +37,7 @@ import UnliftIO.STM
 data InternCache m k v = InternCache
   { lookupCached :: k -> m (Maybe v)
   , insertCached :: k -> v -> m ()
+  , cachedKeysSet :: m (HashSet k)
   }
 
 -- | Create a new (empty) InternCache.
@@ -48,8 +51,14 @@ newInternCache = do
     InternCache
       { lookupCached = lookupCachedImpl var
       , insertCached = insertCachedImpl var
+      , cachedKeysSet = cachedKeysSetImpl var
       }
  where
+  cachedKeysSetImpl :: TVar (HashMap k (Weak v)) -> m (HashSet k)
+  cachedKeysSetImpl var = sendIO $ do
+    cache <- readTVarIO var
+    pure $ HashMap.keysSet cache
+
   lookupCachedImpl :: TVar (HashMap k (Weak v)) -> k -> m (Maybe v)
   lookupCachedImpl var ch = sendIO $ do
     cache <- readTVarIO var
@@ -71,10 +80,11 @@ newInternCache = do
 
 -- | Changing the monad in which the cache operates with a natural transformation.
 hoist :: (forall x. m x -> n x) -> InternCache m k v -> InternCache n k v
-hoist f (InternCache lookup' insert') =
+hoist f (InternCache lookup' insert' keys') =
   InternCache
     { lookupCached = f . lookup'
     , insertCached = \k v -> f $ insert' k v
+    , cachedKeysSet = f keys'
     }
 
 -- | When a value is its own key, this ensures that the given value is
@@ -104,18 +114,3 @@ fetchCached cache fetch k = do
       v <- fetch k
       insertCached cache k v
       pure v
-
--- -- | Like 'fetchCached', but with an extra function that determines
--- --   whether a given key/value pair is outdated. Re-run the fetch
--- --   action whenever the value stored in the cache for the given key
--- --   is outdated.
--- updateCached :: (Hashable k, Monad m) => InternCache m k v -> (k -> m v) -> (k -> v -> m Bool) -> k -> m v
--- updateCached cache fetch outdated k = do
---   v <- fetchCached cache fetch k
---   out <- outdated k v
---   if out
---     then do
---       v' <- fetch k
---       insertCached cache k v'
---       pure v'
---     else pure v

@@ -29,16 +29,12 @@ type family ModuleCtx (phase :: Phase) where
   ModuleCtx Elaborated = (TCtx, TDCtx)
   ModuleCtx Instantiated = (TCtx, TDCtx)
 
--- | A module only needs to record its imports during resolution, so
---   we can do cyclic import detection.  After that we no longer
---   require the information.
+-- | With a newly parsed, raw module we don't know any import
+--   information.  After that, we cache the set imports for a module
+--   to enable easy import cycle checks.
 type family ModuleImports (phase :: Phase) where
   ModuleImports Raw = ()
-  ModuleImports Resolved = Set (ImportLoc Import.Resolved)
-  ModuleImports Inferred = ()
-  ModuleImports Typed = ()
-  ModuleImports Elaborated = ()
-  ModuleImports Instantiated = ()
+  ModuleImports _ = Set (ImportLoc Import.Resolved)
 
 data ModuleProvenance where
   FromFile :: FilePath -> ModuleProvenance
@@ -69,7 +65,7 @@ deriving instance (Eq (Anchor (ImportPhaseFor phase)), Data (Anchor (ImportPhase
 deriving instance (Hashable (ModuleImports phase), Hashable (ModuleCtx phase), Hashable (SwarmType phase), Hashable (Anchor (ImportPhaseFor phase)), Generic (Anchor (ImportPhaseFor phase))) => Hashable (Module phase)
 
 emptyModule :: Module Elaborated
-emptyModule = Module Nothing mempty () Nothing NoProvenance
+emptyModule = Module Nothing mempty S.empty Nothing NoProvenance
 
 instance Erasable Module where
   erase (Module t _ _ time prov) = Module (erase <$> t) () S.empty time prov
