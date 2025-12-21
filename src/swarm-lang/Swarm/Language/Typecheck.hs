@@ -46,6 +46,8 @@ module Swarm.Language.Typecheck (
   isSimpleUType,
 ) where
 
+import Debug.Trace
+
 import Control.Arrow ((***))
 import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.State.Strict (StateC, runState)
@@ -64,6 +66,7 @@ import Data.Bifunctor (first, second)
 import Data.Data (gmapM)
 import Data.Foldable (fold, traverse_)
 import Data.Generics (mkM)
+import Data.HashMap.Strict qualified as HM
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe
@@ -91,6 +94,7 @@ import Swarm.Language.TDVar (TDVar)
 import Swarm.Language.Types
 import Swarm.Pretty
 import Prelude hiding (lookup)
+import Data.HashMap.Strict (HashMap)
 
 ------------------------------------------------------------
 -- Typechecking stack
@@ -253,9 +257,10 @@ runTC ::
   TDCtx ->
   TVCtx ->
   SourceMap Resolved ->
-  StateC (SourceMap Inferred) (ReaderC UCtx (ReaderC TCStack (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx (ReaderC (SourceMap Resolved) m))))))) (Syntax Inferred) ->
+  ModuleCache ->
+  StateC (SourceMap Inferred) (ReaderC UCtx (ReaderC TCStack (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx (ReaderC (SourceMap Resolved) (ReaderC ModuleCache m)))))))) (Syntax Inferred) ->
   m (SourceMap Typed, Syntax Typed)
-runTC ctx reqCtx tdctx tvCtx srcMap =
+runTC ctx reqCtx tdctx tvCtx srcMap modCache =
   runState M.empty
     >>> (>>= finalizeInferred)
     >>> runReader (toU ctx)
@@ -265,6 +270,7 @@ runTC ctx reqCtx tdctx tvCtx srcMap =
     >>> runReader tdctx
     >>> runReader tvCtx
     >>> runReader srcMap
+    >>> runReader modCache
     >>> reportUnificationError
 
 checkPredicative :: Has (Throw ContextualTypeErr) sig m => Maybe a -> m a
@@ -882,6 +888,8 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 ------------------------------------------------------------
 -- Type inference / checking
 
+type ModuleCache = HashMap (ImportLoc Import.Resolved) (Module Elaborated)
+
 -- | Top-level type inference: given a context of variable types +
 --   requirements, type synonyms, a map of recursive imports that need
 --   to be typechecked, and a term, return fully type-annotated
@@ -892,10 +900,11 @@ inferTop ::
   ReqCtx ->
   TDCtx ->
   SourceMap Resolved ->
+  ModuleCache ->
   Syntax Resolved ->
   m (SourceMap Typed, Syntax Typed)
-inferTop ctx reqCtx tdCtx srcMap =
-  runTC ctx reqCtx tdCtx Ctx.empty srcMap
+inferTop ctx reqCtx tdCtx srcMap modCache =
+  runTC ctx reqCtx tdCtx Ctx.empty srcMap modCache
     . infer
 
 -- | Top-level type checking function.
@@ -905,11 +914,12 @@ checkTop ::
   ReqCtx ->
   TDCtx ->
   SourceMap Resolved ->
+  ModuleCache ->
   Syntax Resolved ->
   Type ->
   m (SourceMap Typed, Syntax Typed)
-checkTop ctx reqCtx tdCtx srcMap t =
-  runTC ctx reqCtx tdCtx Ctx.empty srcMap
+checkTop ctx reqCtx tdCtx srcMap modCache t =
+  runTC ctx reqCtx tdCtx Ctx.empty srcMap modCache
     . check t
     . toU
 
@@ -937,6 +947,7 @@ infer ::
   , Has (Reader TDCtx) sig m
   , Has (Reader TVCtx) sig m
   , Has (Reader (SourceMap Resolved)) sig m
+  , Has (Reader ModuleCache) sig m
   , Has (State (SourceMap Inferred)) sig m
   , Has (Reader TCStack) sig m
   , Has Unification sig m
@@ -1111,30 +1122,38 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     c' <- check c iuty
     return $ Syntax l (SAnnotate c' (forgetQ qpty)) cs iuty
 
-  -- XXX update import checking below to look up in the global cache
-
   -- To infer @import m in e@, first make sure we have loaded and
   -- typechecked the import, then infer @e@ in an extended context.
   SImportIn loc t1 -> do
-    -- See whether we have already processed this import before
+    -- See whether we have already processed this import, or if it's
+    -- in the global module cache.
     usrcMap <- get @(SourceMap Inferred)
-    umod <- case M.lookup loc usrcMap of
-      -- We have: just use its already-typechecked version
-      Just umod -> pure umod
-      -- We haven't: go typecheck it and add it to the USourceMap before proceeding.
-      Nothing -> do
+    modCache <- ask @ModuleCache
+    (mCtx, mTDCtx) <- case (M.lookup loc usrcMap, HM.lookup loc modCache) of
+      -- We've processed this module: just use its already-typechecked version
+      (Just umod, _) -> do
+        traceM $ "already processed: " ++ show loc
+        pure (moduleCtx umod)
+      -- It's in the global module cache: just use its cached version
+      (_, Just emod) -> do
+        traceM $ "cache hit: " ++ show loc
+        pure (first toU . moduleCtx $ emod)
+      -- Otherwise, go typecheck it and add it to the USourceMap before proceeding.
+      _ -> do
+        traceM $ "first typecheck: " ++ show loc
         srcMap <- ask @(SourceMap Resolved)
         case M.lookup loc srcMap of
           -- The lookup should always succeed, since the SourceMap was
-          -- computed by transitively following all imports.
+          -- computed by transitively following all imports, and
+          -- should contain anything that wasn't already in the global
+          -- cache.
           Nothing -> throwTypeErr l $ UnknownImport loc
           Just smod -> do
             umod <- withFrame l (TCImport loc) $ inferModule smod
             modify @(SourceMap Inferred) $ M.insert loc umod
-            pure umod
+            pure (moduleCtx umod)
 
     -- Now infer t1 with the import's exports added to the context.
-    let (mCtx, mTDCtx) = moduleCtx umod
     t1' <- withBindings mCtx $ withBindingsTD mTDCtx $ infer t1
     return $ Syntax l (SImportIn loc t1') cs (t1' ^. sType)
   TType ty -> pure $ Syntax l (TType ty) cs UTyType
@@ -1171,6 +1190,7 @@ inferModule ::
   , Has (Reader TCStack) sig m
   , Has Unification sig m
   , Has (Error ContextualTypeErr) sig m
+  , Has (Reader ModuleCache) sig m
   ) =>
   Module Resolved -> m (Module Inferred)
 inferModule (Module ms _ imps time prov) = do
@@ -1317,6 +1337,7 @@ check ::
   , Has (Reader TCStack) sig m
   , Has Unification sig m
   , Has (Error ContextualTypeErr) sig m
+  , Has (Reader ModuleCache) sig m
   ) =>
   Syntax Resolved ->
   UType ->

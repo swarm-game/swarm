@@ -24,7 +24,6 @@ module Swarm.Language.Pipeline (
   processSyntax,
 ) where
 
-import Data.Set qualified as S
 import Control.Algebra (Has)
 import Control.Carrier.Lift (sendIO)
 import Control.Effect.Error (Error, throwError)
@@ -33,8 +32,10 @@ import Control.Effect.Throw (Throw, liftEither)
 import Control.Lens ((^.))
 import Control.Monad ((<=<))
 import Data.Functor (void)
+import Data.HashMap.Strict qualified as HM
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
+import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Time.Clock (getCurrentTime)
 import Swarm.Failure (SystemFailure (..))
@@ -48,7 +49,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Value (Env, emptyEnv, envReqs, envTydefs, envTypes)
 import Swarm.Util.Effect (withError, withThrow)
-import Swarm.Util.InternCache (InternCache (insertCached))
+import Swarm.Util.InternCache (InternCache (insertCached, freezeCache))
 
 -- | Given raw 'Text' representing swarm-lang source code:
 --
@@ -104,6 +105,8 @@ processTerm prov txt menv tm = do
   -- cached
   (srcMapRes, (imps, tmRes)) <- resolve prov tm
 
+  modCache <- freezeCache moduleCache
+
   -- Typecheck term + collected imports
   (srcMapTy, tmTy) <-
     withError (typeErrToSystemFailure txt) $
@@ -112,6 +115,7 @@ processTerm prov txt menv tm = do
         (e ^. envReqs)
         (e ^. envTydefs)
         srcMapRes
+        modCache
         tmRes
 
   -- Elaborate term + collected imports
@@ -161,6 +165,7 @@ processTermNoImports txt tm menv = do
         (e ^. envReqs)
         (e ^. envTydefs)
         M.empty
+        HM.empty
         tmRes
   pure $ Module (Just $ elaborate tmTy) (mempty, mempty) S.empty Nothing NoProvenance
 

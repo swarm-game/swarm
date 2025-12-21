@@ -155,10 +155,6 @@ resolveImport parent loc = do
   -- Note, the purpose of this set is not to track which imports have
   -- been loaded yet; rather, the purpose is simply to record the
   -- complete set of imports for a given module.
-  --
-  -- XXX do we actually use the resulting set?  It seems like
-  -- currently we don't; however, perhaps we should change
-  -- SyntaxWithImports to record it?
   add $ S.singleton canonicalLoc
 
   -- Check whether the module needs to be loaded (either because it is

@@ -7,11 +7,11 @@ module Swarm.Util.InternCache (
   InternCache,
   newInternCache,
   lookupCached,
+  freezeCache,
   insertCached,
   cachedKeysSet,
   intern,
   hoist,
-  fetchCached,
 )
 where
 
@@ -36,6 +36,7 @@ import UnliftIO.STM
 --   operates, the key type, and the value type.
 data InternCache m k v = InternCache
   { lookupCached :: k -> m (Maybe v)
+  , freezeCache :: m (HashMap k v)
   , insertCached :: k -> v -> m ()
   , cachedKeysSet :: m (HashSet k)
   }
@@ -50,6 +51,7 @@ newInternCache = do
   pure $
     InternCache
       { lookupCached = lookupCachedImpl var
+      , freezeCache = freezeCacheImpl var
       , insertCached = insertCachedImpl var
       , cachedKeysSet = cachedKeysSetImpl var
       }
@@ -62,13 +64,21 @@ newInternCache = do
   lookupCachedImpl :: TVar (HashMap k (Weak v)) -> k -> m (Maybe v)
   lookupCachedImpl var ch = sendIO $ do
     cache <- readTVarIO var
+    traceM $ "looking up " ++ show ch
     case HashMap.lookup ch cache of
       Nothing -> pure Nothing
       Just weakRef -> do
+        traceM "hit!"
         deRefWeak weakRef
+
+  freezeCacheImpl :: TVar (HashMap k (Weak v)) -> m (HashMap k v)
+  freezeCacheImpl var = sendIO $ do
+    cache <- readTVarIO var
+    traverseMaybe deRefWeak cache
 
   insertCachedImpl :: TVar (HashMap k (Weak v)) -> k -> v -> m ()
   insertCachedImpl var k v = sendIO $ do
+    traceM $ "inserting " ++ show k
     wk <- mkWeakPtr v (Just $ removeDeadVal var k)
     atomically $ modifyTVar' var (HashMap.insert k wk)
 
@@ -76,13 +86,15 @@ newInternCache = do
   -- when its value gets GC'd
   removeDeadVal :: TVar (HashMap k (Weak v)) -> k -> IO ()
   removeDeadVal var k = sendIO $ do
+    traceM $ "purging " ++ show k
     atomically $ modifyTVar' var (HashMap.delete k)
 
 -- | Changing the monad in which the cache operates with a natural transformation.
 hoist :: (forall x. m x -> n x) -> InternCache m k v -> InternCache n k v
-hoist f (InternCache lookup' insert' keys') =
+hoist f (InternCache lookup' freeze' insert' keys') =
   InternCache
     { lookupCached = f . lookup'
+    , freezeCache = f freeze'
     , insertCached = \k v -> f $ insert' k v
     , cachedKeysSet = f keys'
     }
@@ -99,18 +111,5 @@ intern cache k = do
       insertCached cache k k
       pure k
 
--- | Given a key, return the corresponding value from the cache, if
---   any; or, if the key is not yet in the cache, run the given action
---   to compute the corresponding value, cache it, and return it.
-fetchCached :: (Hashable k, Monad m) => InternCache m k v -> (k -> m v) -> k -> m v
-fetchCached cache fetch k = do
-  mVal <- lookupCached cache k
-  case mVal of
-    Just v -> do
-      traceM "cache hit!"
-      pure v
-    Nothing -> do
-      traceM "fetching!"
-      v <- fetch k
-      insertCached cache k v
-      pure v
+traverseMaybe :: Applicative f => (a -> f (Maybe b)) -> HashMap k a -> f (HashMap k b)
+traverseMaybe g m = HashMap.mapMaybe id <$> traverse g m

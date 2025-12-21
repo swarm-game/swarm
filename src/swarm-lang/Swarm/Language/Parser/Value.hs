@@ -26,6 +26,7 @@ import Swarm.Language.Typecheck (ContextualTypeErr, checkTop)
 import Swarm.Language.Types (Type, emptyTDCtx)
 import Swarm.Language.Value
 import Text.Megaparsec qualified as MP
+import Data.HashMap.Strict qualified as HM
 
 readValue :: Type -> Text -> Maybe Value
 readValue ty txt = do
@@ -54,7 +55,7 @@ readValue ty txt = do
   -- Now, make sure the resolved term typechecks at the given type.
   _ <-
     eitherToMaybe . runError @ContextualTypeErr $
-      checkTop Ctx.empty Ctx.empty emptyTDCtx M.empty sResolved ty
+      checkTop Ctx.empty Ctx.empty emptyTDCtx M.empty HM.empty sResolved ty
   -- Finally, turn the term into a value.
   toValue $ s ^. sTerm
 
