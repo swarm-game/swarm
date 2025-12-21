@@ -102,7 +102,7 @@ checkImportCycles ::
   m ()
 checkImportCycles srcMap = do
   -- Get all import locations in the module cache
-  cachedLocs <- HS.toList <$> IC.cachedKeysSet moduleCache
+  cachedLocs <- HS.toList <$> sendIO (IC.cachedKeysSet moduleCache)
   -- Combine with import locations that were just loaded
   let vs = S.toList $ M.keysSet srcMap `S.union` S.fromList cachedLocs
   -- Find cycles in the combined graph
@@ -115,7 +115,7 @@ checkImportCycles srcMap = do
   neighbors loc = case M.lookup loc srcMap of
     Just m -> pure . S.toList $ moduleImports m
     Nothing -> do
-      mm <- IC.lookupCached moduleCache loc
+      mm <- sendIO $ IC.lookupCached moduleCache loc
       pure $ maybe [] (S.toList . moduleImports) mm
 
 -- | Given a parent directory relative to which any local imports

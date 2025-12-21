@@ -26,15 +26,15 @@ import System.IO.Unsafe (unsafePerformIO)
 --   modules, to avoid reloading the same module from disk repeatedly.
 --   However, note that modules which are no longer referenced from
 --   outside the cache can be garbage collected.
-moduleCache :: (Has (Lift IO) sig m) => InternCache m (ImportLoc Import.Resolved) (Module Elaborated)
-moduleCache = unsafePerformIO $ IC.hoist sendIO <$> IC.newInternCache @_ @IO
+moduleCache :: InternCache (ImportLoc Import.Resolved) (Module Elaborated)
+moduleCache = unsafePerformIO $ putStrLn "creating cache" >> IC.newInternCache
 {-# NOINLINE moduleCache #-}
 
 -- | Check whether a module needs to be loaded, /i.e./ either it is
 --   not in the cache, or the cache entry is outdated.
 moduleNeedsLoad :: (Has (Lift IO) sig m) => ImportLoc Import.Resolved -> m Bool
 moduleNeedsLoad loc = do
-  cached <- IC.lookupCached moduleCache loc
+  cached <- sendIO $ IC.lookupCached moduleCache loc
   maybe (pure True) (isOutdated loc) cached
 
 -- | Check whether a module is outdated and needs to be reloaded +

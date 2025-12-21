@@ -24,6 +24,8 @@ module Swarm.Language.Pipeline (
   processSyntax,
 ) where
 
+import Debug.Trace
+
 import Control.Algebra (Has)
 import Control.Carrier.Lift (sendIO)
 import Control.Effect.Error (Error, throwError)
@@ -105,7 +107,8 @@ processTerm prov txt menv tm = do
   -- cached
   (srcMapRes, (imps, tmRes)) <- resolve prov tm
 
-  modCache <- freezeCache moduleCache
+  modCache <- sendIO $ freezeCache moduleCache
+  traceM $ "Freezing global module cache with keys " ++ show (HM.keysSet modCache)
 
   -- Typecheck term + collected imports
   (srcMapTy, tmTy) <-
@@ -123,7 +126,7 @@ processTerm prov txt menv tm = do
       srcMapElab = fmap elaborateModule srcMapTy
 
   -- Insert all newly checked + elaborated modules into the module cache
-  void $ M.traverseWithKey (insertCached moduleCache) srcMapElab
+  void . sendIO $ M.traverseWithKey (insertCached moduleCache) srcMapElab
 
   -- Get current time, to mark elaborated module with timestamp.
   -- Probably not really important, since this module (not being
