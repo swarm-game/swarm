@@ -33,6 +33,7 @@ newInternCache ::
   (Hashable k, Show k) =>
   IO (InternCache k v)
 newInternCache = do
+  -- TODO (#2669): switch to stm-containers?
   var <- newTVarIO mempty
   pure $
     InternCache
@@ -42,8 +43,6 @@ newInternCache = do
       , deleteCached = deleteCachedImpl var
       }
  where
-  -- XXX switch to stm-containers?
-  -- https://www.parsonsmatt.org/2025/12/17/the_subtle_footgun_of_tvar_(map____).html
   lookupCachedImpl :: TVar (HashMap k v) -> k -> IO (Maybe v)
   lookupCachedImpl var k = HashMap.lookup k <$> readTVarIO var
 
