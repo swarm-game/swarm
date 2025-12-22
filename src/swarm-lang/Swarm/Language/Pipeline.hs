@@ -48,7 +48,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Value (Env, emptyEnv, envReqs, envTydefs, envTypes)
 import Swarm.Util.Effect (withError, withThrow)
-import Swarm.Util.InternCache (deleteCached, insertCached, freezeCache)
+import Swarm.Util.InternCache (deleteCached, freezeCache, insertCached)
 
 -- | Given raw 'Text' representing swarm-lang source code:
 --

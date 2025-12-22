@@ -11,10 +11,10 @@ module Swarm.Util.Graph (
   failOnCyclicGraph,
 ) where
 
-import Data.Functor.Identity (runIdentity)
 import Control.Monad (forM_)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State (StateT, evalStateT, gets, modify)
+import Data.Functor.Identity (runIdentity)
 import Data.Graph (SCC (..))
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
