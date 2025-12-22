@@ -1121,9 +1121,9 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- To infer @import m in e@, first make sure we have loaded and
   -- typechecked the import, then infer @e@ in an extended context.
   SImportIn loc t1 -> do
-    srcMap <- ask @(SourceMap Resolved)  -- modules that need to be typechecked
+    srcMap <- ask @(SourceMap Resolved) -- modules that need to be typechecked
     usrcMap <- get @(SourceMap Inferred) -- modules we have already typechecked
-    modCache <- ask @ModuleCache         -- global module cache
+    modCache <- ask @ModuleCache -- global module cache
     (mCtx, mTDCtx) <- case (M.lookup loc usrcMap, M.lookup loc srcMap, modCache loc) of
       -- We've processed this module: just use its already-typechecked version
       (Just umod, _, _) -> do

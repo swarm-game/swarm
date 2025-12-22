@@ -48,7 +48,7 @@ validateObjectives objectives = do
 
   return objectives
  where
-  edges = map (\(_,v,vs) -> (v,vs)) $ makeGraphEdges objectives
+  edges = map (\(_, v, vs) -> (v, vs)) $ makeGraphEdges objectives
   allIds = Set.fromList $ mapMaybe (view objectiveId) objectives
 
   objectiveIdToText = \case

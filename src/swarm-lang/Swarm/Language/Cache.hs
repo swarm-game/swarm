@@ -19,11 +19,11 @@ import Swarm.Language.Module (Module (moduleTimestamp))
 import Swarm.Language.Syntax (Phase (Elaborated))
 import Swarm.Language.Syntax.Import hiding (ImportPhase (..))
 import Swarm.Language.Syntax.Import qualified as Import
+import Swarm.Language.Value (Env)
 import Swarm.Util.InternCache (InternCache)
 import Swarm.Util.InternCache qualified as IC
 import System.Directory (getModificationTime)
 import System.IO.Unsafe (unsafePerformIO)
-import Swarm.Language.Value (Env)
 
 -- | A global cache for fully parsed, typechecked, + elaborated
 --   modules, to avoid reloading the same module from disk repeatedly.

@@ -733,13 +733,11 @@ stepCESK cesk = case cesk of
         -- already in the environment cache, so just continue evaluating
         -- the body in an extended environment.
         Just env -> In t (e <> env) s k
-
         -- The environment is not in the cache, so we need to evaluate
         -- the module.
         _ -> case moduleTerm m of
           -- In theory there could be an import of an empty module.
           Nothing -> In t e s k
-
           -- To evaluate an import:
           --   (1) stick a 'suspend' at the end of the term
           --     corresponding to the imported module, so we can save the resulting environment

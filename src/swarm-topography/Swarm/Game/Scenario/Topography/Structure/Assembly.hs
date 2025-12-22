@@ -21,6 +21,7 @@ import Data.Foldable (Foldable (..), foldl', foldlM, traverse_)
 import Data.List (singleton, uncons)
 import Data.Map.Lazy qualified as ML
 import Data.Map.Strict qualified as M
+import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -38,7 +39,6 @@ import Swarm.Language.Syntax.Direction (directionJsonModifier)
 import Swarm.Util (commaList, quote)
 import Swarm.Util.Graph (failOnCyclicGraph)
 import Prelude hiding (Foldable (..))
-import Data.Maybe (mapMaybe)
 
 -- | /Uniquely/ identifies a structure in the graph
 type PathToRoot = [StructureName]
@@ -153,10 +153,10 @@ mergeStructures graph = mergedMap
   placementToLocated (Placement sn pose) = LocatedStructure (OrientedStructure sn (up $ orient pose)) (offset pose)
   computeInitialOverlays =
     map (placementToLocated . uncurry Placement . first (name . namedStructure))
-    . filter (isRecognizable . namedStructure . fst)
-    . mapMaybe (\(PathPlacement p pose) -> (, pose) <$> (graph M.!? p))
-    -- We don't expect for the lookup of p in graph to fail, but filter out any failures
-    -- to avoid using a partial function
+      . filter (isRecognizable . namedStructure . fst)
+      . mapMaybe (\(PathPlacement p pose) -> (,pose) <$> (graph M.!? p))
+  -- We don't expect for the lookup of p in graph to fail, but filter out any failures
+  -- to avoid using a partial function
 
   toMerged path ann = foldl' overlaySingleStructure' initialMerged toPlaceMerged
    where
