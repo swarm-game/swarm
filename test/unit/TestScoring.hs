@@ -12,7 +12,6 @@ import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Tick (TickNumber (..))
-import Swarm.Language.Load (SyntaxWithImports (getSyntax))
 import Swarm.Language.Pipeline
 import Swarm.Language.Syntax
 import Swarm.Pretty (prettyString)
@@ -65,8 +64,8 @@ compareAstSize :: Int -> FilePath -> TestTree
 compareAstSize expectedSize path = testCase (unwords ["size of", path]) $ do
   let filePath = baseTestPath </> path
   contents <- readFileMayT UTF8 (baseTestPath </> path) ??? assertFailure "Can't read file!"
-  src <- runError @SystemFailure $ requireNonEmptyTerm =<< processSource (Just filePath) contents Nothing
-  t <- either (assertFailure . prettyString) (pure . getSyntax) src
+  src <- runError @SystemFailure $ requireNonEmptyTerm =<< processSource (Just filePath) Nothing contents
+  t <- either (assertFailure . prettyString) pure src
   assertEqual "incorrect size" expectedSize (measureAstSize t)
 
 betterReplTimeAfterCodeSizeRecord :: TestTree

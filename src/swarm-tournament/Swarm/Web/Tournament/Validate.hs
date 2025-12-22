@@ -26,14 +26,14 @@ import Swarm.Failure (SystemFailure)
 import Swarm.Game.CESK (continue)
 import Swarm.Game.Robot.Concrete (machine)
 import Swarm.Game.Scenario
-import Swarm.Game.Scenario.Scoring.CodeSize (codeMetricsFromSyntax)
+import Swarm.Game.Scenario.Scoring.CodeSize (ScenarioCodeMetrics (..), codeMetricsFromSyntax)
 import Swarm.Game.Scenario.Status (ScenarioWith (..), emptyLaunchParams)
 import Swarm.Game.State
 import Swarm.Game.State.Initialize (scenarioToGameState)
 import Swarm.Game.State.Runtime (RuntimeOptions (..), initRuntimeState, initScenarioInputs, pauseOnObjectiveCompletion, stdGameConfigInputs)
 import Swarm.Game.State.Substate (initState, seed)
 import Swarm.Game.Step.Validate (playUntilWin)
-import Swarm.Language.Load (SyntaxWithImports, getSyntax)
+import Swarm.Language.Module (Module (moduleTerm))
 import Swarm.Language.Pipeline
 import Swarm.Language.Syntax (Phase (..))
 import Swarm.Pretty (prettyString, prettyText)
@@ -130,7 +130,7 @@ validateSubmittedSolution (CommonValidationArgs solnTimeout persistenceArgs) sce
         . decodeUtf8'
         . LBS.toStrict
         $ fileContent file
-    res <- liftIO . runError @SystemFailure $ requireNonEmptyTerm =<< processSource Nothing solText Nothing
+    res <- liftIO . runError @SystemFailure $ processSource Nothing Nothing solText
     soln <- withExceptT (SolutionParseError . prettyText) . except $ res
     gs <- withExceptT ScenarioRetrievalFailure $ do
       scenarioContent <-
@@ -203,7 +203,7 @@ gamestateFromScenarioText content = do
 
 verifySolution ::
   SolutionTimeout ->
-  SyntaxWithImports Elaborated ->
+  Module Elaborated ->
   GameState ->
   ExceptT SolutionEvaluationFailure IO SolutionCharacterization
 verifySolution (SolutionTimeout timeoutSeconds) sol gs = do
@@ -223,5 +223,5 @@ verifySolution (SolutionTimeout timeoutSeconds) sol gs = do
       (gs ^. randomness . seed)
       codeMetrics
  where
-  codeMetrics = codeMetricsFromSyntax (getSyntax sol)
+  codeMetrics = maybe (ScenarioCodeMetrics 0 0) codeMetricsFromSyntax (moduleTerm sol)
   gs' = gs & baseRobot . machine %~ continue sol
