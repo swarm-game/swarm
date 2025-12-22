@@ -79,6 +79,7 @@ import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
 import Swarm.Game.Tick
+import Swarm.Language.Cache
 import Swarm.Language.Capability
 import Swarm.Language.Module (Module, moduleTerm)
 import Swarm.Language.Requirements qualified as R
@@ -88,6 +89,7 @@ import Swarm.Language.WithType (WithType (..))
 import Swarm.Log
 import Swarm.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Util hiding (both)
+import Swarm.Util.InternCache (insertCached, lookupCached)
 import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec)
 import Witch (From (from), into)
@@ -717,34 +719,35 @@ stepCESK cesk = case cesk of
   In (TSuspend t) e s k -> return $ Out (VSuspend t e) s k
   -- Evaluate the code corresponding to an import.
   In (TImportIn loc t) e s k -> do
-    -- TODO (#2658): cache evaluated imports so we can just look up
-    -- the associated environment instead of re-evaluating every time
-    -- we encounter the same import.  XXX fix me!
-    return $ case M.lookup loc M.empty of
-      -- The import should have already been typechecked at this point, so
-      -- if it's not found in the source map, there must be a bug somewhere.
-      Nothing ->
-        let resolvedImports = ["  (SourceMap is empty)"]
-            -- \| otherwise =
-            --     "  Resolved imports:"
-            --       : map
-            --         (T.append "  - " . into @Text . locToFilePath)
-            --         (M.keys $ e ^. envSourceMap)
+    mmod <- sendIO $ lookupCached moduleCache loc
+    menv <- sendIO $ lookupCached envCache loc
 
-            errMsg =
-              T.unlines $
-                T.append "Import not found: " (into @Text (locToFilePath loc)) : resolvedImports
+    pure $ case mmod of
+      -- The import should have already been typechecked at this point, so
+      -- if it's not found in the module cache, there must be a bug somewhere.
+      Nothing ->
+        let errMsg = "Import not found: " <> into @Text (locToFilePath loc)
          in Up (Fatal errMsg) s k
-      Just mmod -> case moduleTerm mmod of
-        -- In theory there could be an import of an empty module
-        Nothing -> In t e s k
-        -- To evaluate an import:
-        --   (1) stick a 'suspend' at the end of the term
-        --     corresponding to the imported module, so we can save the resulting environment
-        --   (2) focus on evaluating the module *in an empty environment*
-        --   (2) push an FImport frame on the stack to continue with the
-        --     body in the context of the import once we're done processing it.
-        Just m -> In (insertSuspend $ erase m ^. sTerm) emptyEnv s (FImport t e : k)
+      Just m -> case menv of
+        -- The environment corresponding to the evaluated module is
+        -- already in the environment cache, so just continue evaluating
+        -- the body in an extended environment.
+        Just env -> In t (e <> env) s k
+
+        -- The environment is not in the cache, so we need to evaluate
+        -- the module.
+        _ -> case moduleTerm m of
+          -- In theory there could be an import of an empty module.
+          Nothing -> In t e s k
+
+          -- To evaluate an import:
+          --   (1) stick a 'suspend' at the end of the term
+          --     corresponding to the imported module, so we can save the resulting environment
+          --   (2) focus on evaluating the module *in an empty environment*
+          --   (2) push an FImport frame on the stack to continue with the
+          --     body in the context of the import once we're done processing it.
+          Just mt -> In (insertSuspend $ erase mt ^. sTerm) emptyEnv s (FImport loc t e : k)
+
   -- Ignore explicit parens.
   In (TParens t) e s k -> return $ In t e s k
   ------------------------------------------------------------
@@ -819,7 +822,7 @@ stepCESK cesk = case cesk of
   -- evaluate the suspend without waiting for an FExec, since the body
   -- of the import may or may not be something we need to execute
   -- (e.g. "import blah in x + 1" vs "import blah in move; foo")
-  Out (VSuspend t e') s (FImport body e : k) -> return $ In t e' s (FSuspend e' : FImport body e : k)
+  Out (VSuspend t e') s (FImport loc body e : k) -> return $ In t e' s (FSuspend e' : FImport loc body e : k)
   -- This case shouldn't happen: we will always insert a call to
   -- 'suspend' at the end of an import, so we will reach the 'FImport'
   -- frame in a 'Suspended' state, so we can restore the suspended
@@ -860,10 +863,13 @@ stepCESK cesk = case cesk of
           Nothing -> addValueBinding x v e
           Just (ty, reqs) -> addBinding x (WithType v ty reqs) e
     return $ In t2 e' s (FExec : k)
-  -- If we we're suspended after processing an import, resume by
-  -- evaluating the body of the import in an environment extended by
-  -- the suspended environment we got after processing the import.
-  Suspended _ e' s (FImport t e : k) -> return $ In t (e <> e') s k
+  -- If we we're suspended after processing an import, cache the
+  -- resulting suspended environment, then resume by evaluating the
+  -- body of the import in an environment extended by the suspended
+  -- environment we got after processing the import.
+  Suspended _ e' s (FImport loc t e : k) -> do
+    sendIO $ insertCached envCache loc e'
+    return $ In t (e <> e') s k
   -- Otherwise, if we're suspended with nothing else left to do,
   -- return the machine unchanged (but throw away the rest of the
   -- continuation stack).

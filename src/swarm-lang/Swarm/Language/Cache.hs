@@ -3,10 +3,12 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Cache for fully loaded + typechecked modules, for fast importing of
--- modules that have not changed.
+-- Caches for fully loaded + typechecked modules and their resulting
+-- environments, for fast importing + evaluation of modules that have
+-- not changed.
 module Swarm.Language.Cache (
   moduleCache,
+  envCache,
   moduleNeedsLoad,
 )
 where
@@ -21,14 +23,19 @@ import Swarm.Util.InternCache (InternCache)
 import Swarm.Util.InternCache qualified as IC
 import System.Directory (getModificationTime)
 import System.IO.Unsafe (unsafePerformIO)
+import Swarm.Language.Value (Env)
 
 -- | A global cache for fully parsed, typechecked, + elaborated
 --   modules, to avoid reloading the same module from disk repeatedly.
 --   However, note that modules which are no longer referenced from
 --   outside the cache can be garbage collected.
 moduleCache :: InternCache (ImportLoc Import.Resolved) (Module Elaborated)
-moduleCache = unsafePerformIO $ putStrLn "creating cache" >> IC.newInternCache
+moduleCache = unsafePerformIO IC.newInternCache
 {-# NOINLINE moduleCache #-}
+
+envCache :: InternCache (ImportLoc Import.Resolved) Env
+envCache = unsafePerformIO IC.newInternCache
+{-# NOINLINE envCache #-}
 
 -- | Check whether a module needs to be loaded, /i.e./ either it is
 --   not in the cache, or the cache entry is outdated.

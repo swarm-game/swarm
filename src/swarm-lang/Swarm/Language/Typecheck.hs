@@ -46,8 +46,6 @@ module Swarm.Language.Typecheck (
   isSimpleUType,
 ) where
 
-import Debug.Trace
-
 import Control.Arrow ((***))
 import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.State.Strict (StateC, runState)
@@ -66,7 +64,6 @@ import Data.Bifunctor (first, second)
 import Data.Data (gmapM)
 import Data.Foldable (fold, traverse_)
 import Data.Generics (mkM)
-import Data.HashMap.Strict qualified as HM
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe
@@ -94,7 +91,6 @@ import Swarm.Language.TDVar (TDVar)
 import Swarm.Language.Types
 import Swarm.Pretty
 import Prelude hiding (lookup)
-import Data.HashMap.Strict (HashMap)
 
 ------------------------------------------------------------
 -- Typechecking stack
@@ -888,7 +884,7 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 ------------------------------------------------------------
 -- Type inference / checking
 
-type ModuleCache = HashMap (ImportLoc Import.Resolved) (Module Elaborated)
+type ModuleCache = ImportLoc Import.Resolved -> Maybe (Module Elaborated)
 
 -- | Top-level type inference: given a context of variable types +
 --   requirements, type synonyms, a map of recursive imports that need
@@ -1125,33 +1121,29 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- To infer @import m in e@, first make sure we have loaded and
   -- typechecked the import, then infer @e@ in an extended context.
   SImportIn loc t1 -> do
-    -- See whether we have already processed this import, or if it's
-    -- in the global module cache.
-    usrcMap <- get @(SourceMap Inferred)
-    modCache <- ask @ModuleCache
-    (mCtx, mTDCtx) <- case (M.lookup loc usrcMap, HM.lookup loc modCache) of
+    srcMap <- ask @(SourceMap Resolved)  -- modules that need to be typechecked
+    usrcMap <- get @(SourceMap Inferred) -- modules we have already typechecked
+    modCache <- ask @ModuleCache         -- global module cache
+    (mCtx, mTDCtx) <- case (M.lookup loc usrcMap, M.lookup loc srcMap, modCache loc) of
       -- We've processed this module: just use its already-typechecked version
-      (Just umod, _) -> do
-        traceM $ "already processed: " ++ show loc
+      (Just umod, _, _) -> do
         pure (moduleCtx umod)
-      -- It's in the global module cache: just use its cached version
-      (_, Just emod) -> do
-        traceM $ "cache hit: " ++ show loc
+      -- It's in the global module cache but not in the SourceMap
+      -- Reoslved of modules that need to be (re)processed: just use
+      -- the version from the module cache
+      (_, Nothing, Just emod) -> do
         pure (first toU . moduleCtx $ emod)
+      -- If it's not in the global module cache but also not in the
+      -- SourceMap of modules to be processed, that's a bug!  The
+      -- SourceMap was computed by transitively following all imports,
+      -- and should contain anything that wasn't already in the global
+      -- cache.
+      (_, Nothing, _) -> throwTypeErr l $ UnknownImport loc
       -- Otherwise, go typecheck it and add it to the USourceMap before proceeding.
-      _ -> do
-        traceM $ "first typecheck: " ++ show loc
-        srcMap <- ask @(SourceMap Resolved)
-        case M.lookup loc srcMap of
-          -- The lookup should always succeed, since the SourceMap was
-          -- computed by transitively following all imports, and
-          -- should contain anything that wasn't already in the global
-          -- cache.
-          Nothing -> throwTypeErr l $ UnknownImport loc
-          Just smod -> do
-            umod <- withFrame l (TCImport loc) $ inferModule smod
-            modify @(SourceMap Inferred) $ M.insert loc umod
-            pure (moduleCtx umod)
+      (_, Just smod, _) -> do
+        umod <- withFrame l (TCImport loc) $ inferModule smod
+        modify @(SourceMap Inferred) $ M.insert loc umod
+        pure (moduleCtx umod)
 
     -- Now infer t1 with the import's exports added to the context.
     t1' <- withBindings mCtx $ withBindingsTD mTDCtx $ infer t1

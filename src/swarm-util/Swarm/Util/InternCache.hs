@@ -9,25 +9,22 @@ module Swarm.Util.InternCache (
   lookupCached,
   freezeCache,
   insertCached,
-  cachedKeysSet,
+  deleteCached,
 )
 where
-
-import Debug.Trace
 
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Hashable (Hashable)
-import Data.HashSet (HashSet)
 import UnliftIO.STM
 
 -- | An 'InternCache' is a key-value map, parameterized by the monad
 --   in which it operates, the key type, and the value type.
 data InternCache k v = InternCache
   { lookupCached :: k -> IO (Maybe v)
-  , freezeCache :: IO (HashMap k v)
+  , freezeCache :: IO (k -> Maybe v)
   , insertCached :: k -> v -> IO ()
-  , cachedKeysSet :: IO (HashSet k)
+  , deleteCached :: k -> IO ()
   }
 
 -- | Create a new (empty) InternCache.
@@ -42,26 +39,19 @@ newInternCache = do
       { lookupCached = lookupCachedImpl var
       , freezeCache = freezeCacheImpl var
       , insertCached = insertCachedImpl var
-      , cachedKeysSet = cachedKeysSetImpl var
+      , deleteCached = deleteCachedImpl var
       }
  where
-  cachedKeysSetImpl :: TVar (HashMap k v) -> IO (HashSet k)
-  cachedKeysSetImpl var = do
-    cache <- readTVarIO var
-    pure $ HashMap.keysSet cache
-
+  -- XXX switch to stm-containers?
+  -- https://www.parsonsmatt.org/2025/12/17/the_subtle_footgun_of_tvar_(map____).html
   lookupCachedImpl :: TVar (HashMap k v) -> k -> IO (Maybe v)
-  lookupCachedImpl var ch = do
-    cache <- readTVarIO var
-    traceM $ "looking up " ++ show ch
-    case HashMap.lookup ch cache of
-      Nothing -> pure Nothing
-      Just v -> traceM "hit!" >> pure (Just v)
+  lookupCachedImpl var k = HashMap.lookup k <$> readTVarIO var
 
-  freezeCacheImpl :: TVar (HashMap k v) -> IO (HashMap k v)
-  freezeCacheImpl = readTVarIO
+  freezeCacheImpl :: TVar (HashMap k v) -> IO (k -> Maybe v)
+  freezeCacheImpl var = flip HashMap.lookup <$> readTVarIO var
 
   insertCachedImpl :: TVar (HashMap k v) -> k -> v -> IO ()
-  insertCachedImpl var k v = do
-    traceM $ "inserting " ++ show k
-    atomically $ modifyTVar' var (HashMap.insert k v)
+  insertCachedImpl var k v = atomically $ modifyTVar' var (HashMap.insert k v)
+
+  deleteCachedImpl :: TVar (HashMap k v) -> k -> IO ()
+  deleteCachedImpl var k = atomically $ modifyTVar' var (HashMap.delete k)

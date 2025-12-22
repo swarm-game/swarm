@@ -24,8 +24,6 @@ module Swarm.Language.Pipeline (
   processSyntax,
 ) where
 
-import Debug.Trace
-
 import Control.Algebra (Has)
 import Control.Carrier.Lift (sendIO)
 import Control.Effect.Error (Error, throwError)
@@ -34,7 +32,6 @@ import Control.Effect.Throw (Throw, liftEither)
 import Control.Lens ((^.))
 import Control.Monad ((<=<))
 import Data.Functor (void)
-import Data.HashMap.Strict qualified as HM
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
@@ -51,7 +48,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Value (Env, emptyEnv, envReqs, envTydefs, envTypes)
 import Swarm.Util.Effect (withError, withThrow)
-import Swarm.Util.InternCache (InternCache (insertCached, freezeCache))
+import Swarm.Util.InternCache (deleteCached, insertCached, freezeCache)
 
 -- | Given raw 'Text' representing swarm-lang source code:
 --
@@ -108,7 +105,6 @@ processTerm prov txt menv tm = do
   (srcMapRes, (imps, tmRes)) <- resolve prov tm
 
   modCache <- sendIO $ freezeCache moduleCache
-  traceM $ "Freezing global module cache with keys " ++ show (HM.keysSet modCache)
 
   -- Typecheck term + collected imports
   (srcMapTy, tmTy) <-
@@ -125,8 +121,11 @@ processTerm prov txt menv tm = do
   let tmElab = elaborate tmTy
       srcMapElab = fmap elaborateModule srcMapTy
 
-  -- Insert all newly checked + elaborated modules into the module cache
-  void . sendIO $ M.traverseWithKey (insertCached moduleCache) srcMapElab
+  -- Insert all newly checked + elaborated modules into the module
+  -- cache, and delete them from the environment cache in case they
+  -- are replacing a previously cached + evaluated version
+  let newModule loc m = insertCached moduleCache loc m >> deleteCached envCache loc
+  void . sendIO $ M.traverseWithKey newModule srcMapElab
 
   -- Get current time, to mark elaborated module with timestamp.
   -- Probably not really important, since this module (not being
@@ -168,7 +167,7 @@ processTermNoImports txt tm menv = do
         (e ^. envReqs)
         (e ^. envTydefs)
         M.empty
-        HM.empty
+        (const Nothing)
         tmRes
   pure $ Module (Just $ elaborate tmTy) (mempty, mempty) S.empty Nothing NoProvenance
 

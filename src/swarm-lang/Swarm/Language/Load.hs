@@ -20,7 +20,6 @@ import Control.Effect.Throw (Throw, throwError)
 import Control.Lens ((?~))
 import Control.Monad (forM_, when)
 import Data.Function ((&))
-import Data.HashSet qualified as HS
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
@@ -101,12 +100,10 @@ checkImportCycles ::
   SourceMap Resolved ->
   m ()
 checkImportCycles srcMap = do
-  -- Get all import locations in the module cache
-  cachedLocs <- HS.toList <$> sendIO (IC.cachedKeysSet moduleCache)
-  -- Combine with import locations that were just loaded
-  let vs = S.toList $ M.keysSet srcMap `S.union` S.fromList cachedLocs
-  -- Find cycles in the combined graph
-  mcyc <- findCycleImplicit vs neighbors
+  -- Find cycles in the module graph, starting from any newly loaded
+  -- modules.  If any cycles were created by the newly loaded modules
+  -- then we will be able to find them by searching from there.
+  mcyc <- findCycleImplicit (M.keys srcMap) neighbors
 
   -- Finally, throw an error if a cycle was found
   forM_ mcyc $ \importCycle ->
@@ -161,6 +158,7 @@ resolveImport parent loc = do
   -- not in the cache, or the version on disk is newer than the
   -- version in the cache).
   needsLoad <- moduleNeedsLoad canonicalLoc
+
   -- If it does, import it and stick it in the ambient SourceMap
   when needsLoad $ importModule canonicalLoc
   pure canonicalLoc
