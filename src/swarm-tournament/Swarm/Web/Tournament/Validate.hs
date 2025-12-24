@@ -7,7 +7,7 @@
 module Swarm.Web.Tournament.Validate where
 
 import Control.Arrow (left)
-import Control.Carrier.Accum.ActuallyStrict (evalAccum)
+import Control.Carrier.Accum.Strict (evalAccum)
 import Control.Carrier.Error.Either (runError)
 import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens

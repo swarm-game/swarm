@@ -200,7 +200,7 @@ common free
   build-depends: free >=5.2 && <5.3
 
 common fused-effects
-  build-depends: fused-effects >=1.1.2.5 && <1.2
+  build-depends: fused-effects >=1.1.2.6 && <1.2
 
 common fused-effects-lens
   build-depends: fused-effects-lens >=1.2.0.1 && <1.3
@@ -956,7 +956,6 @@ library swarm-util
   visibility: public
   -- cabal-gild: discover src/swarm-util
   exposed-modules:
-    Control.Carrier.Accum.ActuallyStrict
     Data.BoolExpr.Simplify
     Swarm.Effect
     Swarm.Effect.Metric
