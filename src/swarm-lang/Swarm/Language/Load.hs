@@ -39,8 +39,8 @@ import Swarm.Language.Syntax.Import hiding (ImportPhase (..))
 import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Pretty (prettyText)
 import Swarm.Util (Encoding (SystemLocale), getModificationTimeMay, readFileMayT, showT)
-import Swarm.Util.Graph (findCycleImplicit)
 import Swarm.Util.GlobalCache qualified as GC
+import Swarm.Util.Graph (findCycleImplicit)
 import Witch (into)
 
 -- | A SourceMap associates canonical 'ImportLocation's to modules.
@@ -81,12 +81,6 @@ resolve' ::
 resolve' = traverseSyntax pure (throwError . DisallowedImport)
 
 type ResLoc = ImportLoc Import.Resolved
-
--- -- | Convert a 'SourceMap' into a suitable form for 'findCycle'.
--- toImportGraph :: SourceMap Resolved -> [(ResLoc, [ResLoc])]
--- toImportGraph = map processNode . M.assocs
---  where
---   processNode (imp, m) = (imp, S.toList (moduleImports m))
 
 -- | Given a 'SourceMap' containing newly loaded + resolved modules,
 --   ensure that the resulting import graph contains no import cycles.

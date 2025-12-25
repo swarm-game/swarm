@@ -54,8 +54,7 @@ moduleNeedsLoad loc = do
 --   modules loaded from URLs to change much less frequently than
 --   those loaded from local files.  If you want to pick up a change
 --   to a module imported from a URL, you can restart the entire app
---   to clear the cache.  (Quitting the scenario and restarting may
---   work as well, as long as the cache entry gets GC'd.)
+--   to clear the cache.
 isOutdated :: (Has (Lift IO) sig m) => ImportLoc Import.Resolved -> Module phase -> m Bool
 isOutdated cloc (moduleTimestamp -> mt) = case locToPath cloc of
   -- URLs are never outdated

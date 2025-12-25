@@ -62,7 +62,7 @@ import Swarm.Util.GlobalCache (deleteCached, freezeCache, insertCached)
 --
 --   Also inserts all elaborated, imported modules into the module
 --   cache, so they do not have to be reloaded + rechecked the next
---   time they are used
+--   time they are used.
 processSource ::
   (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
   -- | Provenance of the source code was obtained, relative to
