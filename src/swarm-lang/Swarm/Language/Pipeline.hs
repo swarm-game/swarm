@@ -65,9 +65,9 @@ import Swarm.Util.GlobalCache (deleteCached, freezeCache, insertCached)
 --   time they are used.
 processSource ::
   (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
-  -- | Provenance of the source code was obtained, relative to
-  --   which imports should be interpreted.  If Nothing, use
-  --   the current working directory.
+  -- | File path where the source code was obtained, relative to which
+  --   imports should be interpreted.  If Nothing, use the current
+  --   working directory.
   Maybe FilePath ->
   -- | Possible Env to use while typechecking.  If Nothing, use a
   --   default empty Env.
@@ -85,9 +85,9 @@ processSource prov menv txt = do
 processTerm ::
   forall sig m.
   (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
-  -- | Provenance of the source code was obtained, relative to
-  --   which imports should be interpreted.  If Nothing, use
-  --   the current working directory.
+  -- | File path where the source code was obtained, relative to which
+  --   imports should be interpreted.  If Nothing, use the current
+  --   working directory.
   Maybe FilePath ->
   -- | Text of the source code, used to generate error messages
   Text ->

@@ -18,8 +18,8 @@ import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Hashable (Hashable)
 
--- | An 'GlobalCache' is a key-value map, parameterized by the monad
---   in which it operates, the key type, and the value type.
+-- | An 'GlobalCache' is a key-value map, intended to be used as a
+--   global, mutable cache.
 data GlobalCache k v = GlobalCache
   { lookupCached :: k -> IO (Maybe v)
   , freezeCache :: IO (k -> Maybe v)

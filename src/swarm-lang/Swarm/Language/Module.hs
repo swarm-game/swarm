@@ -32,15 +32,30 @@ type family ModuleCtx (phase :: Phase) where
   ModuleCtx Instantiated = (TCtx, TDCtx)
 
 -- | With a newly parsed, raw module we don't know any import
---   information.  After that, we cache the set imports for a module
---   to enable easy import cycle checks.
+--   information.  After that, we cache the set of imports for a
+--   module to enable easy import cycle checks.
 type family ModuleImports (phase :: Phase) where
   ModuleImports Raw = ()
   ModuleImports _ = Set (ImportLoc Import.Resolved)
 
+-- | Where did a module come from?  This can be used in printing
+--   better error messages, and is also used to determine how to
+--   interpret relative imports.  For example, if module A imports
+--   "../B.sw" then we look at A's provenance and go up one directory
+--   from there to look for B.
 data ModuleProvenance where
+  -- | The module was loaded directly from a particular file path.
+  --   This will be the case e.g. for a .sw file specified on the
+  --   command line, or for code loaded from a world description .yaml
+  --   file.
   FromFile :: FilePath -> ModuleProvenance
+  -- | The module was loaded as the result of an import directive; we
+  --   record its fully resolved and canonicalized location.
   FromImport :: ImportLoc Import.Resolved -> ModuleProvenance
+  -- | We have no provenance information for the module.  This is
+  --   typically because it is code that was entered at the REPL, but
+  --   could also be because e.g. it was parsed from code embedded in
+  --   Markdown, or because it is a placeholder of some sort.
   NoProvenance :: ModuleProvenance
   deriving (Show, Eq, Data, Generic, Hashable, ToJSON)
 
