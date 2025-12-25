@@ -888,12 +888,19 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 ------------------------------------------------------------
 -- Type inference / checking
 
+-- | We carefully avoid using IO while typechecking, in order to be
+--   able to use typechecking even while e.g. processing Markdown
+--   syntax and in other contexts when we don't want to do IO.
+--   However, accessing the global module cache requires IO.
+--   Therefore, we pass a snapshot of the global cache to typechecking
+--   as a parameter.
 type ModuleCache = ImportLoc Import.Resolved -> Maybe (Module Elaborated)
 
 -- | Top-level type inference: given a context of variable types +
 --   requirements, type synonyms, a map of recursive imports that need
---   to be typechecked, and a term, return fully type-annotated
---   versions of the recursive imports and the term itself.
+--   to be typechecked, a snapshot of the global module cache, and a
+--   term, return fully type-annotated versions of the recursive
+--   imports and the term itself.
 inferTop ::
   Has (Error ContextualTypeErr) sig m =>
   TCtx ->
