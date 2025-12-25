@@ -4,7 +4,9 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- A module is an AST along with
+-- A module is an AST along with various associated metadata, such as
+-- a context, set of imports, timestamp, and where the module was
+-- loaded from.
 module Swarm.Language.Module where
 
 import Data.Aeson (ToJSON)
