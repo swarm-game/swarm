@@ -442,6 +442,7 @@ library swarm-lang
     parser-combinators,
     prettyprinter,
     split,
+    strict,
     syb,
     template-haskell,
     terminal-size,

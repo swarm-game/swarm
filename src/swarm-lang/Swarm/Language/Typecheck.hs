@@ -69,6 +69,7 @@ import Data.Map qualified as M
 import Data.Maybe
 import Data.Set (Set, (\\))
 import Data.Set qualified as S
+import Data.Strict.Tuple (Pair (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Prettyprinter
@@ -217,10 +218,10 @@ fromInferredModule ::
   ) =>
   Module Inferred ->
   m (Module Typed)
-fromInferredModule (Module t (ctx, tdCtx) imps time prov) =
+fromInferredModule (Module t (ctx :!: tdCtx) imps time prov) =
   Module
     <$> traverse fromInferredSyntax t
-    <*> ((,tdCtx) <$> traverse (checkPredicative . fromU) ctx)
+    <*> ((:!: tdCtx) <$> traverse (checkPredicative . fromU) ctx)
     <*> pure imps
     <*> pure time
     <*> pure prov
@@ -408,6 +409,9 @@ class HasBindings u where
 
 instance (HasBindings u, HasBindings v) => HasBindings (u, v) where
   applyBindings (u, v) = (,) <$> applyBindings u <*> applyBindings v
+
+instance (HasBindings u, HasBindings v) => HasBindings (Pair u v) where
+  applyBindings (u :!: v) = (:!:) <$> applyBindings u <*> applyBindings v
 
 instance HasBindings u => HasBindings (Map k u) where
   applyBindings = traverse applyBindings
@@ -1124,7 +1128,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     srcMap <- ask @(SourceMap Resolved) -- modules that need to be typechecked
     usrcMap <- get @(SourceMap Inferred) -- modules we have already typechecked
     modCache <- ask @ModuleCache -- global module cache
-    (mCtx, mTDCtx) <- case (M.lookup loc usrcMap, M.lookup loc srcMap, modCache loc) of
+    (mCtx :!: mTDCtx) <- case (M.lookup loc usrcMap, M.lookup loc srcMap, modCache loc) of
       -- We've processed this module: just use its already-typechecked version
       (Just umod, _, _) -> do
         pure (moduleCtx umod)
@@ -1160,14 +1164,14 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
 collectDefs ::
   (Has Unification sig m, Has (Reader UCtx) sig m) =>
   Syntax Inferred ->
-  m (UCtx, TDCtx)
+  m (Pair UCtx TDCtx)
 collectDefs (Syntax _ (SLet LSDef _ x _ _ _ body t) _ _) = do
   ty' <- generalize (body ^. sType)
   first (Ctx.singleton (locVal x) ty' <>) <$> collectDefs t
 collectDefs (Syntax _ (SImportIn _ t) _ _) = collectDefs t
 collectDefs (Syntax _ (STydef x _ (Just tdInfo) t) _ _) =
   second (addBindingTD (locVal x) tdInfo) <$> collectDefs t
-collectDefs _ = pure (Ctx.empty, emptyTDCtx)
+collectDefs _ = pure (Ctx.empty :!: emptyTDCtx)
 
 -- | Infer the type of a module, i.e. import, by (1) typechecking and
 --   annotating the term itself, and (2) collecting up the types of
@@ -1191,7 +1195,7 @@ inferModule (Module ms _ imps time prov) = do
 
   -- Now, if the term has top-level definitions, collect up their
   -- types and put them in the context.
-  ctx <- maybe (pure (Ctx.empty, emptyTDCtx)) collectDefs mt
+  ctx <- maybe (pure (Ctx.empty :!: emptyTDCtx)) collectDefs mt
   pure $ Module mt ctx imps time prov
 
 -- | Infer the type of a constant.

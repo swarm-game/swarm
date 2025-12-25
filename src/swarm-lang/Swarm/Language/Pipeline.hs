@@ -169,7 +169,7 @@ processTermNoImports txt tm menv = do
         M.empty
         (const Nothing)
         tmRes
-  pure $ Module (Just $ elaborate tmTy) (mempty, mempty) S.empty Nothing NoProvenance
+  pure $ Module (Just $ elaborate tmTy) mempty S.empty Nothing NoProvenance
 
 ------------------------------------------------------------
 -- Utility adapters for processTerm

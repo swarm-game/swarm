@@ -14,6 +14,7 @@ import Data.Data (Data, Typeable)
 import Data.Hashable (Hashable)
 import Data.Set (Set)
 import Data.Set qualified as S
+import Data.Strict.Tuple
 import Data.Time.Clock (UTCTime)
 import GHC.Generics (Generic)
 import Swarm.Language.Syntax
@@ -21,15 +22,27 @@ import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Language.Syntax.Util (Erasable (..))
 import Swarm.Language.Types (TCtx, TDCtx, UCtx)
 
--- | The context for a module, containing names and types of things
---   defined in the module (once typechecking has run).
+-- | The context for a module, which allows us to quickly answer the
+--   question: if we import this module, what things are brought into
+--   scope?  In particular:
+--
+--   - Before the module is typechecked (i.e. in either the Raw or
+--     Resolved phase) we do not yet have this information.
+--
+--   - During the Inferred phase, we have a 'UCtx' containing inferred
+--     types for any variables defined with @def@, and a 'TDCtx'
+--     containing the definitions of any type aliases defined with
+--     @tydef@.
+--
+--   - During all subsequent phases, the 'UCtx' becomes a 'TCtx'
+--     containing fully generalized/quantified types.
 type family ModuleCtx (phase :: Phase) where
   ModuleCtx Raw = ()
   ModuleCtx Resolved = ()
-  ModuleCtx Inferred = (UCtx, TDCtx)
-  ModuleCtx Typed = (TCtx, TDCtx)
-  ModuleCtx Elaborated = (TCtx, TDCtx)
-  ModuleCtx Instantiated = (TCtx, TDCtx)
+  ModuleCtx Inferred = Pair UCtx TDCtx
+  ModuleCtx Typed = Pair TCtx TDCtx
+  ModuleCtx Elaborated = Pair TCtx TDCtx
+  ModuleCtx Instantiated = Pair TCtx TDCtx
 
 -- | With a newly parsed, raw module we don't know any import
 --   information.  After that, we cache the set of imports for a
@@ -66,7 +79,9 @@ data Module phase = Module
   { moduleTerm :: Maybe (Syntax phase)
   -- ^ The contents of the module.
   , moduleCtx :: ModuleCtx phase
-  -- ^ The context of names defined in this module and their types.
+  -- ^ The context of names defined in this module: variables defined
+  --   via @def@ with their types, and type aliases defined via @tydef@
+  --   with their definitions.
   , moduleImports :: ModuleImports phase
   -- ^ The moduleImports are mostly for convenience, e.g. for checking modules for cycles.
   , moduleTimestamp :: Maybe UTCTime
