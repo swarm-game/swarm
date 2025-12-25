@@ -40,7 +40,7 @@ import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Pretty (prettyText)
 import Swarm.Util (Encoding (SystemLocale), getModificationTimeMay, readFileMayT, showT)
 import Swarm.Util.Graph (findCycleImplicit)
-import Swarm.Util.InternCache qualified as IC
+import Swarm.Util.GlobalCache qualified as GC
 import Witch (into)
 
 -- | A SourceMap associates canonical 'ImportLocation's to modules.
@@ -112,7 +112,7 @@ checkImportCycles srcMap = do
   neighbors loc = case M.lookup loc srcMap of
     Just m -> pure . S.toList $ moduleImports m
     Nothing -> do
-      mm <- sendIO $ IC.lookupCached moduleCache loc
+      mm <- sendIO $ GC.lookupCached moduleCache loc
       pure $ maybe [] (S.toList . moduleImports) mm
 
 -- | Given a parent directory relative to which any local imports

@@ -20,8 +20,8 @@ import Swarm.Language.Syntax (Phase (Elaborated))
 import Swarm.Language.Syntax.Import hiding (ImportPhase (..))
 import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Language.Value (Env)
-import Swarm.Util.InternCache (InternCache)
-import Swarm.Util.InternCache qualified as IC
+import Swarm.Util.GlobalCache (GlobalCache)
+import Swarm.Util.GlobalCache qualified as GC
 import System.Directory (getModificationTime)
 import System.IO.Unsafe (unsafePerformIO)
 
@@ -29,19 +29,19 @@ import System.IO.Unsafe (unsafePerformIO)
 --   modules, to avoid reloading the same module from disk repeatedly.
 --   However, note that modules which are no longer referenced from
 --   outside the cache can be garbage collected.
-moduleCache :: InternCache (ImportLoc Import.Resolved) (Module Elaborated)
-moduleCache = unsafePerformIO IC.newInternCache
+moduleCache :: GlobalCache (ImportLoc Import.Resolved) (Module Elaborated)
+moduleCache = unsafePerformIO GC.newGlobalCache
 {-# NOINLINE moduleCache #-}
 
-envCache :: InternCache (ImportLoc Import.Resolved) Env
-envCache = unsafePerformIO IC.newInternCache
+envCache :: GlobalCache (ImportLoc Import.Resolved) Env
+envCache = unsafePerformIO GC.newGlobalCache
 {-# NOINLINE envCache #-}
 
 -- | Check whether a module needs to be loaded, /i.e./ either it is
 --   not in the cache, or the cache entry is outdated.
 moduleNeedsLoad :: (Has (Lift IO) sig m) => ImportLoc Import.Resolved -> m Bool
 moduleNeedsLoad loc = do
-  cached <- sendIO $ IC.lookupCached moduleCache loc
+  cached <- sendIO $ GC.lookupCached moduleCache loc
   maybe (pure True) (isOutdated loc) cached
 
 -- | Check whether a module is outdated and needs to be reloaded +

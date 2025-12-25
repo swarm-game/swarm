@@ -970,9 +970,9 @@ library swarm-util
     Swarm.Util
     Swarm.Util.Effect
     Swarm.Util.Erasable
+    Swarm.Util.GlobalCache
     Swarm.Util.Graph
     Swarm.Util.InputSource
-    Swarm.Util.InternCache
     Swarm.Util.JSON
     Swarm.Util.Lens
     Swarm.Util.OccurrenceEncoder

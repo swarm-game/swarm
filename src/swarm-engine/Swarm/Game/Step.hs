@@ -89,7 +89,7 @@ import Swarm.Language.WithType (WithType (..))
 import Swarm.Log
 import Swarm.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Util hiding (both)
-import Swarm.Util.InternCache (insertCached, lookupCached)
+import Swarm.Util.GlobalCache (insertCached, lookupCached)
 import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec)
 import Witch (From (from), into)
