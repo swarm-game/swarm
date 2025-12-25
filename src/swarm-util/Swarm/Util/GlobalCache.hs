@@ -13,12 +13,10 @@ module Swarm.Util.GlobalCache (
 )
 where
 
+import Control.Concurrent.STM
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Hashable (Hashable)
-
--- XXX should change this to Control.Concurrent.STM, don't need lifted version any more
-import UnliftIO.STM
 
 -- | An 'GlobalCache' is a key-value map, parameterized by the monad
 --   in which it operates, the key type, and the value type.

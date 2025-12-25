@@ -328,6 +328,9 @@ common sqlite-simple
 common split
   build-depends: split >=0.2.3 && <0.3
 
+common stm
+  build-depends: stm >=2.5 && <2.6
+
 common strict
   build-depends: strict >=0.5 && <0.6
 
@@ -375,9 +378,6 @@ common transformers
 
 common unicode-show
   build-depends: unicode-show >=0.1 && <0.2
-
-common unliftio
-  build-depends: unliftio >=0.2 && <0.3
 
 common unordered-containers
   build-depends: unordered-containers >=0.2.14 && <0.3
@@ -942,11 +942,11 @@ library swarm-util
     mtl,
     prettyprinter,
     servant-docs,
+    stm,
     template-haskell,
     text,
     time,
     transformers,
-    unliftio,
     unordered-containers,
     vector,
     witch,
