@@ -8,7 +8,12 @@
 --
 -- Loading Swarm modules from disk or network, recursively loading
 -- any imports.
-module Swarm.Language.Load where
+module Swarm.Language.Load (
+  resolve,
+  resolve',
+  SourceMap,
+)
+where
 
 import Control.Algebra (Has)
 import Control.Carrier.Accum.Strict (runAccum)
@@ -43,13 +48,50 @@ import Swarm.Util.GlobalCache qualified as GC
 import Swarm.Util.Graph (findCycleImplicit)
 import Witch (into)
 
+-- ~~~~ Note [Module loading]
+--
+-- Loading modules is a bit tricky, since we have to deal with:
+--   - Resolving imports, especially relative imports, to a specific location
+--   - Loading imported modules from disk/network
+--   - Transitively loading imports, imports of imports, etc.
+--   - Checking for import cycles (+ not getting stuck in infinite recursion if so)
+--   - Making sure we don't reload the same module more than once
+--
+-- The goal is to read things in from disk and end up with a
+-- consistent set of modules, where every loaded module's imports have
+-- also been loaded, all modules are keyed by a fully resolved and
+-- canonicalized import location, and every import directive contained
+-- in source has also been resolved and canonicalized.  Note that
+-- typechecking and elaboration are done as separate phases
+-- after loading + resolution completes.
+--
+-- The top-level function is 'resolve', which calls 'resolveImports'
+-- and then 'checkImportCycles'.
+--
+-- 'resolveImports', 'resolveImport', and 'importModule' are mutually
+-- recursive and do the bulk of the work.  'resolveImports' traverses
+-- an AST and calls 'resolveImport' on each import it contains.
+-- 'resolveImport' processes a single import; it first checks whether
+-- the import has already been loaded, and if not, it calls
+-- 'importModule', which actually loads the module (via 'readLoc'),
+-- calls 'resolveImports' on it, and ensures (via 'validateImport')
+-- that it contains only @def@s.
+
 -- | A SourceMap associates canonical 'ImportLocation's to modules.
 type SourceMap phase = Map (ImportLoc (ImportPhaseFor phase)) (Module phase)
 
 -- | Recursively load and resolve all the imports contained in raw
 --   syntax, returning the same syntax with resolved/canonicalized
---   imports, along with a SourceMap containing any recursively loaded
---   imports which were not in the cache.
+--   imports, along with the set of imports found in the top-level
+--   syntax, and a SourceMap containing any recursively loaded imports
+--   which were not in the cache.
+--
+--   Requires IO in order to load imported modules from disk or
+--   network (see also 'resolve'').  Can throw a 'SystemFailure' if
+--   e.g. an import is not found; if an import cycle is detected; if
+--   an import contains any commands other than @def@; etc.
+--
+--   See Note [Module loading] for an overview.
 resolve ::
   (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) =>
   -- | Provenance of the source, and location relative to which
@@ -74,21 +116,20 @@ resolve prov s = do
 
   pure (resMap, (impSet, s'))
 
--- | Resolve a term without requiring any I/O, throwing an error if
---   any 'import' statements are encountered.
+-- | Like 'resolve', but without requiring any I/O, throwing an error
+--   if any 'import' statements are encountered.
 resolve' ::
   (Has (Throw SystemFailure) sig m) => Syntax Raw -> m (Syntax Resolved)
 resolve' = traverseSyntax pure (throwError . DisallowedImport)
 
-type ResLoc = ImportLoc Import.Resolved
-
 -- | Given a 'SourceMap' containing newly loaded + resolved modules,
 --   ensure that the resulting import graph contains no import cycles.
 --   In particular, we look for cycles in the graph that results from
---   the union of the resMap and the global module cache---biased to
---   the resMap when there is overlap, since in that case we have just
---   reloaded a module which is going to replace the one in the module
---   cache once we finish typechecking + elaborating it.
+--   the union of the given 'SourceMap' and the global module
+--   cache---biased to the 'SourceMap' when there is overlap, since in
+--   that case we have just reloaded a module which is going to
+--   replace the one in the module cache once we finish typechecking +
+--   elaborating it.
 checkImportCycles ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   SourceMap Resolved ->
@@ -111,10 +152,13 @@ checkImportCycles srcMap = do
 
 -- | Given a parent directory relative to which any local imports
 --   should be interpreted, traverse some raw syntax, recursively
---   resolving and loading any imports it contains.  Returns the set
---   of canonicalized imports this term contains, along with a version
---   of the syntax where all imports have been resolved to their
---   canonicalized locations.
+--   resolving and loading any module imports it contains, adding any
+--   newly loaded modules to the 'SourceMap' in the 'State' effect.
+--   Returns the set of canonicalized imports this term contains,
+--   along with a version of the syntax where all imports have been
+--   resolved to their canonicalized locations.
+--
+--   See Note [Module loading] for an overview.
 resolveImports ::
   ( Has (Throw SystemFailure) sig m
   , Has (State (SourceMap Resolved)) sig m
@@ -128,7 +172,10 @@ resolveImports parent = runAccum S.empty . traverseSyntax pure (resolveImport pa
 -- | Given a parent directory relative to which any local imports
 --   should be interpreted, load an import and all its imports,
 --   transitively.  Also return a canonicalized version of the import
---   location.
+--   location, and add it to the ambient @Accum@ effect which is
+--   keeping track of all imports seen in a given module.
+--
+--   See Note [Module loading] for an overview.
 resolveImport ::
   forall sig m.
   ( Has (Throw SystemFailure) sig m
@@ -143,9 +190,9 @@ resolveImport parent loc = do
   -- Compute the canonicalized location for the import, and record it
   canonicalLoc <- resolveImportLoc (unresolveImportDir parent <//> loc)
 
-  -- Note, the purpose of this set is not to track which imports have
-  -- been loaded yet; rather, the purpose is simply to record the
-  -- complete set of imports for a given module.
+  -- Accumulate the resolved import location; this is used in
+  -- 'resolveImports' to collect the set of all imports of a given
+  -- module.
   add $ S.singleton canonicalLoc
 
   -- Check whether the module needs to be loaded (either because it is
@@ -153,17 +200,18 @@ resolveImport parent loc = do
   -- version in the cache).
   needsLoad <- moduleNeedsLoad canonicalLoc
 
-  -- If it does, import it and stick it in the ambient SourceMap
+  -- If it does, import it and stick it in the ambient SourceMap.
   when needsLoad $ importModule canonicalLoc
   pure canonicalLoc
 
 -- | Load a module from a specific import location, i.e. from disk or
 --   over the network, as well as recursively loading any modules it
 --   transitively imports.
+--
+--   See Note [Module loading] for an overview.
 importModule ::
   ( Has (Throw SystemFailure) sig m
   , Has (State (SourceMap Resolved)) sig m
-  , Has (Accum (Set (ImportLoc Import.Resolved))) sig m
   , Has (Lift IO) sig m
   ) =>
   ImportLoc Import.Resolved ->
@@ -177,8 +225,13 @@ importModule canonicalLoc =
   M.lookup canonicalLoc <$> get @(SourceMap Resolved) >>= \case
     Just _ -> pure ()
     Nothing -> do
-      -- Record this import loc in the source map using a temporary, empty module,
-      -- to prevent it from attempting to load itself recursively
+      -- Record this import location in the ambient @SourceMap@ using
+      -- a temporary, empty module, just so that we won't get stuck in
+      -- an infinite loop if it imports itself transitively (since
+      -- upon encountering the same import again, it will already
+      -- exist in the map and we will skip processing it).  Once we
+      -- are finished fully resolving this module, we will replace the
+      -- empty placeholder with the real thing.
       modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module Nothing () mempty Nothing NoProvenance)
 
       -- Read it from network/disk
@@ -195,15 +248,20 @@ importModule canonicalLoc =
       -- Make sure imports are pure, i.e. contain ONLY defs + imports.
       validateImport canonicalLoc m
 
-      -- Add the module to the SourceMap.
+      -- Finally, add the resolved module to the SourceMap.
       modify @(SourceMap Resolved) (M.insert canonicalLoc m)
 
 -- | Validate the source code of the import to ensure that it contains
---   *only* imports and definitions.  This is so we do not have to worry
+--   /only/ imports and definitions.  This is so we do not have to worry
 --   about side-effects happening every time a module is imported.  In
 --   other words, imports must be pure so we can get away with only
 --   evaluating them once.
-validateImport :: forall sig m. (Has (Throw SystemFailure) sig m) => ResLoc -> Module Resolved -> m ()
+validateImport ::
+  forall sig m.
+  (Has (Throw SystemFailure) sig m) =>
+  ImportLoc Import.Resolved ->
+  Module Resolved ->
+  m ()
 validateImport loc = maybe (pure ()) validate . moduleTerm
  where
   validate :: Syntax Resolved -> m ()
