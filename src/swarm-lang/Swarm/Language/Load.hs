@@ -17,7 +17,7 @@ where
 
 import Control.Algebra (Has)
 import Control.Carrier.Accum.Strict (runAccum)
-import Control.Carrier.State.Strict (runState)
+import Control.Carrier.State.Strict (evalState, runState)
 import Control.Effect.Accum (Accum, add)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.State (State, get, modify)
@@ -25,8 +25,8 @@ import Control.Effect.Throw (Throw, throwError)
 import Control.Lens ((?~))
 import Control.Monad (forM_, when)
 import Data.Function ((&))
-import Data.Map (Map)
-import Data.Map qualified as M
+import Data.Map.Ordered (OMap)
+import Data.Map.Ordered qualified as OM
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
@@ -78,7 +78,14 @@ import Witch (into)
 -- that it contains only @def@s.
 
 -- | A SourceMap associates canonical 'ImportLocation's to modules.
-type SourceMap phase = Map (ImportLoc (ImportPhaseFor phase)) (Module phase)
+--   It is an /ordered/ map, and has as an invariant that the modules
+--   are topologically ordered, i.e. if B imports A, then A comes
+--   before B in order.  This ensures that if we process modules in
+--   order, by the time we process a module we have already processed
+--   any modules it imports.
+type SourceMap phase = OMap (ImportLoc (ImportPhaseFor phase)) (Module phase)
+
+type ResLoc = ImportLoc Import.Resolved
 
 -- | Recursively load and resolve all the imports contained in raw
 --   syntax, returning the same syntax with resolved/canonicalized
@@ -100,7 +107,7 @@ resolve ::
   Maybe FilePath ->
   -- | Raw syntax to be resolved.
   Syntax Raw ->
-  m (SourceMap Resolved, (Set (ImportLoc Import.Resolved), Syntax Resolved))
+  m (SourceMap Resolved, (Set ResLoc, Syntax Resolved))
 resolve prov s = do
   cur <- sendIO . resolveImportDir $
     case prov of
@@ -109,7 +116,7 @@ resolve prov s = do
         Left _ -> currentDir
         Right (loc, _) -> importDir loc
 
-  (resMap, (impSet, s')) <- runState mempty . resolveImports cur $ s
+  (resMap, (impSet, s')) <- evalState @(Set ResLoc) S.empty . runState @(SourceMap Resolved) OM.empty . resolveImports cur $ s
 
   -- Check for cycles in the resulting import graph
   checkImportCycles resMap
@@ -138,13 +145,13 @@ checkImportCycles srcMap = do
   -- Find cycles in the module graph, starting from any newly loaded
   -- modules.  If any cycles were created by the newly loaded modules
   -- then we will be able to find them by searching from there.
-  mcyc <- findCycleImplicit (M.keys srcMap) neighbors
+  mcyc <- findCycleImplicit (map fst $ OM.assocs srcMap) neighbors
 
   -- Finally, throw an error if a cycle was found
   forM_ mcyc $ \importCycle ->
     throwError $ ImportCycle (map locToFilePath importCycle)
  where
-  neighbors loc = case M.lookup loc srcMap of
+  neighbors loc = case OM.lookup loc srcMap of
     Just m -> pure . S.toList $ moduleImports m
     Nothing -> do
       mm <- sendIO $ GC.lookupCached moduleCache loc
@@ -158,15 +165,24 @@ checkImportCycles srcMap = do
 --   along with a version of the syntax where all imports have been
 --   resolved to their canonicalized locations.
 --
+--   The State (Set ImportLoc) effect is just for keeping track of
+--   modules we have already seen, to avoid infinite recursion in the
+--   case of an import cycle.  We cannot reuse the SourceMap for this
+--   purpose, because we have to wait to add modules to the SourceMap
+--   /after/ they (and all their imports, recursively) are done being
+--   processed, to end up with the modules properly topologically
+--   sorted.
+--
 --   See Note [Module loading] for an overview.
 resolveImports ::
   ( Has (Throw SystemFailure) sig m
   , Has (State (SourceMap Resolved)) sig m
+  , Has (State (Set ResLoc)) sig m
   , Has (Lift IO) sig m
   ) =>
   ImportDir Import.Resolved ->
   Syntax Raw ->
-  m (Set (ImportLoc Import.Resolved), Syntax Resolved)
+  m (Set ResLoc, Syntax Resolved)
 resolveImports parent = runAccum S.empty . traverseSyntax pure (resolveImport parent)
 
 -- | Given a parent directory relative to which any local imports
@@ -175,17 +191,24 @@ resolveImports parent = runAccum S.empty . traverseSyntax pure (resolveImport pa
 --   location, and add it to the ambient @Accum@ effect which is
 --   keeping track of all imports seen in a given module.
 --
+--   Note the difference between the (State (Set ImportLoc)) and
+--   (Accum (Set ImportLoc)) effects: the former is to globally keep
+--   track of all modules seen so far, to avoid getting stuck in an
+--   import cycle; the latter is to locally accumulate the set of
+--   imports for each module.
+--
 --   See Note [Module loading] for an overview.
 resolveImport ::
   forall sig m.
   ( Has (Throw SystemFailure) sig m
   , Has (State (SourceMap Resolved)) sig m
-  , Has (Accum (Set (ImportLoc Import.Resolved))) sig m
+  , Has (State (Set ResLoc)) sig m
+  , Has (Accum (Set ResLoc)) sig m
   , Has (Lift IO) sig m
   ) =>
   ImportDir Import.Resolved ->
   ImportLoc Import.Raw ->
-  m (ImportLoc Import.Resolved)
+  m ResLoc
 resolveImport parent loc = do
   -- Compute the canonicalized location for the import, and record it
   canonicalLoc <- resolveImportLoc (unresolveImportDir parent <//> loc)
@@ -212,27 +235,18 @@ resolveImport parent loc = do
 importModule ::
   ( Has (Throw SystemFailure) sig m
   , Has (State (SourceMap Resolved)) sig m
+  , Has (State (Set ResLoc)) sig m
   , Has (Lift IO) sig m
   ) =>
-  ImportLoc Import.Resolved ->
+  ResLoc ->
   m ()
 importModule canonicalLoc =
-  -- Even though we know the module is not in the module cache, we
-  -- still have to look it up in the SourceMap to see if it's
-  -- already there---which can happen if a module transitively
-  -- imports itself.  This prevents getting stuck in infinite
-  -- recursion.
-  M.lookup canonicalLoc <$> get @(SourceMap Resolved) >>= \case
-    Just _ -> pure ()
-    Nothing -> do
-      -- Record this import location in the ambient @SourceMap@ using
-      -- a temporary, empty module, just so that we won't get stuck in
-      -- an infinite loop if it imports itself transitively (since
-      -- upon encountering the same import again, it will already
-      -- exist in the map and we will skip processing it).  Once we
-      -- are finished fully resolving this module, we will replace the
-      -- empty placeholder with the real thing.
-      modify @(SourceMap Resolved) (M.insert canonicalLoc $ Module Nothing () mempty Nothing NoProvenance)
+  -- First check whether we have already seen this module.
+  S.member canonicalLoc <$> get @(Set ResLoc) >>= \case
+    True -> pure ()
+    False -> do
+      -- Record that we have seen this module.
+      modify @(Set ResLoc) $ S.insert canonicalLoc
 
       -- Read it from network/disk
       (mt, mtime) <- readLoc canonicalLoc
@@ -249,7 +263,7 @@ importModule canonicalLoc =
       validateImport canonicalLoc m
 
       -- Finally, add the resolved module to the SourceMap.
-      modify @(SourceMap Resolved) (M.insert canonicalLoc m)
+      modify @(SourceMap Resolved) $ (OM.|> (canonicalLoc, m))
 
 -- | Validate the source code of the import to ensure that it contains
 --   /only/ imports and definitions.  This is so we do not have to worry
@@ -259,7 +273,7 @@ importModule canonicalLoc =
 validateImport ::
   forall sig m.
   (Has (Throw SystemFailure) sig m) =>
-  ImportLoc Import.Resolved ->
+  ResLoc ->
   Module Resolved ->
   m ()
 validateImport loc = maybe (pure ()) validate . moduleTerm
@@ -280,7 +294,7 @@ validateImport loc = maybe (pure ()) validate . moduleTerm
 --   the time it was last modified, if there is one.
 readLoc ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  ImportLoc Import.Resolved ->
+  ResLoc ->
   m (Maybe (Syntax Raw), Maybe UTCTime)
 readLoc loc = do
   -- Try to read the file from network/disk, depending on the anchor

@@ -30,9 +30,8 @@ import Control.Effect.Error (Error, throwError)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Throw (Throw, liftEither)
 import Control.Lens ((^.))
-import Control.Monad ((<=<))
-import Data.Functor (void)
-import Data.Map qualified as M
+import Control.Monad (forM_, (<=<))
+import Data.Map.Ordered qualified as OM
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text (Text)
@@ -104,28 +103,29 @@ processTerm prov txt menv tm = do
   -- cached
   (srcMapRes, (imps, tmRes)) <- resolve prov tm
 
-  modCache <- sendIO $ freezeCache moduleCache
+  sendIO $ appendFile "log.txt" ("Resolved srcMap: " ++ show srcMapRes ++ "\n")
 
-  -- Typecheck term + collected imports
-  (srcMapTy, tmTy) <-
+  -- Typecheck + elaborate each import that wasn't in the global cache
+  forM_ (OM.assocs srcMapRes) $ \(loc, m) -> do
+    sendIO $ appendFile "log.txt" ("Typechecking: " ++ show loc ++ "\n")
+    modCache <- sendIO $ freezeCache moduleCache
+    mTy <- withError (typeErrToSystemFailure "") $ inferModule modCache m
+    let mElab = elaborateModule mTy
+    sendIO $ do
+      insertCached moduleCache loc mElab
+      deleteCached envCache loc
+
+  -- Now typecheck + elaborate the top-level term
+  modCache <- sendIO $ freezeCache moduleCache
+  tmTy <-
     withError (typeErrToSystemFailure txt) $
       inferTop
         (e ^. envTypes)
         (e ^. envReqs)
         (e ^. envTydefs)
-        srcMapRes
         modCache
         tmRes
-
-  -- Elaborate term + collected imports
   let tmElab = elaborate tmTy
-      srcMapElab = fmap elaborateModule srcMapTy
-
-  -- Insert all newly checked + elaborated modules into the module
-  -- cache, and delete them from the environment cache in case they
-  -- are replacing a previously cached + evaluated version
-  let newModule loc m = insertCached moduleCache loc m >> deleteCached envCache loc
-  void . sendIO $ M.traverseWithKey newModule srcMapElab
 
   -- Get current time, to mark elaborated module with timestamp.
   -- Probably not really important, since this module (not being
@@ -160,13 +160,12 @@ processTermNoImports ::
 processTermNoImports txt tm menv = do
   let e = fromMaybe emptyEnv menv
   tmRes <- resolve' tm
-  (_, tmTy) <-
+  tmTy <-
     withError (typeErrToSystemFailure txt) $
       inferTop
         (e ^. envTypes)
         (e ^. envReqs)
         (e ^. envTydefs)
-        M.empty
         (const Nothing)
         tmRes
   pure $ Module (Just $ elaborate tmTy) mempty S.empty Nothing NoProvenance

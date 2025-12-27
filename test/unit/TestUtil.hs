@@ -25,7 +25,7 @@ import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.Step (gameTick, hypotheticalRobot, stepCESK)
 import Swarm.Language.Module (Module)
-import Swarm.Language.Pipeline (processSource, requireNonEmptyTerm)
+import Swarm.Language.Pipeline (processSource)
 import Swarm.Language.Syntax (Phase (Elaborated, Instantiated))
 import Swarm.Language.Value
 import Swarm.Pretty (prettyText)

@@ -54,7 +54,7 @@ readValue ty txt = do
   -- Now, make sure the resolved term typechecks at the given type.
   _ <-
     eitherToMaybe . runError @ContextualTypeErr $
-      checkTop Ctx.empty Ctx.empty emptyTDCtx M.empty (const Nothing) sResolved ty
+      checkTop Ctx.empty Ctx.empty emptyTDCtx (const Nothing) sResolved ty
   -- Finally, turn the term into a value.
   toValue $ s ^. sTerm
 

@@ -439,6 +439,7 @@ library swarm-lang
     lsp,
     megaparsec,
     mtl,
+    ordered-containers,
     parser-combinators,
     prettyprinter,
     split,
