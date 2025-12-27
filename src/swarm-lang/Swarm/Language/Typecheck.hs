@@ -54,7 +54,6 @@ import Control.Category ((>>>))
 import Control.Effect.Catch (Catch, catchError)
 import Control.Effect.Error (Error)
 import Control.Effect.Reader
-import Control.Effect.State
 import Control.Effect.Throw
 import Control.Lens (view, (^.))
 import Control.Lens.Indexed (itraverse)
@@ -79,7 +78,6 @@ import Swarm.Effect.Unify.Fast qualified as U
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Kindcheck (KindError (..), processPolytype, processType)
-import Swarm.Language.Load (SourceMap)
 import Swarm.Language.Module (Module (..))
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Parser.Util (getLocRange)
@@ -218,10 +216,7 @@ checkPredicative :: Has (Throw ContextualTypeErr) sig m => Maybe a -> m a
 checkPredicative = maybe (throwError (mkRawTypeErr Impredicative)) pure
 
 -- | Run a top-level inference computation, either throwing a
---   'ContextualTypeErr' or returning a fully resolved 'Syntax Typed',
---   along with a type-checked 'SourceMap' containing any new modules
---   recursively imported by the given term, which were not already in
---   the global module cache.
+--   'ContextualTypeErr' or returning a fully resolved 'Syntax Typed'.
 runTC ::
   Has (Throw ContextualTypeErr) sig m =>
   TCtx ->

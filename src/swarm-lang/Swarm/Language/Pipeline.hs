@@ -103,11 +103,8 @@ processTerm prov txt menv tm = do
   -- cached
   (srcMapRes, (imps, tmRes)) <- resolve prov tm
 
-  sendIO $ appendFile "log.txt" ("Resolved srcMap: " ++ show srcMapRes ++ "\n")
-
   -- Typecheck + elaborate each import that wasn't in the global cache
   forM_ (OM.assocs srcMapRes) $ \(loc, m) -> do
-    sendIO $ appendFile "log.txt" ("Typechecking: " ++ show loc ++ "\n")
     modCache <- sendIO $ freezeCache moduleCache
     mTy <- withError (typeErrToSystemFailure "") $ inferModule modCache m
     let mElab = elaborateModule mTy

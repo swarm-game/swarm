@@ -124,6 +124,7 @@ module Swarm.Language.Types (
   addBindingTD,
   withBindingTD,
   withBindingsTD,
+  restrictTD,
   resolveUserTy,
 
   -- * WHNF
@@ -905,6 +906,11 @@ withBindingTD v info = local (addBindingTD v info)
 --   into the context at the point where we suspend.
 withBindingsTD :: Has (Reader TDCtx) sig m => TDCtx -> m a -> m a
 withBindingsTD tdCtx = local (`unionTDCtx` tdCtx)
+
+-- | Restrict the second 'TDCtx' to only variables contained in the
+--   first one.
+restrictTD :: TDCtx -> TDCtx -> TDCtx
+restrictTD (TDCtx r _) (TDCtx c m) = TDCtx (Ctx.restrict r c) m
 
 -- | Given the name of a variable representing a user-defined type,
 --   fill in the version + importloc of the variable of that name

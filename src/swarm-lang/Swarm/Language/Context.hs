@@ -32,6 +32,8 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Semigroup (Sum (..))
+import Data.Set (Set)
+import Data.Set qualified as S
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Swarm.Pretty (PrettyPrec (..))
@@ -254,6 +256,16 @@ delete x ctx@(Ctx m _) = case M.lookup x m of
   Nothing -> ctx
   Just t -> rollCtx $ CtxDelete x t ctx
 
+-- A \ B = A ∩ ~B
+-- so
+-- Ctx \ (Ctx \ R) = Ctx ∩ ~(Ctx ∩ ~R) = Ctx ∩ (~Ctx ∪ R) = (Ctx ∩ ~Ctx) ∪ (Ctx ∩ R) = Ctx ∩ R
+
+-- | 'restrict r c' restricts the context c to only those keys contained in r.
+restrict :: (Ord v, Hashable v, Hashable t) => Ctx v s -> Ctx v t -> Ctx v t
+restrict r ctx = foldr delete ctx keysToDelete
+ where
+  keysToDelete = M.keysSet (unCtx ctx) `S.difference` M.keysSet (unCtx r)
+
 -- | Get the list of key-value associations from a context.
 assocs :: Ctx v t -> [(v, t)]
 assocs = M.assocs . unCtx
@@ -261,6 +273,10 @@ assocs = M.assocs . unCtx
 -- | Get the list of bound variables from a context.
 vars :: Ctx v t -> [v]
 vars = M.keys . unCtx
+
+-- | Get the set of bound variables from a context.
+varsSet :: Ctx v t -> Set v
+varsSet = M.keysSet . unCtx
 
 -- | Add a key-value binding to a context (overwriting the old one if
 --   the key is already present).

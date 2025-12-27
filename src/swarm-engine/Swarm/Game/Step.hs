@@ -81,7 +81,7 @@ import Swarm.Game.Step.Util.Command
 import Swarm.Game.Tick
 import Swarm.Language.Cache
 import Swarm.Language.Capability
-import Swarm.Language.Module (Module, moduleTerm)
+import Swarm.Language.Module (Module, moduleCtx, moduleTerm)
 import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Value
@@ -744,7 +744,8 @@ stepCESK cesk = case cesk of
           --   (2) focus on evaluating the module *in an empty environment*
           --   (2) push an FImport frame on the stack to continue with the
           --     body in the context of the import once we're done processing it.
-          Just mt -> In (insertSuspend $ erase mt ^. sTerm) emptyEnv s (FImport loc t e : k)
+          Just mt ->
+            In (insertSuspend $ erase mt ^. sTerm) emptyEnv s (FImport loc (moduleCtx m) t e : k)
 
   -- Ignore explicit parens.
   In (TParens t) e s k -> return $ In t e s k
@@ -820,7 +821,7 @@ stepCESK cesk = case cesk of
   -- evaluate the suspend without waiting for an FExec, since the body
   -- of the import may or may not be something we need to execute
   -- (e.g. "import blah in x + 1" vs "import blah in move; foo")
-  Out (VSuspend t e') s (FImport loc body e : k) -> return $ In t e' s (FSuspend e' : FImport loc body e : k)
+  Out (VSuspend t e') s (FImport loc vars body e : k) -> return $ In t e' s (FSuspend e' : FImport loc vars body e : k)
   -- This case shouldn't happen: we will always insert a call to
   -- 'suspend' at the end of an import, so we will reach the 'FImport'
   -- frame in a 'Suspended' state, so we can restore the suspended
@@ -865,9 +866,12 @@ stepCESK cesk = case cesk of
   -- resulting suspended environment, then resume by evaluating the
   -- body of the import in an environment extended by the suspended
   -- environment we got after processing the import.
-  Suspended _ e' s (FImport loc t e : k) -> do
-    sendIO $ insertCached envCache loc e'
-    return $ In t (e <> e') s k
+  Suspended _ e' s (FImport loc vars t e : k) -> do
+    -- Restrict the environment to only that which is supposed to be
+    -- exported from the module
+    let e'' = restrictEnv vars e'
+    sendIO $ insertCached envCache loc e''
+    return $ In t (e <> e'') s k
   -- Otherwise, if we're suspended with nothing else left to do,
   -- return the machine unchanged (but throw away the rest of the
   -- continuation stack).
