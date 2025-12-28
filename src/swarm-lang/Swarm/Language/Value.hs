@@ -198,8 +198,8 @@ addTydef :: TDVar -> TydefInfo -> Env -> Env
 addTydef x pty = envTydefs %~ addBindingTD x pty
 
 restrictEnv :: Pair TCtx TDCtx -> Env -> Env
-restrictEnv (rtctx :!: rtdctx) (Env tctx rctx vals tdctx)
-  = Env (Ctx.restrict rtctx tctx) (Ctx.restrict rtctx rctx) (Ctx.restrict rtctx vals) (restrictTD rtdctx tdctx)
+restrictEnv (rtctx :!: rtdctx) (Env tctx rctx vals tdctx) =
+  Env (Ctx.restrict rtctx tctx) (Ctx.restrict rtctx rctx) (Ctx.restrict rtctx vals) (restrictTD rtdctx tdctx)
 
 type instance Index Env = Var
 type instance IxValue Env = WithType Value
