@@ -20,6 +20,7 @@ jobs:
             - ubuntu-latest
             - macos-latest
             - macos-13
+            - windows-latest
         cabal:
             - 3.12.1.0
         ghc:
@@ -57,8 +58,13 @@ jobs:
           mkdir dist
           cabal v2-install exe:swarm --install-method=copy --overwrite-policy=always --installdir=dist
 
-      - name: Set binary path name
+      - if: matrix.os != 'windows-latest'
+        name: Set binary path name
         run: echo BINARY_PATH="./dist/swarm" >> "$GITHUB_ENV"
+
+      - if: matrix.os == 'windows-latest'
+        name: Set binary path name on Windows
+        run: echo BINARY_PATH="./dist/swarm.exe" >> $env:GITHUB_ENV
 
       - if: matrix.os == 'ubuntu-latest'
         name: Set binary OS name on Ubuntu
@@ -67,6 +73,10 @@ jobs:
       - if: (matrix.os == 'macos-13') || (matrix.os == 'macos-latest')
         name: Set binary OS name on Macos
         run: echo BINARY_OS="Darwin" >> "$GITHUB_ENV"
+
+      - if: matrix.os == 'windows-latest'
+        name: Set binary OS name on Windows
+        run: echo BINARY_OS="Windows" >> $env:GITHUB_ENV
 
       - name: Set binary Arch name
         run: echo ARCH="x86_64" >> "$GITHUB_ENV"
@@ -108,11 +118,18 @@ jobs:
             name: swarm-Darwin-arm64
             path: artifacts/swarm-Darwin-arm64
 
+        - name: Download executable for Windows x86_64
+          uses: actions/download-artifact@v4
+          with:
+            name: swarm-Windows-x86_64
+            path: artifacts/swarm-Windows-x86_64
+
         - name: Rename executables
           run: |
               mv artifacts/swarm-Linux-x86_64/swarm  swarm-Linux-x86_64
               mv artifacts/swarm-Darwin-x86_64/swarm swarm-Darwin-x86_64
               mv artifacts/swarm-Darwin-arm64/swarm swarm-Darwin-arm64
+              mv artifacts/swarm-Windows-x86_64/swarm.exe swarm-Windows-x86_64.exe
 
         - name: Zip data directory
           run: zip -r swarm-data.zip ./data || { echo "Unable to create a zip archive."; exit 1;  }
@@ -129,6 +146,7 @@ jobs:
               swarm-Linux-x86_64
               swarm-Darwin-x86_64
               swarm-Darwin-arm64
+              swarm-Windows-x86_64.exe
               LICENSE
               swarm-data.zip
 
