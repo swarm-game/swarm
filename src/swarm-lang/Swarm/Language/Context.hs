@@ -32,7 +32,6 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Semigroup (Sum (..))
-import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import GHC.Generics (Generic)
