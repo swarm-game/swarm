@@ -108,6 +108,9 @@ common ghc2024-extensions
     MonoLocalBinds
     RoleAnnotations
 
+-- Allow Cabal to recognize swarm as a library.
+library
+
 common base
   build-depends: base >=4.18 && <4.22
 
