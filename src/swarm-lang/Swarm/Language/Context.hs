@@ -256,14 +256,20 @@ delete x ctx@(Ctx m _) = case M.lookup x m of
   Nothing -> ctx
   Just t -> rollCtx $ CtxDelete x t ctx
 
--- A \ B = A ∩ ~B
--- so
--- Ctx \ (Ctx \ R) = Ctx ∩ ~(Ctx ∩ ~R) = Ctx ∩ (~Ctx ∪ R) = (Ctx ∩ ~Ctx) ∪ (Ctx ∩ R) = Ctx ∩ R
-
 -- | 'restrict r c' restricts the context c to only those keys contained in r.
 restrict :: (Ord v, Hashable v, Hashable t) => Ctx v s -> Ctx v t -> Ctx v t
 restrict r ctx = foldr delete ctx keysToDelete
  where
+  -- What we really want is ctx ∩ r, but we must implement it in terms
+  -- of deletion, which is the primitive operation we have available
+  -- for operating on contexts.
+  --
+  -- Ctx - (Ctx - R)
+  --   = Ctx ∩ ~(Ctx ∩ ~R)         { A - B = A ∩ ~B }
+  --   = Ctx ∩ (~Ctx ∪ R)          { de Morgan }
+  --   = (Ctx ∩ ~Ctx) ∪ (Ctx ∩ R)  { distributivity }
+  --   = ∅ ∪ (Ctx ∩ R)             { A ∩ ~A = ∅ }
+  --   = Ctx ∩ R                   { ∅ identity for ∪ }
   keysToDelete = M.keysSet (unCtx ctx) `S.difference` M.keysSet (unCtx r)
 
 -- | Get the list of key-value associations from a context.
