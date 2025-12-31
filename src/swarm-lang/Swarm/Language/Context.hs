@@ -280,10 +280,6 @@ assocs = M.assocs . unCtx
 vars :: Ctx v t -> [v]
 vars = M.keys . unCtx
 
--- | Get the set of bound variables from a context.
-varsSet :: Ctx v t -> Set v
-varsSet = M.keysSet . unCtx
-
 -- | Add a key-value binding to a context (overwriting the old one if
 --   the key is already present).
 addBinding :: (Ord v, Hashable v, Hashable t) => v -> t -> Ctx v t -> Ctx v t
