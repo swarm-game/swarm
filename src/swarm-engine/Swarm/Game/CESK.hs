@@ -87,7 +87,6 @@ import Control.Lens (Lens', Traversal', lens, traversal, (^.))
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
-import Data.Set (Set)
 import Data.Strict.Tuple (Pair)
 import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..), encloseSep, hsep, (<+>))
@@ -101,7 +100,6 @@ import Swarm.Language.Module (Module, moduleTerm)
 import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Import qualified as Import
-import Swarm.Language.TDVar (TDVar)
 import Swarm.Language.Types
 import Swarm.Language.Value as V
 import Swarm.Pretty (PrettyPrec (..), pparens, ppr)
