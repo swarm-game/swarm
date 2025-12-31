@@ -736,14 +736,21 @@ stepCESK cesk = case cesk of
         -- The environment is not in the cache, so we need to evaluate
         -- the module.
         _ -> case moduleTerm m of
-          -- In theory there could be an import of an empty module.
+          -- In theory there could be an import of an empty module; in
+          -- that case just continue on with the import body without
+          -- doing anything.
           Nothing -> In t e s k
           -- To evaluate an import:
           --   (1) stick a 'suspend' at the end of the term
-          --     corresponding to the imported module, so we can save the resulting environment
+          --     corresponding to the imported module, so we can save
+          --     the resulting environment
           --   (2) focus on evaluating the module *in an empty environment*
-          --   (2) push an FImport frame on the stack to continue with the
+          --   (3) push an FImport frame on the stack to continue with the
           --     body in the context of the import once we're done processing it.
+          --     The FImport frame contains the import location, the context of
+          --     names that are supposed to be exported from the
+          --     module, the body following the AST, and the current
+          --     environment.
           Just mt ->
             In (insertSuspend $ erase mt ^. sTerm) emptyEnv s (FImport loc (moduleCtx m) t e : k)
 
@@ -866,12 +873,19 @@ stepCESK cesk = case cesk of
   -- resulting suspended environment, then resume by evaluating the
   -- body of the import in an environment extended by the suspended
   -- environment we got after processing the import.
-  Suspended _ e' s (FImport loc vars t e : k) -> do
-    -- Restrict the environment to only that which is supposed to be
-    -- exported from the module
-    let e'' = restrictEnv vars e'
-    sendIO $ insertCached envCache loc e''
-    return $ In t (e <> e'') s k
+  Suspended _ moduleEnv s (FImport loc vars t e : k) -> do
+    -- First, restrict the environment to only that which is actually
+    -- supposed to be exported from the module.  See Note [Module
+    -- exports].
+    let exportedEnv = restrictEnv vars moduleEnv
+    -- Now cache the resulting environment, so the next time the same
+    -- module is imported we can just fetch the environment without
+    -- re-evaluating the module.
+    sendIO $ insertCached envCache loc exportedEnv
+    -- Finally, continue evaluating the body following the import,
+    -- with the old environment extended by the module's exported
+    -- environment.
+    return $ In t (e <> exportedEnv) s k
   -- Otherwise, if we're suspended with nothing else left to do,
   -- return the machine unchanged (but throw away the rest of the
   -- continuation stack).

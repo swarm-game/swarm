@@ -36,6 +36,8 @@ import Swarm.Language.Types (TCtx, TDCtx, UCtx)
 --
 --   - During all subsequent phases, the 'UCtx' becomes a 'TCtx'
 --     containing fully generalized/quantified types.
+--
+--  See also Note [Module exports].
 type family ModuleCtx (phase :: Phase) where
   ModuleCtx Raw = ()
   ModuleCtx Resolved = ()
@@ -79,9 +81,9 @@ data Module phase = Module
   { moduleTerm :: Maybe (Syntax phase)
   -- ^ The contents of the module.
   , moduleCtx :: ModuleCtx phase
-  -- ^ The context of names defined in this module: variables defined
+  -- ^ The context of names exported by this module: variables defined
   --   via @def@ with their types, and type aliases defined via @tydef@
-  --   with their definitions.
+  --   with their definitions.  See Note [Module exports].
   , moduleImports :: ModuleImports phase
   -- ^ The moduleImports are mostly for convenience, e.g. for checking modules for cycles.
   , moduleTimestamp :: Maybe UTCTime
@@ -102,3 +104,53 @@ emptyModule = Module Nothing mempty S.empty Nothing NoProvenance
 instance Erasable Module where
   erase (Module t _ _ time prov) = Module (erase <$> t) () S.empty time prov
   eraseRaw (Module t _ _ time prov) = Module (eraseRaw <$> t) () () time prov
+
+-- ~~~~ Note [Module exports]
+--
+-- In line with the way e.g. Haskell modules work, and to aid in
+-- modularity/encapsulation, if module A imports module B, then the
+-- exports of module B are in scope in module A, but module A does NOT
+-- (by default) re-export things imported from B.  By default, module
+-- A exports *only* names which are explicitly defined in A.
+--
+-- For example, the following should be accepted:
+--
+-- A.sw:
+-- def a = 1 end
+--
+-- B.sw:
+-- import "A"
+-- def b = a + 1 end
+--
+-- C.sw:
+-- import "B"
+-- def c = b + 1 end
+--
+-- However, if the definition of c were changed to `def c = b + a end`
+-- then it would result in an error, since `a` is not in scope in C:
+-- `a` is exported from A.sw and imported into B.sw (and can hence be
+-- used in the definition of `b`), but not re-exported from B.sw.
+-- Hence `a` is not in scope in C.sw, only `b`.  (Of course, we could
+-- add `import "A"` to C.sw in which case `def c = a + b` would work
+-- just fine.)
+--
+-- The `moduleCtx` field of a Module record records the names that are
+-- exported by the module, along with their types (for value-level
+-- names) or their definitions (for type synonyms).  Note that the
+-- 'ModuleCtx' type family defines what this field should hold at
+-- various stages of the processing pipeline. The field is populated
+-- by 'Swarm.Language.Typecheck.collectDefs', which is called from
+-- 'Swarm.Language.Typecheck.inferModule'.  'collectDefs' recurses
+-- through the AST and simply finds all top-level definitions, while
+-- ignoring any imports.
+--
+-- When typechecking a module containing imports, we simply look up
+-- the 'moduleCtx' of each and add them to the typechecking context.
+--
+-- At runtime, we cache evaluated environments for modules so that we
+-- do not have to re-evaluate modules every time we see an import.
+-- However, at the end of evaluating a module, the ambient environment
+-- contains both variables defined in the module as well as anything
+-- in scope from its imports.  Hence we use
+-- 'Swarm.Language.Value.restrictEnv' to restrict the cached
+-- environment to only those names which are supposed to be exported.
