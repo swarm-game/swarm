@@ -1451,6 +1451,7 @@ benchmark benchmark
     base,
     containers,
     extra,
+    fused-effects,
     lens,
     mtl,
     tasty-bench,
