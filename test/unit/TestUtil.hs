@@ -24,8 +24,8 @@ import Swarm.Game.Robot.Concrete (isActive)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.Step (gameTick, hypotheticalRobot, stepCESK)
-import Swarm.Language.Load (SyntaxWithImports)
-import Swarm.Language.Pipeline (processSource, requireNonEmptyTerm)
+import Swarm.Language.Module (Module)
+import Swarm.Language.Pipeline (processSource)
 import Swarm.Language.Syntax (Phase (Elaborated, Instantiated))
 import Swarm.Language.Value
 import Swarm.Pretty (prettyText)
@@ -35,12 +35,12 @@ import Witch (into)
 eval :: GameState -> Text -> IO (GameState, Robot Instantiated, Either Text (Value, Int))
 eval g = either (return . (g,hypotheticalRobot undefined 0,) . Left) (evalPT g) <=< processTerm1
 
-processTerm1 :: Text -> IO (Either Text (SyntaxWithImports Elaborated))
+processTerm1 :: Text -> IO (Either Text (Module Elaborated))
 processTerm1 txt =
   fmap (first prettyText) . runError @SystemFailure $
-    processSource Nothing txt Nothing >>= requireNonEmptyTerm
+    processSource Nothing Nothing txt
 
-evalPT :: GameState -> SyntaxWithImports Elaborated -> IO (GameState, Robot Instantiated, Either Text (Value, Int))
+evalPT :: GameState -> Module Elaborated -> IO (GameState, Robot Instantiated, Either Text (Value, Int))
 evalPT g t = evalCESK g (initMachine t)
 
 evalCESK :: GameState -> CESK -> IO (GameState, Robot Instantiated, Either Text (Value, Int))
@@ -83,7 +83,7 @@ playUntilDone rid = do
     Just False -> return $ Right ()
     Nothing -> return $ Left . T.pack $ "The robot with ID " <> show rid <> " is nowhere to be found!"
 
-check :: Text -> (SyntaxWithImports Elaborated -> Bool) -> Assertion
+check :: Text -> (Module Elaborated -> Bool) -> Assertion
 check code expect =
   processTerm1 code >>= \case
     Left err -> assertFailure $ "Term processing failed: " ++ into @String err

@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -78,6 +79,7 @@ import Swarm.Language.Capability (
  )
 import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
+import Swarm.Language.Module (moduleTerm)
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Parser.Lex (reservedWords)
@@ -900,7 +902,7 @@ validateREPLForm s =
                   -- user hits enter.
                   let res = run . runError @SystemFailure $ processTermNoImports uinput theTerm (Just env)
                    in case res of
-                        Right t -> (Just (t ^. sType), Right ())
+                        Right (moduleTerm -> Just t) -> (Just (t ^. sType), Right ())
                         Left (DoesNotTypecheck loc _) -> (Nothing, Left loc)
                         -- Don't signal an error if the REPL entry contained an import
                         Left (DisallowedImport _) -> (Nothing, Right ())

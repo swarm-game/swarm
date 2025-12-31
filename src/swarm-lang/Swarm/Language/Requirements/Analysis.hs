@@ -14,7 +14,7 @@ module Swarm.Language.Requirements.Analysis (
 ) where
 
 import Control.Algebra (Has, run)
-import Control.Carrier.Accum.ActuallyStrict (execAccum)
+import Control.Carrier.Accum.Strict (execAccum)
 import Control.Carrier.Reader (runReader)
 import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Accum (Accum, add)

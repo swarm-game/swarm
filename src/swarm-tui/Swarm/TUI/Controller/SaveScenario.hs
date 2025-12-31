@@ -22,7 +22,7 @@ import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.State.Substate
-import Swarm.Language.Load (SyntaxWithImports (getSyntax))
+import Swarm.Language.Module (moduleTerm)
 import Swarm.Language.Syntax (eraseRaw)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievements (attainAchievement, attainAchievement')
@@ -80,7 +80,7 @@ saveScenarioInfoOnFinish p = do
       currentScenarioInfo = progression . scenarios . scenarioItemByPath p . _SISingle . getScenarioInfo
 
   replHist <- use $ scenarioState . uiGameplay . uiREPL . replHistory
-  let determinator = CodeSizeDeterminators (eraseRaw . getSyntax <$> initialRunCode) $ replHist ^. replHasExecutedManualInput
+  let determinator = CodeSizeDeterminators (eraseRaw <$> (moduleTerm =<< initialRunCode)) $ replHist ^. replHasExecutedManualInput
 
   -- Don't update scenario statistics if we have previously saved
   -- statistics for the current scenario upon scenario completion.

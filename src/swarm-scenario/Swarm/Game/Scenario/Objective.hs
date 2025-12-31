@@ -48,7 +48,7 @@ import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Definitions qualified as AD
 import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.JSON ()
-import Swarm.Language.Load (ModuleCtx, ModuleImports, SyntaxWithImports)
+import Swarm.Language.Module (Module, ModuleCtx, ModuleImports)
 import Swarm.Language.Pipeline (Processable (..), processSyntax)
 import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (..), SwarmType, Syntax, Unresolvable)
 import Swarm.Language.Text.Markdown qualified as Markdown
@@ -102,7 +102,7 @@ instance FromJSON PrerequisiteConfig where
 data Objective phase = Objective
   { _objectiveGoal :: Markdown.Document (Syntax phase)
   , _objectiveTeaser :: Maybe Text
-  , _objectiveCondition :: SyntaxWithImports phase
+  , _objectiveCondition :: Module phase
   , _objectiveId :: Maybe ObjectiveLabel
   , _objectiveOptional :: Bool
   , _objectivePrerequisite :: Maybe PrerequisiteConfig
@@ -144,7 +144,7 @@ objectiveTeaser :: Lens' (Objective phase) (Maybe Text)
 --   program of type @cmd bool@.  By default, this program will be
 --   run to completion every tick (the usual limits on the number
 --   of CESK steps per tick do not apply).
-objectiveCondition :: Lens' (Objective phase) (SyntaxWithImports phase)
+objectiveCondition :: Lens' (Objective phase) (Module phase)
 
 -- | Optional name by which this objective may be referenced
 -- as a prerequisite for other objectives.

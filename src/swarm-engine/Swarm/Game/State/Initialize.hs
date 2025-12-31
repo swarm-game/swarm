@@ -51,7 +51,8 @@ import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.World (Seed, WorldMetrics, initWorldMetrics)
 import Swarm.Language.Capability (constCaps)
-import Swarm.Language.Syntax (allConst)
+import Swarm.Language.Module (Module)
+import Swarm.Language.Syntax (Elaborated, allConst)
 import Swarm.Language.Types
 import Swarm.Util (applyWhen, binTuples, (?))
 import System.Clock qualified as Clock
@@ -157,6 +158,7 @@ pureScenarioToGameState (ScenarioWith scenario fp) theSeed now toRun gMetric wMe
 
   robotsByBasePrecedence = genRobotTemplates sLandscape worldTuples
 
+  initialCodeToRun :: Maybe (Module Elaborated)
   initialCodeToRun = view toRunSyntax <$> toRun
 
   robotListRaw =

@@ -12,7 +12,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Swarm.Language.Capability
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Load (SyntaxWithImports (getSyntax))
+import Swarm.Language.Module (moduleTerm)
 import Swarm.Language.Requirements.Analysis (requirements)
 import Swarm.Language.Requirements.Type (ReqCtx, Requirements, capReqs, devReqs)
 import Swarm.Language.Syntax
@@ -48,7 +48,7 @@ testRequirements =
     ]
 
 checkReqCtx :: Text -> (ReqCtx -> Bool) -> Assertion
-checkReqCtx code expect = check code (expect . extractReqCtx . getSyntax)
+checkReqCtx code expect = check code (expect . maybe mempty extractReqCtx . moduleTerm)
 
 -- | Extract a requirements context from requirements annotations on
 --   definitions contained in a term.  Should only be used for
@@ -69,7 +69,7 @@ extractReqCtx (Syntax _ t _ _) = extractReqCtxTerm t
 
 checkRequirements :: Text -> (Requirements -> Bool) -> Assertion
 checkRequirements code expect =
-  check code (expect . requirements emptyTDCtx mempty . view sTerm . erase . getSyntax)
+  check code (expect . maybe mempty (requirements emptyTDCtx mempty . view sTerm . erase) . moduleTerm)
 
 requiresCap :: Text -> Capability -> Assertion
 requiresCap code cap = checkRequirements code ((cap `S.member`) . capReqs)

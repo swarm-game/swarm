@@ -40,6 +40,7 @@ module Swarm.Language.Typecheck (
   -- * Type inference
   inferTop,
   checkTop,
+  inferModule,
   infer,
   inferConst,
   check,
@@ -48,13 +49,11 @@ module Swarm.Language.Typecheck (
 
 import Control.Arrow ((***))
 import Control.Carrier.Reader (ReaderC, runReader)
-import Control.Carrier.State.Strict (StateC, runState)
 import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Category ((>>>))
 import Control.Effect.Catch (Catch, catchError)
 import Control.Effect.Error (Error)
 import Control.Effect.Reader
-import Control.Effect.State
 import Control.Effect.Throw
 import Control.Lens (view, (^.))
 import Control.Lens.Indexed (itraverse)
@@ -69,6 +68,7 @@ import Data.Map qualified as M
 import Data.Maybe
 import Data.Set (Set, (\\))
 import Data.Set qualified as S
+import Data.Strict.Tuple (Pair (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Prettyprinter
@@ -78,7 +78,7 @@ import Swarm.Effect.Unify.Fast qualified as U
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Kindcheck (KindError (..), processPolytype, processType)
-import Swarm.Language.Load (Module (..), SourceMap, SyntaxWithImports (..))
+import Swarm.Language.Module (Module (..))
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Requirements.Analysis (requirements)
@@ -200,73 +200,42 @@ getJoin (Join j) = (j Expected, j Actual)
 -- | Finalize the typechecking process by generalizing over free
 --   unification variables and ensuring that no bound unification
 --   variables remain.
-fromInferredSyntax ::
+finalizeInferred ::
   ( Has Unification sig m
   , Has (Reader UCtx) sig m
   , Has (Throw ContextualTypeErr) sig m
   ) =>
   Syntax Inferred ->
   m (Syntax Typed)
-fromInferredSyntax = traverseSyntax (checkPredicative <=< (fmap fromU . generalize)) pure
-
-fromInferredModule ::
-  ( Has Unification sig m
-  , Has (Reader UCtx) sig m
-  , Has (Throw ContextualTypeErr) sig m
-  ) =>
-  Module Inferred ->
-  m (Module Typed)
-fromInferredModule (Module t (ctx, tdCtx) imps) =
-  Module
-    <$> traverse fromInferredSyntax t
-    <*> ((,tdCtx) <$> traverse (checkPredicative . fromU) ctx)
-    <*> pure imps
-
--- | Finalize the typechecking process by generalizing over free
---   unification variables and ensuring that no bound unification
---   variables remain.
-finalizeInferred ::
-  ( Has Unification sig m
-  , Has (Reader UCtx) sig m
-  , Has (Throw ContextualTypeErr) sig m
-  ) =>
-  (SourceMap Inferred, Syntax Inferred) ->
-  m (SourceMap Typed, Syntax Typed)
 finalizeInferred =
-  applyBindings >=> \(srcMap, s) ->
-    (,)
-      <$> traverse fromInferredModule srcMap
-      <*> fromInferredSyntax s
+  applyBindings >=> traverseSyntax (checkPredicative <=< (fmap fromU . generalize)) pure
+
+-- | Ensure there are no remaining unification variables, which can happen
+--   in the case of impredicative polymorphism.  See #351.
+checkPredicative :: Has (Throw ContextualTypeErr) sig m => Maybe a -> m a
+checkPredicative = maybe (throwError (mkRawTypeErr Impredicative)) pure
 
 -- | Run a top-level inference computation, either throwing a
---   'ContextualTypeErr' or returning a fully resolved 'Syntax Typed',
---   along with a type-checked 'SourceMap' containing any new modules
---   recursively imported by the given term.  Note the returned
---   SourceMap will NOT include anything contained in the given
---   parameter SourceMap.
+--   'ContextualTypeErr' or returning a fully resolved 'Syntax Typed'.
 runTC ::
   Has (Throw ContextualTypeErr) sig m =>
   TCtx ->
   ReqCtx ->
   TDCtx ->
   TVCtx ->
-  SourceMap Resolved ->
-  StateC (SourceMap Inferred) (ReaderC UCtx (ReaderC TCStack (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx (ReaderC (SourceMap Resolved) m))))))) (Syntax Inferred) ->
-  m (SourceMap Typed, Syntax Typed)
-runTC ctx reqCtx tdctx tvCtx srcMap =
-  runState M.empty
-    >>> (>>= finalizeInferred)
+  ModuleCache ->
+  (ReaderC UCtx (ReaderC TCStack (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx (ReaderC ModuleCache m))))))) (Syntax Inferred) ->
+  m (Syntax Typed)
+runTC ctx reqCtx tdctx tvCtx modCache =
+  (>>= finalizeInferred)
     >>> runReader (toU ctx)
     >>> runReader []
     >>> U.runUnification
     >>> runReader reqCtx
     >>> runReader tdctx
     >>> runReader tvCtx
-    >>> runReader srcMap
+    >>> runReader modCache
     >>> reportUnificationError
-
-checkPredicative :: Has (Throw ContextualTypeErr) sig m => Maybe a -> m a
-checkPredicative = maybe (throwError (mkRawTypeErr Impredicative)) pure
 
 reportUnificationError ::
   Has (Throw ContextualTypeErr) sig m =>
@@ -405,6 +374,9 @@ class HasBindings u where
 instance (HasBindings u, HasBindings v) => HasBindings (u, v) where
   applyBindings (u, v) = (,) <$> applyBindings u <*> applyBindings v
 
+instance (HasBindings u, HasBindings v) => HasBindings (Pair u v) where
+  applyBindings (u :!: v) = (:!:) <$> applyBindings u <*> applyBindings v
+
 instance HasBindings u => HasBindings (Map k u) where
   applyBindings = traverse applyBindings
 
@@ -430,7 +402,7 @@ instance HasBindings (Syntax Inferred) where
   applyBindings (Syntax l t cs u) = Syntax l <$> applyBindings t <*> pure cs <*> applyBindings u
 
 instance HasBindings (Module Inferred) where
-  applyBindings (Module t ctx imps) = Module <$> applyBindings t <*> applyBindings ctx <*> pure imps
+  applyBindings (Module t ctx imps time prov) = Module <$> applyBindings t <*> applyBindings ctx <*> pure imps <*> pure time <*> pure prov
 
 ------------------------------------------------------------
 -- Converting between mono- and polytypes
@@ -880,39 +852,71 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 ------------------------------------------------------------
 -- Type inference / checking
 
--- | Top-level type inference function: given a context of definition
---   types, type synonyms, and a term, either return a type error or a
---   fully type-annotated version of the term.
+-- | We carefully avoid using IO while typechecking, in order to be
+--   able to use typechecking even while e.g. processing Markdown
+--   syntax and in other contexts when we don't want to do IO.
+--   However, accessing the global module cache requires IO.
+--   Therefore, we pass a snapshot of the global cache to typechecking
+--   as a parameter.
+type ModuleCache = ImportLoc Import.Resolved -> Maybe (Module Elaborated)
+
+-- | Top-level type inference: given a context of variable types +
+--   requirements, type synonyms, a map of recursive imports that need
+--   to be typechecked, a snapshot of the global module cache, and a
+--   term, return fully type-annotated versions of the recursive
+--   imports and the term itself.
 inferTop ::
   Has (Error ContextualTypeErr) sig m =>
-  Maybe FilePath ->
   TCtx ->
   ReqCtx ->
   TDCtx ->
-  SourceMap Resolved ->
+  ModuleCache ->
   Syntax Resolved ->
-  m (SyntaxWithImports Typed)
-inferTop provenance ctx reqCtx tdCtx srcMap =
-  fmap (uncurry (SyntaxWithImports provenance))
-    . runTC ctx reqCtx tdCtx Ctx.empty srcMap
-    . infer
+  m (Syntax Typed)
+inferTop ctx reqCtx tdCtx modCache =
+  runTC ctx reqCtx tdCtx Ctx.empty modCache . infer
 
--- | Top level type checking function.
+-- | Top-level type checking function.
 checkTop ::
   Has (Error ContextualTypeErr) sig m =>
-  Maybe FilePath ->
   TCtx ->
   ReqCtx ->
   TDCtx ->
-  SourceMap Resolved ->
+  ModuleCache ->
   Syntax Resolved ->
   Type ->
-  m (SyntaxWithImports Typed)
-checkTop provenance ctx reqCtx tdCtx srcMap t =
-  fmap (uncurry (SyntaxWithImports provenance))
-    . runTC ctx reqCtx tdCtx Ctx.empty srcMap
+  m (Syntax Typed)
+checkTop ctx reqCtx tdCtx modCache t =
+  runTC ctx reqCtx tdCtx Ctx.empty modCache
     . check t
     . toU
+
+-- | Collect up the names and types of any top-level definitions into
+--   a context.
+collectDefs :: Syntax Typed -> Pair TCtx TDCtx
+collectDefs (Syntax _ (SLet LSDef _ x _ _ _ body t) _ _) =
+  first (Ctx.singleton (locVal x) (body ^. sType) <>) (collectDefs t)
+collectDefs (Syntax _ (SImportIn _ t) _ _) = collectDefs t
+collectDefs (Syntax _ (STydef x _ (Just tdInfo) t) _ _) =
+  second (addBindingTD (locVal x) tdInfo) (collectDefs t)
+collectDefs _ = Ctx.empty :!: emptyTDCtx
+
+-- | Infer the type of a module, i.e. import, by (1) typechecking and
+--   annotating the term itself, and (2) collecting up the types of
+--   all exported top-level definitions into a context.
+inferModule ::
+  Has (Error ContextualTypeErr) sig m =>
+  ModuleCache ->
+  Module Resolved ->
+  m (Module Typed)
+inferModule modCache (Module ms _ imps time prov) = do
+  -- Infer the type of the term
+  mt <- traverse (inferTop mempty mempty emptyTDCtx modCache) ms
+
+  -- Now, if the term has top-level definitions, collect up their
+  -- types and put them in the context.
+  let ctx = maybe (Ctx.empty :!: emptyTDCtx) collectDefs mt
+  pure $ Module mt ctx imps time prov
 
 -- | Infer the type of a term, returning a type-annotated term.
 --
@@ -937,8 +941,7 @@ infer ::
   , Has (Reader ReqCtx) sig m
   , Has (Reader TDCtx) sig m
   , Has (Reader TVCtx) sig m
-  , Has (Reader (SourceMap Resolved)) sig m
-  , Has (State (SourceMap Inferred)) sig m
+  , Has (Reader ModuleCache) sig m
   , Has (Reader TCStack) sig m
   , Has Unification sig m
   , Has (Error ContextualTypeErr) sig m
@@ -1112,28 +1115,22 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     c' <- check c iuty
     return $ Syntax l (SAnnotate c' (forgetQ qpty)) cs iuty
 
-  -- To infer @import m in e@, first make sure we have loaded and
-  -- typechecked the import, then infer @e@ in an extended context.
+  -- To infer @import m in e@, look up the context for the import,
+  -- then infer @e@ in an extended context.  Because we make sure to
+  -- typecheck modules in topological order, any dependencies will
+  -- already be in the global module cache.
   SImportIn loc t1 -> do
-    -- See whether we have already processed this import before
-    usrcMap <- get @(SourceMap Inferred)
-    umod <- case M.lookup loc usrcMap of
-      -- We have: just use its already-typechecked version
-      Just umod -> pure umod
-      -- We haven't: go typecheck it and add it to the USourceMap before proceeding.
-      Nothing -> do
-        srcMap <- ask @(SourceMap Resolved)
-        case M.lookup loc srcMap of
-          -- The lookup should always succeed, since the SourceMap was
-          -- computed by transitively following all imports.
-          Nothing -> throwTypeErr l $ UnknownImport loc
-          Just smod -> do
-            umod <- withFrame l (TCImport loc) $ inferModule smod
-            modify @(SourceMap Inferred) $ M.insert loc umod
-            pure umod
+    modCache <- ask @ModuleCache
+    (mCtx :!: mTDCtx) <- case modCache loc of
+      -- If it's not in the global module cache, that's a bug!  We
+      -- ensure that we process modules in topological order, so any
+      -- dependencies should have already been typechecked,
+      -- elaborated, and added to the global module cache.
+      Nothing -> throwTypeErr l $ UnknownImport loc
+      -- Extract the context from the module in the global cache
+      Just emod -> pure (first toU . moduleCtx $ emod)
 
     -- Now infer t1 with the import's exports added to the context.
-    let (mCtx, mTDCtx) = moduleCtx umod
     t1' <- withBindings mCtx $ withBindingsTD mTDCtx $ infer t1
     return $ Syntax l (SImportIn loc t1') cs (t1' ^. sType)
   TType ty -> pure $ Syntax l (TType ty) cs UTyType
@@ -1142,44 +1139,6 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   _ -> do
     sTy <- fresh
     check s sTy
-
--- | Collect up the names and types of any top-level definitions into
---   a context.
-collectDefs ::
-  (Has Unification sig m, Has (Reader UCtx) sig m) =>
-  Syntax Inferred ->
-  m (UCtx, TDCtx)
-collectDefs (Syntax _ (SLet LSDef _ x _ _ _ body t) _ _) = do
-  ty' <- generalize (body ^. sType)
-  first (Ctx.singleton (locVal x) ty' <>) <$> collectDefs t
-collectDefs (Syntax _ (SImportIn _ t) _ _) = collectDefs t
-collectDefs (Syntax _ (STydef x _ (Just tdInfo) t) _ _) =
-  second (addBindingTD (locVal x) tdInfo) <$> collectDefs t
-collectDefs _ = pure (Ctx.empty, emptyTDCtx)
-
--- | Infer the type of a module, i.e. import, by (1) typechecking and
---   annotating the term itself, and (2) collecting up the types of
---   all exported top-level definitions into a context.
-inferModule ::
-  ( Has (Reader UCtx) sig m
-  , Has (Reader ReqCtx) sig m
-  , Has (Reader TDCtx) sig m
-  , Has (Reader TVCtx) sig m
-  , Has (Reader (SourceMap Resolved)) sig m
-  , Has (State (SourceMap Inferred)) sig m
-  , Has (Reader TCStack) sig m
-  , Has Unification sig m
-  , Has (Error ContextualTypeErr) sig m
-  ) =>
-  Module Resolved -> m (Module Inferred)
-inferModule (Module ms _ _imps) = do
-  -- Infer the type of the term
-  mt <- traverse infer ms
-
-  -- Now, if the term has top-level definitions, collect up their
-  -- types and put them in the context.
-  ctx <- maybe (pure (Ctx.empty, emptyTDCtx)) collectDefs mt
-  pure $ Module mt ctx ()
 
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype
@@ -1311,11 +1270,10 @@ check ::
   , Has (Reader ReqCtx) sig m
   , Has (Reader TDCtx) sig m
   , Has (Reader TVCtx) sig m
-  , Has (Reader (SourceMap Resolved)) sig m
-  , Has (State (SourceMap Inferred)) sig m
   , Has (Reader TCStack) sig m
   , Has Unification sig m
   , Has (Error ContextualTypeErr) sig m
+  , Has (Reader ModuleCache) sig m
   ) =>
   Syntax Resolved ->
   UType ->

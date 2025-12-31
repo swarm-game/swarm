@@ -73,7 +73,7 @@ exampleTest :: FilePath -> TestTree
 exampleTest path =
   testCase ("processTerm for contents of " ++ show path) $ do
     content <- readFileMayT UTF8 path ??? assertFailure "Can't read file!"
-    res <- runError @SystemFailure (processSource (Just path) content Nothing >>= requireNonEmptyTerm)
+    res <- runError @SystemFailure (processSource (Just path) Nothing content >>= requireNonEmptyTerm)
     either (assertFailure . prettyString) (const $ pure ()) res
 
 ------------------------------------------------------------

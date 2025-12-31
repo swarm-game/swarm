@@ -26,6 +26,7 @@ import Language.LSP.Protocol.Types qualified as J
 import Language.LSP.VFS
 import Swarm.Failure (SystemFailure)
 import Swarm.Language.LSP.Position
+import Swarm.Language.Module (moduleTerm)
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Pipeline (processTermNoImports)
@@ -48,14 +49,13 @@ showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
     R.charLength . fst $ R.charSplitAtPosition (lspToRopePosition p) myRope
 
   genHoverInfo stx =
-    case run (runError @SystemFailure (processTermNoImports content stx Nothing)) of
-      Left (_e :: SystemFailure) ->
-        let found = narrowToPosition stx $ fromIntegral absolutePos
+    case fmap moduleTerm (run (runError @SystemFailure (processTermNoImports content stx Nothing))) of
+      Right (Just pt) ->
+        let found = narrowToPosition pt $ fromIntegral absolutePos
             finalPos = posToRange myRope (found ^. sLoc)
          in (,finalPos) . treeToMarkdown 0 $ explain found
-      Right (pt :: Syntax Elaborated) ->
-        let found =
-              narrowToPosition pt $ fromIntegral absolutePos
+      _ ->
+        let found = narrowToPosition stx $ fromIntegral absolutePos
             finalPos = posToRange myRope (found ^. sLoc)
          in (,finalPos) . treeToMarkdown 0 $ explain found
 

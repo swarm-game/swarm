@@ -85,7 +85,6 @@ import Swarm.Game.State.Runtime (eventLog)
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Universe (SubworldName)
-import Swarm.Language.Load (SyntaxWithImports (..))
 import Swarm.Language.Pipeline (processSource, requireNonEmptyTerm)
 import Swarm.Language.Syntax (Phase (Elaborated, Instantiated))
 import Swarm.Log (LogEntry)
@@ -269,9 +268,9 @@ recogFoundHandler appStateRef = do
 
 codeRenderHandler :: Text -> Handler Text
 codeRenderHandler contents = do
-  res <- liftIO . runError @SystemFailure $ requireNonEmptyTerm =<< processSource Nothing contents Nothing
+  res <- liftIO . runError @SystemFailure $ requireNonEmptyTerm =<< processSource Nothing Nothing contents
   pure $ case res of
-    Right (SyntaxWithImports _ _ t) ->
+    Right t ->
       into @Text . drawTree . fmap (T.unpack . prettyTextLine) . para Node $ t
     Left x -> prettyText x
 

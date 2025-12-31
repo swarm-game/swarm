@@ -126,7 +126,7 @@ import Swarm.Game.Tick (addTicks)
 import Swarm.Game.Universe as U
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
-import Swarm.Language.Load (SyntaxWithImports (..))
+import Swarm.Language.Module (Module)
 import Swarm.Language.Pipeline (processSource, requireNonEmptyTerm)
 import Swarm.Language.Syntax (Phase (..), SrcLoc (..), sLoc)
 import Swarm.Language.Value (Env)
@@ -147,7 +147,7 @@ data SolutionSource
 
 data CodeToRun = CodeToRun
   { _toRunSource :: SolutionSource
-  , _toRunSyntax :: SyntaxWithImports Elaborated
+  , _toRunSyntax :: Module Elaborated
   }
 
 makeLenses ''CodeToRun
@@ -163,13 +163,14 @@ parseCodeFile ::
   m CodeToRun
 parseCodeFile filepath = do
   contents <- sendIO (readFileMayT SystemLocale filepath) ??? throwError (AssetNotLoaded (Data Script) filepath (DoesNotExist File))
-  mpt <- sendIO . runError $ requireNonEmptyTerm =<< processSource (Just filepath) contents Nothing
-  pt <- either (throwError @SystemFailure) pure mpt
-  let srcLoc = getSyntax pt ^. sLoc
+  res <- sendIO . runError $ processSource (Just filepath) Nothing contents
+  m <- either (throwError @SystemFailure) pure res
+  pt <- requireNonEmptyTerm m
+  let srcLoc = pt ^. sLoc
       strippedText = stripSrc srcLoc contents
       programBytestring = TL.encodeUtf8 $ TL.fromStrict strippedText
       sha1Hash = showDigest $ sha1 programBytestring
-  return $ CodeToRun (PlayerAuthored filepath $ Sha1 sha1Hash) pt
+  return $ CodeToRun (PlayerAuthored filepath $ Sha1 sha1Hash) m
  where
   stripSrc :: SrcLoc -> Text -> Text
   stripSrc (SrcLoc _ start end) txt = T.drop start $ T.take end txt
@@ -202,7 +203,7 @@ data GameState = GameState
   { _creativeMode :: Bool
   , _temporal :: TemporalState
   , _winCondition :: WinCondition Elaborated
-  , _winSolution :: Maybe (SyntaxWithImports Elaborated)
+  , _winSolution :: Maybe (Module Elaborated)
   , _robotInfo :: Robots
   , _pathCaching :: PathCaching
   , _discovery :: Discovery
@@ -234,7 +235,7 @@ winCondition :: Lens' GameState (WinCondition Elaborated)
 
 -- | How to win (if possible). This is useful for automated testing
 --   and to show help to cheaters (or testers).
-winSolution :: Lens' GameState (Maybe (SyntaxWithImports Elaborated))
+winSolution :: Lens' GameState (Maybe (Module Elaborated))
 
 -- | Get a list of all the robots at a particular location.
 robotsAtLocation :: Cosmic Location -> GameState -> [Robot Instantiated]

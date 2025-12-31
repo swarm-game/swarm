@@ -18,16 +18,15 @@ module Swarm.Language.Value (
   -- * Environments
   Env,
   emptyEnv,
-  envFromSrcMap,
   envTypes,
   envReqs,
   envVals,
   envTydefs,
-  envSourceMap,
   lookupValue,
   addBinding,
   addValueBinding,
   addTydef,
+  restrictEnv,
 ) where
 
 import Control.Lens hiding (Const)
@@ -39,17 +38,17 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
+import Data.Strict.Tuple (Pair (..))
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Key (KeyCombo, prettyKeyCombo)
-import Swarm.Language.Load (SourceMap)
 import Swarm.Language.Requirements.Type (ReqCtx, Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.TDVar (TDVar)
-import Swarm.Language.Types (Polytype, TCtx, TDCtx, TydefInfo, Type, addBindingTD, emptyTDCtx)
+import Swarm.Language.Types (Polytype, TCtx, TDCtx, TydefInfo, Type, addBindingTD, emptyTDCtx, restrictTD)
 import Swarm.Language.WithType
 import Swarm.Pretty (prettyText)
 import Prelude hiding (Foldable (..))
@@ -154,8 +153,6 @@ data Env = Env
   -- ^ Map variables to their values.
   , _envTydefs :: TDCtx
   -- ^ Type synonym definitions.
-  , _envSourceMap :: SourceMap Elaborated
-  -- ^ A cache of typechecked + elaborated imports.
   }
   deriving (Hashable, Generic)
 
@@ -178,15 +175,11 @@ makeLenses ''Env
 -- inefficient and there is no good reason to use it.  See #2197.
 
 instance Semigroup Env where
-  Env t1 r1 v1 td1 sm1 <> Env t2 r2 v2 td2 sm2 =
-    Env (t1 <> t2) (r1 <> r2) (v1 <> v2) (td1 <> td2) (sm1 <> sm2)
-
--- | Create an environment which is empty except for an initial SourceMap.
-envFromSrcMap :: SourceMap Elaborated -> Env
-envFromSrcMap srcMap = emptyEnv {_envSourceMap = srcMap}
+  Env t1 r1 v1 td1 <> Env t2 r2 v2 td2 =
+    Env (t1 <> t2) (r1 <> r2) (v1 <> v2) (td1 <> td2)
 
 emptyEnv :: Env
-emptyEnv = Env Ctx.empty Ctx.empty Ctx.empty emptyTDCtx M.empty
+emptyEnv = Env Ctx.empty Ctx.empty Ctx.empty emptyTDCtx
 
 lookupValue :: Var -> Env -> Maybe Value
 lookupValue x e = Ctx.lookup x (e ^. envVals)
@@ -203,6 +196,10 @@ addValueBinding x v = envVals %~ Ctx.addBinding x v
 
 addTydef :: TDVar -> TydefInfo -> Env -> Env
 addTydef x pty = envTydefs %~ addBindingTD x pty
+
+restrictEnv :: Pair TCtx TDCtx -> Env -> Env
+restrictEnv (rtctx :!: rtdctx) (Env tctx rctx vals tdctx) =
+  Env (Ctx.restrict rtctx tctx) (Ctx.restrict rtctx rctx) (Ctx.restrict rtctx vals) (restrictTD rtdctx tdctx)
 
 type instance Index Env = Var
 type instance IxValue Env = WithType Value

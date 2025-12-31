@@ -18,7 +18,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Swarm.Failure (SystemFailure)
 import Swarm.Language.JSON ()
-import Swarm.Language.Load (SyntaxWithImports (..))
+import Swarm.Language.Module (Module, moduleTerm)
 import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Pipeline (processSource)
@@ -371,7 +371,7 @@ testLanguagePipeline =
             "annotate 1 + 1"
             ( assertEqual
                 "type annotations"
-                (toListOf (`traverseSyntax` mempty) (getSyntax ([tmQ| 1 + 1 |] :: SyntaxWithImports Elaborated)))
+                (maybe [] (toListOf (`traverseSyntax` mempty)) (moduleTerm ([tmQ| 1 + 1 |] :: Module Elaborated)))
                 [[tyQ| Int -> Int -> Int|], [tyQ|Int|], [tyQ|Int -> Int|], [tyQ|Int|], [tyQ|Int|]]
             )
         , testCase
@@ -384,7 +384,7 @@ testLanguagePipeline =
                   getVars = map (_sTerm &&& _sType) . filter (isVar . _sTerm) . universe
                in assertEqual
                     "variable types"
-                    (getVars (getSyntax s))
+                    (maybe [] getVars (moduleTerm s))
                     [ (TVar "g", [tyQ| Int -> Int |])
                     , (TVar "x", [tyQ| Int |])
                     ]
@@ -792,7 +792,7 @@ testLanguagePipeline =
 
   processCompare :: (Text -> Text -> Bool) -> Text -> Text -> Assertion
   processCompare cmp code expect =
-    runError @SystemFailure (processSource Nothing code Nothing) >>= \case
+    runError @SystemFailure (processSource Nothing Nothing code) >>= \case
       Left e
         | not (T.null expect) && cmp expect (prettyText e) -> pure ()
         | otherwise ->

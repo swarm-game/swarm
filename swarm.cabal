@@ -200,7 +200,7 @@ common free
   build-depends: free >=5.2 && <5.3
 
 common fused-effects
-  build-depends: fused-effects >=1.1.2.5 && <1.2
+  build-depends: fused-effects >=1.1.2.6 && <1.2
 
 common fused-effects-lens
   build-depends: fused-effects-lens >=1.2.0.1 && <1.3
@@ -328,6 +328,9 @@ common sqlite-simple
 common split
   build-depends: split >=0.2.3 && <0.3
 
+common stm
+  build-depends: stm >=2.5 && <2.6
+
 common strict
   build-depends: strict >=0.5 && <0.6
 
@@ -425,6 +428,7 @@ library swarm-lang
     containers,
     data-fix,
     deriving-compat,
+    directory,
     extra,
     free,
     fused-effects,
@@ -435,14 +439,17 @@ library swarm-lang
     lsp,
     megaparsec,
     mtl,
+    ordered-containers,
     parser-combinators,
     prettyprinter,
     split,
+    strict,
     syb,
     template-haskell,
     terminal-size,
     text,
     text-rope,
+    time,
     unicode-show,
     vector,
     vty,
@@ -456,6 +463,7 @@ library swarm-lang
     Swarm.Effect.Unify.Common
     Swarm.Effect.Unify.Fast
     Swarm.Effect.Unify.Naive
+    Swarm.Language.Cache
     Swarm.Language.Capability
     Swarm.Language.Context
     Swarm.Language.Elaborate
@@ -469,6 +477,7 @@ library swarm-lang
     Swarm.Language.LSP.Position
     Swarm.Language.LSP.VarUsage
     Swarm.Language.Load
+    Swarm.Language.Module
     Swarm.Language.Parser
     Swarm.Language.Parser.Comment
     Swarm.Language.Parser.Core
@@ -716,6 +725,7 @@ library swarm-engine
     filepath,
     fused-effects,
     fused-effects-lens,
+    hashable,
     lens,
     linear,
     megaparsec,
@@ -726,9 +736,9 @@ library swarm-engine
     prettyprinter,
     random,
     servant-docs,
+    strict,
     text,
     time,
-    hashable,
     transformers,
     unordered-containers,
     witch,
@@ -935,9 +945,12 @@ library swarm-util
     mtl,
     prettyprinter,
     servant-docs,
+    stm,
     template-haskell,
     text,
+    time,
     transformers,
+    unordered-containers,
     vector,
     witch,
     witherable,
@@ -946,7 +959,6 @@ library swarm-util
   visibility: public
   -- cabal-gild: discover src/swarm-util
   exposed-modules:
-    Control.Carrier.Accum.ActuallyStrict
     Data.BoolExpr.Simplify
     Swarm.Effect
     Swarm.Effect.Metric
@@ -961,6 +973,7 @@ library swarm-util
     Swarm.Util
     Swarm.Util.Effect
     Swarm.Util.Erasable
+    Swarm.Util.GlobalCache
     Swarm.Util.Graph
     Swarm.Util.InputSource
     Swarm.Util.JSON

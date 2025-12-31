@@ -42,11 +42,11 @@ import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Tick
 import Swarm.Game.Universe
-import Swarm.Language.Load (SyntaxWithImports)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax (Phase (..))
 import Swarm.Language.Value as V
 import Swarm.Log
+import Swarm.Util ((?))
 
 ------------------------------------------------------------
 -- Instances for concrete robots
@@ -112,10 +112,6 @@ instance ToSample (Robot Instantiated) where
           emptyExceptions
           0
 
-mkMachine :: Maybe (SyntaxWithImports Elaborated) -> C.CESK
-mkMachine Nothing = C.Out VUnit C.emptyStore []
-mkMachine (Just t) = C.initMachine t
-
 -- | Instantiate a robot template to make it into a concrete robot, by
 --    providing a robot ID. Concrete robots also require a location;
 --    if the robot template didn't have a location already, just set
@@ -130,7 +126,7 @@ instantiateRobot maybeMachine i r =
     { _robotID = i
     , _robotLocation = fromMaybe defaultCosmicLocation $ _robotLocation r
     , _activityCounts = emptyActivityCount
-    , _machine = fromMaybe (mkMachine $ _machine r) maybeMachine
+    , _machine = maybeMachine ? (C.initMachine <$> _machine r) ? C.idleMachine
     , _robotLog = Seq.empty
     , _robotLogUpdated = False
     }

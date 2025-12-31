@@ -25,24 +25,29 @@ module Swarm.Language.Pipeline (
 ) where
 
 import Control.Algebra (Has)
+import Control.Carrier.Lift (sendIO)
 import Control.Effect.Error (Error, throwError)
 import Control.Effect.Lift (Lift)
-import Control.Effect.Throw (liftEither)
+import Control.Effect.Throw (Throw, liftEither)
 import Control.Lens ((^.))
-import Data.Map qualified as M
+import Control.Monad (forM_, (<=<))
+import Data.Map.Ordered qualified as OM
 import Data.Maybe (fromMaybe)
+import Data.Set qualified as S
 import Data.Text (Text)
-import Data.Traversable (for)
+import Data.Time.Clock (getCurrentTime)
 import Swarm.Failure (SystemFailure (..))
+import Swarm.Language.Cache
 import Swarm.Language.Elaborate
-import Swarm.Language.Load (SyntaxWithImports (..), eraseSourceMap, resolve, resolve')
+import Swarm.Language.Load (resolve, resolve')
+import Swarm.Language.Module (Module (..), ModuleProvenance (..), emptyModule, moduleTerm)
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
-import Swarm.Language.Types (emptyTDCtx)
-import Swarm.Language.Value (Env, emptyEnv, envReqs, envSourceMap, envTydefs, envTypes)
+import Swarm.Language.Value (Env, emptyEnv, envReqs, envTydefs, envTypes)
 import Swarm.Util.Effect (withError, withThrow)
+import Swarm.Util.GlobalCache (deleteCached, freezeCache, insertCached)
 
 -- | Given raw 'Text' representing swarm-lang source code:
 --
@@ -51,53 +56,89 @@ import Swarm.Util.Effect (withError, withThrow)
 --   3. Typecheck the term and all imports (see "Swarm.Language.Typecheck")
 --   4. Elaborate the term and all imports (see "Swarm.Language.Elaborate")
 --
---   Return the end result (an elaborated term + source map for
---   imports), or @Nothing@ if the input was only whitespace.
+--   Return the end result (an elaborated Module), or @Nothing@ if the
+--   input was only whitespace.
+--
+--   Also inserts all elaborated, imported modules into the module
+--   cache, so they do not have to be reloaded + rechecked the next
+--   time they are used.
 processSource ::
   (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
-  -- | Provenance of the source code was obtained, relative to
-  --   which imports should be interpreted.  If Nothing, use
-  --   the current working directory.
+  -- | File path where the source code was obtained, relative to which
+  --   imports should be interpreted.  If Nothing, use the current
+  --   working directory.
   Maybe FilePath ->
-  -- | Text of the source code
-  Text ->
   -- | Possible Env to use while typechecking.  If Nothing, use a
   --   default empty Env.
   Maybe Env ->
-  m (Maybe (SyntaxWithImports Elaborated))
-processSource prov txt menv = do
+  -- | Text of the source code
+  Text ->
+  m (Module Elaborated)
+processSource prov menv txt = do
   mt <- withThrow CanNotParseMegaparsec . liftEither $ readTerm' defaultParserConfig txt
-  for mt $ \t -> processTerm prov txt t menv
+  case mt of
+    Nothing -> pure emptyModule
+    Just t -> processTerm prov txt menv t
 
 -- | Like 'processSource', but start with an already-parsed raw AST.
 processTerm ::
   forall sig m.
   (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
-  -- | Provenance of the source code was obtained, relative to
-  --   which imports should be interpreted.  If Nothing, use
-  --   the current working directory.
+  -- | File path where the source code was obtained, relative to which
+  --   imports should be interpreted.  If Nothing, use the current
+  --   working directory.
   Maybe FilePath ->
   -- | Text of the source code, used to generate error messages
   Text ->
-  -- | Raw AST.
-  Syntax Raw ->
   -- | Possible Env to use while typechecking.  If Nothing, use a
   --   default empty Env.
   Maybe Env ->
-  m (SyntaxWithImports Elaborated)
-processTerm prov txt t menv = do
+  -- | Raw AST.
+  Syntax Raw ->
+  m (Module Elaborated)
+processTerm prov txt menv tm = do
   let e = fromMaybe emptyEnv menv
-  SyntaxWithImports _ srcMapRes tRes <- resolve prov t
-  SyntaxWithImports _ srcMapTy tTy <-
+
+  -- Resolve + recursively collect up any imports that aren't already
+  -- cached
+  (srcMapRes, (imps, tmRes)) <- resolve prov tm
+
+  -- Typecheck + elaborate each import that wasn't in the global cache
+  forM_ (OM.assocs srcMapRes) $ \(loc, m) -> do
+    modCache <- sendIO $ freezeCache moduleCache
+    mTy <- withError (typeErrToSystemFailure "") $ inferModule modCache m
+    let mElab = elaborateModule mTy
+    sendIO $ do
+      insertCached moduleCache loc mElab
+      deleteCached envCache loc
+
+  -- Now typecheck + elaborate the top-level term
+  modCache <- sendIO $ freezeCache moduleCache
+  tmTy <-
     withError (typeErrToSystemFailure txt) $
       inferTop
-        prov
         (e ^. envTypes)
         (e ^. envReqs)
         (e ^. envTydefs)
-        (srcMapRes <> eraseSourceMap (e ^. envSourceMap))
-        tRes
-  pure $ SyntaxWithImports prov (fmap elaborateModule srcMapTy) (elaborate tTy)
+        modCache
+        tmRes
+  let tmElab = elaborate tmTy
+
+  -- Get current time, to mark elaborated module with timestamp.
+  -- Probably not really important, since this module (not being
+  -- loaded via an import location) won't go in the module cache.  But
+  -- we might as well.
+  time <- sendIO getCurrentTime
+
+  -- Package up elaborated term as a Module.  Note that we put an
+  -- empty context in the resulting Module, which is not really
+  -- correct, but since we are processing a top-level term, we won't
+  -- ever use this module as an import to some other module, so the
+  -- context is not really needed.
+  let modElab = Module (Just tmElab) mempty imps (Just time) (maybe NoProvenance FromFile prov)
+
+  -- Return the elaborated module.
+  pure modElab
 
 -- | Like 'processTerm', but don't allow any imports that need to be
 --   loaded (and hence would require IO).  If any imports are
@@ -112,20 +153,19 @@ processTermNoImports ::
   -- | Possible Env to use while typechecking.  If Nothing, use a
   --   default empty Env.
   Maybe Env ->
-  m (Syntax Elaborated)
-processTermNoImports txt t menv = do
+  m (Module Elaborated)
+processTermNoImports txt tm menv = do
   let e = fromMaybe emptyEnv menv
-  tRes <- resolve' t
-  SyntaxWithImports _ _ tTy <-
+  tmRes <- resolve' tm
+  tmTy <-
     withError (typeErrToSystemFailure txt) $
       inferTop
-        Nothing
         (e ^. envTypes)
         (e ^. envReqs)
         (e ^. envTydefs)
-        M.empty
-        tRes
-  pure $ elaborate tTy
+        (const Nothing)
+        tmRes
+  pure $ Module (Just $ elaborate tmTy) mempty S.empty Nothing NoProvenance
 
 ------------------------------------------------------------
 -- Utility adapters for processTerm
@@ -138,10 +178,16 @@ typeErrToSystemFailure :: Text -> ContextualTypeErr -> SystemFailure
 typeErrToSystemFailure s cte@(CTE loc _ _) = DoesNotTypecheck loc (prettyTypeErrText s cte)
 
 -- | Require a term to be non-empty, throwing an error about the term
---   consisting only of whitespace otherwise.  Appropriate for use
---   with the output of 'processTerm'.
-requireNonEmptyTerm :: Has (Error SystemFailure) sig m => Maybe t -> m t
-requireNonEmptyTerm = maybe (throwError EmptyTerm) pure
+--   consisting only of whitespace otherwise.
+requireNonNothing :: Has (Throw SystemFailure) sig m => Maybe t -> m t
+requireNonNothing = maybe (throwError EmptyTerm) pure
+
+-- | Extract the term contained in a module, requiring it to be
+--   non-empty, and throwing an error about the term consisting only
+--   of whitespace otherwise.  Appropriate for use with the output of
+--   'processTerm'.
+requireNonEmptyTerm :: Has (Throw SystemFailure) sig m => Module phase -> m (Syntax phase)
+requireNonEmptyTerm = requireNonNothing . moduleTerm
 
 ------------------------------------------------------------
 -- Generic processing of things that contain terms
@@ -150,13 +196,16 @@ requireNonEmptyTerm = maybe (throwError EmptyTerm) pure
 class Processable t where
   process :: (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) => t Raw -> m (t Elaborated)
 
-instance Processable SyntaxWithImports where
-  process (SyntaxWithImports prov _ t) = do
-    SyntaxWithImports _ srcMapRes tRes <- resolve prov t
-    SyntaxWithImports _ srcMapTy tTy <- withError (typeErrToSystemFailure "") . inferTop prov mempty mempty emptyTDCtx srcMapRes $ tRes
-    pure $ SyntaxWithImports prov (M.map elaborateModule srcMapTy) (elaborate tTy)
+instance Processable Module where
+  process = \case
+    Module Nothing _ _ ts prov -> pure $ Module Nothing mempty S.empty ts prov
+    Module (Just t) _ _ _ prov -> processTerm (fileProv prov) "" Nothing t
+   where
+    fileProv = \case
+      FromFile f -> Just f
+      _ -> Nothing
 
 -- | Process syntax, but deliberately throw away information about
 --   imports.  Used e.g. for processing code embedded in markdown.
 processSyntax :: (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) => Syntax Raw -> m (Syntax Elaborated)
-processSyntax = fmap getSyntax . process . SyntaxWithImports Nothing mempty
+processSyntax = (requireNonNothing . moduleTerm) <=< processTerm Nothing "" Nothing

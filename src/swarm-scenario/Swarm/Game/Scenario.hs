@@ -102,7 +102,7 @@ import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Terrain
 import Swarm.Game.Universe
 import Swarm.Game.World.DSL (Seed, WorldMap, loadWorlds)
-import Swarm.Language.Load (ModuleCtx, ModuleImports, SyntaxWithImports)
+import Swarm.Language.Module (Module, ModuleCtx, ModuleImports)
 import Swarm.Language.Pipeline (Processable (..), processSyntax)
 import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (..), SwarmType, Syntax)
 import Swarm.Language.Text.Markdown (Document)
@@ -155,7 +155,7 @@ data ScenarioOperation (phase :: Phase) = ScenarioOperation
   -- ^ Note: the description is in this record instead of
   -- 'ScenarioMetadata' because it relates to the goals.
   , _scenarioObjectives :: [Objective phase]
-  , _scenarioSolution :: Maybe (SyntaxWithImports phase)
+  , _scenarioSolution :: Maybe (Module phase)
   , _scenarioRecipes :: [Recipe Entity]
   , _scenarioStepsPerTick :: Maybe Int
   }
@@ -189,7 +189,7 @@ scenarioObjectives :: Lens' (ScenarioOperation phase) [Objective phase]
 -- | An optional solution of the scenario, expressed as a
 --   program of type @cmd a@. This is useful for automated
 --   testing of the win condition.
-scenarioSolution :: Lens' (ScenarioOperation phase) (Maybe (SyntaxWithImports phase))
+scenarioSolution :: Lens' (ScenarioOperation phase) (Maybe (Module phase))
 
 -- | Optionally, specify the maximum number of steps each robot may
 --   take during a single tick.

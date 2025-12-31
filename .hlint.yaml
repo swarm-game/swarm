@@ -37,6 +37,8 @@
   - {name: Data.Colour.SRGB.sRGB24read, within: []}
   - {name: Data.IntMap.!, within: []}
   - {name: Data.Map.!, within: [Swarm.Language.Context.rehydrate]} # TODO: #1494
+  - {name: Data.Map.Strict.!, within: []}
+  - {name: Data.Map.Lazy.!, within: []}
   - {name: error, within:
       [ Swarm.Language.Parser.QQ  # quasiquoters only run at compile time
       , Swarm.Language.Pipeline.QQ

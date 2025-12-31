@@ -26,7 +26,7 @@ import Brick.BChan (BChan, newBChan)
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Arrow ((&&&))
-import Control.Carrier.Accum.ActuallyStrict (runAccum)
+import Control.Carrier.Accum.Strict (runAccum)
 import Control.Carrier.State.Strict (State, execState)
 import Control.Effect.Accum
 import Control.Effect.Error (Error)
