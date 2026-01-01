@@ -64,7 +64,7 @@ module Swarm.Game.Robot (
 
 import Control.Applicative ((<|>))
 import Control.Lens hiding (Const, contains)
-import Data.Aeson qualified as Ae
+import Control.Monad (forM)
 import Data.Aeson.KeyMap qualified as KM
 import Data.Hashable (hashWithSalt)
 import Data.Kind qualified
@@ -82,7 +82,7 @@ import Swarm.Game.Land
 import Swarm.Game.Location (Heading, Location, toHeading)
 import Swarm.Game.Robot.Walk
 import Swarm.Game.Universe
-import Swarm.Language.JSON ()
+import Swarm.Language.JSON (parseProgram)
 import Swarm.Language.Module (Module)
 import Swarm.Language.Pipeline (Processable (..), processTerm)
 import Swarm.Language.Syntax (Phase (..), Syntax)
@@ -399,10 +399,7 @@ instance FromJSONE TerrainEntityMaps (Robot Raw) where
 
     -- Parse the robot program but also store the original text, for
     -- use in displaying error messages while typechecking
-    prov <- getProvenance
-    prog <- case KM.lookup "program" v of
-      Just progV -> liftE $ Ae.withText "program" (\txt -> (fmap . fmap) (prov,txt,) (v .:? "program")) progV
-      _ -> pure Nothing
+    prog <- forM (KM.lookup "program" v) parseProgram
 
     mkRobot Nothing
       <$> liftE (v .: "name")

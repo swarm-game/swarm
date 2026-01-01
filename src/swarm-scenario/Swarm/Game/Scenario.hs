@@ -102,6 +102,7 @@ import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Terrain
 import Swarm.Game.Universe
 import Swarm.Game.World.DSL (Seed, WorldMap, loadWorlds)
+import Swarm.Language.JSON (withModuleProvenance)
 import Swarm.Language.Module (Module, ModuleCtx, ModuleImports)
 import Swarm.Language.Pipeline (Processable (..), processSyntax)
 import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (..), SwarmType, Syntax)
@@ -400,7 +401,7 @@ instance FromJSONE ScenarioInputs (Scenario Raw) where
           <$> liftE (v .:? "creative" .!= False)
           <*> liftE (v .:? "description" .!= "")
           <*> (liftE (v .:? "objectives" .!= []) >>= validateObjectives)
-          <*> liftE (v .:? "solution")
+          <*> withModuleProvenance (v ..:? "solution")
           <*> localE (view entityMap) (v ..:? "recipes" ..!= [])
           <*> liftE (v .:? "stepsPerTick")
 

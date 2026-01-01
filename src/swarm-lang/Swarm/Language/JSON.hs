@@ -13,6 +13,7 @@ module Swarm.Language.JSON where
 import Control.Lens (view)
 import Data.Aeson (FromJSON (..), ToJSON (..), genericToJSON, withText)
 import Data.Aeson qualified as Ae
+import Data.Text (Text)
 import GHC.Generics (Generic)
 import Swarm.Language.Module (Module (..), ModuleCtx, ModuleImports, ModuleProvenance (..))
 import Swarm.Language.Parser (readNonemptyTerm)
@@ -20,7 +21,7 @@ import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (Raw), SwarmType, Sy
 import Swarm.Language.Value (Env, Value (..))
 import Swarm.Pretty (PrettyPrec, prettyText)
 import Swarm.Util.JSON (optionsMinimize)
-import Swarm.Util.Yaml (FromJSONE (..), getE, liftE, runE)
+import Swarm.Util.Yaml (FromJSONE (..), ParserE, getE, getProvenance, liftE, localE, runE, withE)
 import Witch (into)
 
 instance FromJSON (Term Raw) where
@@ -28,6 +29,13 @@ instance FromJSON (Term Raw) where
 
 instance FromJSON (Syntax Raw) where
   parseJSON = withText "Syntax" $ either (fail . into @String) pure . readNonemptyTerm
+
+-- | Parse a program from a JSON text value, recording the filename it
+--   came from and the raw text along with the parsed syntax.
+parseProgram :: Ae.Value -> ParserE e (Maybe FilePath, Text, Syntax Raw)
+parseProgram v = do
+  prov <- getProvenance
+  liftE $ Ae.withText "program" (\txt -> fmap (prov,txt,) (parseJSON v)) v
 
 instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => ToJSON (Term phase) where
   toJSON = Ae.String . prettyText
@@ -40,6 +48,13 @@ deriving instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (Impo
 instance FromJSON (Module Raw) where
   parseJSON v = runE (parseJSONE v) NoProvenance Nothing
 
+-- | Run a parser requiring a ModuleProvenance, getting the provenance
+--   from the ambient file provenance provided by ParserE itself.
+withModuleProvenance :: ParserE ModuleProvenance a -> ParserE e a
+withModuleProvenance p = do
+  prov <- getProvenance
+  localE (const (maybe NoProvenance FromFile prov)) p
+
 instance FromJSONE ModuleProvenance (Module Raw) where
   parseJSONE v =
     Module
@@ -48,8 +63,6 @@ instance FromJSONE ModuleProvenance (Module Raw) where
       <*> pure ()
       <*> pure Nothing
       <*> getE
-
--- SyntaxWithImports Nothing _ <$> parseJSON @(Syntax Raw) v
 
 instance ToJSON Value where
   toJSON = genericToJSON optionsMinimize
