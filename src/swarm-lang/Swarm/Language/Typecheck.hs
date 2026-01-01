@@ -57,7 +57,7 @@ import Control.Effect.Reader
 import Control.Effect.Throw
 import Control.Lens (view, (^.))
 import Control.Lens.Indexed (itraverse)
-import Control.Monad (forM, forM_, void, when, (<=<), (>=>))
+import Control.Monad (forM, forM_, void, when, (>=>))
 import Control.Monad.Free qualified as Free
 import Data.Bifunctor (first, second)
 import Data.Data (gmapM)
@@ -208,7 +208,7 @@ finalizeInferred ::
   Syntax Inferred ->
   m (Syntax Typed)
 finalizeInferred =
-  applyBindings >=> traverseSyntax (checkPredicative <=< (fmap fromU . generalize)) pure
+  applyBindings >=> traverseSyntax ((fmap fromU . generalize) >=> checkPredicative) pure
 
 -- | Ensure there are no remaining unification variables, which can happen
 --   in the case of impredicative polymorphism.  See #351.
@@ -224,7 +224,8 @@ runTC ::
   TDCtx ->
   TVCtx ->
   ModuleCache ->
-  (ReaderC UCtx (ReaderC TCStack (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx (ReaderC ModuleCache m))))))) (Syntax Inferred) ->
+  (ReaderC UCtx (ReaderC TCStack (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx (ReaderC ModuleCache m)))))))
+    (Syntax Inferred) ->
   m (Syntax Typed)
 runTC ctx reqCtx tdctx tvCtx modCache =
   (>>= finalizeInferred)

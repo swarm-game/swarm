@@ -70,7 +70,13 @@ treeToMarkdown :: Int -> Tree Text -> Text
 treeToMarkdown d (Node t children) =
   T.unlines $ renderDoc d t : map (treeToMarkdown $ d + 1) children
 
-explain :: (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase)) => ExplainableType (SwarmType phase) => Syntax phase -> Tree Text
+explain ::
+  ( PrettyPrec (Anchor (ImportPhaseFor phase))
+  , Unresolvable (ImportPhaseFor phase)
+  , ExplainableType (SwarmType phase)
+  ) =>
+  Syntax phase ->
+  Tree Text
 explain trm = case trm ^. sTerm of
   TUnit -> literal "The unit value."
   TConst c -> literal . constGenSig c $ briefDoc (constDoc $ constInfo c)
@@ -140,7 +146,13 @@ explain trm = case trm ^. sTerm of
 --
 -- Note that 'Force' is often inserted internally, so
 -- if it shows up here we drop it.
-explainFunction :: (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase)) => ExplainableType (SwarmType phase) => Syntax phase -> Tree Text
+explainFunction ::
+  ( PrettyPrec (Anchor (ImportPhaseFor phase))
+  , Unresolvable (ImportPhaseFor phase)
+  , ExplainableType (SwarmType phase)
+  ) =>
+  Syntax phase ->
+  Tree Text
 explainFunction s =
   case unfoldApps s of
     (Syntax _ (TConst Force) _ _ :| [innerT]) -> explain innerT

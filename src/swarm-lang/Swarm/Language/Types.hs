@@ -898,12 +898,6 @@ withBindingTD v info = local (addBindingTD v info)
 --   Unlike `withBindingTD`, we assume that this does not result in
 --   any shadowing within the same module, so we can simply union the
 --   contexts.
---
---   TODO (#2659): currently, when typechecking modules only
---   explicitly imported things are in scope, NOT transitively
---   imported things.  However, this doesn't match what happens at
---   runtime, where everything transitively imported ends up dumped
---   into the context at the point where we suspend.
 withBindingsTD :: Has (Reader TDCtx) sig m => TDCtx -> m a -> m a
 withBindingsTD tdCtx = local (`unionTDCtx` tdCtx)
 

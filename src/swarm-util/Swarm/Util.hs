@@ -426,6 +426,8 @@ acquireAllWithExt dir ext = findAllWithExt dir ext >>= wither addContent
   addContent :: FilePath -> IO (Maybe (FilePath, Text))
   addContent path = (fmap . fmap) (path,) (readFileMayT UTF8 path)
 
+-- | Get the modification time of a file, but safely return Nothing in
+--   case of an error, /e.g./ if the file does not exist.
 getModificationTimeMay :: FilePath -> IO (Maybe UTCTime)
 getModificationTimeMay = catchIO . getModificationTime
 
