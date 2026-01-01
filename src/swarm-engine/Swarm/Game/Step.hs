@@ -89,7 +89,7 @@ import Swarm.Language.WithType (WithType (..))
 import Swarm.Log
 import Swarm.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Util hiding (both)
-import Swarm.Util.GlobalCache (insertCached, lookupCached)
+import Swarm.Util.GlobalCache (lookupCached)
 import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec)
 import Witch (From (from), into)
@@ -720,7 +720,6 @@ stepCESK cesk = case cesk of
   -- Evaluate the code corresponding to an import.
   In (TImportIn loc t) e s k -> do
     mmod <- sendIO $ lookupCached moduleCache loc
-    menv <- sendIO $ lookupCached envCache loc
 
     pure $ case mmod of
       -- The import should have already been typechecked at this point, so
@@ -728,31 +727,24 @@ stepCESK cesk = case cesk of
       Nothing ->
         let errMsg = "Import not found: " <> into @Text (locToFilePath loc)
          in Up (Fatal errMsg) s k
-      Just m -> case menv of
-        -- The environment corresponding to the evaluated module is
-        -- already in the environment cache, so just continue evaluating
-        -- the body in an extended environment.
-        Just env -> In t (e <> env) s k
-        -- The environment is not in the cache, so we need to evaluate
-        -- the module.
-        _ -> case moduleTerm m of
-          -- In theory there could be an import of an empty module; in
-          -- that case just continue on with the import body without
-          -- doing anything.
-          Nothing -> In t e s k
-          -- To evaluate an import:
-          --   (1) stick a 'suspend' at the end of the term
-          --     corresponding to the imported module, so we can save
-          --     the resulting environment
-          --   (2) focus on evaluating the module *in an empty environment*
-          --   (3) push an FImport frame on the stack to continue with the
-          --     body in the context of the import once we're done processing it.
-          --     The FImport frame contains the import location, the context of
-          --     names that are supposed to be exported from the
-          --     module, the body following the AST, and the current
-          --     environment.
-          Just mt ->
-            In (insertSuspend $ erase mt ^. sTerm) emptyEnv s (FImport loc (moduleCtx m) t e : k)
+      Just m -> case moduleTerm m of
+        -- In theory there could be an import of an empty module; in
+        -- that case just continue on with the import body without
+        -- doing anything.
+        Nothing -> In t e s k
+        -- To evaluate an import:
+        --   (1) stick a 'suspend' at the end of the term
+        --     corresponding to the imported module, so we can save
+        --     the resulting environment
+        --   (2) focus on evaluating the module *in an empty environment*
+        --   (3) push an FImport frame on the stack to continue with the
+        --     body in the context of the import once we're done processing it.
+        --     The FImport frame contains the import location, the context of
+        --     names that are supposed to be exported from the
+        --     module, the body following the AST, and the current
+        --     environment.
+        Just mt ->
+          In (insertSuspend $ erase mt ^. sTerm) emptyEnv s (FImport loc (moduleCtx m) t e : k)
 
   -- Ignore explicit parens.
   In (TParens t) e s k -> return $ In t e s k
@@ -873,16 +865,12 @@ stepCESK cesk = case cesk of
   -- resulting suspended environment, then resume by evaluating the
   -- body of the import in an environment extended by the suspended
   -- environment we got after processing the import.
-  Suspended _ moduleEnv s (FImport loc vars t e : k) -> do
+  Suspended _ moduleEnv s (FImport _ vars t e : k) -> do
     -- First, restrict the environment to only that which is actually
     -- supposed to be exported from the module.  See Note [Module
     -- exports].
     let exportedEnv = restrictEnv vars moduleEnv
-    -- Now cache the resulting environment, so the next time the same
-    -- module is imported we can just fetch the environment without
-    -- re-evaluating the module.
-    sendIO $ insertCached envCache loc exportedEnv
-    -- Finally, continue evaluating the body following the import,
+    -- Now, continue evaluating the body following the import,
     -- with the old environment extended by the module's exported
     -- environment.
     return $ In t (e <> exportedEnv) s k

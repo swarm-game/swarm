@@ -47,7 +47,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Value (Env, emptyEnv, envReqs, envTydefs, envTypes)
 import Swarm.Util.Effect (withError, withThrow)
-import Swarm.Util.GlobalCache (deleteCached, freezeCache, insertCached)
+import Swarm.Util.GlobalCache (freezeCache, insertCached)
 
 -- | Given raw 'Text' representing swarm-lang source code:
 --
@@ -108,9 +108,7 @@ processTerm prov txt menv tm = do
     modCache <- sendIO $ freezeCache moduleCache
     mTy <- withError (typeErrToSystemFailure "") $ inferModule modCache m
     let mElab = elaborateModule mTy
-    sendIO $ do
-      insertCached moduleCache loc mElab
-      deleteCached envCache loc
+    sendIO $ insertCached moduleCache loc mElab
 
   -- Now typecheck + elaborate the top-level term
   modCache <- sendIO $ freezeCache moduleCache
