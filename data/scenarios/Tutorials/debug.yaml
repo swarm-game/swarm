@@ -80,7 +80,7 @@ robots:
       invisible: true
     system: true
     program: |
-      run "scenarios/Tutorials/debug-hint.sw"
+      import "debug-hint"; hint
 known: [water, wavy water, tree, mountain]
 world:
   palette:
