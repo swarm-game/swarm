@@ -1,4 +1,4 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+import "../../../../lib/control"
 
 def countRow = \currentCount.
     emptyHere <- isempty;
@@ -26,7 +26,7 @@ def moveToBeginning =
     thingLeft <- scan left;
     case thingLeft (\_.
         turn back;
-        move;        
+        move;
     ) (\_.
         move;
         moveToBeginning;
@@ -113,5 +113,3 @@ def go =
     turn right;
     doLoop totalCount;
     end;
-
-go;

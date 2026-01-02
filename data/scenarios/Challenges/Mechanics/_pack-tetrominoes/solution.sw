@@ -1,3 +1,4 @@
+def solution =
 move;
 place "j-tile";
 move;
@@ -65,3 +66,4 @@ place "q-tile";
 move;
 turn left;
 place "q-tile";
+end

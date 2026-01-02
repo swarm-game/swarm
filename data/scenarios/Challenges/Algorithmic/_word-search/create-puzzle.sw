@@ -1,4 +1,4 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+import "../../../../lib/control"
 
 def intersperse = \n. \f2. \f1. if (n > 0) {
         f1;
@@ -246,5 +246,3 @@ def createPuzzle = \width. \height.
     overwriteWithWord width height;
     removeBoulder;
     end;
-
-instant {createPuzzle 25 15};

@@ -2,6 +2,15 @@ import "control"
 
 tydef List a = rec l. Unit + a * l end
 
+def index : Int -> List a -> a = \i. λcase
+  (\_. fail "bad index")
+  (λmatch \hd. \tl. if (i == 0) {hd} {index (i-1) tl})
+end
+
+def length : List a -> Int = λcase
+  (\_. 0) (λmatch \_. \tl. 1 + length tl)
+end
+
 def for : Int -> (Int -> Cmd a) -> Cmd (List a) = \n. \k.
   if (n == 0)
     { pure $ inl () }
