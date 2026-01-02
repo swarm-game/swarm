@@ -303,6 +303,7 @@ validateImport loc = maybe (pure ()) validate . moduleTerm
     SImportIn _ t -> validate t
     STydef _ _ _ t -> validate t
     TConst Noop -> pure ()
+    TBind _ _ _ t1 _ -> throwError $ ImpureImport loc (prettyText t1)
     t -> throwError $ ImpureImport loc (prettyText t)
 
 -- | Try to read and parse a term from a specific import location,
