@@ -21,7 +21,7 @@ import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (Raw), SwarmType, Sy
 import Swarm.Language.Value (Env, Value (..))
 import Swarm.Pretty (PrettyPrec, prettyText)
 import Swarm.Util.JSON (optionsMinimize)
-import Swarm.Util.Yaml (FromJSONE (..), ParserE, getE, getProvenance, liftE, localE, runE, withE)
+import Swarm.Util.Yaml (FromJSONE (..), ParserE, getE, getProvenance, liftE, localE, runE)
 import Witch (into)
 
 instance FromJSON (Term Raw) where
