@@ -166,7 +166,7 @@ instance PrettyPrec SystemFailure where
     ImpureImport imp t ->
       nest 2 . vcat $
         [ "While processing import" <+> ppr imp <> ":"
-        , "Imported modules must only contain imports + definitions, but found:"
+        , "Imported modules must only contain imports and definitions at the top level, but found:"
         , squotes (pretty t)
         ]
     CustomFailure m -> pretty m
