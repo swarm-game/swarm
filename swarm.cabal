@@ -63,6 +63,7 @@ data-files:
   test/standalone-topography/*.png
   test/standalone-topography/*.yaml
   worlds/*.world
+  lib/**/*.sw
 
 source-repository head
   type: git
