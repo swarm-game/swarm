@@ -32,7 +32,7 @@ objectives:
       try { as base {has "lambda"} } {pure false}
     prerequisite: get_harvester
 solution: |
-  run "scenarios/Tutorials/world101.sw"
+  import "world101"; solution
 robots:
   - name: base
     display:

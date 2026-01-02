@@ -10,9 +10,11 @@ def give_fish = \n.
   }
 end;
 
-build {
-  stock 3 "fish";
-  m2; turn left; m20;
-  give_fish 3;
-  turn back; m20; turn right; m2
-}
+def solution =
+  build {
+    stock 3 "fish";
+    m2; turn left; m20;
+    give_fish 3;
+    turn back; m20; turn right; m2
+  }
+end

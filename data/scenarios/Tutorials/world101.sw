@@ -34,5 +34,3 @@ def solution : Cmd Unit =
   make_harvester;
   build {get_lambda}; wait 100; salvage
 end;
-
-solution
