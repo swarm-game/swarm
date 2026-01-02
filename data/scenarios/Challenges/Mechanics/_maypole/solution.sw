@@ -1,4 +1,4 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+import "../../../../lib/control"
 
 def singleLeg =
     doN 4 move;
@@ -9,9 +9,11 @@ def singleLoop =
     doN 4 singleLeg;
     end;
 
-doN 3 singleLoop;
+def solution =
+  doN 3 singleLoop;
 
-doN 2 move;
-turn left;
-doN 2 move;
-grab;
+  doN 2 move;
+  turn left;
+  doN 2 move;
+  grab;
+end

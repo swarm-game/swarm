@@ -43,7 +43,7 @@ robots:
       char: '='
       attr: robot
     program: |
-      run "scenarios/Challenges/Mechanics/_bucket-brigade/hauler.sw"
+      import "_bucket-brigade/hauler"; hauler
   - name: powerplant
     system: true
     dir: east
@@ -52,7 +52,7 @@ robots:
       char: '▒'
       attr: gold
     program: |
-      run "scenarios/Challenges/Mechanics/_bucket-brigade/powerplant.sw"
+      import "_bucket-brigade/powerplant"; checkForEnergy 0
 objectives:
   - id: deliver_coal_lump
     teaser: Get coal to base
@@ -77,7 +77,7 @@ objectives:
       as hauler {has "coal briquette"}
     prerequisite: deliver_coal_lump
 solution: |
-  run "scenarios/Challenges/Mechanics/_bucket-brigade/brigade.sw"
+  import "_bucket-brigade/brigade"; go
 entities:
   - name: upper left corner
     display:

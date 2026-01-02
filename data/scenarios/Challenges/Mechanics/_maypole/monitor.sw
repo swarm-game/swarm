@@ -1,12 +1,5 @@
-def elif = \t. \then. \else. {if t then else} end
-def else = \t. t end
-def abs = \n. if (n < 0) {-n} {n} end
-// modulus function (%)
-def mod : Int -> Int -> Int = \i.\m.
-  i - m * (i / m)
-end
-
-def λmatch = \f. \p. match p f end
+import "../../../../lib/control"
+import "../../../../lib/arith"
 
 /*
 Quadrants are numbered counter-clockwise, staring in the northeast:
@@ -99,5 +92,4 @@ def go =
   monitorAngle myLoc 12 currentQuadrant 0;
   end;
 
-go;
-selfdestruct;
+def monitor = go; selfdestruct end

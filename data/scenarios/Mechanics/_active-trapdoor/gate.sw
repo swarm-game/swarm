@@ -27,5 +27,7 @@ def waitAndGate = \myCoords. \armed.
   };
   end;
 
-myPos <- whereami;
-waitAndGate myPos false;
+def gate =
+  myPos <- whereami;
+  waitAndGate myPos false;
+end

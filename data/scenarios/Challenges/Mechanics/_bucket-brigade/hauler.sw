@@ -1,4 +1,4 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+import "../../../../lib/control"
 
 /** The function argument returns a boolean.
 Keep running the function until either the
@@ -12,8 +12,6 @@ def doNTimesOr = \n. \f.
         }
     } {};
     end;
-
-def forever = \c. c; forever c; end;
 
 def traverseRoad =
     doN 11 (
@@ -41,4 +39,4 @@ def patrol =
     turn back;
     end;
 
-forever patrol;
+def hauler = forever patrol end
