@@ -106,9 +106,9 @@ robots:
     display:
       invisible: true
     program: |
-      run "scenarios/Challenges/Algorithmic/_gallery/setup.sw"
+      instant {import "_gallery/setup"; setup}
 solution: |
-  run "scenarios/Challenges/Algorithmic/_gallery/solution.sw"
+  import "_gallery/solution"; go
 entities:
   - name: wall
     display:

@@ -48,7 +48,7 @@ robots:
       import "./_wave/wavebot.sw"
       start;
 solution: |
-  run "scenarios/Challenges/Mechanics/_wave/solution.sw"
+  import "_wave/solution"; start
 entities: []
 known: [wavy water, water, bitcoin]
 world:

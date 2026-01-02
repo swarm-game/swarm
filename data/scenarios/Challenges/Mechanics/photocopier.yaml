@@ -18,7 +18,7 @@ objectives:
       judge <- robotNamed "judge";
       as judge { has "gold" }
 solution: |
-  run "scenarios/Challenges/Mechanics/_photocopier/solution.sw"
+  import "_photocopier/solution"; solve
 robots:
   - name: base
     dir: north
@@ -47,7 +47,7 @@ robots:
     devices:
       - logger
     program: |
-      run "scenarios/Challenges/Mechanics/_photocopier/judge.sw"
+      import "_photocopier/judge"; go
 entities:
   - name: pixel (W)
     display:

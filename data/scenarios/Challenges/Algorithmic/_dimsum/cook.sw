@@ -20,5 +20,3 @@ def go =
     watchSpot;
     go;
     end;
-
-go;

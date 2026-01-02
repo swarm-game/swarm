@@ -32,6 +32,11 @@ def while: ∀ a. Cmd Bool -> {Cmd a} -> Cmd Unit
   ifC test {force body; while test body} {}
 end
 
+def when : Cmd Bool -> Cmd a -> Cmd Unit = \test. \cmd.
+  b <- test;
+  if b {cmd; pure ()} {}
+end
+
 def for_ : Int -> (Int -> Cmd a) -> Cmd Unit = \n. \k.
   if (n == 0) {} {k n; for_ (n-1) k}
 end

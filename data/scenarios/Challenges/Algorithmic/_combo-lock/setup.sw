@@ -1,6 +1,4 @@
-def elif = \t. \then. \else. {if t then else} end
-def else = \t. t end
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+import "../../../../lib/control"
 
 def colorFromIndex = \i.
     if (i == 0) {"R"}
@@ -54,7 +52,7 @@ def doUntilCorrect = \colorString.
         doUntilCorrect colorString;
     };
     end;
-    
+
 def createCombo = \colorString.
     // Scenario map starts with red pixels to
     // mark the combo sequence
@@ -80,5 +78,3 @@ def go =
     // say comboString;
     instant {doUntilCorrect comboString};
     end;
-
-go;

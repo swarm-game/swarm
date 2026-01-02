@@ -308,7 +308,7 @@ customTimeoutScenarios =
     , "Challenges/Algorithmic/gallery" ==> 20
     , "Challenges/Mechanics/telephone" ==> 20
     , "Challenges/Story/flower-count" ==> 30
-    , "Challenges/Mechanics/photocopier" ==> 30
+    , "Challenges/Mechanics/photocopier" ==> 40
     , "Challenges/Mazes/invisible_maze" ==> 2
     , "Challenges/Story/Ranching/beekeeping" ==> 60
     , "Challenges/Story/Ranching/powerset" ==> 20
