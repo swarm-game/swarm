@@ -1,4 +1,4 @@
-def forever : Cmd Unit -> Cmd Unit = \c. c ; forever c end
+import "../../../lib/control"
 
 /** Teleports to a new location to execute a function
   then returns to the original location before
@@ -52,4 +52,4 @@ def alternate =
   changeToRed;
   end;
 
-forever alternate;
+def go = forever alternate end

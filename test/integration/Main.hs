@@ -7,6 +7,7 @@
 -- Swarm integration tests
 module Main where
 
+import Control.Carrier.Error.Either (runError)
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens ((&), (.~), (^.))
@@ -18,7 +19,7 @@ import Swarm.Game.Scenario.Scoring.GenericMetrics (Metric (..), Progress (..))
 import Swarm.Game.ScenarioInfo (ScenarioInfo, ScenarioStatus (..), scenarioStatus)
 import Swarm.Game.State.Runtime (eventLog, stdGameConfigInputs)
 import Swarm.Game.State.Substate (initState)
-import Swarm.Language.Pipeline (processTerm)
+import Swarm.Language.Pipeline (processSource, requireNonEmptyTerm)
 import Swarm.Pretty (prettyString)
 import Swarm.TUI.Model (debugOptions, defaultAppOpts)
 import Swarm.TUI.Model.DebugOption (DebugOption (LoadTestingScenarios))
@@ -33,7 +34,6 @@ import TestLoadingErrors
 import TestRecipeCoverage
 import TestScenarioParse
 import TestScenarioSolutions
-import Witch (into)
 
 main :: IO ()
 main = do
@@ -73,8 +73,8 @@ exampleTest :: FilePath -> TestTree
 exampleTest path =
   testCase ("processTerm for contents of " ++ show path) $ do
     content <- readFileMayT UTF8 path ??? assertFailure "Can't read file!"
-    let value = processTerm content
-    either (assertFailure . into @String) (const $ return ()) value
+    res <- runError @SystemFailure (processSource (Just path) Nothing content >>= requireNonEmptyTerm)
+    either (assertFailure . prettyString) (const $ pure ()) res
 
 ------------------------------------------------------------
 -- Make sure we can read save files

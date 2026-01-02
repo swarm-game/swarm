@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PatternSynonyms #-}
 
 -- |
@@ -5,38 +6,48 @@
 --
 -- Helper functions for working with @Terms@ and @Syntax@
 module Swarm.Language.Syntax.Util (
+  -- * Utility AST construction/destruction
   mkOp,
   mkOp',
   unfoldApps,
   mkTuple,
   unTuple,
+  locVarToSyntax,
 
-  -- * Erasure
-  erase,
-  eraseS,
+  -- * Traversals
 
-  -- * Term traversal
+  -- ** Term + type traversal
+  termSyntax,
+  traverseSyntax,
+
+  -- ** Erasure
+  Erasable (..),
+
+  -- ** Free variable traversal
   freeVarsS,
   freeVarsT,
   freeVarsV,
   mapFreeS,
-  locVarToSyntax',
+
+  -- ** Miscellaneous traversals
   asTree,
   measureAstSize,
 ) where
 
 import Control.Lens (Traversal', para, universe, (%~), (^.), pattern Empty)
-import Control.Monad (void)
-import Data.Data (Data)
+import Data.Data (Data, Typeable)
+import Data.Functor.Identity (runIdentity)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set qualified as S
 import Data.Tree
+import Swarm.Language.Phase
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Constants
+import Swarm.Language.Syntax.Import (Anchor, ImportLoc, Unresolvable, unresolveImportLoc)
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern
-import Swarm.Language.Var (Var)
+import Swarm.Language.Var (LocVar, Var)
 
 -- Setup for doctests
 
@@ -49,31 +60,31 @@ import Swarm.Language.Var (Var)
 
 -- | Make an infix operation (e.g. @2 + 3@) a curried function
 --   application (e.g. @((+) 2) 3@).
-mkOp :: Const -> (SrcLoc, t) -> Syntax -> Syntax -> Syntax
-mkOp c (opLoc, _) s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
+mkOp :: Const -> (SrcLoc, t) -> Syntax Raw -> Syntax Raw -> Syntax Raw
+mkOp c (opLoc, _) s1@(RSyntax l1 _) s2@(RSyntax l2 _) = RSyntax newLoc newTerm
  where
   -- The new syntax spans all terms
   newLoc = l1 <> opLoc <> l2
-  sop = Syntax opLoc (TConst c)
-  newTerm = SApp (Syntax (l1 <> opLoc) $ SApp sop s1) s2
+  sop = RSyntax opLoc (TConst c)
+  newTerm = SApp (RSyntax (l1 <> opLoc) $ SApp sop s1) s2
 
 -- | Make an infix operation, discarding any location information
-mkOp' :: Const -> Term -> Term -> Term
+mkOp' :: Const -> Term Raw -> Term Raw -> Term Raw
 mkOp' c t1 = TApp (TApp (TConst c) t1)
 
 -- | Turn function application chain into a list.
 --
--- >>> syntaxWrap f = fmap (^. sTerm) . f . Syntax NoLoc
+-- >>> syntaxWrap f = fmap (^. sTerm) . f . RSyntax NoLoc
 -- >>> syntaxWrap unfoldApps (mkOp' Mul (TInt 1) (TInt 2)) -- 1 * 2
 -- TConst Mul :| [TInt 1,TInt 2]
-unfoldApps :: Syntax' ty -> NonEmpty (Syntax' ty)
+unfoldApps :: Syntax phase -> NonEmpty (Syntax phase)
 unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
-  Syntax' _ (SApp s1 s2) _ _ -> (s2, Just s1)
+  Syntax _ (SApp s1 s2) _ _ -> (s2, Just s1)
   s -> (s, Nothing)
 
--- | Create an appropriate `Term` out of a list of syntax nodes which
+-- | Create an appropriate `Term Raw` out of a list of syntax nodes which
 --   were enclosed with parentheses (and separated by commas).
-mkTuple :: [Syntax] -> Term
+mkTuple :: [Syntax Raw] -> Term Raw
 -- () = TUnit
 mkTuple [] = TUnit
 -- (x) = x, but record the fact that it was explicitly parenthesized,
@@ -84,26 +95,97 @@ mkTuple [x, y] = SPair x y
 -- (x,y,...) = recursively nested pairs.  Note that we do not assign
 -- source spans to the nested tuples since they don't really come from
 -- a specific place in the source.
-mkTuple (x : r) = SPair x (Syntax NoLoc (mkTuple r))
+mkTuple (x : r) = SPair x (RSyntax NoLoc (mkTuple r))
 
 -- | Decompose a nested tuple into a list of components.
-unTuple :: Syntax' ty -> [Syntax' ty]
+unTuple :: Syntax phase -> [Syntax phase]
 unTuple = \case
-  Syntax' _ (SPair s1 s2) _ _ -> s1 : unTuple s2
+  Syntax _ (SPair s1 s2) _ _ -> s1 : unTuple s2
   s -> [s]
+
+locVarToSyntax :: LocVar -> SwarmType phase -> Syntax phase
+locVarToSyntax (Loc s v) = Syntax s (TVar v) Empty
+
+------------------------------------------------------------
+-- Term + type traversal
+------------------------------------------------------------
+
+-- | Traversal to pick out all Syntax nodes and types inside a Term.
+--   Generic over the phase so we can use it to change phase.
+--
+--   This would in fact be some kind of 'Tritraversal' (if there were
+--   such a thing defined in the lens package).
+termSyntax ::
+  Applicative f =>
+  (SwarmType a -> f (SwarmType b)) ->
+  (ImportLoc (ImportPhaseFor a) -> f (ImportLoc (ImportPhaseFor b))) ->
+  (Syntax a -> f (Syntax b)) ->
+  Term a ->
+  f (Term b)
+termSyntax fty floc fsyn = \case
+  TUnit -> pure TUnit
+  TConst c -> pure $ TConst c
+  TDir d -> pure $ TDir d
+  TInt i -> pure $ TInt i
+  TAntiInt t -> pure $ TAntiInt t
+  TText t -> pure $ TText t
+  TAntiText t -> pure $ TAntiText t
+  TBool b -> pure $ TBool b
+  TAntiSyn t -> pure $ TAntiSyn t
+  TRobot r -> pure $ TRobot r
+  TRef x -> pure $ TRef x
+  TRequire d -> pure $ TRequire d
+  TStock n d -> pure $ TStock n d
+  SRequirements t s -> SRequirements t <$> fsyn s
+  TVar x -> pure $ TVar x
+  SPair s1 s2 -> SPair <$> fsyn s1 <*> fsyn s2
+  SLam x ty s -> SLam x ty <$> fsyn s
+  SApp s1 s2 -> SApp <$> fsyn s1 <*> fsyn s2
+  SLet ls r x rty ty req s1 s2 -> SLet ls r x rty ty req <$> fsyn s1 <*> fsyn s2
+  STydef x ty info s -> STydef x ty info <$> fsyn s
+  SBind x t1 t2 req s1 s2 -> SBind x <$> traverse fty t1 <*> pure t2 <*> pure req <*> fsyn s1 <*> fsyn s2
+  SDelay s -> SDelay <$> fsyn s
+  SRcd m -> SRcd <$> (traverse . traverse . traverse) fsyn m
+  SProj s x -> SProj <$> fsyn s <*> pure x
+  SAnnotate s pty -> SAnnotate <$> fsyn s <*> pure pty
+  SSuspend s -> SSuspend <$> fsyn s
+  SParens s -> SParens <$> fsyn s
+  TType ty -> pure $ TType ty
+  SImportIn loc s -> SImportIn <$> floc loc <*> fsyn s
+
+-- | Given a (possibly effectful) way to turn types from one phase
+--   into types at another phase, and likewise a way to transform
+--   imports, map over all types in a syntax tree, effectfully
+--   changing the phase of the syntax tree as a whole.
+--
+--   We could make this a @Traversal (Syntax a) (Syntax b) (SwarmType
+--   a) (SwarmType b)@ but we just keep an explicit type like this for
+--   simplicity.
+traverseSyntax ::
+  Applicative f =>
+  (SwarmType a -> f (SwarmType b)) ->
+  (ImportLoc (ImportPhaseFor a) -> f (ImportLoc (ImportPhaseFor b))) ->
+  Syntax a ->
+  f (Syntax b)
+traverseSyntax f g (Syntax loc t com ty) =
+  Syntax loc <$> termSyntax f g (traverseSyntax f g) t <*> pure com <*> f ty
 
 ------------------------------------------------------------
 -- Type erasure
 ------------------------------------------------------------
 
--- | Erase the type annotations from a 'Syntax' or 'Term' tree.
-erase :: Functor t => t ty -> t ()
-erase = void
+-- | Erase type annotations.
+class Erasable t where
+  erase :: t Elaborated -> t Resolved
+  eraseRaw :: Unresolvable (ImportPhaseFor phase) => t phase -> t Raw
 
--- | Erase all annotations from a 'Syntax' node, turning it into a
---   bare 'Term'.
-eraseS :: Syntax' ty -> Term
-eraseS (Syntax' _ t _ _) = erase t
+instance Erasable Syntax where
+  erase = runIdentity . traverseSyntax (const (pure ())) pure
+  eraseRaw = runIdentity . traverseSyntax (const (pure ())) (pure . unresolveImportLoc)
+
+instance Erasable Term where
+  erase = runIdentity . termSyntax (const (pure ())) pure (pure . erase)
+  eraseRaw = runIdentity . termSyntax (const (pure ())) (pure . unresolveImportLoc) (pure . eraseRaw)
 
 ------------------------------------------------------------
 -- Free variable traversals
@@ -116,11 +198,11 @@ eraseS (Syntax' _ t _ _) = erase t
 --   that if you want to get the list of all `Syntax` nodes
 --   representing free variables, you can do so via @'toListOf'
 --   'freeVarsS'@.
-freeVarsS :: forall ty. Traversal' (Syntax' ty) (Syntax' ty)
+freeVarsS :: forall phase. Traversal' (Syntax phase) (Syntax phase)
 freeVarsS f = go S.empty
  where
-  -- go :: Applicative f => Set Var -> Syntax' ty -> f (Syntax' ty)
-  go bound s@(Syntax' l t ty cmts) = case t of
+  -- go :: Applicative f => Set Var -> Syntax phase -> f (Syntax phase)
+  go bound s@(Syntax l t ty cmts) = case t of
     TUnit -> pure s
     TConst {} -> pure s
     TDir {} -> pure s
@@ -153,45 +235,47 @@ freeVarsS f = go S.empty
     SSuspend s1 -> rewrap $ SSuspend <$> go bound s1
     SParens s1 -> rewrap $ SParens <$> go bound s1
     TType {} -> pure s
+    SImportIn url s1 -> rewrap $ SImportIn url <$> go bound s1
    where
-    rewrap s' = Syntax' l <$> s' <*> pure ty <*> pure cmts
+    rewrap s' = Syntax l <$> s' <*> pure ty <*> pure cmts
 
 -- | Like 'freeVarsS', but traverse over the 'Term's containing free
 --   variables.  More direct if you don't need to know the types or
 --   source locations of the variables.  Note that if you want to get
 --   the list of all `Term`s representing free variables, you can do
 --   so via @'toListOf' 'freeVarsT'@.
-freeVarsT :: forall ty. Traversal' (Syntax' ty) (Term' ty)
+freeVarsT :: forall phase. Traversal' (Syntax phase) (Term phase)
 freeVarsT = freeVarsS . sTerm
 
 -- | Traversal over the free variables of a term.  Like 'freeVarsS'
 --   and 'freeVarsT', but traverse over the variable names themselves.
 --   Note that if you want to get the set of all free variable names,
 --   you can do so via @'Data.Set.Lens.setOf' 'freeVarsV'@.
-freeVarsV :: Traversal' (Syntax' ty) Var
+freeVarsV :: Traversal' (Syntax phase) Var
 freeVarsV = freeVarsT . (\f -> \case TVar x -> TVar <$> f x; t -> pure t)
 
 -- | Apply a function to all free occurrences of a particular
 --   variable.
-mapFreeS :: Var -> (Syntax' ty -> Syntax' ty) -> Syntax' ty -> Syntax' ty
+mapFreeS :: Var -> (Syntax phase -> Syntax phase) -> Syntax phase -> Syntax phase
 mapFreeS x f = freeVarsS %~ (\t -> case t ^. sTerm of TVar y | y == x -> f t; _ -> t)
+
+------------------------------------------------------------
+-- Other traversals
+------------------------------------------------------------
 
 -- | Transform the AST into a Tree datatype.  Useful for
 --   pretty-printing (e.g. via "Data.Tree.drawTree").
-asTree :: Data a => Syntax' a -> Tree (Syntax' a)
+asTree :: (Data (Anchor (ImportPhaseFor phase)), Typeable phase, Typeable (ImportPhaseFor phase), Data (SwarmType phase)) => Syntax phase -> Tree (Syntax phase)
 asTree = para Node
 
 -- | Each constructor is a assigned a value of 1, plus
 --   any recursive syntax it entails.
-measureAstSize :: Data a => Syntax' a -> Int
+measureAstSize :: (Data (Anchor (ImportPhaseFor phase)), Typeable phase, Typeable (ImportPhaseFor phase), Data (SwarmType phase)) => Syntax phase -> Int
 measureAstSize = length . filter (not . isNoop) . universe
 
 -- | Don't count "noop" nodes towards the code size.  They are usually
 --   inserted automatically, either in @{}@ or after a bare @def@.
-isNoop :: Syntax' a -> Bool
+isNoop :: Syntax a -> Bool
 isNoop = \case
-  Syntax' _ (TConst Noop) _ _ -> True
+  Syntax _ (TConst Noop) _ _ -> True
   _ -> False
-
-locVarToSyntax' :: LocVar -> ty -> Syntax' ty
-locVarToSyntax' (Loc s v) = Syntax' s (TVar v) Empty

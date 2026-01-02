@@ -15,8 +15,7 @@ import Language.LSP.VFS (VirtualFile (VirtualFile), virtualFileText)
 import Swarm.Language.LSP.Position qualified as P
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (ParserError, defaultParserConfig)
-import Swarm.Language.Pipeline (processParsedTerm)
-import Swarm.Language.Syntax (Located (..), SrcLoc, Syntax, Syntax' (Syntax'), Term' (..), Var)
+import Swarm.Language.Syntax (Located (..), Phase (..), SrcLoc, Syntax (..), Term (..), Var)
 import Swarm.Language.Typecheck (ContextualTypeErr)
 
 data DefinitionResult = TError ContextualTypeErr | PError ParserError | Unsupported | NotFound | Found J.Range
@@ -38,28 +37,25 @@ findDefinition _ p vf@(VirtualFile _ _ myRope) =
 
   -- build a list from the syntax tree and starting from the position of the cursor (the bottom).
   -- search for the matching definition.
-  findDef :: Syntax -> DefinitionResult
-  findDef stx =
-    case processParsedTerm stx of
-      Left e -> TError e
-      Right pt -> do
-        let path = P.pathToPosition pt $ fromIntegral absolutePos
-        let usage = usageName $ NE.last path
+  findDef :: Syntax Raw -> DefinitionResult
+  findDef pt = do
+    let path = P.pathToPosition pt $ fromIntegral absolutePos
+    let usage = usageName $ NE.last path
 
-        case usage of
-          Nothing -> Unsupported
-          Just u -> do
-            let pathTerms = mapMaybe boundVars (NE.drop 1 . NE.reverse $ path)
-            maybe NotFound Found (find (\t -> u == snd t) pathTerms >>= P.posToRange myRope . fst)
+    case usage of
+      Nothing -> Unsupported
+      Just u -> do
+        let pathTerms = mapMaybe boundVars (NE.drop 1 . NE.reverse $ path)
+        maybe NotFound Found (find (\t -> u == snd t) pathTerms >>= P.posToRange myRope . fst)
 
 -- | find the name of the syntax element if it is a value level variable
-usageName :: Syntax' a -> Maybe Var
-usageName (Syntax' _ t _ _) = case t of
+usageName :: Syntax phase -> Maybe Var
+usageName (Syntax _ t _ _) = case t of
   (TVar n) -> Just n
   _ -> Nothing
 
-boundVars :: Syntax' a -> Maybe (SrcLoc, Var)
-boundVars (Syntax' _ t _ _) = case t of
+boundVars :: Syntax phase -> Maybe (SrcLoc, Var)
+boundVars (Syntax _ t _ _) = case t of
   (SLet _ _ lv _ _ _ _ _) -> Just $ lvToLoc lv
   (SLam lv _ _) -> Just $ lvToLoc lv
   (SBind mLV _ _ _ _ _) -> lvToLoc <$> mLV
@@ -73,6 +69,7 @@ boundVars (Syntax' _ t _ _) = case t of
   SSuspend {} -> mempty
   SParens {} -> mempty
   (SRequirements _ _) -> mempty
+  SImportIn {} -> mempty
   TVar {} -> mempty
   TUnit {} -> mempty
   TConst {} -> mempty

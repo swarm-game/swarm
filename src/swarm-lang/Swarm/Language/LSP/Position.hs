@@ -24,9 +24,8 @@ import Data.Text (Text)
 import Data.Text.Lines qualified as R
 import Data.Text.Utf16.Rope.Mixed qualified as R
 import Language.LSP.Protocol.Types qualified as J
-import Swarm.Language.Syntax (locVarToSyntax')
-import Swarm.Language.Syntax.AST (Syntax' (..), Term' (..))
-import Swarm.Language.Syntax.Loc (SrcLoc (..))
+import Swarm.Language.Syntax (SrcLoc (..), SwarmType, locVarToSyntax)
+import Swarm.Language.Syntax.AST (Syntax (..), Term (..))
 import Swarm.Language.TDVar (tdVarName)
 import Swarm.Language.Types
 import Swarm.Pretty (prettyTextLine)
@@ -34,7 +33,7 @@ import Swarm.Pretty (prettyTextLine)
 posToRange :: R.Rope -> SrcLoc -> Maybe J.Range
 posToRange myRope foundSloc = do
   (s, e) <- case foundSloc of
-    SrcLoc s e -> Just (s, e)
+    SrcLoc _ s e -> Just (s, e)
     _ -> Nothing
   let (startRope, _) = R.charSplitAt (fromIntegral s) myRope
       (endRope, _) = R.charSplitAt (fromIntegral e) myRope
@@ -95,12 +94,12 @@ instance ExplainableType RawPolytype where
 -- | Find the most specific term for a given
 -- position within the code.
 narrowToPosition ::
-  (ExplainableType ty) =>
+  ExplainableType (SwarmType phase) =>
   -- | parent term
-  Syntax' ty ->
+  Syntax phase ->
   -- | absolute offset within the file.
   Int ->
-  Syntax' ty
+  Syntax phase
 narrowToPosition s i = NE.last $ pathToPosition s i
 
 -- | Find the most specific term for a given
@@ -108,22 +107,22 @@ narrowToPosition s i = NE.last $ pathToPosition s i
 
 -- The list is nonempty because at minimum we can return the element of the syntax we are currently processing.
 pathToPosition ::
-  forall ty.
-  (ExplainableType ty) =>
+  forall phase.
+  ExplainableType (SwarmType phase) =>
   -- | parent term
-  Syntax' ty ->
+  Syntax phase ->
   -- | absolute offset within the file
   Int ->
-  NonEmpty (Syntax' ty)
+  NonEmpty (Syntax phase)
 pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
  where
-  innerPath :: Syntax' ty -> Maybe [Syntax' ty]
-  innerPath (Syntax' _ t _ ty) = case t of
-    SLam lv _ s -> d (locVarToSyntax' lv $ getInnerType ty) <|> d s
+  innerPath :: Syntax phase -> Maybe [Syntax phase]
+  innerPath (Syntax _ t _ ty) = case t of
+    SLam lv _ s -> d (locVarToSyntax lv $ getInnerType ty) <|> d s
     SApp s1 s2 -> d s1 <|> d s2
-    SLet _ _ lv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
-    SBind mlv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
-    STydef typ typBody _ti s1 -> d s1 <|> Just [locVarToSyntax' (tdVarName <$> typ) $ fromPoly typBody]
+    SLet _ _ lv _ _ _ s1@(Syntax _ _ _ lty) s2 -> d (locVarToSyntax lv lty) <|> d s1 <|> d s2
+    SBind mlv _ _ _ s1@(Syntax _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax (getInnerType lty)) <|> d s1 <|> d s2
+    STydef typ typBody _ti s1 -> d s1 <|> Just [locVarToSyntax (tdVarName <$> typ) $ fromPoly typBody]
     SPair s1 s2 -> d s1 <|> d s2
     SDelay s -> d s
     SRcd m -> asum . map d . mapMaybe snd $ m
@@ -131,6 +130,8 @@ pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
     SAnnotate s _ -> d s
     SRequirements _ s -> d s
     SParens s -> d s
+    -- TODO (#2660): what to do with import here?
+    SImportIn {} -> mempty
     -- atoms - return their position and end recursion
     TUnit -> mempty
     TConst {} -> mempty
@@ -153,16 +154,16 @@ pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
   d = descend pos
   -- try and decend into the syntax element if it is contained with position
   descend ::
-    (ExplainableType ty) =>
+    ExplainableType (SwarmType phase) =>
     Int ->
-    Syntax' ty ->
-    Maybe [Syntax' ty]
-  descend p s1@(Syntax' l1 _ _ _) = do
+    Syntax phase ->
+    Maybe [Syntax phase]
+  descend p s1@(Syntax l1 _ _ _) = do
     guard $ withinBound p l1
     pure $ case innerPath s1 of
       Nothing -> [s1]
       Just iss -> s1 : iss
 
 withinBound :: Int -> SrcLoc -> Bool
-withinBound pos (SrcLoc s e) = pos >= s && pos < e
+withinBound pos (SrcLoc _ s e) = pos >= s && pos < e
 withinBound _ NoLoc = False

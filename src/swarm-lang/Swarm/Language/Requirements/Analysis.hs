@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -22,10 +24,10 @@ import Data.Fix (Fix (..))
 import Data.Foldable (forM_)
 import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Context qualified as Ctx
+import Swarm.Language.Phase
 import Swarm.Language.Requirements.Type
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction (isCardinal)
-import Swarm.Language.TDVar (tdVarName)
 import Swarm.Language.Types
 import Swarm.Util (applyWhen)
 
@@ -43,7 +45,7 @@ import Swarm.Util (applyWhen)
 --
 --   This is all a bit of a hack at the moment, to be honest; see #231
 --   for a description of a more correct approach.
-requirements :: TDCtx -> ReqCtx -> Term -> Requirements
+requirements :: TDCtx -> ReqCtx -> Term Resolved -> Requirements
 requirements tdCtx ctx =
   run . execAccum mempty . runReader tdCtx . runReader ctx . (add (singletonCap CPower) *>) . go
  where
@@ -52,7 +54,7 @@ requirements tdCtx ctx =
     , Has (Reader ReqCtx) sig m
     , Has (Reader TDCtx) sig m
     ) =>
-    Term ->
+    Term Resolved ->
     m ()
   go = \case
     -- Some primitive literals that don't require any special
@@ -146,7 +148,7 @@ requirements tdCtx ctx =
       -- symptom of the fact that typechecking, kind checking, and
       -- requirements checking really all need to be done at the same
       -- time during a single traversal of the term (see #231).
-      local @TDCtx (addBindingTD (tdVarName x) (TydefInfo ty (Arity . length . ptVars $ ty))) (go t2)
+      local @TDCtx (addBindingTD x (TydefInfo ty (Arity . length . ptVars $ ty))) (go t2)
     -- We also delete the name in a TBind, if any, while recursing on
     -- the RHS.
     TBind mx _ _ t1 t2 -> do
@@ -160,6 +162,7 @@ requirements tdCtx ctx =
       expandEq (Loc _ x, Nothing) = TVar x
       expandEq (_, Just t) = t
     TProj t _ -> add (singletonCap CRecord) *> go t
+    TImportIn _loc t -> go t
     -- A type ascription doesn't change requirements
     TAnnotate t ty -> go t *> polytypeRequirements ty
     TParens t -> go t

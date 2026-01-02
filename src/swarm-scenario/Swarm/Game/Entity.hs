@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -138,7 +139,7 @@ import Swarm.Game.Ingredients
 import Swarm.Game.Location
 import Swarm.Game.Terrain (TerrainType)
 import Swarm.Language.Capability
-import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Syntax (Phase (Raw), Syntax)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Language.Text.Markdown (Document, docToText)
 import Swarm.ResourceLoading (getDataFileNameSafe)
@@ -362,7 +363,7 @@ data Entity = Entity
   -- ^ The plural of the entity name, in case it is irregular.  If
   --   this field is @Nothing@, default pluralization heuristics
   --   will be used (see 'plural').
-  , _entityDescription :: Document Syntax
+  , _entityDescription :: Document (Syntax Raw)
   -- ^ A longer-form description. Each 'Text' value is one
   --   paragraph.
   , _entityTags :: Set Text
@@ -432,7 +433,7 @@ mkEntity ::
   -- | Entity name
   Text ->
   -- | Entity description
-  Document Syntax ->
+  Document (Syntax Raw) ->
   -- | Properties
   [EntityProperty] ->
   -- | Capabilities
@@ -613,10 +614,11 @@ instance FromJSON Entity where
 -- | If we have access to an 'EntityMap', we can parse the name of an
 --   'Entity' as a string and look it up in the map.
 instance FromJSONE EntityMap Entity where
-  parseJSONE = withTextE "entity name" $ \name ->
-    E $ \em -> case lookupEntityName name em of
+  parseJSONE = withTextE "entity name" $ \name -> do
+    em <- getE
+    case lookupEntityName name em of
       Nothing -> failT ["Unknown entity:", name]
-      Just e -> return e
+      Just e -> pure e
 
 instance ToJSON Entity where
   toJSON e =
@@ -695,7 +697,7 @@ entityNameFor _ = to $ \e ->
     Nothing -> plural (e ^. entityName)
 
 -- | A longer, free-form description of the entity.
-entityDescription :: Lens' Entity (Document Syntax)
+entityDescription :: Lens' Entity (Document (Syntax Raw))
 entityDescription = hashedLens _entityDescription (\e x -> e {_entityDescription = x})
 
 -- | A set of categories to which the entity belongs

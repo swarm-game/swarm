@@ -6,10 +6,11 @@ module Swarm.Util.Effect where
 
 import Control.Algebra
 import Control.Carrier.Accum.Strict
-import Control.Carrier.Error.Either (ErrorC (..))
+import Control.Carrier.Error.Either (ErrorC (..), runError)
 import Control.Carrier.Throw.Either (ThrowC (..), runThrow)
-import Control.Effect.Throw
+import Control.Effect.Error
 import Control.Monad ((>=>))
+import Control.Monad.State (MonadState, get, put)
 import Control.Monad.Trans.Except (ExceptT)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Sequence (Seq)
@@ -20,6 +21,11 @@ import Witherable
 --   by supplying an adapter function of type @(e1 -> e2)@.
 withThrow :: (Has (Throw e2) sig m) => (e1 -> e2) -> ThrowC e1 m a -> m a
 withThrow f = runThrow >=> either (throwError . f) return
+
+-- | Transform an @Error e1@ constraint into a @Error e2@ constraint,
+--   by supplying an adapter function of type @(e1 -> e2)@.
+withError :: (Has (Error e2) sig m) => (e1 -> e2) -> ErrorC e1 m a -> m a
+withError f = runError >=> either (throwError . f) return
 
 -- | Transform a @Throw e@ constrint into a concrete @Maybe@,
 --   discarding the error.
@@ -40,12 +46,12 @@ throwToWarning m = do
 ignoreWarnings :: forall e m a. (Monoid e, Functor m) => AccumC e m a -> m a
 ignoreWarnings = evalAccum mempty
 
--- | Convert a fused-effects style computation using a @Throw e@
+-- | Convert a fused-effects style computation using an @Error e@
 --   constraint into an @ExceptT@ computation.  This is mostly a stub
 --   to convert from one style to the other while we are in the middle
 --   of incrementally converting.  Eventually this should not be needed.
-asExceptT :: ThrowC e m a -> ExceptT e m a
-asExceptT (ThrowC (ErrorC m)) = m
+asExceptT :: ErrorC e m a -> ExceptT e m a
+asExceptT (ErrorC m) = m
 
 -- | Log a single failure as a warning.
 warn :: Has (Accum (Seq w)) sig m => w -> m ()
@@ -74,6 +80,9 @@ forMW ::
   (a -> m (Either w b)) ->
   m (t b)
 forMW = flip traverseW
+
+modifyM :: MonadState s m => (s -> m s) -> m ()
+modifyM f = get >>= (f >=> put)
 
 infixr 1 ???
 

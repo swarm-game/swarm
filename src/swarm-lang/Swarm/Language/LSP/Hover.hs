@@ -14,8 +14,8 @@ module Swarm.Language.LSP.Hover (
 )
 where
 
+import Control.Carrier.Error.Either (run, runError)
 import Control.Lens ((^.))
-import Control.Monad (void)
 import Data.Graph
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (isNothing)
@@ -24,14 +24,16 @@ import Data.Text qualified as T
 import Data.Text.Utf16.Rope.Mixed qualified as R
 import Language.LSP.Protocol.Types qualified as J
 import Language.LSP.VFS
+import Swarm.Failure (SystemFailure)
 import Swarm.Language.LSP.Position
+import Swarm.Language.Module (moduleTerm)
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
-import Swarm.Language.Pipeline (processParsedTerm)
+import Swarm.Language.Pipeline (processTermNoImports)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types
-import Swarm.Pretty (prettyText)
+import Swarm.Pretty (PrettyPrec, prettyText)
 import Swarm.Util qualified as U
 
 showHoverInfo ::
@@ -47,14 +49,13 @@ showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
     R.charLength . fst $ R.charSplitAtPosition (lspToRopePosition p) myRope
 
   genHoverInfo stx =
-    case processParsedTerm stx of
-      Left _e ->
-        let found = narrowToPosition stx $ fromIntegral absolutePos
+    case fmap moduleTerm (run (runError @SystemFailure (processTermNoImports content stx Nothing))) of
+      Right (Just pt) ->
+        let found = narrowToPosition pt $ fromIntegral absolutePos
             finalPos = posToRange myRope (found ^. sLoc)
          in (,finalPos) . treeToMarkdown 0 $ explain found
-      Right pt ->
-        let found =
-              narrowToPosition pt $ fromIntegral absolutePos
+      _ ->
+        let found = narrowToPosition stx $ fromIntegral absolutePos
             finalPos = posToRange myRope (found ^. sLoc)
          in (,finalPos) . treeToMarkdown 0 $ explain found
 
@@ -69,7 +70,13 @@ treeToMarkdown :: Int -> Tree Text -> Text
 treeToMarkdown d (Node t children) =
   T.unlines $ renderDoc d t : map (treeToMarkdown $ d + 1) children
 
-explain :: (ExplainableType ty) => Syntax' ty -> Tree Text
+explain ::
+  ( PrettyPrec (Anchor (ImportPhaseFor phase))
+  , Unresolvable (ImportPhaseFor phase)
+  , ExplainableType (SwarmType phase)
+  ) =>
+  Syntax phase ->
+  Tree Text
 explain trm = case trm ^. sTerm of
   TUnit -> literal "The unit value."
   TConst c -> literal . constGenSig c $ briefDoc (constDoc $ constInfo c)
@@ -83,6 +90,7 @@ explain trm = case trm ^. sTerm of
   STydef {} -> literal "A type synonym definition."
   TType {} -> literal "A type literal."
   SParens s -> explain s
+  SImportIn {} -> literal "An import expression."
   -- type ascription
   SAnnotate lhs typeAnn ->
     Node
@@ -128,7 +136,7 @@ explain trm = case trm ^. sTerm of
   SSuspend {} -> internal "A suspension."
  where
   ty = trm ^. sType
-  literal = pure . typeSignature (prettyText . void $ trm ^. sTerm) ty
+  literal = pure . typeSignature (prettyText $ trm ^. sTerm) ty
   internal description = literal $ description <> "\n**These should never show up in surface syntax.**"
   constGenSig c =
     let ity = inferConst c
@@ -138,11 +146,17 @@ explain trm = case trm ^. sTerm of
 --
 -- Note that 'Force' is often inserted internally, so
 -- if it shows up here we drop it.
-explainFunction :: (ExplainableType ty) => Syntax' ty -> Tree Text
+explainFunction ::
+  ( PrettyPrec (Anchor (ImportPhaseFor phase))
+  , Unresolvable (ImportPhaseFor phase)
+  , ExplainableType (SwarmType phase)
+  ) =>
+  Syntax phase ->
+  Tree Text
 explainFunction s =
   case unfoldApps s of
-    (Syntax' _ (TConst Force) _ _ :| [innerT]) -> explain innerT
-    (Syntax' _ (TConst Force) _ _ :| f : params) -> explainF f params
+    (Syntax _ (TConst Force) _ _ :| [innerT]) -> explain innerT
+    (Syntax _ (TConst Force) _ _ :| f : params) -> explainF f params
     (f :| params) -> explainF f params
  where
   explainF f params =

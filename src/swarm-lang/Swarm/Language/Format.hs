@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -74,8 +75,8 @@ formatSwarm (FormatConfig _ _ mWidth ver) content = case readTerm' cfg content o
 -- | 'instant' and 'atomic' changed types from 0.7 -> 0.8.  They used to have
 --   type 'Cmd a -> Cmd a' but now have type '{Cmd a} -> Cmd a'.  So we must
 --   wrap any argument to either one in a delay.
-convertInstant_v8 :: Syntax -> Syntax
+convertInstant_v8 :: Syntax Raw -> Syntax Raw
 convertInstant_v8 = transform $ \case
-  (Syntax l (TApp (TConst Instant) t)) -> Syntax l (TApp (TConst Instant) (TDelay t))
-  (Syntax l (TApp (TConst Atomic) t)) -> Syntax l (TApp (TConst Atomic) (TDelay t))
+  (Syntax l (TApp (TConst Instant) t) com ty) -> Syntax l (TApp (TConst Instant) (TDelay t)) com ty
+  (Syntax l (TApp (TConst Atomic) t) com ty) -> Syntax l (TApp (TConst Atomic) (TDelay t)) com ty
   s -> s

@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -44,7 +45,7 @@ module Swarm.Language.Parser.Lex (
   brackets,
 ) where
 
-import Control.Lens (use, (%=), (.=))
+import Control.Lens (use, view, (%=), (.=))
 import Control.Monad (void)
 import Data.Char (isLower, isUpper)
 import Data.Containers.ListUtils (nubOrd)
@@ -79,11 +80,12 @@ parseLocG pa = do
   -- @preWSLoc@ which was set by 'sc' at the /beginning/ of the
   -- consumed whitespace.
   end <- use preWSLoc
-  pure (SrcLoc start end, a)
+  imp <- view importLoc
+  pure (SrcLoc imp start end, a)
 
 -- | Add 'SrcLoc' to a 'Term' parser
-parseLoc :: Parser Term -> Parser Syntax
-parseLoc pterm = uncurry Syntax <$> parseLocG pterm
+parseLoc :: Parser (Term Raw) -> Parser (Syntax Raw)
+parseLoc pterm = uncurry RSyntax <$> parseLocG pterm
 
 ------------------------------------------------------------
 -- Whitespace
@@ -109,7 +111,8 @@ lineComment start = do
   s <- getOffset
   t <- string start *> takeWhileP (Just "character") (/= '\n')
   e <- getOffset
-  comments %= (Seq.|> Comment (SrcLoc s e) LineComment cs t)
+  imp <- view importLoc
+  comments %= (Seq.|> Comment (SrcLoc imp s e) LineComment cs t)
 
 -- | Parse a block comment, while appending it out-of-band to the list of
 --   comments saved in the custom state.
@@ -123,7 +126,8 @@ blockComment start end = do
   void $ string start
   t <- manyTill anySingle (string end)
   e <- getOffset
-  comments %= (Seq.|> Comment (SrcLoc s e) BlockComment cs (into @Text t))
+  imp <- view importLoc
+  comments %= (Seq.|> Comment (SrcLoc imp s e) BlockComment cs (into @Text t))
 
 -- | Skip spaces and comments.
 sc :: Parser ()
@@ -181,7 +185,7 @@ primitiveTypeNames = "Cmd" : baseTypeNames
 
 -- | List of keywords built into the language.
 keywords :: [Text]
-keywords = T.words "let in def tydef end true false forall require stock requirements rec"
+keywords = T.words "let in def tydef end true false forall require stock requirements rec import"
 
 -- | List of reserved words that cannot be used as variable names.
 reservedWords :: Set Text
@@ -241,7 +245,7 @@ locTmVar = locIdentifier IDTmVar
 -- | Parse a user-defined type name together with its source location
 --   info.
 locTyName :: Parser (Located TDVar)
-locTyName = (fmap . fmap) mkTDVar (locIdentifier IDTyName)
+locTyName = fmap . mkTDVar 0 <$> view importLoc <*> locIdentifier IDTyName
 
 -- | Parse an identifier, i.e. any non-reserved string containing
 --   alphanumeric characters and underscores, not starting with a
@@ -264,7 +268,7 @@ tyVar = identifier IDTyVar
 --   separate name resolution pass later that assigns correct version
 --   numbers to user type names.
 tyName :: Parser TDVar
-tyName = mkTDVar <$> identifier IDTyName
+tyName = locVal <$> locTyName
 
 -- | Parse a term variable, which can start in any case and just
 --   cannot be the same (case-insensitively) as a lowercase reserved

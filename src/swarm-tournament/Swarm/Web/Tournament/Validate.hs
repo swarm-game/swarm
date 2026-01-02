@@ -8,6 +8,7 @@ module Swarm.Web.Tournament.Validate where
 
 import Control.Arrow (left)
 import Control.Carrier.Accum.Strict (evalAccum)
+import Control.Carrier.Error.Either (runError)
 import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens
 import Control.Monad (unless)
@@ -25,15 +26,17 @@ import Swarm.Failure (SystemFailure)
 import Swarm.Game.CESK (continue)
 import Swarm.Game.Robot.Concrete (machine)
 import Swarm.Game.Scenario
-import Swarm.Game.Scenario.Scoring.CodeSize (codeMetricsFromSyntax)
+import Swarm.Game.Scenario.Scoring.CodeSize (ScenarioCodeMetrics (..), codeMetricsFromSyntax)
 import Swarm.Game.Scenario.Status (ScenarioWith (..), emptyLaunchParams)
 import Swarm.Game.State
 import Swarm.Game.State.Initialize (scenarioToGameState)
 import Swarm.Game.State.Runtime (RuntimeOptions (..), initRuntimeState, initScenarioInputs, pauseOnObjectiveCompletion, stdGameConfigInputs)
 import Swarm.Game.State.Substate (initState, seed)
 import Swarm.Game.Step.Validate (playUntilWin)
+import Swarm.Language.Module (Module (moduleTerm))
 import Swarm.Language.Pipeline
-import Swarm.Language.Syntax (TSyntax)
+import Swarm.Language.Syntax (Phase (..))
+import Swarm.Pretty (prettyString, prettyText)
 import Swarm.Util.Yaml
 import Swarm.Web.Tournament.Database.Query
 import Swarm.Web.Tournament.Type
@@ -127,8 +130,8 @@ validateSubmittedSolution (CommonValidationArgs solnTimeout persistenceArgs) sce
         . decodeUtf8'
         . LBS.toStrict
         $ fileContent file
-    soln <- withExceptT SolutionParseError . except $ processTermEither solText
-
+    res <- liftIO . runError @SystemFailure $ processSource Nothing Nothing solText
+    soln <- withExceptT (SolutionParseError . prettyText) . except $ res
     gs <- withExceptT ScenarioRetrievalFailure $ do
       scenarioContent <-
         withExceptT DatabaseRetrievalFailure $
@@ -154,7 +157,7 @@ validateSubmittedSolution (CommonValidationArgs solnTimeout persistenceArgs) sce
 
 initScenarioObjectWithEnv ::
   LBS.ByteString ->
-  ExceptT ScenarioInstantiationFailure IO Scenario
+  ExceptT ScenarioInstantiationFailure IO (Scenario Elaborated)
 initScenarioObjectWithEnv content = do
   scenarioInputs <-
     withExceptT (ScenarioEnvironmentFailure . ContextInitializationFailure)
@@ -167,16 +170,19 @@ initScenarioObjectWithEnv content = do
 initScenarioObject ::
   ScenarioInputs ->
   LBS.ByteString ->
-  ExceptT ScenarioInstantiationFailure IO Scenario
+  ExceptT ScenarioInstantiationFailure IO (Scenario Elaborated)
 initScenarioObject scenarioInputs content = do
   rawYaml <- withExceptT YamlDecodeError . except . decodeEither' $ LBS.toStrict content
-  withExceptT ScenarioParseFailure $
-    except $
-      parseEither (parseJSONE' scenarioInputs) rawYaml
+  rawScenario <-
+    withExceptT ScenarioParseFailure $
+      except $
+        parseEither (parseJSONE' Nothing scenarioInputs) rawYaml
+  res <- runError @SystemFailure $ process (rawScenario :: Scenario Raw)
+  withExceptT (ScenarioParseFailure . prettyString) (except res)
 
 gamestateFromScenarioText ::
   LBS.ByteString ->
-  ExceptT ScenarioInstantiationFailure IO (GameState, Scenario)
+  ExceptT ScenarioInstantiationFailure IO (GameState, Scenario Elaborated)
 gamestateFromScenarioText content = do
   rs <-
     withExceptT (ScenarioEnvironmentFailure . ContextInitializationFailure)
@@ -197,7 +203,7 @@ gamestateFromScenarioText content = do
 
 verifySolution ::
   SolutionTimeout ->
-  TSyntax ->
+  Module Elaborated ->
   GameState ->
   ExceptT SolutionEvaluationFailure IO SolutionCharacterization
 verifySolution (SolutionTimeout timeoutSeconds) sol gs = do
@@ -217,5 +223,5 @@ verifySolution (SolutionTimeout timeoutSeconds) sol gs = do
       (gs ^. randomness . seed)
       codeMetrics
  where
-  codeMetrics = codeMetricsFromSyntax sol
+  codeMetrics = maybe (ScenarioCodeMetrics 0 0) codeMetricsFromSyntax (moduleTerm sol)
   gs' = gs & baseRobot . machine %~ continue sol

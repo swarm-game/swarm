@@ -37,10 +37,13 @@ def harvest_lambdas =
     tB; move; tR; harvest_field "lambda"; tR; move; giveall base "lambda"
   )
 end;
-build {
-  stock 1 "lambda";
-  tB; move; tR; plant_field "lambda";
-};
-build {
-  harvest_lambdas
-}
+
+def go =
+  build {
+    stock 1 "lambda";
+    tB; move; tR; plant_field "lambda";
+  };
+  build {
+    harvest_lambdas
+  }
+end

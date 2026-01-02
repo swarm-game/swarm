@@ -32,6 +32,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Semigroup (Sum (..))
+import Data.Set qualified as S
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Swarm.Pretty (PrettyPrec (..))
@@ -253,6 +254,22 @@ delete :: (Ord v, Hashable v, Hashable t) => v -> Ctx v t -> Ctx v t
 delete x ctx@(Ctx m _) = case M.lookup x m of
   Nothing -> ctx
   Just t -> rollCtx $ CtxDelete x t ctx
+
+-- | 'restrict r c' restricts the context c to only those keys contained in r.
+restrict :: (Ord v, Hashable v, Hashable t) => Ctx v s -> Ctx v t -> Ctx v t
+restrict r ctx = foldr delete ctx keysToDelete
+ where
+  -- What we really want is ctx ∩ r, but we must implement it in terms
+  -- of deletion, which is the primitive operation we have available
+  -- for operating on contexts.
+  --
+  -- Ctx - (Ctx - R)
+  --   = Ctx ∩ ~(Ctx ∩ ~R)         { A - B = A ∩ ~B }
+  --   = Ctx ∩ (~Ctx ∪ R)          { de Morgan }
+  --   = (Ctx ∩ ~Ctx) ∪ (Ctx ∩ R)  { distributivity }
+  --   = ∅ ∪ (Ctx ∩ R)             { A ∩ ~A = ∅ }
+  --   = Ctx ∩ R                   { ∅ identity for ∪ }
+  keysToDelete = M.keysSet (unCtx ctx) `S.difference` M.keysSet (unCtx r)
 
 -- | Get the list of key-value associations from a context.
 assocs :: Ctx v t -> [(v, t)]

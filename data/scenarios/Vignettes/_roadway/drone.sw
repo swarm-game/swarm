@@ -1,28 +1,6 @@
-def elif = \t. \then. \else. {if t then else} end
-def else = \t. t end
-
-def λmatch = \f. \p. match p f end
-
-def sumTuples = λmatch \t11. \t12. λmatch \t21. \t22.
-    (t11 + t21, t12 + t22);
-    end;
-
-def max = \a. \b.
-    if (a > b) {a} {b};
-    end;
-
-def mapTuple = \f. λmatch \x. \y. (f x, f y) end;
-
-// modulus function (%)
-def mod : Int -> Int -> Int = \i.\m.
-    i - m * (i / m)
-end
-
-def abs = \n. if (n < 0) {-n} {n} end
-
-def isEven = \n.
-    mod n 2 == 0;
-    end
+import "../../../lib/control"
+import "../../../lib/tuple"
+import "../../../lib/arith"
 
 /*
 Decide where to initially teleport to based on the initial coords.
@@ -197,5 +175,3 @@ def go =
     match result \isLongitudinal. \idx.
     advance idx isLongitudinal stoplines extents [moveDelay=5, transitionCountdown=2];
     end;
-
-go;

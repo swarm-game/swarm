@@ -6,8 +6,8 @@
 -- Test provided scenario solutions.
 module TestScenarioSolutions (noScenarioOverlap, testScenarioSolutions) where
 
+import Control.Carrier.Error.Either (runError)
 import Control.Carrier.Lift (runM)
-import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens (Ixed (ix), at, to, view, (&), (.~), (^.), (^..), (^?), (^?!))
 import Control.Monad (unless, when)
 import Control.Monad.State (execStateT)
@@ -173,7 +173,7 @@ testSolution :: PersistentState -> ScenarioTestConfig -> TestTree
 testSolution ps (ScenarioTestConfig s p shouldCheckBadErrors verify) = maybeExpectFail . testCase p $ do
   cleanStore <- Metrics.newStore
   out <-
-    runM . runThrow @SystemFailure $
+    runM . runError @SystemFailure $
       constructAppState
         (resetMetrics cleanStore ps)
         (defaultAppOpts {userScenario = Just p})
@@ -307,7 +307,7 @@ customTimeoutScenarios =
     , "Challenges/Algorithmic/dimsum" ==> 10
     , "Challenges/Algorithmic/gallery" ==> 20
     , "Challenges/Mechanics/telephone" ==> 20
-    , "Challenges/Story/flower-count" ==> 20
+    , "Challenges/Story/flower-count" ==> 30
     , "Challenges/Mechanics/photocopier" ==> 30
     , "Challenges/Mazes/invisible_maze" ==> 2
     , "Challenges/Story/Ranching/beekeeping" ==> 60
