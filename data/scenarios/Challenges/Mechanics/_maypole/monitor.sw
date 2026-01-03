@@ -1,5 +1,5 @@
-import "../../../../lib/control"
-import "../../../../lib/arith"
+import "~swarm/lib/control"
+import "~swarm/lib/arith"
 
 /*
 Quadrants are numbered counter-clockwise, staring in the northeast:

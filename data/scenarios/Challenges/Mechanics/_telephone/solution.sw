@@ -1,4 +1,4 @@
-import "../../../../lib/control"
+import "~swarm/lib/control"
 
 def harvestMay =
   e <- isempty;

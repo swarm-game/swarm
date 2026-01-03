@@ -1,4 +1,4 @@
-import "../../../../lib/control"
+import "~swarm/lib/control"
 
 def x2 = \c. c;c end
 def x4 = \c. x2 c; x2 c end

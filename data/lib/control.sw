@@ -32,6 +32,8 @@ def while: ∀ a. Cmd Bool -> {Cmd a} -> Cmd Unit
   ifC test {force body; while test body} {}
 end
 
+def until = \p. \c. q <- p; if q {} {c; until p c} end;
+
 def when : Cmd Bool -> Cmd a -> Cmd Unit = \test. \cmd.
   b <- test;
   if b {cmd; pure ()} {}

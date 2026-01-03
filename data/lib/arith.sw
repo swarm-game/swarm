@@ -1,3 +1,7 @@
+def signum = \x.
+    if (x < 0) {-1} {if (x > 0) {1} {0}}
+end
+
 def max = \a. \b.
     if (a > b) {a} {b};
     end;

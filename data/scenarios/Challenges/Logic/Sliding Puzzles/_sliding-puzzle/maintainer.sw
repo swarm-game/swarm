@@ -2,23 +2,16 @@
 The "maintainer" bot handles legal and illegal moves.
 */
 
-def until = \p. \c. q <- p; if q {} {c; until p c} end;
+import "~swarm/lib/control"
+import "~swarm/lib/arith"
+import "~swarm/lib/tuple"
+import "common"
 
 /**
 Sums of consecutive integers
 */
 def computeTriangularNumber = \n.
     (n * (n + 1)) / 2
-    end;
-
-def mod : Int -> Int -> Int = \i.\m.
-    i - m * (i / m);
-    end
-
-def sumTuples = \t1. \t2.
-    match t1 \t11. \t12.
-    match t2 \t21. \t22.
-    (t11 + t21, t12 + t22);
     end;
 
 /** Teleports to a new location to execute a function
@@ -33,28 +26,9 @@ def atLocation = \newLoc. \f.
     pure retval;
     end;
 
-def itemIsHere = \item.
-    x <- scan down;
-    case x (\_. pure false) (\found. pure $ found == item);
-    end;
-
-def getLetterEntityByIndex = \idx.
-    let letter = toChar $ idx - 1 + charAt 0 "a" in
-    letter ++ "-tile";
-    end;
-
 def teleportToDetectResult = \referenceLoc. \relativeLoc.
     let newLoc = sumTuples referenceLoc relativeLoc in
     teleport self newLoc;
-    end;
-
-def getOrdinal : Text -> Cmd Int = \item.
-    count $ item ++ "-ordinal";
-    end;
-
-def getValueHere =
-    maybeItem <- scan down;
-    ordNum <- case maybeItem (\_. pure 0) getOrdinal;
     end;
 
 def getIndexesTotal = \boardWidth. \boardHeight. \n.
@@ -210,5 +184,7 @@ def go = \boardWidth. \boardHeight.
     go boardWidth boardHeight;
     end;
 
-until (has "flower") $ wait 1;
-go 3 3;
+def maintain =
+  until (has "flower") $ wait 1;
+  go 3 3;
+end

@@ -71,7 +71,6 @@ solution: |
   drill down;
   move;
   drill down;
-  // run "scenarios/Challenges/Algorithmic/_word-search/solution.sw"
 entities:
   - name: capital C
     display:

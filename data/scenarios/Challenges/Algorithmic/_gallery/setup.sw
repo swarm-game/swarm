@@ -1,6 +1,6 @@
-import "../../../../lib/control"
-import "../../../../lib/list"
-import "../../../../lib/arith"
+import "~swarm/lib/control"
+import "~swarm/lib/list"
+import "~swarm/lib/arith"
 
 def getMissingBitRecursive = \bitmask. \idx.
     if (idx > 0) {

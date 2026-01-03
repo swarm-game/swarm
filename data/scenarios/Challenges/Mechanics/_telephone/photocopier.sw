@@ -1,4 +1,4 @@
-import "../../../../lib/control"
+import "~swarm/lib/control"
 
 def pixel : (Int * Int) * Text -> Cmd Unit = \instr.
   match instr \loc. \ty.

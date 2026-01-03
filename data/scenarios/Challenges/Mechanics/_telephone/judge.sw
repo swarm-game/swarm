@@ -1,5 +1,5 @@
-import "../../../../lib/control"
-import "../../../../lib/list"
+import "~swarm/lib/control"
+import "~swarm/lib/list"
 
 def readRow : Cmd (List (Unit + Text)) =
   r <- for 8 (\_. s <- scan down; move; pure s);

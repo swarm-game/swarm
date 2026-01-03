@@ -1,5 +1,5 @@
-import "../../../../lib/control"
-import "../../../../lib/list"
+import "~swarm/lib/control"
+import "~swarm/lib/list"
 
 def andC : Cmd (e + Unit) -> Cmd (e + Unit) -> Cmd (e + Unit) = \c1. \c2.
   b1 <- c1;

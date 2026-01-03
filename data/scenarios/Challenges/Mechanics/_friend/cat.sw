@@ -1,5 +1,5 @@
-import "../../../../lib/control"
-import "../../../../lib/arith"
+import "~swarm/lib/control"
+import "~swarm/lib/arith"
 
 def randdir : Cmd Dir =
   d <- random 4;

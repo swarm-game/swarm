@@ -1,5 +1,5 @@
-import "../../lib/control"
-import "../../lib/list"
+import "~swarm/lib/control"
+import "~swarm/lib/list"
 
 // A for cycle from start to end (excluded) that carries a state.
 def foreachF = \s.\e.\com.\state.

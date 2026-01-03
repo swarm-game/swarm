@@ -2,35 +2,9 @@
 This robot is responsible for both the initial board setup.
 */
 
-def id = \t. t end
-def elif = \t. \then. \else. {if t then else} end
-def else = id end
-
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
-
-def mod : Int -> Int -> Int = \i.\m.
-  i - m * (i / m)
-end
-
-def isEven = \n.
-    mod n 2 == 0;
-    end
-
-/** One-based index
-*/
-def getLetterEntityByIndex = \idx.
-    let letter = toChar $ idx - 1 + charAt 0 "a" in
-    letter ++ "-tile";
-    end;
-
-def getOrdinal : Text -> Cmd Int = \item.
-    count $ item ++ "-ordinal";
-    end;
-
-def getValueHere =
-    maybeItem <- scan down;
-    ordNum <- case maybeItem (\_. pure 0) getOrdinal;
-    end;
+import "~swarm/lib/control"
+import "~swarm/lib/arith"
+import "common"
 
 /**
   Swaps the element at the current position
@@ -295,5 +269,3 @@ def setupGame = \boardWidth. \boardHeight.
 def go = \boardWidth. \boardHeight.
     instant {setupGame boardWidth boardHeight};
     end;
-
-go 3 3;

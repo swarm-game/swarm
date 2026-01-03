@@ -1,4 +1,4 @@
-import "../../../../lib/control"
+import "~swarm/lib/control"
 
 /** The function argument returns a boolean.
 Keep running the function until either the

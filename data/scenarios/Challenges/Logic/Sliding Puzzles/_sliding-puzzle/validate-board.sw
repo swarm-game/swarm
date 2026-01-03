@@ -1,15 +1,5 @@
-def id = \t. t end
-def elif = \t. \then. \else. {if t then else} end
-def else = id end
-
-def itemIsHere = \item.
-    x <- scan down;
-    case x (\_. pure false) (\found. pure $ found == item);
-    end;
-
-def getOrdinal : Text -> Cmd Int = \item.
-    count $ item ++ "-ordinal";
-    end;
+import "~swarm/lib/control"
+import "common"
 
 /**
   Cells are allowed to be either empty or a valid game tile.
@@ -69,5 +59,3 @@ def go =
         pure false;
     };
     end;
-
-go;

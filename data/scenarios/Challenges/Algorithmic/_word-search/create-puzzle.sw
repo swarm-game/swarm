@@ -1,4 +1,4 @@
-import "../../../../lib/control"
+import "~swarm/lib/control"
 
 def intersperse = \n. \f2. \f1. if (n > 0) {
         f1;

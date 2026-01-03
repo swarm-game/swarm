@@ -1,6 +1,6 @@
-import "../../../lib/control"
-import "../../../lib/tuple"
-import "../../../lib/arith"
+import "~swarm/lib/control"
+import "~swarm/lib/tuple"
+import "~swarm/lib/arith"
 
 /*
 Decide where to initially teleport to based on the initial coords.
