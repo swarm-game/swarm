@@ -1,4 +1,5 @@
-def repeat = \c. c; repeat c end;
+import "~swarm/lib/control"
+
 def isUnlocked = \e. e == "one" || e == "two" || e == "three" end;
 def unlock = \e.
   if (e == "blocked one")   {"one"}   {
@@ -8,7 +9,8 @@ def unlock = \e.
   }}}
 end;
 
-repeat (
+def go =
+forever (
 me <- scan down;
 case me (\_. pure ()) (\e.
 // if
@@ -62,3 +64,4 @@ if (isUnlocked e)
     ) (\_. pure ())
 }
 ))
+end

@@ -1,11 +1,4 @@
-def until = \p. \c. q <- p; if q {} {c; until p c} end;
-def rep = \n. \c. if (n == 0) {} {c; rep (n-1) c} end;
-
-def ifC = \p. \t. \e. res <- p; if res t e end;
-
-def orC = \c1. \c2.
-  b1 <- c1; b2 <- c2; pure (b1 || b2)
-end;
+import "~swarm/lib/control"
 
 def somethingHere =
   res <- scan down;
@@ -36,8 +29,8 @@ def placeDisk = \d.
 end;
 
 def moveToCol = \w.\x.
-  if (w < x) { turn east; rep (x - w) move }
-  { if (w > x) { turn west; rep (w - x) move } {} };
+  if (w < x) { turn east; doN (x - w) move }
+  { if (w > x) { turn west; doN (w - x) move } {} };
   turn south
 end;
 
@@ -60,5 +53,3 @@ def hanoi :
     hanoi (n-1) c b a c;
   }
 end;
-
-hanoi 3 0 (-2) 0 2

@@ -194,5 +194,3 @@ def go =
     getToCaveEntrance;
     firstLeg;
     end;
-
-go;

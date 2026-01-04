@@ -1,3 +1,5 @@
+import "~swarm/lib/control"
+
 // if
 //  0. all (but max 3) disks in my column are sorted
 // then
@@ -5,7 +7,7 @@
 // else
 //  - try to grab "OK"
 def null = inl () end;
-def repeat = \c. c; repeat c end;
+
 def toI = \e.
   if (e == "one"   || e == "blocked one")   {1} {
   if (e == "two"   || e == "blocked two")   {2} {
@@ -23,11 +25,12 @@ def f = \x.\y.
   )
 end;
 
+def go =
 w <- whereami;
 match w \wx. \wy.
 // the middle of the column
 let a = (wx, wy + 3) in
-repeat (
+forever (
     o <- as self {
         teleport self a;
         x <- scan south;
@@ -47,3 +50,4 @@ repeat (
         if o {place "OK"} {grab; pure ()}
     } {}
 )
+end

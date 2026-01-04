@@ -1,3 +1,7 @@
+def boolToInt = \b.
+    if b {1} {0}
+    end;
+
 def signum = \x.
     if (x < 0) {-1} {if (x > 0) {1} {0}}
 end

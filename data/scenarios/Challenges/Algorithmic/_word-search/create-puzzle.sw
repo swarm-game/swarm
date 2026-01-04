@@ -1,14 +1,5 @@
 import "~swarm/lib/control"
 
-def intersperse = \n. \f2. \f1. if (n > 0) {
-        f1;
-        if (n > 1) {
-            f2;
-        } {};
-        intersperse (n - 1) f2 f1;
-    } {};
-    end;
-
 def whichOrdinal = \str.
     if (str == "capital C") {
         pure 0;

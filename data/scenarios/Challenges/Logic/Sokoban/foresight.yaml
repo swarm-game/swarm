@@ -70,7 +70,7 @@ robots:
       - [5, strange loop]
       - [5, treads]
 solution: |
-  run "scenarios/Challenges/Logic/Sokoban/_foresight/solution.sw"
+  import "_foresight/solution"; go
 entities:
   - name: monolith
     display:

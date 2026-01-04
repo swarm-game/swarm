@@ -1,4 +1,4 @@
-def repeat = \c. force c; repeat c end;
+import "~swarm/lib/control"
 
 def i2e = \i.
   if (i == 2) { "two" } {
@@ -27,8 +27,8 @@ def count_column =
   pure (i + j + k)
 end;
 
-
-repeat {
+def go =
+forever (
     sum <- as self {
         // left column
         teleport self (-2,-2);
@@ -59,4 +59,5 @@ repeat {
     ) (\e.
         if (e == sum) {} {swap sum; pure ()}
     )
-}
+)
+end
