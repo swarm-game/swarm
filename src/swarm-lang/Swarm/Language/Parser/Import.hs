@@ -44,6 +44,7 @@ parseImportLocationRaw = do
   parseAnchor =
     (Import.Root <$ separator)
       <|> try (Import.Drive <$> (letterChar <* char ':' <* separator))
+      <|> try (Import.Swarm <$ (string "~swarm" *> separator))
       <|> (Import.Home <$ (char '~' *> separator))
       <|> (Import.Web <$> parseWeb)
       <|> pure (Import.Local 0)

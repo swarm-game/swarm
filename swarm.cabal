@@ -969,6 +969,7 @@ library swarm-util
     Swarm.Language.Phase
     Swarm.Language.Syntax.Direction
     Swarm.Language.Syntax.Import
+    Swarm.Language.Syntax.Import.Resolve
     Swarm.Language.Syntax.Loc
     Swarm.Pretty
     Swarm.ResourceLoading
@@ -986,7 +987,9 @@ library swarm-util
     Swarm.Util.WindowedCounter
     Swarm.Util.Yaml
 
-  other-modules: Paths_swarm
+  other-modules:
+    Paths_swarm
+    Swarm.Language.Syntax.Import.Internal
   autogen-modules: Paths_swarm
   hs-source-dirs: src/swarm-util
   ghc-options:

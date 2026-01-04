@@ -37,7 +37,7 @@ import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Failure
 import Swarm.Game.Cosmetic.Attribute
-import Swarm.ResourceLoading (getDataFileNameSafe)
+import Swarm.ResourceLoading (getDataFileNameThrow)
 import Swarm.Util (enumeratedMap, quote)
 import Swarm.Util.Effect (withThrow)
 
@@ -150,7 +150,7 @@ loadTerrain ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   m TerrainMap
 loadTerrain = do
-  fileName <- getDataFileNameSafe Terrain terrainFile
+  fileName <- getDataFileNameThrow Terrain terrainFile
   decoded <-
     withThrow (terrainFailure . CanNotParseYaml) . (liftEither <=< sendIO) $
       decodeFileEither fileName

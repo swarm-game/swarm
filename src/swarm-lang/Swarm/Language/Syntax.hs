@@ -120,6 +120,7 @@ import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Import
+import Swarm.Language.Syntax.Import.Resolve
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern
 import Swarm.Language.Syntax.Pretty ()

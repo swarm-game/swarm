@@ -43,6 +43,7 @@ import Swarm.Language.Parser.Import (parseImportLocationRaw)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Import hiding (ImportPhase (..))
 import Swarm.Language.Syntax.Import qualified as Import
+import Swarm.Language.Syntax.Import.Resolve
 import Swarm.Pretty (prettyText)
 import Swarm.Util (Encoding (SystemLocale), getModificationTimeMay, readFileMayT, showT)
 import Swarm.Util.GlobalCache qualified as GC
@@ -129,7 +130,7 @@ resolve ::
   Syntax Raw ->
   m (SourceMap Resolved, (LocalModules, Syntax Resolved))
 resolve prov s = do
-  cur <- sendIO . resolveImportDir $
+  cur <- resolveImportDir $
     case prov of
       Nothing -> currentDir
       Just fp -> case runParser parseImportLocationRaw (into @Text fp) of

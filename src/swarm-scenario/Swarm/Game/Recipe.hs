@@ -70,7 +70,7 @@ import GHC.Generics (Generic)
 import Swarm.Failure
 import Swarm.Game.Entity as E
 import Swarm.Game.Ingredients
-import Swarm.ResourceLoading (getDataFileNameSafe)
+import Swarm.ResourceLoading (getDataFileNameThrow)
 import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
@@ -158,7 +158,7 @@ loadRecipes ::
   EntityMap ->
   m [Recipe Entity]
 loadRecipes em = do
-  fileName <- getDataFileNameSafe Recipes f
+  fileName <- getDataFileNameThrow Recipes f
   textRecipes <-
     withThrow (AssetNotLoaded (Data Recipes) fileName . CanNotParseYaml)
       . (liftEither <=< sendIO)

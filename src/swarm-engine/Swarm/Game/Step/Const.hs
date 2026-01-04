@@ -97,7 +97,7 @@ import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Value
 import Swarm.Log
 import Swarm.Pretty (prettyText)
-import Swarm.ResourceLoading (getDataFileNameSafe)
+import Swarm.ResourceLoading (getDataFileNameThrow)
 import Swarm.Util hiding (both)
 import Swarm.Util.Effect (throwToMaybe)
 import Swarm.Util.Lens (inherit)
@@ -1226,8 +1226,8 @@ execConst runChildProg c vs s k = do
     Run -> case vs of
       [VText fileName] -> do
         let filePath = into @String fileName
-        sData <- throwToMaybe @SystemFailure $ getDataFileNameSafe Script filePath
-        sDataSW <- throwToMaybe @SystemFailure $ getDataFileNameSafe Script (filePath <> ".sw")
+        sData <- throwToMaybe @SystemFailure $ getDataFileNameThrow Script filePath
+        sDataSW <- throwToMaybe @SystemFailure $ getDataFileNameThrow Script (filePath <> ".sw")
         muser <- sendIO . traverse (readFileMayT SystemLocale) $ [filePath, filePath <> ".sw"]
         msys <- sendIO . traverse (readFileMayT UTF8) $ catMaybes [sData, sDataSW]
 
