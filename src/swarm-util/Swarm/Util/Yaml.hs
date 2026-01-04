@@ -29,6 +29,7 @@ import Control.Monad.Reader
 import Data.Aeson.Key (fromText)
 import Data.Aeson.Types (explicitParseField, explicitParseFieldMaybe)
 import Data.Bifunctor (first)
+import Data.Kind (Type)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Vector qualified as V
@@ -41,7 +42,7 @@ import Swarm.Util (failT, showT)
 
 -- | A generic wrapper for computations which also depend on knowing a
 --   value of type @e@, and possibly the provenance of the information.
-newtype With e (f :: * -> *) a = E {runE :: e -> Maybe FilePath -> f a}
+newtype With e (f :: Type -> Type) a = E {runE :: e -> Maybe FilePath -> f a}
   deriving (Functor)
   deriving (Applicative, Monad, MonadFail, Alternative) via (ReaderT e (ReaderT (Maybe FilePath) f))
 
