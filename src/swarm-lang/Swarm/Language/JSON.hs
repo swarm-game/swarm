@@ -21,7 +21,7 @@ import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (Raw), SwarmType, Sy
 import Swarm.Language.Value (Env, Value (..))
 import Swarm.Pretty (PrettyPrec, prettyText)
 import Swarm.Util.JSON (optionsMinimize)
-import Swarm.Util.Yaml (FromJSONE (..), ParserE, getE, getProvenance, liftE, localE, runE)
+import Swarm.Util.Yaml (FromJSONE (..), ParserE, getE, getProvenance, liftE, localE)
 import Witch (into)
 
 instance FromJSON (Term Raw) where
@@ -44,9 +44,6 @@ instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFo
   toJSON = Ae.String . prettyText
 
 deriving instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), ToJSON (ModuleCtx phase), ToJSON (ModuleImports phase), Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => ToJSON (Module phase)
-
-instance FromJSON (Module Raw) where
-  parseJSON v = runE (parseJSONE v) NoProvenance Nothing
 
 -- | Run a parser requiring a ModuleProvenance, getting the provenance
 --   from the ambient file provenance provided by ParserE itself.

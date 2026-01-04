@@ -400,7 +400,7 @@ instance FromJSONE ScenarioInputs (Scenario Raw) where
         ScenarioOperation
           <$> liftE (v .:? "creative" .!= False)
           <*> liftE (v .:? "description" .!= "")
-          <*> (liftE (v .:? "objectives" .!= []) >>= validateObjectives)
+          <*> ((v ..:? "objectives" ..!= []) >>= validateObjectives)
           <*> withModuleProvenance (v ..:? "solution")
           <*> localE (view entityMap) (v ..:? "recipes" ..!= [])
           <*> liftE (v .:? "stepsPerTick")

@@ -47,13 +47,14 @@ import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Definitions qualified as AD
 import Swarm.Game.Scenario.Objective.Logic as L
-import Swarm.Language.JSON ()
+import Swarm.Language.JSON (withModuleProvenance)
 import Swarm.Language.Module (Module, ModuleCtx, ModuleImports)
 import Swarm.Language.Pipeline (Processable (..), processSyntax)
 import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (..), SwarmType, Syntax, Unresolvable)
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Pretty (PrettyPrec)
 import Swarm.Util.Lens (concatFold, makeLensesExcluding, makeLensesNoSigs)
+import Swarm.Util.Yaml (FromJSONE (..), liftE, withObjectE, (..:))
 
 ------------------------------------------------------------
 -- Scenario objectives
@@ -169,16 +170,16 @@ objectiveHidden :: Lens' (Objective phase) Bool
 -- when this objective is completed.
 objectiveAchievement :: Lens' (Objective phase) (Maybe AD.AchievementInfo)
 
-instance FromJSON (Objective Raw) where
-  parseJSON = withObject "objective" $ \v -> do
-    _objectiveGoal <- v .:? "goal" .!= mempty
-    _objectiveTeaser <- v .:? "teaser"
-    _objectiveCondition <- v .: "condition"
-    _objectiveId <- v .:? "id"
-    _objectiveOptional <- v .:? "optional" .!= False
-    _objectivePrerequisite <- v .:? "prerequisite"
-    _objectiveHidden <- v .:? "hidden" .!= False
-    _objectiveAchievement <- v .:? "achievement"
+instance FromJSONE e (Objective Raw) where
+  parseJSONE = withObjectE "objective" $ \v -> do
+    _objectiveGoal <- liftE $ v .:? "goal" .!= mempty
+    _objectiveTeaser <- liftE $ v .:? "teaser"
+    _objectiveCondition <- withModuleProvenance (v ..: "condition")
+    _objectiveId <- liftE $ v .:? "id"
+    _objectiveOptional <- liftE $ v .:? "optional" .!= False
+    _objectivePrerequisite <- liftE $ v .:? "prerequisite"
+    _objectiveHidden <- liftE $ v .:? "hidden" .!= False
+    _objectiveAchievement <- liftE $ v .:? "achievement"
     pure Objective {..}
 
 -- | TODO: #1044 Could also add an "ObjectiveFailed" constructor...
@@ -202,7 +203,6 @@ data CompletionBuckets phase = CompletionBuckets
   deriving (Generic)
 
 deriving instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase), Show (ModuleCtx phase), Show (ModuleImports phase)) => Show (CompletionBuckets phase)
-deriving instance FromJSON (CompletionBuckets Raw)
 deriving instance (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase), Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), ToJSON (ModuleImports phase), ToJSON (ModuleCtx phase)) => ToJSON (CompletionBuckets phase)
 
 -- Note we derive these lenses for `CompletionBuckets` but we do NOT
@@ -242,7 +242,6 @@ makeLensesFor [("_completedIDs", "internalCompletedIDs")] ''ObjectiveCompletion
 makeLensesExcluding ['_completedIDs] ''ObjectiveCompletion
 
 deriving instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase), Show (ModuleCtx phase), Show (ModuleImports phase)) => Show (ObjectiveCompletion phase)
-deriving instance FromJSON (ObjectiveCompletion Raw)
 deriving instance (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase), Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), ToJSON (ModuleCtx phase), ToJSON (ModuleImports phase)) => ToJSON (ObjectiveCompletion phase)
 
 -- | Initialize an objective completion tracking record from a list of

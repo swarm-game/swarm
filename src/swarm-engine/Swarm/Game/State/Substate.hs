@@ -160,7 +160,6 @@ data WinCondition phase
     WinConditions WinStatus (ObjectiveCompletion phase)
   deriving (Generic)
 
-deriving instance FromJSON (WinCondition Raw)
 deriving instance (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase), Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), ToJSON (ModuleCtx phase), ToJSON (ModuleImports phase)) => ToJSON (WinCondition phase)
 
 makePrisms ''WinCondition
