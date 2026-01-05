@@ -8,6 +8,12 @@ def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
 
 def forever : Cmd Unit -> Cmd Unit = \c. c ; forever c end
 
+def liftA2 : (a -> b -> c) -> Cmd a -> Cmd b -> Cmd c = \f. \ca. \cb.
+  a <- ca;
+  b <- cb;
+  pure (f a b)
+end
+
 def ifC: ∀ a. Cmd Bool -> {Cmd a} -> {Cmd a} -> Cmd a
   = \test. \then. \else.
   b <- test;

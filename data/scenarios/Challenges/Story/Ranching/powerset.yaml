@@ -88,9 +88,9 @@ robots:
       - [6, watermelon]
       - [7, orange]
     program: |
-      run "scenarios/Challenges/Story/Ranching/_powerset/setup.sw"
+      import "_powerset/setup"; go 7
 solution: |
-  run "scenarios/Challenges/Story/Ranching/_powerset/solution.sw"
+  import "_powerset/solution"; go 3
 entities:
   - name: rocket skates
     display:

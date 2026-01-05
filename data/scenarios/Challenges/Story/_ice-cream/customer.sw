@@ -56,5 +56,3 @@ def runScript =
     waitForItem "cherry";
     createCompletedSemaphore targetScoopCount;
     end;
-
-runScript;

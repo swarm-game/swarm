@@ -19,7 +19,7 @@ Distinguishes system bots from the base by name.
 Returns true if a bot has "met" the base.
 */
 def anyHasMetBase : Int -> Cmd Bool = \idx.
-    
+
     try {
         bot <- robotnumbered idx;
         intermediate <- hasMetBase bot;
@@ -33,5 +33,3 @@ def anyHasMetBase : Int -> Cmd Bool = \idx.
       pure false;
     };
     end;
-
-anyHasMetBase 1;

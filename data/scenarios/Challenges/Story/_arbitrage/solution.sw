@@ -1,13 +1,4 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
-
-def intersperse = \n. \f2. \f1. if (n > 0) {
-        f1;
-        if (n > 1) {
-            f2;
-        } {};
-        intersperse (n - 1) f2 f1;
-    } {};
-    end;
+import "~swarm/lib/control"
 
 /**
 False = Left
@@ -38,11 +29,13 @@ def doFullFigureEight = \startLeft.
     intersperse 4 (turn $ boolAsLeftRight startLeft) squareSide;
     end;
 
-goToFirstShop;
+def solution =
+  goToFirstShop;
 
-doN 1 doPartialFigureEight;
-doN 9 $ doFullFigureEight true;
+  doN 1 doPartialFigureEight;
+  doN 9 $ doFullFigureEight true;
 
-doN 8 $ doFullFigureEight false;
-squareSide;
-drill down;
+  doN 8 $ doFullFigureEight false;
+  squareSide;
+  drill down;
+end

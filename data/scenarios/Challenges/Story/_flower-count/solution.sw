@@ -1,13 +1,6 @@
-def doN : Int -> Cmd a -> Cmd Unit = \n. \c.
-  if (n == 0) {} {c; doN (n-1) c}
-end
-
-def abs : Int -> Int = \n.
-  if (n < 0) {-n} {n}
-end
-
-def λmatch = \f. \p. match p f end
-def λcase = \f. \g. \s. case s f g end
+import "~swarm/lib/control"
+import "~swarm/lib/arith"
+import "~swarm/lib/list"
 
 // Go to the given absolute coordinates.  End facing east.
 def goto : Int * Int -> Cmd Unit = λmatch \destx. \desty.
@@ -22,12 +15,6 @@ def goto : Int * Int -> Cmd Unit = λmatch \destx. \desty.
   turn east;
 end
 
-def liftA2 : (a -> b -> c) -> Cmd a -> Cmd b -> Cmd c = \f. \ca. \cb.
-  a <- ca;
-  b <- cb;
-  pure (f a b)
-end
-
 def add : Cmd Int -> Cmd Int -> Cmd Int = liftA2 (\x. \y. x + y) end
 
 def countCell : Cmd Int =
@@ -37,24 +24,11 @@ def countCell : Cmd Int =
     (\t. if (t == "flower") {1} {0})
 end
 
-tydef List a = rec l. Unit + (a * l) end
-
-def sum : List Int -> Int = λcase
-  (\_. 0)
-  (λmatch \hd. \tl. hd + sum tl)
-end
-
-def for : Int -> (Int -> Cmd a) -> Cmd (List a) = \n. \k.
-  if (n == 0) {pure (inl ())} {a <- k n; b <- for (n-1) k; pure (inr (a,b))}
-end
-
 def countRow : Int -> Cmd Int = \w.
   ns <- for (w-1) (\_. n <- countCell; move; pure n);
   last <- countCell;
   pure (sum ns + last)
 end
-
-def isEven : Int -> Bool = \n. (n / 2) * 2 == n end
 
 def around : Dir -> Cmd Unit = \d. turn d; move; turn d end
 
@@ -87,10 +61,6 @@ def countAndReport : Int * Int -> Int * Int -> Cmd Unit = \size. \ll.
   place newPaper;
 end
 
-def until : Cmd Bool -> Cmd a -> Cmd Unit = \test. \body.
-  b <- test; if b {} {body; until test body}
-end
-
 def acquireFlower : Cmd Unit =
   until (ishere "flower") move; grab; pure ()
 end
@@ -110,5 +80,3 @@ def go =
   res <- meet;
   case res (\_. pure ()) (\truelove. give truelove "flower")
 end;
-
-go;

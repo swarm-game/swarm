@@ -1,13 +1,4 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
-
-def intersperse = \n. \f2. \f1. if (n > 0) {
-        f1;
-        if (n > 1) {
-            f2;
-        } {};
-        intersperse (n - 1) f2 f1;
-    } {};
-    end;
+import "~swarm/lib/control"
 
 def makeRoll =
     make "nori";
@@ -181,5 +172,3 @@ def go =
     doN 16 $ catchFish rod;
     disposeTrash;
     end;
-
-go;

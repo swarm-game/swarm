@@ -28,9 +28,11 @@ def is_unattended_together = \baseX. \robotName.
     }
     end;
 
-baseX <- get_x_coord base;
+def go =
+  baseX <- get_x_coord base;
 
-west_bad <- is_unattended_together baseX "west_detector";
-east_bad <- is_unattended_together baseX "east_detector";
+  west_bad <- is_unattended_together baseX "west_detector";
+  east_bad <- is_unattended_together baseX "east_detector";
 
-pure $ west_bad || east_bad;
+  pure $ west_bad || east_bad;
+end

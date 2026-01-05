@@ -87,7 +87,7 @@ robots:
       - [1, toolkit]
       - [1, serenity]
     program: |
-      run "data/scenarios/Challenges/Story/_gopher/gopher.sw"
+      import "_gopher/gopher"; gopher
 entities:
   - name: mound
     display:
@@ -126,7 +126,7 @@ recipes:
     required:
       - [1, drill]
 solution: |
-  run "scenarios/Challenges/Story/_gopher/solution.sw"
+  import "_gopher/solution"; go 30 20
 known: []
 world:
   dsl: |

@@ -117,9 +117,7 @@ def chooseDirection : Cmd Dir =
     }
     end;
 
-startPos <- whereami;
-
-def go =
+def go = \startPos.
     hasGift <- has "donut";
     if hasGift {
         teleport self startPos;
@@ -127,16 +125,15 @@ def go =
         move;
         newDirection <- chooseDirection;
         turn newDirection;
-        go;
+        go startPos;
     }
     end;
 
 def waitToStart =
+    startPos <- whereami;
     offset <- random 300;
     let startDelay = 50 + offset in
     wait startDelay;
     teleport self (0, 0);
-    go;
+    go startPos;
     end;
-
-waitToStart;

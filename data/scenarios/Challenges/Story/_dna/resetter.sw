@@ -1,4 +1,4 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+import "~swarm/lib/control"
 
 /**
 Assumes we are on the left edge of a row of nucleobases
@@ -44,5 +44,3 @@ def go =
         case found pure watchSwitch;
     };
     end;
-
-go;

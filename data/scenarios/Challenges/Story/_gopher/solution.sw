@@ -1,6 +1,5 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
-def elif = \t. \then. \else. {if t then else} end
-def else = \t. t end
+import "~swarm/lib/control"
+import "~swarm/lib/arith"
 
 def makeSigned = \b. \x.
     if b {-x} {x};
@@ -61,10 +60,6 @@ def deploySensor =
     pure ();
     end;
 
-def isDivisibleBy = \dividend. \divisor.
-    (dividend / divisor) * divisor == dividend;
-    end;
-
 // stagger at every fifth cell
 def deployRow = \f. \offset. \cellCount.
     if (isDivisibleBy (cellCount + offset) 5) {
@@ -75,10 +70,6 @@ def deployRow = \f. \offset. \cellCount.
         deployRow f offset $ cellCount - 1;
     } {};
     end;
-
-def isEven = \x.
-   isDivisibleBy x 2
-   end;
 
 def deployGrid = \f. \width. \height.
 
@@ -117,7 +108,7 @@ def searchToolkitSingleRow = \colCount.
         move;
         searchToolkitSingleRow $ colCount - 1;
     } {};
-    end;    
+    end;
 
 def searchToolkitRows = \width. \rowCount.
     searchToolkitSingleRow width;
@@ -166,5 +157,3 @@ def go = \width. \height.
     turn right;
     deployGrid salvage width height;
     end;
-
-go 30 20;

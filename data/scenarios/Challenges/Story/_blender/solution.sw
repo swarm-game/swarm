@@ -60,5 +60,3 @@ def navigatePath =
     doN 7 move;
     grab;
     end;
-
-navigatePath;

@@ -1,7 +1,4 @@
-def forever = \c.
-    c;
-    forever c;
-    end;
+import "~swarm/lib/control"
 
 def encircle = \lDir. \rDir.
     turn lDir;
@@ -16,5 +13,4 @@ def encircle = \lDir. \rDir.
     end;
 
 def patrolCW = forever (encircle right left); end;
-
-patrolCW;
+def patrolCCW = forever (encircle left right); end;

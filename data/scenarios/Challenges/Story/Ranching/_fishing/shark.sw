@@ -20,5 +20,3 @@ def go =
     swim;
     go;
     end;
-
-go;

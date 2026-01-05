@@ -9,7 +9,7 @@ objectives:
         as base {has "drill bit"};
       } { pure false }
 solution: |
-  run "scenarios/Testing/562-lodestone.sw"
+  import "562-lodestone"; solution
 robots:
   - name: base
     dir: east

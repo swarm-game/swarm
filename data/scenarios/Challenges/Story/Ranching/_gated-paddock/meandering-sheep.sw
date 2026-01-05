@@ -1,6 +1,6 @@
 // A "sheep" that wanders around randomly.
 
-def elif = \p.\t.\e. {if p t e} end;
+import "~swarm/lib/control"
 
 def turnToClover = \direction.
 
@@ -24,7 +24,7 @@ def turnCloverDirection =
 
     foundN <- turnToClover north;
     if (foundN) {pure true} {
-      foundE <- turnToClover east;  
+      foundE <- turnToClover east;
       if (foundE) {pure true} {
         foundS <- turnToClover south;
         if (foundS) {pure true} {
@@ -62,11 +62,7 @@ def decideDirection =
   }
   end;
 
-let forever : Cmd Unit -> Cmd Unit = \c. c ; forever c in
-let repeat : Int -> Cmd Unit -> Cmd Unit =
-  \n. \c. if (n == 0) {} {c ; repeat (n-1) c} in
-
-
+def go =
 forever (
   n <- random 30;
   wait (30 + n);
@@ -74,7 +70,7 @@ forever (
   decideDirection;
 
   dist <- random 3;
-  repeat dist (
+  doN dist (
 
     b <- blocked;
     if b {} {
@@ -106,7 +102,7 @@ forever (
   hasClover <- has "clover";
   if (hasClover) {
     r <- random 8;
-    if (r == 0) { 
+    if (r == 0) {
       let item = "wool" in
       hasWool <- has item;
       if (hasWool) {
@@ -123,3 +119,4 @@ forever (
     } {};
   } {};
 )
+end

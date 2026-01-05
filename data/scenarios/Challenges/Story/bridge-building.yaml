@@ -175,14 +175,14 @@ robots:
     inventory:
       - [1, painted plate]
     program: |
-      run "scenarios/Challenges/Story/_bridge-building/flower-ring-check.sw"
+      import "_bridge-building/flower-ring-check"; go
   - name: platecheck
     system: true
     dir: north
     display:
       invisible: true
 solution: |
-  run "scenarios/Challenges/Story/_bridge-building/solution.sw"
+  import "_bridge-building/solution"; solution
 entities:
   - name: map
     display:

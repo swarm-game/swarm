@@ -1,32 +1,6 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
-
-def intersperse = \n. \f2. \f1. if (n > 0) {
-        f1;
-        if (n > 1) {
-            f2;
-        } {};
-        intersperse (n - 1) f2 f1;
-    } {};
-    end;
-
-def abs = \n. if (n < 0) {-n} {n} end;
-
-def λcase = \f. \g. \s. case s f g end
-def λmatch = \f. \p. match p f end
-
-def mapTuple = \f. λmatch \a. \b. (f a, f b) end;
-
-def sumTuples = λmatch \t11. \t12. λmatch \t21. \t22.
-    (t11 + t21, t12 + t22);
-    end;
-
-def negateTuple = \t.
-    mapTuple (\x. -x) t;
-    end;
-
-def subtractTuple = \t1. \t2.
-    sumTuples t1 $ negateTuple t2;
-    end;
+import "~swarm/lib/control"
+import "~swarm/lib/arith"
+import "~swarm/lib/tuple"
 
 def moveTuple = λmatch \x. \y.
     turn $ if (x > 0) {east} {west};
@@ -216,7 +190,7 @@ def makeTables =
 
 def buildTavern =
 
-    // x16 per rock = 
+    // x16 per rock =
     doN 12 $ make "stone tile";
 
     doN 2 (
@@ -243,7 +217,7 @@ def buildTavern =
 
     // Make enough logs for 70 wall pieces
     doN 35 (make "log"; make "wall");
-    
+
     intersperse 14 move (place "wall");
     turn left;
     doN 6 (move; place "wall");
@@ -327,7 +301,7 @@ def go =
     harvestTrees;
     turn east;
     doN 19 move;
-    
+
     let meetingLoc = (0, -12) in
     placeHives 15 meetingLoc;
 
@@ -346,7 +320,7 @@ def go =
     buildTavern;
 
     nextRow right;
-    
+
     currLoc <- whereami;
     let delta = subtractTuple meetingLoc currLoc in
     moveTuple delta;
@@ -357,5 +331,3 @@ def go =
     doN 2 $ make "mead";
 
     end;
-
-go;

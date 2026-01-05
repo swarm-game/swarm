@@ -46,7 +46,7 @@ objectives:
         Furthermore, if left unattended together, the `wolf`{=entity} will eat the `goat`{=entity},
         or the `goat`{=entity} will eat the `cabbage`{=entity}.
     condition: |
-      run "data/scenarios/Challenges/_wolf-goat-cabbage/together-on-east-bank.sw";
+      import "_wolf-goat-cabbage/together-on-east-bank"; go
     prerequisite:
       previewable: true
       logic:
@@ -58,7 +58,7 @@ objectives:
       - Carrying two items at once is not allowed!
     condition: |
       as base {
-        run "data/scenarios/Challenges/_wolf-goat-cabbage/multi-item-possession.sw";
+        import "_wolf-goat-cabbage/multi-item-possession"; go
       };
     id: carrying_two_items
     optional: true
@@ -68,11 +68,11 @@ objectives:
     goal:
       - Leaving an animal alone with its food is not allowed!
     condition: |
-      run "data/scenarios/Challenges/_wolf-goat-cabbage/unattended-together.sw";
+      import "_wolf-goat-cabbage/unattended-together"; go
     optional: true
     hidden: true
 solution: |
-  run "scenarios/Challenges/_wolf-goat-cabbage/cross.sw"
+  import "_wolf-goat-cabbage/cross"; solution
 entities:
   - name: wolf
     display:

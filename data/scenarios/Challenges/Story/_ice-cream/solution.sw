@@ -63,5 +63,3 @@ def runSolution = \targetRemainingIngredientCount.
     scoopUntil customer targetRemainingIngredientCount;
     give customer cherry;
     end;
-
-runSolution 2712;

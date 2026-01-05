@@ -1,38 +1,9 @@
+import "~swarm/lib/control"
+import "~swarm/lib/arith"
+import "~swarm/lib/tuple"
+import "~swarm/lib/list"
+
 // Spawns worker bees when structures are detected
-
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
-def mod : Int -> Int -> Int = \a. \b. a - (a/b)*b end;
-def abs = \n. if (n < 0) {-n} {n} end;
-def min = \x. \y. if (x < y) {x} {y} end;
-
-def elif = \t. \then. \else. {if t then else} end
-def else = \t. t end
-
-def λcase = \f. \g. \s. case s f g end
-def λmatch = \f. \p. match p f end
-
-def mapTuple = \f. λmatch \a. \b. (f a, f b) end;
-
-def sumTuples = λmatch \t11. \t12. λmatch \t21. \t22.
-    (t11 + t21, t12 + t22);
-    end;
-
-def negateTuple = \t.
-    mapTuple (\x. -x) t;
-    end;
-
-def subtractTuple = \t1. \t2.
-    sumTuples t1 $ negateTuple t2;
-    end;
-
-// Deprecated
-def moveTuple = λmatch \x. \y.
-    turn $ if (x > 0) {east} {west};
-    doN (abs x) move;
-
-    turn $ if (y > 0) {north} {south};
-    doN (abs y) move;
-    end;
 
 def randomDir =
     r <- random 4;
@@ -223,11 +194,6 @@ def associateHive = \loc.
    };
    end;
 
-def mapM_ : (a -> Cmd b) -> (rec l. Unit + a * l) -> Cmd Unit = \f. λcase
-  (\_. pure ())
-  (λmatch \hd. \tl. f hd; mapM_ f tl)
-  end;
-
 /**
 Each tick, iterates through all hives,
 and makes sure a "bee" robot is associated with
@@ -249,5 +215,3 @@ def observeHives =
 def go =
     instant {observeHives};
     end;
-
-go;

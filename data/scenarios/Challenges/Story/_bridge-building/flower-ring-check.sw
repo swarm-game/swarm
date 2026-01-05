@@ -1,7 +1,4 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
-
-
-def isItemInDirection = \direction. \item. 
+def isItemInDirection = \direction. \item.
     x <- scan direction;
     pure $ case x (\_. false) (\y. y == item);
     end;
@@ -56,7 +53,9 @@ def waitUntilSurrounded =
     }
     end;
 
-waitUntilSurrounded;
+def go =
+  waitUntilSurrounded;
 
-_t <- swap "painted plate";
-selfdestruct;
+  _t <- swap "painted plate";
+  selfdestruct;
+end

@@ -1,23 +1,5 @@
-def elif = \t. \then. \else. {if t then else} end
-def else = \t. t end
-
-// modulus function (%)
-def mod : Int -> Int -> Int = \i. \m.
-  i - m * (i / m)
-end
-
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
-
-def until = \p. \c. q <- p; if q {} {c; until p c} end;
-def while = \p. until (x <- p; pure $ not x) end;
-
-def isDivisibleBy = \dividend. \divisor.
-    (dividend / divisor) * divisor == dividend;
-    end;
-
-def isEven = \x.
-   isDivisibleBy x 2
-   end;
+import "~swarm/lib/control"
+import "~swarm/lib/arith"
 
 /**
 Performs a right bitshift of "x" by "n" places
@@ -245,10 +227,8 @@ def go = \distinctCount.
     give base "bell";
 
     waitForFirstPlacement;
-    while (as base {has "bell"}) $ wait 2;
+    while (as base {has "bell"}) {wait 2};
     theSum <- checkSolutionSum 0;
     let sentinelItem = if (exclusionValue == theSum) {"bit (1)"} {"bit (0)"} in
     create sentinelItem;
     end;
-
-go 7;

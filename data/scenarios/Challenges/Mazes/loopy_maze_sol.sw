@@ -13,6 +13,9 @@ def DFS =
   };
   tB; move; tB
 end;
-build {
-  stock 500 "rock"; DFS
-}
+
+def solution =
+  build {
+    stock 500 "rock"; DFS
+  }
+end
