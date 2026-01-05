@@ -1,4 +1,4 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+import "~swarm/lib/control"
 
 def go =
     wait 2;
@@ -7,5 +7,3 @@ def go =
     doN 64 move;
     unequip "antenna";
     end;
-
-go;

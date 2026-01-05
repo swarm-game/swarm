@@ -20,28 +20,28 @@ robots:
       invisible: false
     dir: east
     program: |
-      run "scenarios/Fun/_logo-burst/drone.sw"
+      import "_logo-burst/drone"; drone
   - name: botUp
     system: true
     display:
       invisible: false
     dir: north
     program: |
-      run "scenarios/Fun/_logo-burst/drone.sw"
+      import "_logo-burst/drone"; drone
   - name: botLeft
     system: true
     display:
       invisible: false
     dir: west
     program: |
-      run "scenarios/Fun/_logo-burst/drone.sw"
+      import "_logo-burst/drone"; drone
   - name: botDown
     system: true
     display:
       invisible: false
     dir: south
     program: |
-      run "scenarios/Fun/_logo-burst/drone.sw"
+      import "_logo-burst/drone"; drone
   - name: stoplight
     system: true
     display:
@@ -52,7 +52,7 @@ robots:
     inventory:
       - [1, bit (0)]
     program: |
-      run "scenarios/Fun/_logo-burst/coordinator.sw"
+      import "_logo-burst/coordinator"; go
 known: [boulder, tree, water, wavy water]
 world:
   upperleft: [0, 0]

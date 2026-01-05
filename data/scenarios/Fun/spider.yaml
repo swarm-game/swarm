@@ -26,7 +26,7 @@ robots:
     system: true
     loc: [0, 0]
     program: |
-      run "scenarios/Fun/_spider/spider.sw"
+      import "_spider/spider"; go
   - name: tree spider
     display:
       invisible: false
@@ -35,7 +35,7 @@ robots:
     system: true
     loc: [0, 0]
     program: |
-      run "scenarios/Fun/_spider/spider.sw"
+      import "_spider/spider"; go
 structures:
   - name: cocoon
     recognize: [north]

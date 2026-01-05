@@ -1,5 +1,4 @@
-def λmatch = \f. \p. match p f end
-def λcase = \f. \g. \s. case s f g end
+import "~swarm/lib/control"
 
 def goDir = \f. λmatch \d. \_.
   if (d == down) {
@@ -40,5 +39,3 @@ def go =
     let wps = waypoints "wp" in
     visitNextWaypoint wps wps;
     end;
-
-go;

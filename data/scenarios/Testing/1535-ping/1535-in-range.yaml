@@ -15,7 +15,7 @@ objectives:
         has "bitcoin";
       }
 solution: |
-  run "scenarios/Testing/1535-ping/_1535-in-range/solution.sw"
+  import "_1535-in-range/solution"; go
 entities:
   - name: transponder
     display:
@@ -69,7 +69,7 @@ robots:
       - [1, map piece]
       - [1, bitcoin]
     program: |
-      run "scenarios/Testing/1535-ping/_1535-in-range/buddy.sw"
+      import "_1535-in-range/buddy"; go
 known: [bitcoin]
 world:
   dsl: |

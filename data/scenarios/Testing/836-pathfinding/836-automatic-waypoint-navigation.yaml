@@ -4,7 +4,7 @@ description: |
   Demonstrate shortest-path patrolling between waypoints
 creative: false
 solution: |
-  run "scenarios/Testing/836-pathfinding/_836-automatic-waypoint-navigation/patrol.sw"
+  import "_836-automatic-waypoint-navigation/patrol"; go
 objectives:
   - goal:
       - Collect 64 eggs
@@ -74,7 +74,7 @@ robots:
     display:
       invisible: true
     program: |
-      run "scenarios/Testing/836-pathfinding/_836-automatic-waypoint-navigation/gardener.sw"
+      import "_836-automatic-waypoint-navigation/gardener"; go
   - name: rabbit
     dir: east
     loc: [2, -2]
@@ -89,7 +89,7 @@ robots:
       attr: snow
       char: R
     program: |
-      run "scenarios/Testing/836-pathfinding/_836-automatic-waypoint-navigation/rabbit.sw"
+      import "_836-automatic-waypoint-navigation/rabbit"; go
 known: [flower, boulder, kudzu]
 world:
   upperleft: [-1, 1]

@@ -1,8 +1,8 @@
+import "~swarm/lib/control"
 
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+def go =
+  doN 16 move;
 
-doN 16 move;
-
-r <- meet;
-case r pure $ \j. give j "bitcoin";
-
+  r <- meet;
+  case r pure $ \j. give j "bitcoin";
+end

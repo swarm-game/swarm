@@ -1,4 +1,4 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+import "~swarm/lib/control"
 
 def goToBuddy = \loc.
 
@@ -51,5 +51,3 @@ def go =
     case maybeBuddy pure giveToBuddy;
     grab;
     end;
-
-go;

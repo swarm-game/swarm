@@ -2,7 +2,7 @@
 Uses a string to maintain a queue of coordinates.
 */
 
-def λmatch = \f. \p. match p f end
+import "~swarm/lib/control"
 
 def coordsToString : (Int * Int) -> Text = λmatch \x. \y.
   format x ++ "," ++ format y
@@ -158,5 +158,3 @@ def go = \tailList.
   newList <- instant {moveToApple tailList};
   go newList;
   end;
-
-go "";

@@ -11,5 +11,3 @@ def followRoute =
     nextDir <- path (inL ()) (inR "flower");
     case nextDir pure $ goDir followRoute;
     end;
-
-followRoute;
