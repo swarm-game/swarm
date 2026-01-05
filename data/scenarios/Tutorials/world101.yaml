@@ -8,7 +8,7 @@ objectives:
     goal:
       - You're ready to graduate to something a bit more complex! This multi-step tutorial will walk you through a few of the first steps you might take in exploring the new planet, using many of the commands and techniques you have learned in the previous tutorial challenges.
       - You can see that your base starts out with some key devices equipped and some basic supplies for building robots.  To build more advanced devices and produce more robots, you'll need to explore, gather resources, and set up some automated production pipelines.
-      - At this point you may want to create an external `.sw`{=path} file with useful definitions you create.  You can then load it via the `run` command.  See https://github.com/swarm-game/swarm/tree/main/editors for help configuring your editor with support for swarm-lang.
+      - At this point you may want to create an external `.sw`{=path} file with useful definitions you create.  You can then load it via the `import`{=snippet} command.  See https://github.com/swarm-game/swarm/tree/main/editors for help configuring your editor with support for swarm-lang.
       - Your first task is to collect three or more `tree`{=entity}s. You can remind yourself of the available commands using **F4**.
       - Since you don't yet have a `compass`{=entity} device, you won't be able to refer to cardinal directions like `north` or `east`, only relative directions like `left`, `right`, or `back`.
     condition: |
