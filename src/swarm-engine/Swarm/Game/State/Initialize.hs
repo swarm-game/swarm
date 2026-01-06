@@ -95,7 +95,7 @@ scenarioToGameStateForTests si theSeed now toRun gsc =
   gs = pureScenarioToGameState si theSeed now toRun Nothing Nothing gsc
   structures = si ^. getScenario . scenarioLandscape . scenarioStructures
   (gs', recognition) = runPureEffects $ initializeRecognition entityAt structures
-  runPureEffects = Fused.run . Fused.runState gs . Effect.runFakeMetric . Effect.runFakeTime 0
+  runPureEffects = Fused.run . Fused.runState gs . Effect.runFakeMetric . Effect.runFakeTime 0 (read "2026-01-01 00:00:00 UTC")
 
 -- | Initialize the GameState record for current scenario.
 pureScenarioToGameState ::

@@ -14,7 +14,6 @@ import Control.Carrier.State.Lazy
 import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Effect.Error
 import Control.Effect.Lens
-import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (forM_, unless, when)
 import Data.IntSet qualified as IS
@@ -27,9 +26,9 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Time (getZonedTime)
 import Data.Tuple (swap)
 import Linear (zero)
+import Swarm.Effect.Time (Time, getZonedTime)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Description (getValidityRequirements)
@@ -206,9 +205,9 @@ updateRobotLocation oldLoc newLoc
 -- | Execute a stateful action on a target robot --- whether the
 --   current one or another.
 onTarget ::
-  (HasRobotStepState sig m, Has (Lift IO) sig m) =>
+  HasRobotStepState sig m =>
   RID ->
-  (forall sig' m'. (HasRobotStepState sig' m', Has (Lift IO) sig' m') => m' ()) ->
+  (forall sig' m'. HasRobotStepState sig' m' => m' ()) ->
   m ()
 onTarget rid act = do
   myID <- use robotID
@@ -225,7 +224,7 @@ onTarget rid act = do
 -- | Enforces validity of the robot's privileged status to receive
 -- an achievement.
 grantAchievementForRobot ::
-  (HasRobotStepState sig m, Has (Lift IO) sig m) =>
+  HasRobotStepState sig m =>
   GameplayAchievement ->
   m ()
 grantAchievementForRobot a = do
@@ -249,13 +248,13 @@ checkGameModeAchievementValidity a = do
 -- | NOTE: When possible, one should use the
 -- 'grantAchievementForRobot' function instead of this one.
 grantAchievement ::
-  (Has (State GameState) sig m, Has (Lift IO) sig m) =>
+  (Has (State GameState) sig m, Has Time sig m) =>
   GameplayAchievement ->
   m ()
 grantAchievement a = do
   isGameModeValid <- checkGameModeAchievementValidity a
   when isGameModeValid $ do
-    currentTime <- sendIO getZonedTime
+    currentTime <- getZonedTime
     scenarioPath <- use currentScenarioPath
     discovery
       . gameAchievements

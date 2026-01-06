@@ -13,7 +13,6 @@ import Control.Arrow ((&&&))
 import Control.Carrier.State.Lazy
 import Control.Effect.Error
 import Control.Effect.Lens
-import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (filterM, forM, forM_, guard, unless, when)
 import Data.Bifunctor (second)
@@ -116,7 +115,7 @@ data GrabRemoval = DeferRemoval | PerformRemoval
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
 execConst ::
-  (HasRobotStepState sig m, Has (Lift IO) sig m) =>
+  HasRobotStepState sig m =>
   -- | Need to pass this function as an argument to avoid module import cycle
   -- The supplied function invokes 'runCESK', which lives in "Swarm.Game.Step".
   (Store -> Robot Instantiated -> Value -> m Value) ->
@@ -1427,7 +1426,7 @@ execConst runChildProg c vs s k = do
       ]
 
   doResonate ::
-    (HasRobotStepState sig m, Has (Lift IO) sig m) =>
+    HasRobotStepState sig m =>
     (Maybe Entity -> Bool) ->
     Integer ->
     Integer ->
@@ -1667,7 +1666,7 @@ execConst runChildProg c vs s k = do
   -- base we actually throw an exception, so we do not return to the
   -- original call site.
   destroyIfNotBase ::
-    (HasRobotStepState sig m, Has (Lift IO) sig m) =>
+    HasRobotStepState sig m =>
     (Bool -> Maybe GameplayAchievement) ->
     m ()
   destroyIfNotBase mAch = do
@@ -1683,7 +1682,7 @@ execConst runChildProg c vs s k = do
   -- Try to move the current robot once cell in a specific direction,
   -- checking for and applying any relevant effects (e.g. throwing an
   -- exception if blocked, drowning in water, etc.)
-  moveInDirection :: (HasRobotStepState sig m, Has (Lift IO) sig m) => Heading -> m CESK
+  moveInDirection :: HasRobotStepState sig m => Heading -> m CESK
   moveInDirection orientation = do
     -- Figure out where we're going
     loc <- use robotLocation
@@ -1697,7 +1696,7 @@ execConst runChildProg c vs s k = do
   -- Given a possible movement failure, apply a movement failure
   -- handler to generate the appropriate effect.
   applyMoveFailureEffect ::
-    (HasRobotStepState sig m, Has (Lift IO) sig m) =>
+    HasRobotStepState sig m =>
     Maybe MoveFailureMode ->
     MoveFailureHandler ->
     m ()
@@ -1718,7 +1717,7 @@ execConst runChildProg c vs s k = do
   -- Check whether there is any failure in moving to the given
   -- location, and apply the corresponding effect if so.
   checkMoveAhead ::
-    (HasRobotStepState sig m, Has (Lift IO) sig m) =>
+    HasRobotStepState sig m =>
     Cosmic Location ->
     MoveFailureHandler ->
     m ()

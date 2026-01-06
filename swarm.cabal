@@ -963,6 +963,7 @@ library swarm-util
   exposed-modules:
     Data.BoolExpr.Simplify
     Swarm.Effect
+    Swarm.Effect.Cache
     Swarm.Effect.Metric
     Swarm.Effect.Time
     Swarm.Failure
