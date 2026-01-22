@@ -20,7 +20,6 @@ module Swarm.Doc.Pedagogy (
 
 import Control.Lens (universe, view, (^.))
 import Control.Monad (guard)
-import Data.Data (Data, Typeable)
 import Data.Foldable (Foldable (..))
 import Data.List (intercalate, sort, sortOn)
 import Data.List.Extra (zipFrom)
@@ -106,20 +105,12 @@ extractCommandUsages idx siPair@(ScenarioWith s _si) =
 
 -- | Obtain the set of all commands mentioned by
 -- name in the tutorial's goal descriptions.
-getDescCommands ::
-  forall phase.
-  ( Data (Anchor (ImportPhaseFor phase))
-  , Data (SwarmType phase)
-  , Typeable phase
-  , Typeable (ImportPhaseFor phase)
-  ) =>
-  Scenario phase ->
-  Set Const
+getDescCommands :: Scenario Elaborated -> Set Const
 getDescCommands s = S.fromList $ concatMap filterConst allCode
  where
   goalTextParagraphs = view objectiveGoal <$> view (scenarioOperation . scenarioObjectives) s
   allCode = concatMap findCode goalTextParagraphs
-  filterConst :: Syntax phase -> [Const]
+  filterConst :: Syntax Elaborated -> [Const]
   filterConst sx = mapMaybe toConst $ universe (sx ^. sTerm)
   toConst :: Term phase -> Maybe Const
   toConst = \case
@@ -138,15 +129,7 @@ isConsidered c = isUserFunc c && c `S.notMember` ignoredCommands
 -- the player did not write it explicitly in their code.
 --
 -- Also, the code from `run` is not parsed transitively yet.
-getCommands ::
-  forall phase.
-  ( Data (Anchor (ImportPhaseFor phase))
-  , Data (SwarmType phase)
-  , Typeable phase
-  , Typeable (ImportPhaseFor phase)
-  ) =>
-  Maybe (Syntax phase) ->
-  Map Const [SrcLoc]
+getCommands :: Maybe (Syntax Elaborated) -> Map Const [SrcLoc]
 getCommands Nothing = mempty
 getCommands (Just tsyn) =
   M.fromListWith (<>) $ mapMaybe isCommand nodelist
