@@ -654,6 +654,7 @@ library swarm-scenario
     Swarm.Game.Recipe
     Swarm.Game.Recipe.Graph
     Swarm.Game.Robot
+    Swarm.Game.Robot.Generic
     Swarm.Game.Robot.Walk
     Swarm.Game.Scenario
     Swarm.Game.Scenario.Objective

@@ -26,7 +26,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Prettyprinter
 import Swarm.Game.Entity (Entity, entityName)
-import Swarm.Game.Robot (Robot, robotName)
+import Swarm.Game.Robot (Robot)
+import Swarm.Game.Robot.Generic qualified as G
 import Swarm.Game.Terrain
 import Swarm.Game.World.Coords
 import Swarm.Language.Syntax (Phase (..))
@@ -63,7 +64,7 @@ instance PrettyPrec CellVal where
     items =
       [(Just CellTerrain, getTerrainWord terr) | terr /= BlankT]
         ++ [(Just CellEntity, e ^. entityName) | EJust (Last e) <- [ent]]
-        ++ map ((Just CellRobot,) . view robotName) rs
+        ++ map ((Just CellRobot,) . view G.robotName) rs
 
 type Var = Text
 

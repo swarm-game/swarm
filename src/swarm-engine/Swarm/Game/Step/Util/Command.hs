@@ -126,7 +126,7 @@ payExerciseCost c rawCosts = do
     -- so we should never encounter this error.
     Left e -> throwError $ Fatal e
     Right cs -> return cs
-  inv <- use (robotInventory @Instantiated)
+  inv <- use robotInventory
   let getMissingIngredients = findLacking inv . ingredients . useCost
       maybeFeasibleRecipe = find (null . getMissingIngredients) $ NE.sort costs
   case maybeFeasibleRecipe of
@@ -136,7 +136,7 @@ payExerciseCost c rawCosts = do
     -- Consume the inventory
     Just feasibleRecipe ->
       forM_ (ingredients . useCost $ feasibleRecipe) $ \(cnt, e) ->
-        robotInventory @Instantiated %= deleteCount cnt e
+        robotInventory %= deleteCount cnt e
  where
   expenseToRequirement :: DeviceUseCost Entity Entity -> R.Requirements
   expenseToRequirement (DeviceUseCost d (ExerciseCost ingdts)) =
@@ -149,7 +149,7 @@ purgeFarAwayWatches ::
   HasRobotStepState sig m => m ()
 purgeFarAwayWatches = do
   privileged <- isPrivilegedBot
-  myLoc <- use (robotLocation @Instantiated)
+  myLoc <- use robotLocation
   rid <- use robotID
 
   let isNearby = isNearbyOrExempt privileged myLoc
@@ -183,7 +183,7 @@ updateRobotLocation oldLoc newLoc
       newlocWithPortal <- applyPortal newLoc
       rid <- use robotID
       t <- use $ temporal . ticks
-      invis <- use $ robotDisplay @Instantiated . invisible
+      invis <- use $ robotDisplay . invisible
       zoomRobots $ do
         unless invis $ wakeWatchingRobots rid t newLoc
         unless invis $ wakeWatchingRobots rid t oldLoc
@@ -363,12 +363,12 @@ provisionChild childID toEquip toGive = do
   -- Equip and give devices to child
   zoomRobots $ do
     robotMap . ix childID . equippedDevices %= E.union toEquip
-    robotMap . ix childID . robotInventory @Instantiated %= E.union toGive
+    robotMap . ix childID . robotInventory %= E.union toGive
 
   -- Delete all items from parent in classic mode
   creative <- use creativeMode
   unless creative $
-    robotInventory @Instantiated %= (`E.difference` (toEquip `E.union` toGive))
+    robotInventory %= (`E.difference` (toEquip `E.union` toGive))
 
 ------------------------------------------------------------
 -- Exceptions and validation
@@ -431,9 +431,9 @@ createLogEntry ::
   m LogEntry
 createLogEntry source sev msg = do
   rid <- use robotID
-  rn <- use (robotName @Instantiated)
+  rn <- use robotName
   time <- use $ temporal . ticks
-  loc <- use (robotLocation @Instantiated)
+  loc <- use robotLocation
   pure $ LogEntry time (RobotLog source rid loc) sev rn msg
 
 -- | replace some entity in the world with another entity
@@ -457,8 +457,8 @@ applyRobotUpdates ::
   m ()
 applyRobotUpdates =
   mapM_ \case
-    AddEntity c e -> robotInventory @Instantiated %= E.insertCount c e
-    LearnEntity e -> robotInventory @Instantiated %= E.insertCount 0 e
+    AddEntity c e -> robotInventory %= E.insertCount c e
+    LearnEntity e -> robotInventory %= E.insertCount 0 e
 
 -- | Construct a "seed robot" from entity, time range and position,
 --   and add it to the world.  It has low priority and will be covered

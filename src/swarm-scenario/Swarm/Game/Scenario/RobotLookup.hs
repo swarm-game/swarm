@@ -14,7 +14,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Swarm.Game.Entity
-import Swarm.Game.Robot (Robot, robotName)
+import Swarm.Game.Robot (Robot)
+import Swarm.Game.Robot.Generic qualified as G
 import Swarm.Util (failT, quote)
 import Swarm.Util.Yaml
 
@@ -36,7 +37,7 @@ type RobotMap phase = Map RobotName (IndexedRobot phase)
 
 -- | Create a 'RobotMap' from a list of robot templates.
 buildRobotMap :: [Robot phase] -> RobotMap phase
-buildRobotMap rs = M.fromList $ zipWith (\x y -> (RobotName $ view robotName y, (x, y))) [0 ..] rs
+buildRobotMap rs = M.fromList $ zipWith (\x y -> (RobotName $ view G.robotName y, (x, y))) [0 ..] rs
 
 ------------------------------------------------------------
 -- Lookup utilities

@@ -83,7 +83,8 @@ import Swarm.Game.Entity
 import Swarm.Game.Land
 import Swarm.Game.Location (Location)
 import Swarm.Game.Recipe
-import Swarm.Game.Robot (Robot, robotLocation, robotName)
+import Swarm.Game.Robot (Robot)
+import Swarm.Game.Robot.Generic (robotLocation, robotName)
 import Swarm.Game.Scenario.Objective (Objective)
 import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup

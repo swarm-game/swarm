@@ -24,7 +24,8 @@ import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), EntityProperty (Pi
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Land
 import Swarm.Game.Recipe (Recipe, recipeCatalysts, recipeInputs, recipeOutputs)
-import Swarm.Game.Robot (Robot, equippedDevices, robotInventory)
+import Swarm.Game.Robot (Robot)
+import Swarm.Game.Robot.Generic (equippedDevices, robotInventory)
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Topography.Cell (PCell (..))
 import Swarm.Game.Scenario.Topography.Grid

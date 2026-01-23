@@ -55,7 +55,7 @@ deriveHeading d = do
 lookInDirection :: HasRobotStepState sig m => Direction -> m (Cosmic Location, Maybe Entity)
 lookInDirection d = do
   newHeading <- deriveHeading d
-  loc <- use (robotLocation @Instantiated)
+  loc <- use robotLocation
   let nextLoc = loc `offsetBy` newHeading
   (nextLoc,) <$> entityAt nextLoc
 

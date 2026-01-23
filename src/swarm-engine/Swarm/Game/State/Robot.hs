@@ -283,7 +283,7 @@ deleteRobot rn = do
   mrobot `forM_` \robot -> do
     -- Delete the robot from the index of robots by location.
     removeRobotFromLocationMap (robot ^. robotLocation) rn
-  pure (view (robotLocation @Instantiated) <$> mrobot)
+  pure (view robotLocation <$> mrobot)
 
 -- | Makes sure empty sets don't hang around in the
 -- 'robotsByLocation' map.  We don't want a key with an

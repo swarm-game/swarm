@@ -461,8 +461,8 @@ getRadioRange maybeBaseRobot maybeTargetRobot =
  where
   -- See whether the base or focused robot have antennas installed.
   baseInv, focInv :: Maybe Inventory
-  baseInv = view (equippedDevices @Instantiated) <$> maybeBaseRobot
-  focInv = view (equippedDevices @Instantiated) <$> maybeTargetRobot
+  baseInv = view equippedDevices <$> maybeBaseRobot
+  focInv = view equippedDevices <$> maybeTargetRobot
 
   gain :: Maybe Inventory -> (Double -> Double)
   gain (Just inv)
