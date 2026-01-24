@@ -27,6 +27,7 @@ roots = [
     "^Swarm.Game.Entity.entityNameFor$",
     "^Swarm.Game.Entity.singleton$",
     "^Swarm.Game.Entity.Cosmetic.getBackground$",
+    "^Swarm.Game.Robot.unwalkableEntities$",
     "^Swarm.Game.Step.traceLogShow$",
     "^Swarm.Game.World.DSL.Compile.compile$",
     "^Swarm.Game.World.DSL.Compile.runCTerm$",

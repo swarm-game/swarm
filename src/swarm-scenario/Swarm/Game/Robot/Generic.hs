@@ -10,7 +10,7 @@
 --
 -- A phase-parameterized record to represent robots, with fully
 -- type-generic lenses.  In most cases, the more monomorphized lenses
--- from 'Swarm.Game.Robot' should suffice.
+-- from 'Swarm.Game.Robot' should suffice.  See Note [Robot lens types].
 module Swarm.Game.Robot.Generic (
   -- * Robot data
   _robotID,
@@ -168,6 +168,22 @@ instance Processable Robot where
 -- for the approach used here with lenses.
 
 makeLensesExcluding ['_robotCapabilities, '_equippedDevices, '_robotLog, '_robotLogUpdated, '_machine, '_activityCounts] ''Robot
+
+-- ~~~~ Note [Robot lens types]
+--
+-- This module defines maximally generic lenses for robot records,
+-- including being polymorphic in the @phase@ parameter whenever that
+-- makes sense.
+--
+-- However, in many cases (for example, in "Swarm.Game.Step.Const")
+-- lenses are used to access a field of an ambient state of type
+-- @Robot Instantiated@, tracked via a fused-effects State effect.
+-- Since fused-effects tries to determine the targeted effect via the
+-- type of the state, a generic lens does not work very well,
+-- resulting in a type ambiguity error, and requiring a type
+-- annotation to fix the type of the targeted state.  Hence, for
+-- convenience, "Swarm.Game.Robot" re-exports many of these same
+-- lenses but with the @phase@ parameter fixed to 'Instantiated'.
 
 -- | Robots are not entities, but they have almost all the
 --   characteristics of one (or perhaps we could think of robots as

@@ -5,6 +5,11 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A data type to represent robots.
+--
+-- The lenses exported from this module are all specialized to @Robot
+-- Instantiated@ for convenience.  If you need more polymorphic
+-- lenses, see "Swarm.Game.Robot.Generic".  See Note [Robot lens
+-- types].
 module Swarm.Game.Robot (
   -- * Robots data
   _robotID,
@@ -86,18 +91,7 @@ import Swarm.Game.Universe
 import Swarm.Language.Syntax (Phase (..))
 import System.Clock (TimeSpec)
 
--- ~~~~ Note [Robot lens types]
---
--- XXX
---
--- Many lenses are used exclusively at type 'Robot Instantiated', so
--- we give them that more specific type to cut down on the number of
--- explicit type arguments we need to use.
---
--- For others, we provide a generic version
--- and an 'Instantiated'-specific version.
-
--- | Entities that the robot cannot move onto
+-- | Entities that the robot cannot move onto. See also 'walkabilityContext'.
 unwalkableEntities :: Lens' (Robot Instantiated) (WalkabilityExceptions EntityName)
 unwalkableEntities = G.unwalkableEntities
 
@@ -178,6 +172,7 @@ selfDestruct = G.selfDestruct
 runningAtomic :: Lens' (Robot Instantiated) Bool
 runningAtomic = G.runningAtomic
 
+-- | Put together a 'WalkabilityContext' for a robot.
 walkabilityContext :: Getter (Robot Instantiated) WalkabilityContext
 walkabilityContext = G.walkabilityContext
 
