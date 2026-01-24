@@ -774,7 +774,7 @@ testLanguagePipeline =
             "recursive import - used"
             (valid "import \"data/test/import/d.sw\"; pure (d + 1)")
         , testCase
-            "recursive import is not re-exported"
+            "recursive import is not re-exported #2659"
             ( process
                 "import \"data/test/import/f.sw\"; pure (f + g)"
                 "1:43: Undefined variable g"
