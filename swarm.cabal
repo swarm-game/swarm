@@ -54,9 +54,11 @@ data-dir: data/
 data-files:
   *.txt
   *.yaml
+  lib/**/*.sw
   scenarios/**/*.sw
   scenarios/**/*.txt
   scenarios/**/*.yaml
+  test/import/**/*.sw
   test/language-snippets/**/*.sw
   test/saves/*.yaml
   test/standalone-topography/*.png
@@ -199,7 +201,7 @@ common free
   build-depends: free >=5.2 && <5.3
 
 common fused-effects
-  build-depends: fused-effects >=1.1.2.5 && <1.2
+  build-depends: fused-effects >=1.1.2.6 && <1.2
 
 common fused-effects-lens
   build-depends: fused-effects-lens >=1.2.0.1 && <1.3
@@ -224,6 +226,9 @@ common http-client
 
 common http-client-tls
   build-depends: http-client-tls >=0.3 && <0.4
+
+common http-conduit
+  build-depends: http-conduit >=2.3 && <2.4
 
 common http-types
   build-depends: http-types >=0.12 && <0.13
@@ -324,6 +329,9 @@ common sqlite-simple
 common split
   build-depends: split >=0.2.3 && <0.3
 
+common stm
+  build-depends: stm >=2.5 && <2.6
+
 common strict
   build-depends: strict >=0.5 && <0.6
 
@@ -421,25 +429,28 @@ library swarm-lang
     containers,
     data-fix,
     deriving-compat,
+    directory,
     extra,
     free,
     fused-effects,
     generic-data,
     hashable,
+    http-conduit,
     lens,
     lsp,
     megaparsec,
-    monoidmap,
-    monoidmap-aeson,
     mtl,
+    ordered-containers,
     parser-combinators,
     prettyprinter,
     split,
+    strict,
     syb,
     template-haskell,
     terminal-size,
     text,
     text-rope,
+    time,
     unicode-show,
     vector,
     vty,
@@ -453,6 +464,7 @@ library swarm-lang
     Swarm.Effect.Unify.Common
     Swarm.Effect.Unify.Fast
     Swarm.Effect.Unify.Naive
+    Swarm.Language.Cache
     Swarm.Language.Capability
     Swarm.Language.Context
     Swarm.Language.Elaborate
@@ -465,9 +477,12 @@ library swarm-lang
     Swarm.Language.LSP.Hover
     Swarm.Language.LSP.Position
     Swarm.Language.LSP.VarUsage
+    Swarm.Language.Load
+    Swarm.Language.Module
     Swarm.Language.Parser
     Swarm.Language.Parser.Comment
     Swarm.Language.Parser.Core
+    Swarm.Language.Parser.Import
     Swarm.Language.Parser.Lex
     Swarm.Language.Parser.QQ
     Swarm.Language.Parser.Record
@@ -486,17 +501,16 @@ library swarm-lang
     Swarm.Language.Syntax.CommandMetadata
     Swarm.Language.Syntax.Comments
     Swarm.Language.Syntax.Constants
-    Swarm.Language.Syntax.Loc
     Swarm.Language.Syntax.Pattern
     Swarm.Language.Syntax.Pretty
     Swarm.Language.Syntax.Util
     Swarm.Language.TDVar
     Swarm.Language.Text.Markdown
     Swarm.Language.Typecheck
-    Swarm.Language.Typed
     Swarm.Language.Types
     Swarm.Language.Value
     Swarm.Language.Var
+    Swarm.Language.WithType
 
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm
@@ -640,6 +654,7 @@ library swarm-scenario
     Swarm.Game.Recipe
     Swarm.Game.Recipe.Graph
     Swarm.Game.Robot
+    Swarm.Game.Robot.Generic
     Swarm.Game.Robot.Walk
     Swarm.Game.Scenario
     Swarm.Game.Scenario.Objective
@@ -712,6 +727,7 @@ library swarm-engine
     filepath,
     fused-effects,
     fused-effects-lens,
+    hashable,
     lens,
     linear,
     megaparsec,
@@ -722,9 +738,9 @@ library swarm-engine
     prettyprinter,
     random,
     servant-docs,
+    strict,
     text,
     time,
-    hashable,
     transformers,
     unordered-containers,
     witch,
@@ -806,6 +822,7 @@ library swarm-web
     colour,
     commonmark,
     containers,
+    fused-effects,
     http-types,
     lens,
     nonempty-containers,
@@ -930,9 +947,12 @@ library swarm-util
     mtl,
     prettyprinter,
     servant-docs,
+    stm,
     template-haskell,
     text,
+    time,
     transformers,
+    unordered-containers,
     vector,
     witch,
     witherable,
@@ -946,12 +966,16 @@ library swarm-util
     Swarm.Effect.Metric
     Swarm.Effect.Time
     Swarm.Failure
+    Swarm.Language.Phase
     Swarm.Language.Syntax.Direction
+    Swarm.Language.Syntax.Import
+    Swarm.Language.Syntax.Loc
     Swarm.Pretty
     Swarm.ResourceLoading
     Swarm.Util
     Swarm.Util.Effect
     Swarm.Util.Erasable
+    Swarm.Util.GlobalCache
     Swarm.Util.Graph
     Swarm.Util.InputSource
     Swarm.Util.JSON
@@ -1270,6 +1294,7 @@ test-suite swarm-unit
     containers,
     data-fix,
     filepath,
+    fused-effects,
     hashable,
     lens,
     megaparsec,
@@ -1428,6 +1453,7 @@ benchmark benchmark
     base,
     containers,
     extra,
+    fused-effects,
     lens,
     mtl,
     tasty-bench,
@@ -1440,7 +1466,6 @@ benchmark benchmark
 
   type: exitcode-stdio-1.0
   build-depends:
-    fused-effects,
     swarm:swarm-engine,
     swarm:swarm-lang,
     swarm:swarm-scenario,

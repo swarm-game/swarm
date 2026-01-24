@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -25,9 +26,11 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Prettyprinter
 import Swarm.Game.Entity (Entity, entityName)
-import Swarm.Game.Robot (TRobot, trobotName)
+import Swarm.Game.Robot (Robot)
+import Swarm.Game.Robot.Generic qualified as G
 import Swarm.Game.Terrain
 import Swarm.Game.World.Coords
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.Pretty (PrettyPrec (..))
 import Swarm.Util (showT)
 import Swarm.Util.Erasable
@@ -52,8 +55,7 @@ prettyRawCellItem :: (Maybe CellTag, Text) -> Doc ann
 prettyRawCellItem (Nothing, t) = pretty t
 prettyRawCellItem (Just tag, t) = pretty (T.toLower . T.drop 4 . showT $ tag) <> ":" <> pretty t
 
-data CellVal = CellVal TerrainType (Erasable (Last Entity)) [TRobot]
-  deriving (Eq, Show)
+data CellVal = CellVal TerrainType (Erasable (Last Entity)) [Robot Typed]
 
 instance PrettyPrec CellVal where
   prettyPrec _ (CellVal terr ent rs) =
@@ -62,7 +64,7 @@ instance PrettyPrec CellVal where
     items =
       [(Just CellTerrain, getTerrainWord terr) | terr /= BlankT]
         ++ [(Just CellEntity, e ^. entityName) | EJust (Last e) <- [ent]]
-        ++ map ((Just CellRobot,) . view trobotName) rs
+        ++ map ((Just CellRobot,) . view G.robotName) rs
 
 type Var = Text
 

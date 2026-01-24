@@ -9,6 +9,7 @@ module Swarm.TUI.Controller.Util where
 import Brick hiding (Direction)
 import Brick.Focus
 import Brick.Keybindings
+import Control.Carrier.Error.Either qualified as Fused
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens as Lens
@@ -23,6 +24,7 @@ import Data.Text qualified as T
 import Graphics.Vty qualified as V
 import Swarm.Effect (MetricIOC, TimeIOC)
 import Swarm.Effect qualified as Effect
+import Swarm.Failure (SystemFailure)
 import Swarm.Game.CESK (continue)
 import Swarm.Game.Device
 import Swarm.Game.Entity (Entity)
@@ -35,9 +37,11 @@ import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (CDebug))
-import Swarm.Language.Pipeline (processTerm')
+import Swarm.Language.Module (Module, moduleTerm)
+import Swarm.Language.Pipeline (processSource)
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Value (emptyEnv)
+import Swarm.Pretty
 import Swarm.TUI.Model (
   AppState,
   PlayState,
@@ -260,20 +264,20 @@ allHandlers eEmbed f = map handleEvent1 enumerate
  where
   handleEvent1 e1 = let (n, a) = f e1 in onEvent (eEmbed e1) n a
 
-runBaseTerm :: (MonadState ScenarioState m) => Maybe TSyntax -> m ()
-runBaseTerm = mapM_ startBaseProgram
- where
-  -- The player typed something at the REPL and hit Enter; this
-  -- function takes the resulting term (if the REPL
-  -- input is valid) and sets up the base robot to run it.
-  startBaseProgram t = do
-    -- Set the REPL status to Working
-    gameState . gameControls . replStatus .= REPLWorking (t ^. sType) Nothing
-    -- Set up the robot's CESK machine to evaluate/execute the
-    -- given term.
-    gameState . baseRobot . machine %= continue t
-    -- Finally, be sure to activate the base robot.
-    gameState %= execState (zoomRobots $ activateRobot 0)
+-- | The player typed something at the REPL and hit Enter; this
+--   function takes the resulting term (if the REPL
+--   input is valid) and sets up the base robot to run it.
+runBaseTerm :: (MonadState ScenarioState m) => Module Elaborated -> m ()
+runBaseTerm m = do
+  -- Set the REPL status to Working
+  case moduleTerm m of
+    Nothing -> pure ()
+    Just t -> gameState . gameControls . replStatus .= REPLWorking (t ^. sType) Nothing
+  -- Set up the robot's CESK machine to evaluate/execute the
+  -- given term.
+  gameState . baseRobot . machine %= continue m
+  -- Finally, be sure to activate the base robot.
+  gameState %= execState (zoomRobots $ activateRobot 0)
 
 -- | Set the REPL to the given text and REPL prompt type.
 modifyResetREPL :: Text -> REPLPrompt -> REPLState -> REPLState
@@ -290,16 +294,19 @@ addREPLHistItem itemType msg = do
   let item = REPLHistItem itemType msg t
   uiGameplay . uiREPL . replHistory %= addREPLItem item
 
-runBaseCode :: (MonadState ScenarioState m) => T.Text -> m (Either Text ())
+runBaseCode :: (MonadState ScenarioState m, MonadIO m) => T.Text -> m (Either SystemFailure ())
 runBaseCode uinput = do
   addREPLHistItem (REPLEntry Submitted) uinput
   resetREPL T.empty (CmdPrompt [])
   env <- fromMaybe emptyEnv <$> preuse (gameState . baseEnv)
-  case processTerm' env uinput of
-    Right mt -> do
+
+  res <- liftIO $ Fused.runError @SystemFailure $ processSource Nothing (Just env) uinput
+
+  case res of
+    Right m -> do
       uiGameplay . uiREPL . replHistory . replHasExecutedManualInput .= True
-      runBaseTerm mt
+      runBaseTerm m
       return (Right ())
     Left err -> do
-      addREPLHistItem REPLError err
+      addREPLHistItem REPLError (prettyText err)
       return (Left err)

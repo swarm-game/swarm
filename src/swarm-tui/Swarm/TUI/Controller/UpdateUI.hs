@@ -37,9 +37,10 @@ import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
 import Swarm.Game.Tick (TickNumber (..))
-import Swarm.Language.Typed (Typed (..))
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value (VExc, VUnit), emptyEnv, envTydefs, prettyValue)
+import Swarm.Language.WithType (WithType (..))
 import Swarm.Pretty
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnFinishNocheat)
 import Swarm.TUI.Controller.Util
@@ -67,7 +68,7 @@ updateAndRedrawUI forceRedraw = do
   shouldRedraw <- updateUI
   unless (forceRedraw || shouldRedraw) continueWithoutRedraw
 
-checkInventoryUpdated :: Maybe Robot -> EventM Name ScenarioState Bool
+checkInventoryUpdated :: Maybe (Robot Instantiated) -> EventM Name ScenarioState Bool
 checkInventoryUpdated fr = do
   -- The hash of the robot whose inventory is currently displayed (if any)
   listRobotHash <- fmap fst <$> use (uiGameplay . uiInventory . uiInventoryList)
@@ -124,15 +125,15 @@ checkReplUpdated g = case g ^. gameControls . replStatus of
 
         Brick.zoom gameState $ do
           gameControls . replStatus .= REPLDone (Just (finalType, v))
-          baseEnv . at itName .= Just (Typed v finalType mempty)
-          baseEnv . at "it" .= Just (Typed v finalType mempty)
+          baseEnv . at itName .= Just (WithType v finalType mempty)
+          baseEnv . at "it" .= Just (WithType v finalType mempty)
           gameControls . replNextValueIndex %= (+ 1)
         pure True
 
   -- Otherwise, do nothing.
   _ -> pure False
 
-checkLogUpdated :: Maybe Robot -> EventM Name ScenarioState Bool
+checkLogUpdated :: Maybe (Robot Instantiated) -> EventM Name ScenarioState Bool
 checkLogUpdated fr = do
   -- If the inventory or info panels are currently focused, it would
   -- be rude to update them right under the user's nose, so consider
@@ -298,7 +299,7 @@ doRobotListUpdate dOps g = do
   forM_ mRob $ \r -> do
     Brick.zoom robotDetailsPaneState $ updateRobotDetailsPane r
 
-updateRobotDetailsPane :: Robot -> EventM Name RobotDetailsPaneState ()
+updateRobotDetailsPane :: Robot Instantiated -> EventM Name RobotDetailsPaneState ()
 updateRobotDetailsPane rob = do
   cmdHistogramList . BL.listElementsL .= V.fromList (M.toList (rob ^. activityCounts . commandsHistogram))
   logsList . BL.listElementsL .= (rob ^. robotLog)
@@ -356,7 +357,7 @@ doGoalUpdates dOpts menu = do
 
       return goalWasUpdated
  where
-  setFinishState :: ScenarioOutcome -> WinStatus -> ObjectiveCompletion -> EventM Name PlayState Bool
+  setFinishState :: ScenarioOutcome -> WinStatus -> ObjectiveCompletion Elaborated -> EventM Name PlayState Bool
   setFinishState m result x = do
     -- This clears the "flag" that the Lose dialog needs to pop up
     scenarioState . gameState . winCondition .= WinConditions result x

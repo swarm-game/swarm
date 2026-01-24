@@ -6,10 +6,13 @@
 -- Parsing + typechecking swarm-lang code at the command line.
 module Swarm.Language.Pipeline.Cmdline where
 
+import Control.Carrier.Error.Either (runError)
+import Control.Carrier.Lift (runM)
 import Data.Text.IO qualified as T
-import Swarm.Language.Pipeline (processTerm)
+import Swarm.Failure (SystemFailure)
+import Swarm.Language.Pipeline (processSource)
 import Swarm.Pretty (prettyText)
-import Swarm.Util.InputSource (InputSource, getInput)
+import Swarm.Util.InputSource (InputSource, getInput, inputSourceToMaybe)
 import System.Exit (exitFailure)
 import System.IO (stderr)
 
@@ -23,9 +26,10 @@ checkSwarmIO (CheckConfig input) = do
   case mcontent of
     Nothing -> T.hPutStrLn stderr $ "Could not read from " <> prettyText input
     Just content -> do
-      case processTerm content of
+      res <- runM . runError @SystemFailure $ processSource (inputSourceToMaybe input) Nothing content
+      case res of
         Right _ -> T.putStrLn "OK."
         Left err -> do
           T.putStrLn "error:"
-          T.hPutStrLn stderr err
+          T.hPutStrLn stderr (prettyText err)
           exitFailure

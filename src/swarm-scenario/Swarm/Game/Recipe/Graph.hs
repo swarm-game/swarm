@@ -24,7 +24,8 @@ import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), EntityProperty (Pi
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Land
 import Swarm.Game.Recipe (Recipe, recipeCatalysts, recipeInputs, recipeOutputs)
-import Swarm.Game.Robot (TRobot, tequippedDevices, trobotInventory)
+import Swarm.Game.Robot (Robot)
+import Swarm.Game.Robot.Generic (equippedDevices, robotInventory)
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Topography.Cell (PCell (..))
 import Swarm.Game.Scenario.Topography.Grid
@@ -55,7 +56,7 @@ data RecipeGraph = RecipeGraph
   -- ^ All known recipes
   }
 
-baseRobotTemplate :: ScenarioLandscape -> Maybe TRobot
+baseRobotTemplate :: ScenarioLandscape phase -> Maybe (Robot phase)
 baseRobotTemplate = listToMaybe . view scenarioRobots
 
 -- | Load the recipe graph corresponding to the classic scenario.
@@ -64,7 +65,7 @@ classicScenarioRecipeGraph = simpleErrorHandle $ do
   (classic, gsi) <- loadStandaloneScenario "data/scenarios/classic.yaml"
   pure $ scenarioRecipeGraph classic gsi
 
-scenarioRecipeGraph :: Scenario -> GameStateInputs -> RecipeGraph
+scenarioRecipeGraph :: Scenario phase -> GameStateInputs -> RecipeGraph
 scenarioRecipeGraph scenario (GameStateInputs (ScenarioInputs _ (TerrainEntityMaps _ emap)) recipeList) =
   RecipeGraph
     { startingDevices = devs
@@ -83,23 +84,23 @@ scenarioRecipeGraph scenario (GameStateInputs (ScenarioInputs _ (TerrainEntityMa
   ents = landscapeEntities landscape
 
 -- | Get the set of all entities which can be harvested from the world.
-landscapeEntities :: ScenarioLandscape -> Set Entity
+landscapeEntities :: ScenarioLandscape phase -> Set Entity
 landscapeEntities = foldMap harvestable . view scenarioWorlds
  where
-  harvestable :: WorldDescription -> Set Entity
+  harvestable :: WorldDescription phase -> Set Entity
   harvestable wd = Set.fromList (static wd) <> dynamic wd
-   where
-    static :: WorldDescription -> [Entity]
-    static =
-      filter (Set.member Pickable . view entityProperties)
-        . mapMaybe (erasableToMaybe . cellEntity)
-        . catMaybes
-        . allMembers
-        . gridContent
-        . area
 
-    dynamic :: WorldDescription -> Set Entity
-    dynamic = maybe Set.empty extractEntities . worldProg
+  static :: WorldDescription phase -> [Entity]
+  static =
+    filter (Set.member Pickable . view entityProperties)
+      . mapMaybe (erasableToMaybe . cellEntity)
+      . catMaybes
+      . allMembers
+      . gridContent
+      . area
+
+  dynamic :: WorldDescription phase -> Set Entity
+  dynamic = maybe Set.empty extractEntities . worldProg
 
 -------------------------------------------------------------------------------
 -- RECIPE LEVELS
@@ -146,8 +147,8 @@ recipeLevels emap recipeList start = levs
             then ls
             else go (n : ls) (Set.union n known)
 
-robotStartingDevices :: TRobot -> Set Entity
-robotStartingDevices = Set.fromList . map snd . E.elems . view tequippedDevices
+robotStartingDevices :: Robot phase -> Set Entity
+robotStartingDevices = Set.fromList . map snd . E.elems . view equippedDevices
 
-robotStartingInventory :: TRobot -> Map Entity Int
-robotStartingInventory = Map.fromList . map swap . E.elems . view trobotInventory
+robotStartingInventory :: Robot phase -> Map Entity Int
+robotStartingInventory = Map.fromList . map swap . E.elems . view robotInventory

@@ -20,6 +20,7 @@ import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..))
 import Swarm.Game.Universe
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Value
 
@@ -75,7 +76,7 @@ instance Valuable Location where
 instance Valuable Entity where
   asValue = VText . view entityName
 
-instance Valuable Robot where
+instance Valuable (Robot Instantiated) where
   asValue = VRobot . view robotID
 
 instance Valuable Direction where

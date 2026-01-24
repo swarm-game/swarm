@@ -10,6 +10,7 @@
 module Swarm.Game.Step.Const where
 
 import Control.Arrow ((&&&))
+import Control.Carrier.Error.Either (runError)
 import Control.Carrier.State.Lazy
 import Control.Effect.Error
 import Control.Effect.Lens
@@ -44,7 +45,7 @@ import Data.Text qualified as T
 import Data.Tuple (swap)
 import Linear (V2 (..), perp, zero)
 import Swarm.Effect as Effect (Time, getNow)
-import Swarm.Failure
+import Swarm.Failure (AssetData (Script), SystemFailure)
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
 import Swarm.Game.Cosmetic.Attribute (readAttribute)
@@ -88,7 +89,7 @@ import Swarm.Game.Value
 import Swarm.Language.Capability
 import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Parser.Value (readValue)
-import Swarm.Language.Pipeline
+import Swarm.Language.Pipeline (processSource)
 import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
@@ -123,7 +124,7 @@ execConst ::
   (HasRobotStepState sig m, Has (Lift IO) sig m) =>
   -- | Need to pass this function as an argument to avoid module import cycle
   -- The supplied function invokes 'runCESK', which lives in "Swarm.Game.Step".
-  (Store -> Robot -> Value -> m Value) ->
+  (Store -> Robot Instantiated -> Value -> m Value) ->
   Const ->
   [Value] ->
   Store ->
@@ -371,7 +372,7 @@ execConst runChildProg c vs s k = do
         selfRobot <- get
         return $ mkReturn $ displacementVector selfRobot maybeOtherRobot
        where
-        displacementVector :: Robot -> Maybe Robot -> Maybe (V2 Int32)
+        displacementVector :: Robot Instantiated -> Maybe (Robot Instantiated) -> Maybe (V2 Int32)
         displacementVector selfRobot maybeOtherRobot = do
           otherRobot <- maybeOtherRobot
           let dist = (cosmoMeasure euclidean `on` view robotLocation) selfRobot otherRobot
@@ -615,7 +616,7 @@ execConst runChildProg c vs s k = do
       [VText name] -> do
         registry <- use $ discovery . structureRecognition . foundStructures
         let maybeFoundStructures = M.lookup (StructureName name) $ foundByName registry
-            structures :: [((Cosmic Location, AbsoluteDir), StructureWithGrid RecognizableStructureContent Entity)]
+            structures :: [((Cosmic Location, AbsoluteDir), StructureWithGrid Entity (RecognizableStructureContent Elaborated))]
             structures = maybe [] (NE.toList . NEM.toList) maybeFoundStructures
 
             bottomLeftCorner ((pos, _), struc) = topLeftCorner .+^ offsetHeight
@@ -808,7 +809,7 @@ execConst runChildProg c vs s k = do
         -- current robot will be inserted into the robot set, so it needs the log
         m <- traceLog Said Info msg
         emitMessage m
-        let addToRobotLog :: (Has (State GameState) sgn m) => Robot -> m ()
+        let addToRobotLog :: (Has (State GameState) sgn m) => Robot Instantiated -> m ()
             addToRobotLog r = evalState r $ do
               hasLog <- hasCapability $ CExecute Log
               hasListen <- hasCapability $ CExecute Listen
@@ -1038,7 +1039,7 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Reprogram -> case vs of
       [VRobot childRobotID, VDelay cmd env] -> do
-        r <- get
+        r <- get @(Robot Instantiated)
         isPrivileged <- isPrivilegedBot
 
         -- check if robot exists
@@ -1114,7 +1115,7 @@ execConst runChildProg c vs s k = do
       -- would return the capabilities needed to *execute* them),
       -- hopefully without duplicating too much code.
       [VDelay cmd e] -> do
-        r <- get @Robot
+        r <- get @(Robot Instantiated)
         pid <- use robotID
 
         (toEquip, toGive) <-
@@ -1190,7 +1191,7 @@ execConst runChildProg c vs s k = do
             -- about some new entities, so flag the world to be
             -- redrawn.  This is slightly unnecessarily conservative;
             -- see #2527.
-            ourID <- use @Robot robotID
+            ourID <- use robotID
             focus <- use (robotInfo . focusedRobotID)
             when (focus == ourID) flagCompleteRedraw
 
@@ -1232,16 +1233,11 @@ execConst runChildProg c vs s k = do
 
         f <- msum (muser ++ msys) `isJustOrFail` ["File not found:", fileName]
 
-        mt <-
-          processTerm f `isRightOr` \err ->
-            cmdExn Run ["Error in", fileName, "\n", err]
-
-        case mt of
-          Nothing -> return $ mkReturn ()
-          Just t -> do
-            void $ traceLog CmdStatus Info "run: OK."
-            cesk <- use machine
-            return $ continue t cesk
+        res <- sendIO . runError @SystemFailure $ processSource (Just filePath) Nothing (into @Text f)
+        m <- res `isRightOr` \err -> cmdExn Run ["Error in", fileName, "\n", prettyText err]
+        void $ traceLog CmdStatus Info "run: OK."
+        cesk <- use machine
+        return $ continue m cesk
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k
@@ -1566,7 +1562,7 @@ execConst runChildProg c vs s k = do
     Inventory ->
     Inventory ->
     Inventory ->
-    Term ->
+    Term Resolved ->
     Text ->
     IncapableFix ->
     m (Set Entity, Inventory)
@@ -1754,11 +1750,11 @@ execConst runChildProg c vs s k = do
     maybeFailure <- checkMoveFailure nextLoc
     applyMoveFailureEffect maybeFailure failureHandler
 
-  getRobotWithinTouch :: HasRobotStepState sig m => RID -> m Robot
+  getRobotWithinTouch :: HasRobotStepState sig m => RID -> m (Robot Instantiated)
   getRobotWithinTouch rid = do
     cid <- use robotID
     if cid == rid
-      then get @Robot
+      then get @(Robot Instantiated)
       else do
         mother <- robotWithID rid
         other <- mother `isJustOrFail` ["There is no robot with ID", from (show rid) <> "."]

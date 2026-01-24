@@ -43,8 +43,8 @@ objectives:
       try {as base {has "curry"}} {pure false}
     prerequisite: get_many_lambdas
 solution: |
-  run "scenarios/Tutorials/farming.sw";
-  run "scenarios/Tutorials/make_curry.sw";
+  import "farming"; go;
+  import "make_curry"; go
 robots:
   - name: base
     display:

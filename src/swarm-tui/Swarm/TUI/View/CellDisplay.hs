@@ -29,6 +29,7 @@ import Swarm.Game.Terrain
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.Language.Syntax.Direction (AbsoluteDir (..))
 import Swarm.TUI.Editor.Masking
 import Swarm.TUI.Editor.Model
@@ -132,7 +133,7 @@ mkEntityKnowledge gs =
 data EntityKnowledgeDependencies = EntityKnowledgeDependencies
   { isCreativeMode :: Bool
   , globallyKnownEntities :: Set EntityName
-  , theFocusedRobot :: Maybe Robot
+  , theFocusedRobot :: Maybe (Robot Instantiated)
   }
 
 -- | Determines whether an entity should be rendered

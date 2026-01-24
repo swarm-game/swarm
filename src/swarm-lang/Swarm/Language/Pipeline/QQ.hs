@@ -1,22 +1,27 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ViewPatterns #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A quasiquoter for Swarm terms.
 module Swarm.Language.Pipeline.QQ (tmQ) where
 
+import Control.Carrier.Error.Either (runError)
 import Data.Generics
+import Data.Text (Text)
 import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Quote
+import Swarm.Failure (SystemFailure)
 import Swarm.Language.Parser.Core (runParserTH)
 import Swarm.Language.Parser.Lex (sc)
 import Swarm.Language.Parser.Term (parseTerm)
 import Swarm.Language.Parser.Util (fully)
 import Swarm.Language.Pipeline
 import Swarm.Language.Syntax
-import Swarm.Language.Typecheck (prettyTypeErrText)
-import Swarm.Language.Types (Polytype)
+import Swarm.Pretty (prettyText)
 import Swarm.Util (failT, liftText)
-import Witch (from)
+import Witch (from, into)
 
 -- | A quasiquoter for Swarm language terms, so we can conveniently
 --   write them down using concrete syntax and have them parsed into
@@ -36,14 +41,15 @@ tmQ =
     }
 
 quoteTermExp :: String -> TH.ExpQ
-quoteTermExp s = do
+quoteTermExp (into @Text -> s) = do
   loc <- TH.location
   parsed <- runParserTH loc (fully sc parseTerm) s
-  case processParsedTerm parsed of
-    Left err -> failT [prettyTypeErrText (from s) err]
+  processed <- TH.runIO . runError @SystemFailure $ processTerm Nothing s Nothing parsed
+  case processed of
+    Left err -> failT [prettyText err]
     Right ptm -> dataToExpQ ((fmap liftText . cast) `extQ` antiTermExp) ptm
 
-antiTermExp :: Term' Polytype -> Maybe TH.ExpQ
+antiTermExp :: Term Elaborated -> Maybe TH.ExpQ
 antiTermExp (TAntiText v) =
   Just $ TH.appE (TH.conE (TH.mkName "TText")) (TH.varE (TH.mkName (from v)))
 antiTermExp (TAntiInt v) =

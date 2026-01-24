@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -7,7 +8,7 @@
 module Swarm.Language.Parser.Term where
 
 import Control.Lens (view, (^.))
-import Control.Monad (guard, join)
+import Control.Monad (guard, join, void)
 import Control.Monad.Combinators.Expr
 import Data.Foldable (Foldable (..), asum)
 import Data.Functor (($>))
@@ -18,6 +19,7 @@ import Data.Set qualified as S
 import Data.Set.Lens (setOf)
 import Data.Text qualified as T
 import Swarm.Language.Parser.Core
+import Swarm.Language.Parser.Import
 import Swarm.Language.Parser.Lex
 import Swarm.Language.Parser.Record (parseRecord)
 import Swarm.Language.Parser.Type
@@ -25,7 +27,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Types
 import Swarm.Util (failT, findDup)
-import Text.Megaparsec hiding (runParser)
+import Text.Megaparsec hiding (runParser, sepBy1)
 import Text.Megaparsec.Char
 import Prelude hiding (Foldable (..))
 
@@ -52,14 +54,14 @@ parseConst = do
 
 -- | Parse an atomic term, optionally trailed by record projections like @t.x.y.z@.
 --   Record projection binds more tightly than function application.
-parseTermAtom :: Parser Syntax
+parseTermAtom :: Parser (Syntax Raw)
 parseTermAtom = do
   s1 <- parseTermAtom2
   ps <- many (symbol "." *> parseLocG tmVar)
-  return $ foldl' (\(Syntax l1 t) (l2, x) -> Syntax (l1 <> l2) (TProj t x)) s1 ps
+  return $ foldl' (\(RSyntax l1 t) (l2, x) -> RSyntax (l1 <> l2) (TProj t x)) s1 ps
 
 -- | Parse an atomic term.
-parseTermAtom2 :: Parser Syntax
+parseTermAtom2 :: Parser (Syntax Raw)
 parseTermAtom2 =
   parseLoc
     ( TUnit <$ symbol "()"
@@ -97,6 +99,9 @@ parseTermAtom2 =
           <*> (optional (symbol ";") *> (parseTerm <|> (eof $> sNoop)))
         <|> SRcd <$> brackets (parseRecord (optional (symbol "=" *> parseTerm)))
         <|> TType <$> (symbol "@" *> parseTypeAtom)
+        <|> SImportIn
+          <$> (reserved "import" *> parseImportLocation)
+          <*> (optional (void (symbol ";") <|> reserved "in") *> (parseTerm <|> (eof $> sNoop)))
     )
     <|> parseLoc (mkTuple <$> parens (parseTerm `sepBy` symbol ","))
     <|> parseLoc (TDelay (TConst Noop) <$ try (symbol "{" *> symbol "}"))
@@ -104,22 +109,22 @@ parseTermAtom2 =
     <|> parseLoc (view antiquoting >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
 
 -- | Parse the contents of a @require@ statement.
-parseRequire :: Parser Term
+parseRequire :: Parser (Term Raw)
 parseRequire = TRequire <$> (textLiteral <?> "device name in double quotes")
 
 -- | Parse the contents of a @stock@ statement.
-parseStock :: Parser Term
+parseStock :: Parser (Term Raw)
 parseStock =
   (TStock . fromIntegral <$> integer)
     <*> (textLiteral <?> "entity name in double quotes")
 
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
-sLet :: LetSyntax -> LocVar -> Maybe RawPolytype -> Syntax -> Syntax -> Term
+sLet :: LetSyntax -> LocVar -> Maybe RawPolytype -> Syntax Raw -> Syntax Raw -> Term Raw
 sLet ls x ty t1 = SLet ls (locVal x `S.member` setOf freeVarsV t1) x ty Nothing mempty t1
 
-sNoop :: Syntax
-sNoop = STerm (TConst Noop)
+sNoop :: Syntax Raw
+sNoop = RTerm (TConst Noop)
 
 -- | Create a polytype from a list of variable binders and a type.
 --   Ensure that no binder is repeated, and all type variables in the
@@ -136,47 +141,47 @@ bindTydef xs ty
  where
   free = tyVars ty `S.difference` S.fromList xs
 
-parseAntiquotation :: Parser Term
+parseAntiquotation :: Parser (Term Raw)
 parseAntiquotation =
   TAntiText <$> (lexeme . try) (symbol "$str:" *> tmVar)
     <|> TAntiInt <$> (lexeme . try) (symbol "$int:" *> tmVar)
     <|> TAntiSyn <$> (lexeme . try) (symbol "$syn:" *> tmVar)
 
 -- | Parse a Swarm language term.
-parseTerm :: Parser Syntax
+parseTerm :: Parser (Syntax Raw)
 parseTerm = sepEndBy1 parseStmt (symbol ";") >>= mkBindChain
 
-mkBindChain :: [Stmt] -> Parser Syntax
+mkBindChain :: [Stmt] -> Parser (Syntax Raw)
 mkBindChain stmts = case last stmts of
-  Binder x _ -> return $ foldr mkBind (STerm (TApp (TConst Pure) (TVar (locVal x)))) stmts
+  Binder x _ -> return $ foldr mkBind (RTerm (TApp (TConst Pure) (TVar (locVal x)))) stmts
   BareTerm t -> return $ foldr mkBind t (init stmts)
  where
   mkBind (BareTerm t1) t2 = loc Nothing t1 t2 $ SBind Nothing Nothing Nothing Nothing t1 t2
   mkBind (Binder x t1) t2 = loc (Just x) t1 t2 $ SBind (Just x) Nothing Nothing Nothing t1 t2
-  loc mx a b = Syntax $ maybe NoLoc lvSrcLoc mx <> (a ^. sLoc) <> (b ^. sLoc)
+  loc mx a b = RSyntax $ maybe NoLoc lvSrcLoc mx <> (a ^. sLoc) <> (b ^. sLoc)
 
 data Stmt
-  = BareTerm Syntax
-  | Binder LocVar Syntax
+  = BareTerm (Syntax Raw)
+  | Binder LocVar (Syntax Raw)
   deriving (Show)
 
 parseStmt :: Parser Stmt
 parseStmt =
   mkStmt <$> optional (try (locTmVar <* symbol "<-")) <*> parseExpr
 
-mkStmt :: Maybe LocVar -> Syntax -> Stmt
+mkStmt :: Maybe LocVar -> Syntax Raw -> Stmt
 mkStmt Nothing = BareTerm
 mkStmt (Just x) = Binder x
 
-parseExpr :: Parser Syntax
+parseExpr :: Parser (Syntax Raw)
 parseExpr =
   parseLoc $ ascribe <$> parseExpr' <*> optional (symbol ":" *> parsePolytype)
  where
-  ascribe :: Syntax -> Maybe RawPolytype -> Term
+  ascribe :: Syntax Raw -> Maybe RawPolytype -> Term Raw
   ascribe s Nothing = s ^. sTerm
   ascribe s (Just ty) = SAnnotate s ty
 
-parseExpr' :: Parser Syntax
+parseExpr' :: Parser (Syntax Raw)
 parseExpr' = makeExprParser parseTermAtom table
  where
   table = snd <$> M.toDescList tableMap
@@ -189,16 +194,16 @@ parseExpr' = makeExprParser parseTermAtom table
       ]
 
   -- add location for ExprParser by combining all
-  exprLoc2 :: Parser (Syntax -> Syntax -> Term) -> Parser (Syntax -> Syntax -> Syntax)
+  exprLoc2 :: Parser (Syntax Raw -> Syntax Raw -> Term Raw) -> Parser (Syntax Raw -> Syntax Raw -> Syntax Raw)
   exprLoc2 p = do
     (l, f) <- parseLocG p
-    pure $ \s1 s2 -> Syntax (l <> (s1 ^. sLoc) <> (s2 ^. sLoc)) $ f s1 s2
+    pure $ \s1 s2 -> RSyntax (l <> (s1 ^. sLoc) <> (s2 ^. sLoc)) $ f s1 s2
 
 -- | Precedences and parsers of binary operators.
 --
 -- >>> M.map length binOps
 -- fromList [(0,1),(2,1),(3,1),(4,6),(6,3),(7,2),(8,1)]
-binOps :: Map Int [Operator Parser Syntax]
+binOps :: Map Int [Operator Parser (Syntax Raw)]
 binOps = M.unionsWith (++) $ mapMaybe binOpToTuple allConst
  where
   binOpToTuple c = do
@@ -217,7 +222,7 @@ binOps = M.unionsWith (++) $ mapMaybe binOpToTuple allConst
 --
 -- >>> M.map length unOps
 -- fromList [(7,1)]
-unOps :: Map Int [Operator Parser Syntax]
+unOps :: Map Int [Operator Parser (Syntax Raw)]
 unOps = M.unionsWith (++) $ mapMaybe unOpToTuple allConst
  where
   unOpToTuple c = do
@@ -232,7 +237,7 @@ unOps = M.unionsWith (++) $ mapMaybe unOpToTuple allConst
         [assI (exprLoc1 $ SApp (noLoc $ TConst c) <$ operator (syntax ci))]
 
   -- combine location for ExprParser
-  exprLoc1 :: Parser (Syntax -> Term) -> Parser (Syntax -> Syntax)
+  exprLoc1 :: Parser (Syntax Raw -> Term Raw) -> Parser (Syntax Raw -> Syntax Raw)
   exprLoc1 p = do
     (l, f) <- parseLocG p
-    pure $ \s -> Syntax (l <> s ^. sLoc) $ f s
+    pure $ \s -> RSyntax (l <> s ^. sLoc) $ f s

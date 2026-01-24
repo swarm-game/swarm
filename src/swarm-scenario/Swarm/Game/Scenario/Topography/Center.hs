@@ -14,13 +14,14 @@ import Swarm.Game.Robot (trobotLocation)
 import Swarm.Game.Scenario (ScenarioLandscape)
 import Swarm.Game.State.Landscape (SubworldDescription, genRobotTemplates)
 import Swarm.Game.Universe (Cosmic (..), SubworldName (DefaultRootSubworld))
+import Swarm.Language.Syntax (Phase (..))
 
 -- | Determine view center for a static map
 -- without reference to a 'GameState'
 -- (i.e. outside the context of an active game)
 determineStaticViewCenter ::
-  ScenarioLandscape ->
-  NonEmpty SubworldDescription ->
+  ScenarioLandscape Elaborated ->
+  NonEmpty (SubworldDescription Elaborated) ->
   Cosmic Location
 determineStaticViewCenter sLandscape worldTuples =
   fromMaybe defaultVC baseRobotLoc

@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -12,7 +14,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Swarm.Game.Entity
-import Swarm.Game.Robot (TRobot, trobotName)
+import Swarm.Game.Robot (Robot)
+import Swarm.Game.Robot.Generic qualified as G
 import Swarm.Util (failT, quote)
 import Swarm.Util.Yaml
 
@@ -25,16 +28,16 @@ newtype RobotName = RobotName Text
   deriving newtype (Show, Eq, Ord, FromJSON)
 
 -- | A robot template paired with its definition's index within
--- the Scenario file
-type IndexedTRobot = (Int, TRobot)
+--   the Scenario file
+type IndexedRobot phase = (Int, Robot phase)
 
 -- | A map from names to robots, used to look up robots in scenario
 --   descriptions.
-type RobotMap = Map RobotName IndexedTRobot
+type RobotMap phase = Map RobotName (IndexedRobot phase)
 
 -- | Create a 'RobotMap' from a list of robot templates.
-buildRobotMap :: [TRobot] -> RobotMap
-buildRobotMap rs = M.fromList $ zipWith (\x y -> (RobotName $ view trobotName y, (x, y))) [0 ..] rs
+buildRobotMap :: [Robot phase] -> RobotMap phase
+buildRobotMap rs = M.fromList $ zipWith (\x y -> (RobotName $ view G.robotName y, (x, y))) [0 ..] rs
 
 ------------------------------------------------------------
 -- Lookup utilities
@@ -56,5 +59,5 @@ getEntity = getThing "entity" lookupEntityName
 
 -- | Look up a robot by name in a 'RobotMap', throwing a parse error
 --   if it is not found.
-getRobot :: RobotName -> ParserE RobotMap IndexedTRobot
+getRobot :: RobotName -> ParserE (RobotMap phase) (IndexedRobot phase)
 getRobot = getThing "robot" M.lookup

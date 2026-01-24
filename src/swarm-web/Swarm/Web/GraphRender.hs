@@ -12,7 +12,7 @@ import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
 import Text.Dot
 
-renderGoalsGraph :: ObjectiveCompletion -> String
+renderGoalsGraph :: ObjectiveCompletion phase -> String
 renderGoalsGraph oc =
   showDot nlg
  where

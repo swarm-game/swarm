@@ -21,6 +21,7 @@ import Data.Foldable (Foldable (..), foldl', foldlM, traverse_)
 import Data.List (singleton, uncons)
 import Data.Map.Lazy qualified as ML
 import Data.Map.Strict qualified as M
+import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -35,7 +36,7 @@ import Swarm.Game.Scenario.Topography.Structure.Named
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Language.Syntax.Direction (directionJsonModifier)
-import Swarm.Util (commaList, quote)
+import Swarm.Util (commaList, quote, (?))
 import Swarm.Util.Graph (failOnCyclicGraph)
 import Prelude hiding (Foldable (..))
 
@@ -58,7 +59,7 @@ data PathPlacement = PathPlacement
 -- | This augments a named structure with its list of edges (placements). PathPlacement is used to allow us to disambiguate
 --   different structures which share the same name.
 data AnnotatedStructure a = AnnotatedStructure
-  { annPathToRoot :: PathToRoot
+  { _annPathToRoot :: PathToRoot
   , pathPlacements :: [PathPlacement]
   , namedStructure :: NamedStructure a
   }
@@ -130,14 +131,16 @@ overlaySingleStructure
 validateGraph :: M.Map PathToRoot (AnnotatedStructure (Maybe a)) -> Either Text (M.Map PathToRoot (AnnotatedStructure (Maybe a)))
 validateGraph graph = do
   validated <- M.traverseWithKey go graph
-  failOnCyclicGraph "Structure" (showPath . annPathToRoot) [(ann, path, map pathToPlacement (pathPlacements ann)) | (path, ann) <- M.toList validated]
+  failOnCyclicGraph "Structure" showPath [(path, map pathToPlacement (pathPlacements ann)) | (path, ann) <- M.toList validated]
   pure validated
  where
   go :: PathToRoot -> AnnotatedStructure (Maybe a) -> Either Text (AnnotatedStructure (Maybe a))
   go path ann = do
     let toPlace = pathPlacements ann
-        f (PathPlacement p pose) = (graph M.! p, pose)
-    left (elaboratePlacement path <>) $ traverse_ (uncurry validatePlacement . first namedStructure . f) toPlace
+        validate (PathPlacement p pose) = case M.lookup p graph of
+          Nothing -> Left "validateGraph.go.validate: path not found in graph!"
+          Just a -> validatePlacement (namedStructure a) pose
+    left (elaboratePlacement path <>) $ traverse_ validate toPlace
     pure ann
 
 -- | Given a graph constructed via 'mkGraph',this function assembles all the structures in the graph, taking care to avoid redundant work.
@@ -148,12 +151,24 @@ mergeStructures graph = mergedMap
   mergedMap = ML.fromList [(p, toMerged p ann) | (p, ann) <- M.toList graph]
 
   placementToLocated (Placement sn pose) = LocatedStructure (OrientedStructure sn (up $ orient pose)) (offset pose)
-  computeInitialOverlays = map (placementToLocated . uncurry Placement . first (name . namedStructure)) . filter (isRecognizable . namedStructure . fst) . map (\(PathPlacement p pose) -> (graph M.! p, pose))
+  computeInitialOverlays =
+    map (placementToLocated . uncurry Placement . first (name . namedStructure))
+      . filter (isRecognizable . namedStructure . fst)
+      . mapMaybe (\(PathPlacement p pose) -> (,pose) <$> (graph M.!? p))
+  -- We don't expect for the lookup of p in graph to fail, but filter out any failures
+  -- to avoid using a partial function
 
   toMerged path ann = foldl' overlaySingleStructure initialMerged toPlaceMerged
    where
     toPlace = pathPlacements ann
-    toPlaceMerged = map (\(PathPlacement p pose) -> (mergedMap ML.! p, pose)) toPlace
+    toPlaceMerged = map (\(PathPlacement p pose) -> (foo p, pose)) toPlace
+    foo p =
+      (mergedMap ML.!? p)
+        -- This use of error is OK, since: (1) it should never happen
+        -- unless there is a bug, and (2) if there is a bug, it will
+        -- only cause a crash while validating a scenario, not while
+        -- in the middle of active gameplay.
+        ? error ("Could not find p " <> show p <> " in graph while merging structures!")
 
     parentage = maybe Root (WithParent . fst) (uncons path)
     struct = structure . namedStructure $ ann

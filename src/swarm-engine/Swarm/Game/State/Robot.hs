@@ -76,6 +76,7 @@ import Swarm.Game.State.ViewCenter.Internal (ViewCenterRule (..))
 import Swarm.Game.State.ViewCenter.Internal qualified as VCInternal
 import Swarm.Game.Tick
 import Swarm.Game.Universe as U
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.Util ((<+=), (<<.=), (<>=))
 
 -- | The names of the robots that are currently not sleeping.
@@ -107,7 +108,7 @@ focusedRobotID = viewCenterState . VCInternal.viewRobotID
 
 -- | Find out which robot has been last specified by the
 --   'viewCenterRule', if any.
-focusedRobot :: Getter Robots (Maybe Robot)
+focusedRobot :: Getter Robots (Maybe (Robot Instantiated))
 focusedRobot = to $ \r -> r ^. robotMap . at (r ^. focusedRobotID)
 
 -- | The current rule for determining the center of the world view.
@@ -128,11 +129,11 @@ viewCenterRule = lens getter setter
 --   First, generate a unique ID number for it.  Then, add it to the
 --   main robot map, the active robot set, and to to the index of
 --   robots by location.
-addTRobot :: (Has (State Robots) sig m) => CESK -> TRobot -> m ()
+addTRobot :: (Has (State Robots) sig m) => CESK -> Robot Elaborated -> m ()
 addTRobot m r = void $ addTRobot' m r
 
 -- | Like addTRobot, but return the newly instantiated robot.
-addTRobot' :: (Has (State Robots) sig m) => CESK -> TRobot -> m Robot
+addTRobot' :: (Has (State Robots) sig m) => CESK -> Robot Elaborated -> m (Robot Instantiated)
 addTRobot' initialMachine r = do
   rid <- robotNaming . gensym <+= 1
   let newRobot = instantiateRobot (Just initialMachine) rid r
@@ -142,7 +143,7 @@ addTRobot' initialMachine r = do
 -- | Add a robot to the game state, adding it to the main robot map,
 --   the active robot set, and to to the index of robots by
 --   location.
-addRobot :: (Has (State Robots) sig m) => Robot -> m ()
+addRobot :: (Has (State Robots) sig m) => Robot Instantiated -> m ()
 addRobot r = do
   robotMap %= IM.insert rid r
   addRobotToLocation rid $ r ^. robotLocation
@@ -222,7 +223,7 @@ wakeWatchingRobots myID currentTick loc = do
   -- states are prepared in 4 steps...
 
   let -- Step 1: Identify the robots that are watching this location.
-      botsWatchingThisLoc :: [Robot]
+      botsWatchingThisLoc :: [Robot Instantiated]
       botsWatchingThisLoc =
         mapMaybe (`IM.lookup` rMap) $
           IS.toList $
@@ -297,13 +298,13 @@ removeRobotFromLocationMap (Cosmic oldSubworld oldPlanar) rid =
   robotsByLocation
     %= MM.adjust (MM.adjust (IS.delete rid) oldPlanar) oldSubworld
 
-setRobotInfo :: RID -> [Robot] -> Robots -> Robots
+setRobotInfo :: RID -> [Robot Instantiated] -> Robots -> Robots
 setRobotInfo rid robotList rState =
   setRobotList robotList rState
     & viewCenterState . VCInternal.viewRobotID .~ rid
     & viewCenterRule .~ VCRobot rid
 
-setRobotList :: [Robot] -> Robots -> Robots
+setRobotList :: [Robot Instantiated] -> Robots -> Robots
 setRobotList robotList rState =
   rState
     & robotMap .~ IM.fromList (map (view robotID &&& id) robotList)
