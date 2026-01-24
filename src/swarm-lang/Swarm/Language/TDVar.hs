@@ -13,16 +13,17 @@ import Data.String (IsString (..))
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter (Doc, pretty)
+import Swarm.Language.Syntax.Import (ImportLoc, ImportPhase (Resolved))
 import Swarm.Pretty (PrettyPrec (..))
 import Swarm.Util (showT)
 
 -- | The name of a user-defined type is represented by a textual name
---   as well as a version number which we can use to differentiate
---   between names which are otherwise the same, when one shadows the
---   other.
+--   as well as a version number and an optional module name which we
+--   can use to differentiate between names which are otherwise the
+--   same, when one shadows the other.
 --
 --   See Note [Shadowing for value-level and type-level variables]
-data TDVar = TDVar {tdVarName :: Text, tdVarVersion :: Int}
+data TDVar = TDVar {tdVarName :: Text, tdVarVersion :: Int, tdModule :: Maybe (ImportLoc Resolved)}
   deriving (Eq, Ord, Show, Data, Generic, Hashable, ToJSON, FromJSON, ToJSONKey, FromJSONKey)
 
 -- ~~~~ Note [Shadowing for value-level and type-level variables]
@@ -64,22 +65,22 @@ data TDVar = TDVar {tdVarName :: Text, tdVarVersion :: Int}
 -- 'Swarm.Language.Kindcheck.resolveTydefs') the version is updated to
 -- the latest in-scope version.
 
--- | Create a type definition variable with the given name and a
---   default version of 0.
-mkTDVar :: Text -> TDVar
-mkTDVar = mkTDVar' 0
+-- | Create a type definition variable with a given version number,
+--   import location, and name.
+mkTDVar :: Int -> Maybe (ImportLoc Resolved) -> Text -> TDVar
+mkTDVar v loc x = TDVar x v loc
 
--- | Create a type definition variable with a given version number and
---   name.
-mkTDVar' :: Int -> Text -> TDVar
-mkTDVar' v x = TDVar x v
+-- | Set the version number of a TDVar, leaving the name and import
+--   location unchanged.
+setVersion :: Int -> TDVar -> TDVar
+setVersion ver v = v {tdVarVersion = ver}
 
 -- | Pretty-print a type definition variable, given an extra argument
 --   representing the latest version of any variable with this name.
 --   If this variable is the latest version, just print its name.  If
 --   it is not the latest version, print @name%version@.
 prettyTDVar :: Int -> TDVar -> Doc ann
-prettyTDVar latest (TDVar x n)
+prettyTDVar latest (TDVar x n _)
   | latest > n = pretty (x <> "%" <> showT n)
   | otherwise = pretty x
 
@@ -92,7 +93,7 @@ prettyTDVar latest (TDVar x n)
 --   number.  If you care about the version number possibly being
 --   printed, you must use 'prettyTDVar' instead.
 instance PrettyPrec TDVar where
-  prettyPrec _ (TDVar x _) = pretty x
+  prettyPrec _ (TDVar x _ _) = pretty x
 
 instance IsString TDVar where
-  fromString = mkTDVar . fromString
+  fromString = mkTDVar 0 Nothing . fromString

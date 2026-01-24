@@ -37,12 +37,15 @@
   - {name: Data.Colour.SRGB.sRGB24read, within: []}
   - {name: Data.IntMap.!, within: []}
   - {name: Data.Map.!, within: [Swarm.Language.Context.rehydrate]} # TODO: #1494
+  - {name: Data.Map.Strict.!, within: []}
+  - {name: Data.Map.Lazy.!, within: []}
   - {name: error, within:
       [ Swarm.Language.Parser.QQ  # quasiquoters only run at compile time
       , Swarm.Language.Pipeline.QQ
       , Swarm.Doc.Gen
       , Swarm.Web.Tournament
       , TestLanguagePipeline
+      , Swarm.Game.Scenario.Topography.Structure.Assembly
       ]
     }
   - {name: readFile, within: [Lib, Main]}  # standalone-topography:Lib, tournament-host:Main
@@ -52,6 +55,7 @@
   - {name: Data.Text.IO.writeFile, within: [Swarm.Util.writeFileT]}
   - {name: Data.Text.IO.Utf8.readFile, within: [Swarm.Util.readFileMayT]}
   - {name: Data.Text.IO.Utf8.writeFile, within: [Swarm.Util.writeFileT]}
+  - {name: Unsafe.Coerce.unsafeCoerce, within: [Swarm.Language.Elaborate.elaborate]}
 
 # Add custom hints for this project
 #

@@ -7,15 +7,15 @@
 -- Swarm requirements analysis tests
 module TestRequirements where
 
+import Control.Lens (view)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Swarm.Language.Capability
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Pipeline
+import Swarm.Language.Module (moduleTerm)
 import Swarm.Language.Requirements.Analysis (requirements)
 import Swarm.Language.Requirements.Type (ReqCtx, Requirements, capReqs, devReqs)
-import Swarm.Language.Syntax.Constants (Const (Move))
-import Swarm.Language.Syntax.Util (eraseS)
+import Swarm.Language.Syntax
 import Swarm.Language.Types (emptyTDCtx)
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -48,10 +48,28 @@ testRequirements =
     ]
 
 checkReqCtx :: Text -> (ReqCtx -> Bool) -> Assertion
-checkReqCtx code expect = check code (expect . extractReqCtx)
+checkReqCtx code expect = check code (expect . maybe mempty extractReqCtx . moduleTerm)
+
+-- | Extract a requirements context from requirements annotations on
+--   definitions contained in a term.  Should only be used for
+--   testing.
+extractReqCtx :: Syntax phase -> ReqCtx
+extractReqCtx (Syntax _ t _ _) = extractReqCtxTerm t
+ where
+  extractReqCtxTerm = \case
+    SLet _ _ (Loc _ x) _ _ mreq _ t2 -> maybe id (Ctx.addBinding x) mreq (extractReqCtx t2)
+    SBind mx _ _ mreq c1 c2 ->
+      maybe
+        id
+        (uncurry Ctx.addBinding)
+        ((,) . locVal <$> mx <*> mreq)
+        (extractReqCtx c1 <> extractReqCtx c2)
+    SAnnotate t1 _ -> extractReqCtx t1
+    _ -> mempty
 
 checkRequirements :: Text -> (Requirements -> Bool) -> Assertion
-checkRequirements code expect = check code (expect . requirements emptyTDCtx mempty . eraseS)
+checkRequirements code expect =
+  check code (expect . maybe mempty (requirements emptyTDCtx mempty . view sTerm . erase) . moduleTerm)
 
 requiresCap :: Text -> Capability -> Assertion
 requiresCap code cap = checkRequirements code ((cap `S.member`) . capReqs)

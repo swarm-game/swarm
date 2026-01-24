@@ -18,14 +18,14 @@ import Swarm.Game.Terrain (TerrainType)
 import Swarm.Util.Erasable
 
 -- | A world palette maps characters to 'Cell' values.
-type WorldPalette e = StructurePalette (PCell e)
+type WorldPalette e phase = StructurePalette (PCell e phase)
 
 type TerrainWith a = (TerrainType, Erasable a)
 
-cellToTerrainPair :: CellPaintDisplay -> TerrainWith EntityFacade
+cellToTerrainPair :: CellPaintDisplay phase -> TerrainWith EntityFacade
 cellToTerrainPair (Cell terrain erasableEntity _) = (terrain, erasableEntity)
 
-toCellPaintDisplay :: Cell -> CellPaintDisplay
+toCellPaintDisplay :: Cell phase -> CellPaintDisplay phase
 toCellPaintDisplay (Cell terrain maybeEntity r) =
   Cell terrain (mkFacade <$> maybeEntity) r
 
@@ -39,7 +39,7 @@ toKey = fmap $ fmap (\(EntityFacade eName _display _hdg) -> eName)
 -- (terrain, entity name) key, and couple it with the original
 -- (terrain, entity facade) pair in a Map.
 getUniqueTerrainFacadePairs ::
-  [CellPaintDisplay] ->
+  [CellPaintDisplay phase] ->
   M.Map (TerrainWith EntityName) (TerrainWith EntityFacade)
 getUniqueTerrainFacadePairs cellGrid =
   M.fromList $ map genTuple cellGrid
@@ -51,7 +51,7 @@ getUniqueTerrainFacadePairs cellGrid =
 
 constructPalette ::
   [(Char, TerrainWith EntityFacade)] ->
-  KM.KeyMap CellPaintDisplay
+  KM.KeyMap (CellPaintDisplay phase)
 constructPalette mappedPairs =
   KM.fromMapText terrainEntityPalette
  where
@@ -62,14 +62,14 @@ constructWorldMap ::
   [(Char, TerrainWith EntityFacade)] ->
   -- | Mask char
   Char ->
-  Grid (Maybe CellPaintDisplay) ->
+  Grid (Maybe (CellPaintDisplay phase)) ->
   String
 constructWorldMap mappedPairs maskChar =
   unlines . getRows . fmap renderMapCell
  where
   invertedMappedPairs = map (swap . fmap toKey) mappedPairs
 
-  renderMapCell :: Maybe CellPaintDisplay -> Char
+  renderMapCell :: Maybe (CellPaintDisplay phase) -> Char
   renderMapCell maybeC = case maybeC of
     Nothing -> maskChar
     Just c ->
@@ -86,8 +86,8 @@ constructWorldMap mappedPairs maskChar =
 genericCharacterPool :: Set.Set Char
 genericCharacterPool = Set.fromList $ ['A' .. 'Z'] <> ['a' .. 'z'] <> ['0' .. '9']
 
-data PaletteAndMaskChar = PaletteAndMaskChar
-  { paletteEntries :: WorldPalette EntityFacade
+data PaletteAndMaskChar phase = PaletteAndMaskChar
+  { paletteEntries :: WorldPalette EntityFacade phase
   , reservedMaskChar :: Maybe Char
   -- ^ represents a transparent cell
   }
@@ -96,9 +96,9 @@ data PaletteAndMaskChar = PaletteAndMaskChar
 -- across different entities! However, the palette KeyMap
 -- as a conveyance serves to dedupe them.
 prepForJson ::
-  PaletteAndMaskChar ->
-  Grid (Maybe CellPaintDisplay) ->
-  (String, KM.KeyMap CellPaintDisplay)
+  PaletteAndMaskChar phase ->
+  Grid (Maybe (CellPaintDisplay phase)) ->
+  (String, KM.KeyMap (CellPaintDisplay phase))
 prepForJson (PaletteAndMaskChar (StructurePalette _ _ suggestedPalette) maybeMaskChar) cellGrid =
   (constructWorldMap mappedPairs maskCharacter cellGrid, constructPalette mappedPairs)
  where

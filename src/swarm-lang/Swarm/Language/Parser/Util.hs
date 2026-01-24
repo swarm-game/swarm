@@ -34,11 +34,11 @@ fullyMaybe sc = fully sc . optional
 showShortError :: ParserError -> String
 showShortError pe = show (line + 1) <> ": " <> from msg
  where
-  ((line, _), _, msg) = showErrorPos pe
+  (((line, _), _), msg) = showErrorPos pe
 
 -- | A utility for converting a 'ParserError' into a range and error message.
-showErrorPos :: ParserError -> ((Int, Int), (Int, Int), Text)
-showErrorPos (ParseErrorBundle errs sourcePS) = (minusOne start, minusOne end, from msg)
+showErrorPos :: ParserError -> (((Int, Int), (Int, Int)), Text)
+showErrorPos (ParseErrorBundle errs sourcePS) = ((minusOne start, minusOne end), from msg)
  where
   -- convert megaparsec source pos to starts at 0
   minusOne (x, y) = (x - 1, y - 1)

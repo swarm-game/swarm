@@ -16,9 +16,9 @@ module Swarm.Game.World.Render (
 
 import Codec.Picture
 import Control.Applicative ((<|>))
-import Control.Carrier.Throw.Either (runThrow)
+import Control.Carrier.Error.Either (runError)
+import Control.Effect.Error
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Throw
 import Control.Lens (view, (^.))
 import Control.Monad.Extra (guarded)
 import Control.Monad.Logger
@@ -49,6 +49,7 @@ import Swarm.Game.State.Landscape
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.Game.World.DSL.Gen (Seed)
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.Pretty (prettyText)
 import Swarm.Util (failT)
 import Swarm.Util.Content
@@ -102,7 +103,7 @@ data RenderOpts = RenderOpts
   , failureMode :: FailureMode
   }
 
-getCellChar :: PCell EntityFacade -> Char
+getCellChar :: PCell EntityFacade phase -> Char
 getCellChar = maybe ' ' facadeChar . erasableToMaybe . cellEntity
  where
   facadeChar (EntityFacade _ d _) = d ^. defaultChar
@@ -111,7 +112,7 @@ getCellChar = maybe ' ' facadeChar . erasableToMaybe . cellEntity
 -- uses natural map bounds (if a map exists).
 getBoundingBox ::
   Location ->
-  PWorldDescription e ->
+  PWorldDescription e phase ->
   Maybe AreaDimensions ->
   BoundsRectangle
 getBoundingBox vc scenarioWorld maybeSize =
@@ -136,10 +137,10 @@ getBoundingBox vc scenarioWorld maybeSize =
 
 getDisplayGrid ::
   Location ->
-  ScenarioLandscape ->
-  Landscape ->
+  ScenarioLandscape phase ->
+  Landscape phase ->
   Maybe AreaDimensions ->
-  Grid CellPaintDisplay
+  Grid (CellPaintDisplay phase)
 getDisplayGrid vc sLandscape ls maybeSize =
   getMapRectangle
     mkFacade
@@ -152,10 +153,10 @@ getDisplayGrid vc sLandscape ls maybeSize =
   firstScenarioWorld = NE.head $ view scenarioWorlds sLandscape
 
 getRenderableGridFromPath ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  (Has (Error SystemFailure) sig m, Has (Lift IO) sig m) =>
   RenderOpts ->
   FilePath ->
-  m ThumbnailRenderContext
+  m (ThumbnailRenderContext Elaborated)
 getRenderableGridFromPath (RenderOpts ctx _ _ _) fp = do
   (myScenario, _gsi) <- loadStandaloneScenario fp
   getRenderableGrid ctx myScenario
@@ -163,8 +164,8 @@ getRenderableGridFromPath (RenderOpts ctx _ _ _) fp = do
 getRenderableGrid ::
   Has (Lift IO) sig m =>
   RenderComputationContext ->
-  Scenario ->
-  m ThumbnailRenderContext
+  Scenario Elaborated ->
+  m (ThumbnailRenderContext Elaborated)
 getRenderableGrid (RenderComputationContext maybeSeed maybeSize) myScenario = do
   let sLandscape = myScenario ^. scenarioLandscape
   theSeed <- sendIO $ arbitrateSeed maybeSeed sLandscape
@@ -192,13 +193,13 @@ renderScenarioMap opts fp = simpleErrorHandle $ do
   ThumbnailRenderContext grid _ <- getRenderableGridFromPath opts fp
   return $ getRows $ getCellChar <$> grid
 
-data ThumbnailRenderContext
+data ThumbnailRenderContext phase
   = ThumbnailRenderContext
-      (Grid (PCell EntityFacade))
+      (Grid (PCell EntityFacade phase))
       AttributeMap
 
 renderImage ::
-  ThumbnailRenderContext ->
+  ThumbnailRenderContext phase ->
   Image PixelRGBA8
 renderImage (ThumbnailRenderContext grid aMap) =
   makeImage $ getTerrainEntityColor aMap <$> grid
@@ -206,7 +207,7 @@ renderImage (ThumbnailRenderContext grid aMap) =
 renderImageHandleFailure ::
   (MonadFail m, MonadIO m) =>
   RenderOpts ->
-  Either SystemFailure ThumbnailRenderContext ->
+  Either SystemFailure (ThumbnailRenderContext phase) ->
   LoggingT m (Image PixelRGBA8)
 renderImageHandleFailure opts result =
   case result of
@@ -224,7 +225,7 @@ renderImageHandleFailure opts result =
 
 renderScenarioPng :: RenderOpts -> FilePath -> IO ()
 renderScenarioPng opts fp = do
-  result <- runThrow $ getRenderableGridFromPath opts fp
+  result <- runError $ getRenderableGridFromPath opts fp
   img <- runStderrLoggingT $ renderImageHandleFailure opts result
   writePng (outputFilepath opts) img
 

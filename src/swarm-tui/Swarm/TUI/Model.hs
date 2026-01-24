@@ -125,6 +125,7 @@ import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World (Seed)
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Log
 import Swarm.TUI.Inventory.Sorting
@@ -253,7 +254,7 @@ data KeyEventHandlingState = KeyEventHandlingState
 
 -- | Given the focused robot, populate the UI inventory list in the info
 --   panel with information about its inventory.
-populateInventoryList :: (MonadState UIInventory m) => Maybe Robot -> m ()
+populateInventoryList :: (MonadState UIInventory m) => Maybe (Robot Instantiated) -> m ()
 populateInventoryList Nothing = uiInventoryList .= Nothing
 populateInventoryList (Just r) = do
   mList <- preuse $ uiInventoryList . _Just . _2

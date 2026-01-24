@@ -13,7 +13,7 @@ import Swarm.Language.LSP.Position (narrowToPosition)
 import Swarm.Language.LSP.VarUsage qualified as VU
 import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ
-import Swarm.Language.Syntax (Syntax' (Syntax'))
+import Swarm.Language.Syntax (Phase (Raw), Syntax (Syntax))
 import Swarm.Language.Syntax qualified as S
 import Swarm.Pretty (prettyString)
 import Swarm.Util (Encoding (..), readFileMayT)
@@ -102,7 +102,7 @@ testLSP =
         "narrowToPosition"
         [ testCase "narrow to TVar" $
             assertEqualTerms
-              (S.Syntax' S.NoLoc (S.TVar "m2") (S.Comments mempty mempty) ())
+              (S.Syntax @Raw S.NoLoc (S.TVar "m2") (S.Comments mempty mempty) ())
               ( narrowToPosition
                   [astQ|def m2 = move; move end
                         def m4 = m2; m2 end
@@ -112,7 +112,7 @@ testLSP =
               )
         , testCase "narrow to forever" $
             assertEqualTerms
-              (S.Syntax' S.NoLoc (S.TVar "forever") (S.Comments mempty mempty) ())
+              (S.Syntax @Raw S.NoLoc (S.TVar "forever") (S.Comments mempty mempty) ())
               ( narrowToPosition
                   [astQ|// A "cat" that wanders around randomly.  Shows off use of the
                         // 'random' command.
@@ -140,7 +140,7 @@ testLSP =
               )
         , testCase "narrow to maybe" $
             assertEqualTerms
-              (S.Syntax' S.NoLoc (S.TVar "Maybe") (S.Comments mempty mempty) ())
+              (S.Syntax @Raw S.NoLoc (S.TVar "Maybe") (S.Comments mempty mempty) ())
               ( narrowToPosition
                   [astQ|tydef Maybe a = Unit + a end
 
@@ -174,7 +174,7 @@ testLSP =
 
   -- When comparing Syntax elements we aren't interested in the SrcLoc or the comments so just compare the terms.
   -- This is because depending on the operating system the loc could be different due to line endings.
-  assertEqualTerms (Syntax' _ expected _ _) (Syntax' _ actual _ _) =
+  assertEqualTerms (Syntax _ expected _ _) (Syntax _ actual _ _) =
     unless (actual == expected) $
       assertFailure
         ( "expected: "

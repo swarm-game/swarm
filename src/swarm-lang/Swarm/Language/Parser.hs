@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -25,7 +26,7 @@ import Swarm.Language.Parser.Core (ParserConfig, ParserError, defaultParserConfi
 import Swarm.Language.Parser.Lex (sc)
 import Swarm.Language.Parser.Term (parseTerm)
 import Swarm.Language.Parser.Util (fullyMaybe)
-import Swarm.Language.Syntax (Comment, Syntax)
+import Swarm.Language.Syntax (Comment, Phase (Raw), Syntax)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Witch (from)
 
@@ -33,7 +34,7 @@ import Witch (from)
 --   whitespace and ensuring the parsing extends all the way to the
 --   end of the input 'Text'.  Returns an error if the term was only
 --   whitespace.
-readNonemptyTerm :: Text -> Either Text Syntax
+readNonemptyTerm :: Text -> Either Text (Syntax Raw)
 readNonemptyTerm = readTerm >=> maybeToEither "Empty term"
 
 -- | Parse some input 'Text' completely as a 'Term', consuming leading
@@ -41,13 +42,13 @@ readNonemptyTerm = readTerm >=> maybeToEither "Empty term"
 --   end of the input 'Text'.  Returns either the resulting 'Term' (or
 --   'Nothing' if the input was only whitespace) or a pretty-printed
 --   parse error message.
-readTerm :: Text -> Either Text (Maybe Syntax)
+readTerm :: Text -> Either Text (Maybe (Syntax Raw))
 readTerm = first (from . errorBundlePretty) . readTerm' defaultParserConfig
 
--- | A lower-level `readTerm` which allow configuring the parser and
+-- | A lower-level `readTerm` which allows configuring the parser and
 --   returns the megaparsec bundle error for precise error reporting.
-readTerm' :: ParserConfig -> Text -> Either ParserError (Maybe Syntax)
+readTerm' :: ParserConfig -> Text -> Either ParserError (Maybe (Syntax Raw))
 readTerm' cfg = second handleComments . runParser' cfg (fullyMaybe sc parseTerm)
  where
-  handleComments :: (Maybe Syntax, Seq Comment) -> Maybe Syntax
+  handleComments :: (Maybe (Syntax Raw), Seq Comment) -> Maybe (Syntax Raw)
   handleComments (s, cs) = populateComments cs <$> s

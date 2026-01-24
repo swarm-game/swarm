@@ -32,16 +32,18 @@ import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainMap, TerrainType, getTerrainDefaultPaletteChar, terrainByName)
 import Swarm.Game.Universe
+import Swarm.Language.Syntax (Elaborated, eraseRaw)
 import Swarm.Language.Text.Markdown (fromText)
 import Swarm.TUI.Editor.Json (SkeletonScenario (SkeletonScenario))
 import Swarm.Util (binTuples, histogram)
 import Swarm.Util.Erasable
 
 makeSuggestedPalette ::
+  forall phase.
   TerrainMap ->
-  Map Char (AugmentedCell Entity) ->
-  Grid (Maybe CellPaintDisplay) ->
-  Map Char (AugmentedCell EntityFacade)
+  Map Char (AugmentedCell Entity phase) ->
+  Grid (Maybe (CellPaintDisplay phase)) ->
+  Map Char (AugmentedCell EntityFacade phase)
 makeSuggestedPalette tm originalScenarioPalette cellGrid =
   M.map (SignpostableCell Nothing Nothing)
     . M.fromList
@@ -51,12 +53,12 @@ makeSuggestedPalette tm originalScenarioPalette cellGrid =
  where
   cellList = catMaybes $ allMembers cellGrid
 
-  getMaybeEntityFacade :: PCell EntityFacade -> Maybe (EntityName, EntityFacade)
+  getMaybeEntityFacade :: PCell EntityFacade phase -> Maybe (EntityName, EntityFacade)
   getMaybeEntityFacade (Cell _terrain (erasableToMaybe -> maybeEntity) _) = do
     f@(EntityFacade eName _ _) <- maybeEntity
     return (eName, f)
 
-  getMaybeEntityNameTerrainPair :: PCell EntityFacade -> Maybe (EntityName, TerrainType)
+  getMaybeEntityNameTerrainPair :: PCell EntityFacade phase -> Maybe (EntityName, TerrainType)
   getMaybeEntityNameTerrainPair (Cell terrain (erasableToMaybe -> maybeEntity) _) = do
     EntityFacade eName _ _ <- maybeEntity
     return (eName, terrain)
@@ -79,12 +81,12 @@ makeSuggestedPalette tm originalScenarioPalette cellGrid =
       $ M.map (NE.nonEmpty . sortOn snd . M.toList) getEntityTerrainMultiplicity
 
   invertPaletteMapToDedupe ::
-    Map a CellPaintDisplay ->
-    [(TerrainWith EntityName, (a, CellPaintDisplay))]
+    Map a (CellPaintDisplay phase) ->
+    [(TerrainWith EntityName, (a, CellPaintDisplay phase))]
   invertPaletteMapToDedupe =
     map (\x@(_, c) -> (toKey $ cellToTerrainPair c, x)) . M.toList
 
-  paletteCellsByKey :: Map (TerrainWith EntityName) (Char, CellPaintDisplay)
+  paletteCellsByKey :: Map (TerrainWith EntityName) (Char, CellPaintDisplay phase)
   paletteCellsByKey =
     M.map (NE.head . NE.sortWith toSortVal)
       . binTuples
@@ -96,11 +98,11 @@ makeSuggestedPalette tm originalScenarioPalette cellGrid =
   excludedPaletteChars :: Set Char
   excludedPaletteChars = Set.fromList [' ']
 
-  originalPalette :: Map Char CellPaintDisplay
+  originalPalette :: Map Char (CellPaintDisplay phase)
   originalPalette =
     M.map (toCellPaintDisplay . standardCell) originalScenarioPalette
 
-  pairsWithDisplays :: Map (TerrainWith EntityName) (Char, CellPaintDisplay)
+  pairsWithDisplays :: Map (TerrainWith EntityName) (Char, CellPaintDisplay phase)
   pairsWithDisplays = M.fromList $ mapMaybe g entitiesWithModalTerrain
    where
     g (terrain, eName) = do
@@ -112,18 +114,19 @@ makeSuggestedPalette tm originalScenarioPalette cellGrid =
 
   -- TODO (#1153): Filter out terrain-only palette entries that aren't actually
   -- used in the map.
-  terrainOnlyPalette :: Map (TerrainWith EntityName) (Char, CellPaintDisplay)
+  terrainOnlyPalette :: Map (TerrainWith EntityName) (Char, CellPaintDisplay phase)
   terrainOnlyPalette = M.fromList . map f . M.keys $ terrainByName tm
    where
     f x = ((x, ENothing), (getTerrainDefaultPaletteChar x, Cell x ENothing []))
 
 -- | Generate a \"skeleton\" scenario with placeholders for certain required fields
-constructScenario :: Maybe Scenario -> Grid (Maybe CellPaintDisplay) -> SkeletonScenario
+constructScenario ::
+  Maybe (Scenario Elaborated) -> Grid (Maybe (CellPaintDisplay Elaborated)) -> SkeletonScenario
 constructScenario maybeOriginalScenario cellGrid =
   SkeletonScenario
     (maybe 1 (^. scenarioMetadata . scenarioVersion) maybeOriginalScenario)
     (maybe "My Scenario" (^. scenarioMetadata . scenarioName) maybeOriginalScenario)
-    (maybe (fromText "The scenario description...") (^. scenarioOperation . scenarioDescription) maybeOriginalScenario)
+    (maybe (fromText "The scenario description...") (fmap eraseRaw . (^. scenarioOperation . scenarioDescription)) maybeOriginalScenario)
     -- (maybe True (^. scenarioCreative) maybeOriginalScenario)
     True
     (M.elems $ entitiesByName customEntities)

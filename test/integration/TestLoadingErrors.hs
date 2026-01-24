@@ -7,7 +7,7 @@
 module TestLoadingErrors (testNoLoadingErrors, checkNoRuntimeErrors) where
 
 import Control.Lens (view, (^.))
-import Control.Monad (forM_, when)
+import Control.Monad (unless)
 import Data.Text qualified as T
 import Swarm.Game.State.Runtime (RuntimeState, eventLog)
 import Swarm.Game.State.Substate (notificationsContent)
@@ -20,11 +20,13 @@ testNoLoadingErrors r =
   testCase "Test runtime log does not contain errors" (checkNoRuntimeErrors r)
 
 checkNoRuntimeErrors :: RuntimeState -> IO ()
-checkNoRuntimeErrors r =
-  forM_ (r ^. eventLog . notificationsContent) $ \e ->
-    when (isError e) $
-      assertFailure $
-        show (e ^. leSeverity) <> " was produced during loading: " <> T.unpack (e ^. leText)
+checkNoRuntimeErrors r = do
+  let errs = filter isError (r ^. eventLog . notificationsContent)
+  unless (null errs)
+    . assertFailure
+    . unlines
+    $ "Warnings or errors produced during loading:"
+      : map (\e -> T.unpack (e ^. leText)) errs
 
 isError :: LogEntry -> Bool
 isError = (>= Warning) . view leSeverity

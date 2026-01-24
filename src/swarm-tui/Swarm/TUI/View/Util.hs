@@ -29,10 +29,10 @@ import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
 import Swarm.Game.Terrain
-import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Syntax, Unresolvable)
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Types (Polytype)
-import Swarm.Pretty (prettyTextLine)
+import Swarm.Pretty (PrettyPrec, prettyTextLine)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event (SwarmEvent)
 import Swarm.TUI.Model.Menu
@@ -164,7 +164,9 @@ drawType ty = Widget Fixed Fixed $ do
 -- | Draw markdown document with simple code/bold/italic attributes.
 --
 -- TODO: #574 Code blocks should probably be handled separately.
-drawMarkdown :: Markdown.Document Syntax -> Widget Name
+drawMarkdown ::
+  (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase)) =>
+  Markdown.Document (Syntax phase) -> Widget Name
 drawMarkdown d = do
   Widget Greedy Fixed $ do
     ctx <- getContext

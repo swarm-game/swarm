@@ -44,21 +44,30 @@ module Swarm.Language.Syntax (
   beforeComments,
   afterComments,
 
+  -- * Phase
+  Phase (..),
+  ImportPhaseFor,
+  SwarmType,
+  Anchor,
+  Unresolvable,
+
+  -- * Imports
+  ImportDir,
+  ImportLoc (..),
+  locToFilePath,
+
   -- * Syntax
-  Syntax' (..),
+  Syntax (..),
   sLoc,
   sTerm,
   sType,
   sComments,
-  Syntax,
-  TSyntax,
-  USyntax,
-  pattern Syntax,
+  pattern RSyntax,
   pattern CSyntax,
   Located (..),
   LocVar,
   LetSyntax (..),
-  pattern STerm,
+  pattern RTerm,
   pattern TRequirements,
   pattern TPair,
   pattern TLam,
@@ -72,39 +81,48 @@ module Swarm.Language.Syntax (
   pattern TProj,
   pattern TAnnotate,
   pattern TSuspend,
+  pattern TImportIn,
   pattern TParens,
 
   -- * Terms
   Var,
-  Term' (..),
-  Term,
-  TTerm,
-  UTerm,
+  Term (..),
   mkOp,
   mkOp',
   unfoldApps,
   mkTuple,
   unTuple,
+  locVarToSyntax,
 
-  -- * Erasure
+  -- * Traversals
+
+  -- ** Term + type traversal
+  termSyntax,
+  traverseSyntax,
+
+  -- ** Erasure
   erase,
-  eraseS,
+  eraseRaw,
 
-  -- * Term traversal
+  -- ** Free variable traversal
   freeVarsS,
   freeVarsT,
   freeVarsV,
   mapFreeS,
-  locVarToSyntax',
+
+  -- ** Miscellaneous traversals
   asTree,
   measureAstSize,
 ) where
 
+import Swarm.Language.Phase
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
+import Swarm.Language.Syntax.Import
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern
 import Swarm.Language.Syntax.Pretty ()
 import Swarm.Language.Syntax.Util
 import Swarm.Language.Types
+import Swarm.Language.Var (LocVar)

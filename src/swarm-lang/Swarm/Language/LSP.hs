@@ -7,6 +7,7 @@
 -- See the docs/EDITORS.md to learn how to use it.
 module Swarm.Language.LSP where
 
+import Control.Carrier.Error.Either (runError)
 import Control.Lens (to, (^.))
 import Control.Monad (void)
 import Control.Monad.IO.Class
@@ -23,16 +24,14 @@ import Language.LSP.Protocol.Types (ErrorCodes (..))
 import Language.LSP.Protocol.Types qualified as LSP
 import Language.LSP.Server
 import Language.LSP.VFS (VirtualFile (..), virtualFileText)
+import Swarm.Failure (SystemFailure (..))
 import Swarm.Language.LSP.Definition qualified as D
 import Swarm.Language.LSP.Hover qualified as H
 import Swarm.Language.LSP.VarUsage qualified as VU
-import Swarm.Language.Parser (readTerm')
-import Swarm.Language.Parser.Core (defaultParserConfig)
-import Swarm.Language.Parser.Util (getLocRange, showErrorPos)
-import Swarm.Language.Pipeline (processParsedTerm')
-import Swarm.Language.Syntax.Loc (SrcLoc (NoLoc, SrcLoc))
-import Swarm.Language.Typecheck (ContextualTypeErr (..))
-import Swarm.Language.Value (emptyEnv)
+import Swarm.Language.Module (moduleTerm)
+import Swarm.Language.Parser.Util (getLocRange)
+import Swarm.Language.Pipeline (processSource)
+import Swarm.Language.Syntax (SrcLoc (..), eraseRaw)
 import Swarm.Pretty (prettyText)
 import System.IO (stderr)
 import Witch
@@ -87,21 +86,19 @@ validateSwarmCode doc version content = do
   -- However, getting rid of this seems to break error highlighting.
   flushDiagnosticsBySource 0 (Just diagnosticSourcePrefix)
 
-  let (parsingErrs, unusedVarWarnings) = case readTerm' defaultParserConfig content of
+  let provenance = fmap LSP.fromNormalizedFilePath . LSP.uriToNormalizedFilePath $ doc
+  res <- liftIO . runError $ processSource provenance Nothing content
+  let (errors, warnings) = case moduleTerm <$> res of
         Right Nothing -> ([], [])
-        Right (Just term) -> (parsingErrors, unusedWarnings)
+        Right (Just term) -> ([], unusedWarnings)
          where
-          VU.Usage _ problems = VU.getUsage mempty term
+          VU.Usage _ problems = VU.getUsage mempty (eraseRaw term)
           unusedWarnings = mapMaybe (VU.toErrPos content) problems
-
-          parsingErrors = case processParsedTerm' emptyEnv term of
-            Right _ -> []
-            Left e -> pure $ showTypeErrorPos content e
-        Left e -> (pure $ showErrorPos e, [])
-  -- debug $ "-> " <> from (show err)
+        Left (DoesNotTypecheck l t) -> ([(srcLocToPos l content, t)], [])
+        Left err -> ([(((0, 0), (0, 0)), prettyText err)], [])
 
   publishDiags $
-    map makeUnusedVarDiagnostic unusedVarWarnings
+    map makeUnusedVarDiagnostic warnings
 
   -- NOTE: "publishDiags" keeps only one diagnostic at a
   -- time (the most recent) so we make sure the errors are
@@ -111,7 +108,7 @@ validateSwarmCode doc version content = do
   -- publishDiagnostics function call (regardless of the order
   -- of the lists).
   publishDiags $
-    map makeParseErrorDiagnostic parsingErrs
+    map makeParseErrorDiagnostic errors
  where
   publishDiags :: [LSP.Diagnostic] -> LspM () ()
   publishDiags = publishDiagnostics 1 doc version . partitionBySource
@@ -128,8 +125,8 @@ validateSwarmCode doc version content = do
       (Just [LSP.DiagnosticTag_Unnecessary]) -- tags
       Nothing -- related source code info
       Nothing -- data
-  makeParseErrorDiagnostic :: ((Int, Int), (Int, Int), Text) -> LSP.Diagnostic
-  makeParseErrorDiagnostic ((startLine, startCol), (endLine, endCol), msg) =
+  makeParseErrorDiagnostic :: (((Int, Int), (Int, Int)), Text) -> LSP.Diagnostic
+  makeParseErrorDiagnostic (((startLine, startCol), (endLine, endCol)), msg) =
     LSP.Diagnostic
       ( LSP.Range
           (LSP.Position (fromIntegral startLine) (fromIntegral startCol))
@@ -144,15 +141,14 @@ validateSwarmCode doc version content = do
       (Just []) -- related info
       Nothing -- data
 
-showTypeErrorPos :: Text -> ContextualTypeErr -> ((Int, Int), (Int, Int), Text)
-showTypeErrorPos code (CTE l _ te) = (minusOne start, minusOne end, msg)
+srcLocToPos :: SrcLoc -> Text -> ((Int, Int), (Int, Int))
+srcLocToPos l code = (minusOne start, minusOne end)
  where
   minusOne (x, y) = (x - 1, y - 1)
 
   (start, end) = case l of
-    SrcLoc s e -> getLocRange code (s, e)
+    SrcLoc _ s e -> getLocRange code (s, e)
     NoLoc -> ((1, 1), (65535, 65535)) -- unknown loc spans the whole document
-  msg = prettyText te
 
 handlers :: Handlers (LspM ())
 handlers =

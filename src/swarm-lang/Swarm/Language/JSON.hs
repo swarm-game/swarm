@@ -1,4 +1,6 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -8,33 +10,56 @@
 -- to put them all here to avoid circular module dependencies.
 module Swarm.Language.JSON where
 
-import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON, withText)
+import Control.Lens (view)
+import Data.Aeson (FromJSON (..), ToJSON (..), genericToJSON, withText)
 import Data.Aeson qualified as Ae
-import Swarm.Language.Pipeline (processTermEither)
-import Swarm.Language.Syntax (Term)
-import Swarm.Language.Syntax.Pattern (Syntax, TSyntax)
+import Data.Text (Text)
+import GHC.Generics (Generic)
+import Swarm.Language.Module (Module (..), ModuleCtx, ModuleImports, ModuleProvenance (..))
+import Swarm.Language.Parser (readNonemptyTerm)
+import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (Raw), SwarmType, Syntax, Term, Unresolvable, sTerm)
 import Swarm.Language.Value (Env, Value (..))
-import Swarm.Pretty (prettyText)
+import Swarm.Pretty (PrettyPrec, prettyText)
 import Swarm.Util.JSON (optionsMinimize)
+import Swarm.Util.Yaml (FromJSONE (..), ParserE, getE, getProvenance, liftE, localE)
 import Witch (into)
 
-instance FromJSON TSyntax where
-  parseJSON = withText "Term" $ either (fail . into @String) return . processTermEither
+instance FromJSON (Term Raw) where
+  parseJSON = withText "Term" $ either (fail . into @String) (pure . view sTerm) . readNonemptyTerm
 
-instance ToJSON TSyntax where
+instance FromJSON (Syntax Raw) where
+  parseJSON = withText "Syntax" $ either (fail . into @String) pure . readNonemptyTerm
+
+-- | Parse a program from a JSON text value, recording the filename it
+--   came from and the raw text along with the parsed syntax.
+parseProgram :: Ae.Value -> ParserE e (Maybe FilePath, Text, Syntax Raw)
+parseProgram v = do
+  prov <- getProvenance
+  liftE $ Ae.withText "program" (\txt -> fmap (prov,txt,) (parseJSON v)) v
+
+instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => ToJSON (Term phase) where
   toJSON = Ae.String . prettyText
 
-instance FromJSON Term where
-  parseJSON = genericParseJSON optionsMinimize
+instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => ToJSON (Syntax phase) where
+  toJSON = Ae.String . prettyText
 
-instance FromJSON Syntax where
-  parseJSON = genericParseJSON optionsMinimize
+deriving instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), ToJSON (ModuleCtx phase), ToJSON (ModuleImports phase), Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => ToJSON (Module phase)
 
-instance ToJSON Term where
-  toJSON = genericToJSON optionsMinimize
+-- | Run a parser requiring a ModuleProvenance, getting the provenance
+--   from the ambient file provenance provided by ParserE itself.
+withModuleProvenance :: ParserE ModuleProvenance a -> ParserE e a
+withModuleProvenance p = do
+  prov <- getProvenance
+  localE (const (maybe NoProvenance FromFile prov)) p
 
-instance ToJSON Syntax where
-  toJSON = genericToJSON optionsMinimize
+instance FromJSONE ModuleProvenance (Module Raw) where
+  parseJSONE v =
+    Module
+      <$> liftE (Just <$> parseJSON @(Syntax Raw) v)
+      <*> pure ()
+      <*> pure ()
+      <*> pure Nothing
+      <*> getE
 
 instance ToJSON Value where
   toJSON = genericToJSON optionsMinimize

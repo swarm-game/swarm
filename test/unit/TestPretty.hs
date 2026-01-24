@@ -20,27 +20,27 @@ testPrettyConst =
     "Language - pretty"
     [ testCase
         "operators #8 - function application unchanged"
-        ( equalPrettyLine "f say" $
+        ( equalPrettyLine @(Term Raw) "f say" $
             TApp (TVar "f") (TConst Say)
         )
     , testCase
         "operators #8 - double function application unchanged"
-        ( equalPrettyLine "f () ()" $
+        ( equalPrettyLine @(Term Raw) "f () ()" $
             TApp (TApp (TVar "f") TUnit) TUnit
         )
     , testCase
         "operators #8 - embrace operator parameter"
-        ( equalPrettyLine "f (==)" $
+        ( equalPrettyLine @(Term Raw) "f (==)" $
             TApp (TVar "f") (TConst Eq)
         )
     , testCase
         "operators #8 - unary negation"
-        ( equalPrettyLine "-3" $
+        ( equalPrettyLine @(Term Raw) "-3" $
             TApp (TConst Neg) (TInt 3)
         )
     , testCase
         "operators #8 - double unary negation"
-        ( equalPrettyLine "-(-1)" $
+        ( equalPrettyLine @(Term Raw) "-(-1)" $
             TApp (TConst Neg) $
               TApp (TConst Neg) (TInt 1)
         )
@@ -85,12 +85,12 @@ testPrettyConst =
         )
     , testCase
         "pairs #225 - nested pairs are printed right-associative"
-        ( equalPrettyLine "(1, 2, 3)" $
+        ( equalPrettyLine @(Term Raw) "(1, 2, 3)" $
             TPair (TInt 1) (TPair (TInt 2) (TInt 3))
         )
     , testCase
         "type ascription"
-        ( equalPrettyLine "1 : Int" $
+        ( equalPrettyLine @(Term Raw) "1 : Int" $
             TAnnotate (TInt 1) (mkTrivPoly TyInt)
         )
     , testCase
@@ -100,9 +100,9 @@ testPrettyConst =
               "m"
               Nothing
               ( TConst Case
-                  :$: STerm (TVar "m")
-                  :$: STerm (TLam "x" Nothing (mkOp' Add (TVar "x") (TInt 1)))
-                  :$: STerm (TLam "y" Nothing (mkOp' Mul (TVar "y") (TInt 2)))
+                  :$: RTerm (TVar "m")
+                  :$: RTerm (TLam "x" Nothing (mkOp' Add (TVar "x") (TInt 1)))
+                  :$: RTerm (TLam "y" Nothing (mkOp' Mul (TVar "y") (TInt 2)))
               )
         )
     , testGroup
@@ -195,13 +195,13 @@ testPrettyConst =
     , testGroup
         "tydef"
         [ testCase "tydef alias" $
-            equalPrettyLine "tydef X = Int end" $
+            equalPrettyLine @(Term Raw) "tydef X = Int end" $
               TTydef "X" (mkTrivPoly TyInt) Nothing (TConst Noop)
         , testCase "tydef Maybe" $
-            equalPrettyLine "tydef Maybe a = Unit + a end" $
+            equalPrettyLine @(Term Raw) "tydef Maybe a = Unit + a end" $
               TTydef "Maybe" (mkQPoly (TyUnit :+: TyVar "a")) Nothing (TConst Noop)
         , testCase "tydef multi-arg" $
-            equalPrettyLine "tydef Foo a b c d = Unit + ((a * b) + ((c -> d) * a)) end" $
+            equalPrettyLine @(Term Raw) "tydef Foo a b c d = Unit + ((a * b) + ((c -> d) * a)) end" $
               TTydef
                 "Foo"
                 ( mkQPoly
@@ -210,7 +210,7 @@ testPrettyConst =
                 Nothing
                 (TConst Noop)
         , testCase "consecutive tydef" $
-            equalPrettyLine "tydef X = Int end\n\ntydef Y = Bool end" $
+            equalPrettyLine @(Term Raw) "tydef X = Int end\n\ntydef Y = Bool end" $
               TTydef "X" (mkTrivPoly TyInt) Nothing (TTydef "Y" (mkTrivPoly TyBool) Nothing (TConst Noop))
         ]
     , testGroup

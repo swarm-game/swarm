@@ -19,6 +19,7 @@ import Swarm.Game.State (GameState, landscape, robotInfo)
 import Swarm.Game.State.Robot (viewCenter)
 import Swarm.Game.Universe (planar)
 import Swarm.Game.World.Render
+import Swarm.Language.Syntax (Phase (..))
 import Swarm.Util.Content (getTerrainEntityColor)
 import Swarm.Util.OccurrenceEncoder
 
@@ -29,7 +30,7 @@ data GridResponse = GridResponse
   deriving (Generic, ToJSON)
 
 getCellGrid ::
-  Scenario ->
+  Scenario Elaborated ->
   GameState ->
   AreaDimensions ->
   CellGrid

@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -8,12 +9,14 @@ module Swarm.Game.Scenario.Objective.Validation where
 
 import Control.Lens (view, (^.))
 import Control.Monad (forM_, unless)
+import Data.BoolExpr (Signed (..))
 import Data.Foldable (for_, toList)
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Data.Text qualified as T
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
+import Swarm.Language.Phase (Phase (Raw))
 import Swarm.Util (failT, quote)
 import Swarm.Util.Graph
 
@@ -26,8 +29,8 @@ import Swarm.Util.Graph
 -- 2. Ensuring that the graph of dependencies is acyclic.
 validateObjectives ::
   MonadFail m =>
-  [Objective] ->
-  m [Objective]
+  [Objective Raw] ->
+  m [Objective Raw]
 validateObjectives objectives = do
   for_ objectives $ \x -> forM_ (x ^. objectivePrerequisite) $ \p ->
     let refs = Set.fromList $ toList $ logic p
@@ -41,9 +44,14 @@ validateObjectives objectives = do
             ]
 
   either (fail . T.unpack) return $
-    failOnCyclicGraph "Prerequisites" (fromMaybe "N/A" . view objectiveId) edges
+    failOnCyclicGraph "Prerequisites" objectiveIdToText edges
 
   return objectives
  where
-  edges = makeGraphEdges objectives
+  edges = map (\(_, v, vs) -> (v, vs)) $ makeGraphEdges objectives
   allIds = Set.fromList $ mapMaybe (view objectiveId) objectives
+
+  objectiveIdToText = \case
+    Label (Positive l) -> l
+    Label (Negative l) -> l
+    Ordinal _ -> "N/A"

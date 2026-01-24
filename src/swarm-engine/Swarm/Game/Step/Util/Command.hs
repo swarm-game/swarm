@@ -56,6 +56,7 @@ import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability
+import Swarm.Language.Module (Module)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Requirements.Type qualified as R
 import Swarm.Language.Syntax
@@ -90,14 +91,14 @@ data GrabbingCmd
 -- robot's inventory, we must be careful that it is executed exactly
 -- once per command.
 ensureCanExecute ::
-  ( Has (State Robot) sig m
+  ( Has (State (Robot Instantiated)) sig m
   , Has (State GameState) sig m
   , Has (Throw Exn) sig m
   ) =>
   Const ->
   m ()
 ensureCanExecute c =
-  gets @Robot (constCapsFor c) >>= mapM_ \cap -> do
+  gets @(Robot Instantiated) (constCapsFor c) >>= mapM_ \cap -> do
     isPrivileged <- isPrivilegedBot
     -- Privileged robots can execute commands regardless
     -- of equipped devices, and without expending
@@ -110,7 +111,7 @@ ensureCanExecute c =
         Just rawCosts -> payExerciseCost c rawCosts
 
 payExerciseCost ::
-  ( Has (State Robot) sig m
+  ( Has (State (Robot Instantiated)) sig m
   , Has (State GameState) sig m
   , Has (Throw Exn) sig m
   ) =>
@@ -171,6 +172,7 @@ verbedGrabbingCmd = \case
 --   of a robot.
 -- Also implements teleportation by portals.
 updateRobotLocation ::
+  forall sig m.
   (HasRobotStepState sig m) =>
   Cosmic Location ->
   Cosmic Location ->
@@ -191,6 +193,7 @@ updateRobotLocation oldLoc newLoc
       markDirty oldLoc
       markDirty newLoc
  where
+  applyPortal :: Cosmic Location -> m (Cosmic Location)
   applyPortal loc = do
     lms <- use $ landscape . worldNavigation
     let maybePortalInfo = M.lookup loc $ portals lms
@@ -214,7 +217,7 @@ onTarget rid act = do
     False -> do
       mtgt <- use (robotInfo . robotMap . at rid)
       forM_ mtgt $ \tgt -> do
-        tgt' <- execState @Robot tgt act
+        tgt' <- execState @(Robot Instantiated) tgt act
         if tgt' ^. selfDestruct
           then deleteRobotAndFlag rid
           else zoomRobots $ robotMap . ix rid .= tgt'
@@ -265,7 +268,7 @@ grantAchievement a = do
 --   constant.  Right now, the only difference is whether the robot is
 --   heavy or not when executing the 'Swarm.Language.Syntax.Move' command, but there might
 --   be other exceptions added in the future.
-constCapsFor :: Const -> Robot -> Maybe Capability
+constCapsFor :: Const -> Robot Instantiated -> Maybe Capability
 constCapsFor Move r
   | r ^. robotHeavy = Just CMoveHeavy
 constCapsFor Backup r
@@ -390,7 +393,7 @@ withExceptions s k m = do
     Right a -> return a
 
 -- | Print some text via the robot's log.
-traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => RobotLogSource -> Severity -> Text -> m LogEntry
+traceLog :: (Has (State GameState) sig m, Has (State (Robot Instantiated)) sig m) => RobotLogSource -> Severity -> Text -> m LogEntry
 traceLog source sev msg = do
   m <- createLogEntry source sev msg
   robotLog %= (Seq.|> m)
@@ -421,7 +424,7 @@ formatDevices = T.intercalate " or " . map (^. entityName) . S.toList
 --   This is the more generic version used both for (recorded) said
 --   messages and normal logs.
 createLogEntry ::
-  (Has (State GameState) sig m, Has (State Robot) sig m) =>
+  (Has (State GameState) sig m, Has (State (Robot Instantiated)) sig m) =>
   RobotLogSource ->
   Severity ->
   Text ->
@@ -449,7 +452,7 @@ updateWorld c (ReplaceEntity loc eThen down) = do
     else updateEntityAt loc $ const down
 
 applyRobotUpdates ::
-  (Has (State GameState) sig m, Has (State Robot) sig m) =>
+  (Has (State GameState) sig m, Has (State (Robot Instantiated)) sig m) =>
   [RobotUpdate] ->
   m ()
 applyRobotUpdates =
@@ -515,7 +518,7 @@ seedProgram ::
   Integer ->
   -- | entity to place
   EntityName ->
-  TSyntax
+  Module Elaborated
 seedProgram minTime randTime seedlingCount seedlingRadius thing =
   [tmQ|
     def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
@@ -585,7 +588,7 @@ addAsphyxiateBot ts loc =
 --   we detect that the base has the life support system re-equipped,
 --   stop the countdown and self-destruct.  Otherwise, at the end of
 --   the countdown, destroy the base.
-asphyxiateProg :: TSyntax
+asphyxiateProg :: Module Elaborated
 asphyxiateProg =
   [tmQ|
     def countdown : Int -> Cmd Unit = \n.

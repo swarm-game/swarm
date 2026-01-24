@@ -13,6 +13,7 @@ module Swarm.Language.Parser.Core (
   defaultParserConfig,
   antiquoting,
   languageVersion,
+  importLoc,
 
   -- * Comment parsing state
   WSState (..),
@@ -39,11 +40,11 @@ import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Void (Void)
 import Language.Haskell.TH qualified as TH
-import Swarm.Language.Syntax (Comment)
+import Swarm.Language.Syntax (Comment, ImportLoc, locToFilePath)
+import Swarm.Language.Syntax.Import (ImportPhase (Resolved))
 import Text.Megaparsec hiding (runParser, runParser')
 import Text.Megaparsec qualified as MP
 import Text.Megaparsec.State (initialPosState, initialState)
-import Witch (from)
 
 ------------------------------------------------------------
 -- Custom parser state
@@ -66,6 +67,7 @@ data LanguageVersion = SwarmLang0_7 | SwarmLangLatest
 data ParserConfig = ParserConfig
   { _antiquoting :: Antiquoting
   , _languageVersion :: LanguageVersion
+  , _importLoc :: Maybe (ImportLoc Resolved)
   }
 
 makeLenses ''ParserConfig
@@ -75,6 +77,7 @@ defaultParserConfig =
   ParserConfig
     { _antiquoting = DisallowAntiquoting
     , _languageVersion = SwarmLangLatest
+    , _importLoc = Nothing
     }
 
 -- | Miscellaneous state relating to parsing whitespace + comments
@@ -116,7 +119,7 @@ runParser = runParser' defaultParserConfig
 --   'ParserConfig'.
 runParser' :: ParserConfig -> Parser a -> Text -> Either ParserError (a, Seq Comment)
 runParser' cfg p t =
-  (\pt -> parse pt "" t)
+  (\pt -> parse pt (maybe "" locToFilePath (cfg ^. importLoc)) t)
     . fmap (second (^. comments))
     . flip runStateT initWSState
     . flip runReaderT cfg
@@ -125,7 +128,7 @@ runParser' cfg p t =
 -- | A utility for running a parser in an arbitrary 'MonadFail' (which
 --   is going to be the TemplateHaskell 'Language.Haskell.TH.Q' monad --- see
 --   "Swarm.Language.Parser.QQ"), with a specified source position.
-runParserTH :: (Monad m, MonadFail m) => TH.Loc -> Parser a -> String -> m a
+runParserTH :: (Monad m, MonadFail m) => TH.Loc -> Parser a -> Text -> m a
 runParserTH loc p s =
   either (fail . errorBundlePretty) (return . fst)
     . snd
@@ -138,9 +141,9 @@ runParserTH loc p s =
   (line, col) = TH.loc_start loc
   initState :: State Text Void
   initState =
-    (initialState file (from s))
+    (initialState file s)
       { statePosState =
-          (initialPosState file (from s))
+          (initialPosState file s)
             { pstateSourcePos = SourcePos file (mkPos line) (mkPos col)
             }
       }

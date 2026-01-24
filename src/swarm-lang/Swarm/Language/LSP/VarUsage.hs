@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -14,6 +15,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Language.LSP.Protocol.Types qualified as J
 import Swarm.Language.Parser.Util qualified as P
+import Swarm.Language.Phase
 import Swarm.Language.Syntax
 import Swarm.Util qualified as U
 
@@ -48,7 +50,7 @@ toErrPos code (VarUsage (Loc loc v) scope) = do
   -- A leading underscore will suppress the unused variable warning
   guard $ not $ "_" `T.isPrefixOf` v
   rangePair <- case loc of
-    SrcLoc s e -> Just (s, e)
+    SrcLoc _ s e -> Just (s, e)
     _ -> Nothing
   let (start, end) = P.getLocRange code rangePair
       ((startLine, startCol), (endLine, endCol)) = (minusOne start, minusOne end)
@@ -76,7 +78,7 @@ checkOccurrences ::
   BindingSites ->
   LocVar ->
   BindingType ->
-  [Syntax] ->
+  [Syntax Raw] ->
   Usage
 checkOccurrences bindings lc@(Loc loc v) declType childSyntaxes =
   Usage childUsages $ missing <> deeperMissing
@@ -90,7 +92,7 @@ checkOccurrences bindings lc@(Loc loc v) declType childSyntaxes =
 -- Aggregates unused bindings as we return from each layer.
 getUsage ::
   BindingSites ->
-  Syntax ->
+  Syntax Raw ->
   Usage
 getUsage bindings (CSyntax _pos t _comments) = case t of
   TVar v -> Usage myUsages mempty
@@ -110,10 +112,11 @@ getUsage bindings (CSyntax _pos t _comments) = case t of
     Just v -> checkOccurrences bindings v Bind [s1, s2]
     Nothing -> getUsage bindings s1 <> getUsage bindings s2
   SDelay s -> getUsage bindings s
-  SRcd m -> foldMap (\(Loc _ x, mt) -> maybe (getUsage bindings (STerm (TVar x))) (getUsage bindings) mt) m
+  SRcd m -> foldMap (\(Loc _ x, mt) -> maybe (getUsage bindings (RTerm (TVar x))) (getUsage bindings) mt) m
   SProj s _ -> getUsage bindings s
   SAnnotate s _ -> getUsage bindings s
   SSuspend s -> getUsage bindings s
+  SImportIn _ s -> getUsage bindings s
   SParens s -> getUsage bindings s
   -- Explicitly enumerate the cases with no variables, instead of a
   -- catch-all, so that we get a warning when adding new constructors.

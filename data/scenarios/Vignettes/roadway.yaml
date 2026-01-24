@@ -24,7 +24,7 @@ robots:
     inventory:
       - [1, bit (0)]
     program: |
-      run "data/scenarios/Vignettes/_roadway/drone.sw"
+      import "_roadway/drone"; go
   - name: stoplight
     system: true
     display:
@@ -36,7 +36,7 @@ robots:
     inventory:
       - [1, bit (0)]
     program: |
-      run "data/scenarios/Vignettes/_roadway/coordinator.sw"
+      import "_roadway/coordinator"; go
 version: 1
 world:
   palette:
