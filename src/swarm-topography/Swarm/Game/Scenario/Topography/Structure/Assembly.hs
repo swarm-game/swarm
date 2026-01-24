@@ -36,7 +36,7 @@ import Swarm.Game.Scenario.Topography.Structure.Named
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Language.Syntax.Direction (directionJsonModifier)
-import Swarm.Util (commaList, quote)
+import Swarm.Util (commaList, quote, (?))
 import Swarm.Util.Graph (failOnCyclicGraph)
 import Prelude hiding (Foldable (..))
 
@@ -158,17 +158,17 @@ mergeStructures graph = mergedMap
   -- We don't expect for the lookup of p in graph to fail, but filter out any failures
   -- to avoid using a partial function
 
-  toMerged path ann = foldl' overlaySingleStructure' initialMerged toPlaceMerged
+  toMerged path ann = foldl' overlaySingleStructure initialMerged toPlaceMerged
    where
     toPlace = pathPlacements ann
-    toPlaceMerged = map (\(PathPlacement p pose) -> (mergedMap ML.!? p, pose)) toPlace
-
-    -- In order to avoid using a partial map lookup function in toPlaceMerged, we use
-    -- this variant of overlaySingleStructure which does nothing if the first component
-    -- of the pair to be merged is Nothing.  However, if we ever actually get Nothing
-    -- here, it is a bug!
-    overlaySingleStructure' ms (Nothing, _) = ms
-    overlaySingleStructure' ms (Just ms', p) = overlaySingleStructure ms (ms', p)
+    toPlaceMerged = map (\(PathPlacement p pose) -> (foo p, pose)) toPlace
+    foo p =
+      (mergedMap ML.!? p)
+        -- This use of error is OK, since: (1) it should never happen
+        -- unless there is a bug, and (2) if there is a bug, it will
+        -- only cause a crash while validating a scenario, not while
+        -- in the middle of active gameplay.
+        ? error ("Could not find p " <> show p <> " in graph while merging structures!")
 
     parentage = maybe Root (WithParent . fst) (uncons path)
     struct = structure . namedStructure $ ann

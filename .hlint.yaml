@@ -45,6 +45,7 @@
       , Swarm.Doc.Gen
       , Swarm.Web.Tournament
       , TestLanguagePipeline
+      , Swarm.Game.Scenario.Topography.Structure.Assembly
       ]
     }
   - {name: readFile, within: [Lib, Main]}  # standalone-topography:Lib, tournament-host:Main
