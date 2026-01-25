@@ -2,7 +2,11 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
--- Description: Global cache effects
+--
+-- Description: Global cache effect wrapper around
+--   "Swarm.Util.GlobalCache".  It uses IO under the hood, but with an
+--   effect we can be specific about the fact that we are using the
+--   cache and not doing arbitrary I/O.
 module Swarm.Effect.Cache (
   Cache,
   lookup,
