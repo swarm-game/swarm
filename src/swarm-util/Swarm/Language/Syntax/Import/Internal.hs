@@ -11,7 +11,12 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Data types to represent Swarm-lang import locations.  XXX exports constructors
+-- Data types to represent Swarm-lang import locations.  This internal
+-- module exports all constructors, including the constructor for
+-- 'ImportDir', which is not exported from
+-- "Swarm.Language.Syntax.Import" in order to guarantee internal
+-- invariants.  Do not use this module directly unless you know what
+-- you are doing and have a good reason.
 module Swarm.Language.Syntax.Import.Internal where
 
 import Data.Aeson (FromJSON, ToJSON, ToJSONKey)
