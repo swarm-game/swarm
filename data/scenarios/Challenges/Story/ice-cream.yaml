@@ -71,7 +71,6 @@ robots:
       import "_ice-cream/customer"; runScript
 solution: |
   import "_ice-cream/solution"; runSolution 2712
-
 entities:
   - name: scoop
     display:
