@@ -1,3 +1,5 @@
-def id = \t. t end
+def id : a -> a = \t. t end
 
-def compose = \f. \g. \x. f (g x) end
+def compose : (b -> c) -> (a -> b) -> a -> c =
+  \f. \g. \x. f (g x)
+end
