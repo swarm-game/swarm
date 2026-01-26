@@ -1395,31 +1395,33 @@ test-suite swarm-integration
   default-language: GHC2021
   ghc-options: -threaded
 
-test-suite tournament-host
-  import:
-    stan-config, common, ghc2024-extensions,
-    SHA,
-    base,
-    bytestring,
-    http-client,
-    http-types,
-    nonempty-containers,
-    tasty,
-    tasty-hunit,
-    warp,
+-- See https://github.com/swarm-game/swarm/issues/2681
+--
+-- test-suite tournament-host
+--   import:
+--     stan-config, common, ghc2024-extensions,
+--     SHA,
+--     base,
+--     bytestring,
+--     http-client,
+--     http-types,
+--     nonempty-containers,
+--     tasty,
+--     tasty-hunit,
+--     warp,
 
-  main-is: Main.hs
-  type: exitcode-stdio-1.0
-  build-depends:
-    swarm:swarm-engine,
-    swarm:swarm-tournament,
+--   main-is: Main.hs
+--   type: exitcode-stdio-1.0
+--   build-depends:
+--     swarm:swarm-engine,
+--     swarm:swarm-tournament,
 
-  hs-source-dirs: test/tournament-host
-  ghc-options:
-    -hiedir=.hie/test/tournament-host
+--   hs-source-dirs: test/tournament-host
+--   ghc-options:
+--     -hiedir=.hie/test/tournament-host
 
-  default-language: GHC2021
-  ghc-options: -threaded
+--   default-language: GHC2021
+--   ghc-options: -threaded
 
 test-suite standalone-topography
   import:
