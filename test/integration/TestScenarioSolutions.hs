@@ -306,7 +306,7 @@ customTimeoutScenarios =
     , "Challenges/Algorithmic/dimsum" ==> 10
     , "Challenges/Algorithmic/gallery" ==> 20
     , "Challenges/Mechanics/telephone" ==> 20
-    , "Challenges/Story/flower-count" ==> 40
+    , "Challenges/Story/flower-count" ==> 30
     , "Challenges/Mechanics/photocopier" ==> 40
     , "Challenges/Mazes/invisible_maze" ==> 2
     , "Challenges/Story/Ranching/beekeeping" ==> 60
@@ -317,12 +317,11 @@ customTimeoutScenarios =
     , "Testing/479-atomic-race" ==> 2
     , "Testing/479-atomic" ==> 5
     , "Testing/490-harvest" ==> 5
-    , "Testing/562-lodestone" ==> 5
+    , "Testing/562-lodestone" ==> 2
     , "Testing/1024-sand" ==> 2
     , "Testing/1533-sow-command" ==> 10
     , "Testing/836-pathfinding/836-no-path-exists2" ==> 10
     , "Testing/836-pathfinding/836-automatic-waypoint-navigation" ==> 3
-    , "Testing/144-subworlds/subworld-located-robots" ==> 3
     ]
  where
   p ==> n = let p' = normalizePath p in scenarioTest p' (Timed (isTutorial p') (Sec n))

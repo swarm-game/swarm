@@ -17,6 +17,10 @@ end
 
 def add : Cmd Int -> Cmd Int -> Cmd Int = liftA2 (\x. \y. x + y) end
 
+def for : Int -> (Int -> Cmd a) -> Cmd (List a) = \n. \k.
+  if (n == 0) {pure (inl ())} {a <- k n; b <- for (n-1) k; pure (inr (a,b))}
+end
+
 def countCell : Cmd Int =
   s <- scan down;
   pure $ case s
@@ -52,6 +56,7 @@ def acquire : Cmd Text =
 end
 
 def countAndReport : Int * Int -> Int * Int -> Cmd Unit = \size. \ll.
+  log "Counting...";
   cnt <- countFlowers size ll;
   goto (0,0);
   paper <- acquire;

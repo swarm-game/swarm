@@ -5,6 +5,7 @@ import "~swarm/lib/control"
 def waitFor = \e.\t.
   watch down;
   wait 100;
+  require "branch predictor";     // #1916?
   ifC (ishere e) t {waitFor e t}
 end;
 

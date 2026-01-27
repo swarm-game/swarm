@@ -10,7 +10,7 @@ objectives:
       j <- robotnamed "judge";
       as j {has "flower"}
 solution: |
-  import "_subworld-located-robots/solution"
+  import "_subworld-located-robots/solution"; go
 attrs:
   - name: portal_in
     fg: "#ff9a00"
