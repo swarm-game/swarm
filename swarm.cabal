@@ -1409,20 +1409,16 @@ test-suite swarm-integration
 --     tasty,
 --     tasty-hunit,
 --     warp,
-
 --   main-is: Main.hs
 --   type: exitcode-stdio-1.0
 --   build-depends:
 --     swarm:swarm-engine,
 --     swarm:swarm-tournament,
-
 --   hs-source-dirs: test/tournament-host
 --   ghc-options:
 --     -hiedir=.hie/test/tournament-host
-
 --   default-language: GHC2021
 --   ghc-options: -threaded
-
 test-suite standalone-topography
   import:
     stan-config, common, ghc2024-extensions,
