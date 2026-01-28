@@ -1,4 +1,4 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+import "~swarm/lib/control"
 
 def processTree =
     grab;
@@ -206,12 +206,13 @@ def collectWool =
     forever sweepAreaForWool;
     end;
 
-
-grabTrees;
-makeHarvester;
-buildFence;
-gatherClover;
-plantCloverField;
-doN 3 harvestCloverField;
-distributeCloverInPaddock;
-collectWool;
+def go =
+  grabTrees;
+  makeHarvester;
+  buildFence;
+  gatherClover;
+  plantCloverField;
+  doN 3 harvestCloverField;
+  distributeCloverInPaddock;
+  collectWool;
+end

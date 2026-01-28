@@ -120,9 +120,9 @@ robots:
       attr: pig
       invisible: false
     program: |
-      run "scenarios/Challenges/Story/Ranching/_capture/opponent.sw"
+      import "_capture/opponent"; go
 solution: |
-  run "scenarios/Challenges/Story/Ranching/_capture/solution.sw"
+  import "_capture/solution"; go
 entities:
   - name: monolith
     display:

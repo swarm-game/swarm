@@ -1,13 +1,5 @@
-def forever : Cmd Unit -> Cmd Unit = \c. c ; forever c end
-
-def repeat : Int -> Cmd Unit -> Cmd Unit =
-  \n. \c. if (n == 0) {} {c ; repeat (n-1) c}
-end
-
-def elif = \t. \then. \else. {if t then else} end
-def else = \t. t end
-
-def abs = \n. if (n < 0) {-n} {n} end
+import "~swarm/lib/control"
+import "~swarm/lib/arith"
 
 def randdir : Cmd Dir =
   d <- random 4;
@@ -28,7 +20,7 @@ def wander =
   d <- randdir;
   turn d;
   dist <- random 2;
-  try {repeat dist move} {};
+  try {doN dist move} {};
   r <- random 5;
   if (r == 0) { say "meow" } {}
 end
@@ -73,5 +65,3 @@ def startCat =
   w <- chooseWait;
   cat startCat n w
 end;
-
-startCat

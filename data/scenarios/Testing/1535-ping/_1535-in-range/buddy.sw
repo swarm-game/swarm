@@ -1,4 +1,4 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+import "~swarm/lib/control"
 
 def waitForMap =
     mapPieceCount <- count "map piece";
@@ -37,5 +37,3 @@ def go =
     waitForMap;
     goToTreasure 10 40;
     end;
-
-go;

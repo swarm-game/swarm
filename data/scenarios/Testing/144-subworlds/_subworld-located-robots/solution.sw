@@ -1,10 +1,10 @@
+import "~swarm/lib/control"
 
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+def go =
+  doN 3 move;
+  f <- grab;
 
-doN 3 move;
-f <- grab;
-
-doN 5 move;
-r <- meet;
-case r pure $ \j. give j f;
-
+  doN 5 move;
+  r <- meet;
+  case r pure $ \j. give j f;
+end

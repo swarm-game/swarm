@@ -95,9 +95,9 @@ robots:
     display:
       invisible: true
     program: |
-      run "scenarios/Challenges/Logic/_lights-out/assistant.sw";
+      import "_lights-out/assistant"; go
 solution: |
-  run "scenarios/Challenges/Logic/_lights-out/solution.sw"
+  import "_lights-out/solution"; go
 entities:
   - name: pending-off
     display:

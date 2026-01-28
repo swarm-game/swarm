@@ -1,6 +1,4 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
-
-def forever = \c. c; forever c; end;
+import "~swarm/lib/control"
 
 def pollUntilHas = \item.
     itemInInventory <- has item;
@@ -90,5 +88,3 @@ def go =
     recurseUntilDepth 8;
     forever makeBriquette;
     end;
-
-go;

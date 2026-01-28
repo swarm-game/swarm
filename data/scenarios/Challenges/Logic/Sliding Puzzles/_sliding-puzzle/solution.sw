@@ -10,49 +10,10 @@ In particular, the Quad-tree search code should probably
 be extracted into its own demo scenario.
 */
 
-def elif = \t. \then. \else. {if t then else} end
-def else = \t. t end
-
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
-
-def signum = \x.
-    if (x < 0) {-1}
-    $ elif (x > 0) {1}
-    $ else {0};
-    end;
-
-def mod : Int -> Int -> Int = \i.\m.
-    i - m * (i / m);
-    end
-
-def abs = \n. if (n < 0) {-n} {n} end;
-
-def λmatch = \f. \p. match p f end
-
-def sumTuples = λmatch \t11. \t12. λmatch \t21. \t22.
-    (t11 + t21, t12 + t22);
-    end;
-
-def mapTuple = \f. λmatch \a. \b. (f a, f b) end;
-
-def getOrdinal : Text -> Cmd Int = \item.
-    count $ item ++ "-ordinal";
-    end;
-
-/** One-based index
-*/
-def getLetterEntityByIndex = \idx.
-    let letter = toChar $ idx - 1 + charAt 0 "a" in
-    letter ++ "-tile";
-    end;
-
-def negateTuple = \t.
-    mapTuple (\x. -x) t;
-    end;
-
-def subtractTuple = \t1. \t2.
-    sumTuples t1 $ negateTuple t2;
-    end;
+import "~swarm/lib/control"
+import "~swarm/lib/arith"
+import "~swarm/lib/tuple"
+import "common"
 
 def getRelativeLocation = \absLoc.
     myloc <- whereami;
@@ -414,5 +375,3 @@ def go = \boardWidth.
 
     moveManually;
     end;
-
-go 3;

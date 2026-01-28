@@ -156,7 +156,7 @@ robots:
       invisible: true
       char: 'T'
     program: |
-      run "scenarios/Challenges/Story/_hackman/teleport_monitor.sw"
+      import "_hackman/teleport_monitor"; monitor
   - name: ghost1
     dir: north
     system: true
@@ -165,7 +165,7 @@ robots:
       char: '∩'
       attr: ghost1
     program: |
-      run "scenarios/Challenges/Story/_hackman/ghost.sw"
+      import "_hackman/ghost"; waitToStart
   - name: ghost2
     dir: north
     system: true
@@ -174,7 +174,7 @@ robots:
       char: '∩'
       attr: ghost2
     program: |
-      run "scenarios/Challenges/Story/_hackman/ghost.sw"
+      import "_hackman/ghost"; waitToStart
   - name: ghost3
     dir: north
     system: true
@@ -183,7 +183,7 @@ robots:
       char: '∩'
       attr: ghost3
     program: |
-      run "scenarios/Challenges/Story/_hackman/ghost.sw"
+      import "_hackman/ghost"; waitToStart
   - name: ghost4
     dir: north
     system: true
@@ -192,7 +192,7 @@ robots:
       char: '∩'
       attr: ghost4
     program: |
-      run "scenarios/Challenges/Story/_hackman/ghost.sw"
+      import "_hackman/ghost"; waitToStart
   - name: fruit_maker
     dir: north
     system: true
@@ -202,7 +202,7 @@ robots:
     inventory:
       - [1, strawberry]
     program: |
-      run "scenarios/Challenges/Story/_hackman/fruit_maker.sw"
+      import "_hackman/fruit_maker"; fruit_maker
 entities:
   - name: pellet
     display:
@@ -260,7 +260,7 @@ recipes:
     required:
       - [1, drill]
 solution: |
-  run "scenarios/Challenges/Story/_hackman/solution.sw"
+  import "_hackman/solution"; go
 known: []
 seed: 0
 world:

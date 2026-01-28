@@ -1,38 +1,6 @@
-def elif = \t. \then. \else. {if t then else} end
-def else = \t. t end
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
-
-def boolToInt = \b.
-    if b {1} {0}
-    end;
-
-// modulus function (%)
-def mod : Int -> Int -> Int = \i.\m.
-  i - m * (i / m)
-end
-
-def isEven = \n.
-    mod n 2 == 0;
-    end
-
-def intersperse = \n. \f2. \f1. if (n > 0) {
-        f1;
-        if (n > 1) {
-            f2;
-        } {};
-        intersperse (n - 1) f2 f1;
-    } {};
-    end;
-
-def λmatch = \f. \p. match p f end
-
-def sumTuples =
-    λmatch \t11. \t12.
-    λmatch \t21. \t22.
-    (t11 + t21, t12 + t22);
-    end;
-
-def mapTuple = \f. λmatch \a. \b. (f a, f b) end;
+import "~swarm/lib/control"
+import "~swarm/lib/arith"
+import "~swarm/lib/tuple"
 
 def replaceWith = \withThis.
     create withThis;
@@ -269,5 +237,3 @@ def go =
     instant {generateGame boardWidth boardHeight};
     observe;
     end;
-
-go;

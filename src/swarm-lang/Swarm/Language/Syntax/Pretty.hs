@@ -33,7 +33,8 @@ import Swarm.Language.Phase (ImportPhaseFor)
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
-import Swarm.Language.Syntax.Import (Anchor, Unresolvable)
+import Swarm.Language.Syntax.Import (Anchor)
+import Swarm.Language.Syntax.Import.Resolve (Unresolvable)
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern (sComments, pattern RTerm)
 import Swarm.Language.Syntax.Util (eraseRaw, unTuple)

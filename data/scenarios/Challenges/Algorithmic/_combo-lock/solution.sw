@@ -60,5 +60,3 @@ def go =
     toLeftEdge;
     grabBitcoin;
     end;
-
-go;

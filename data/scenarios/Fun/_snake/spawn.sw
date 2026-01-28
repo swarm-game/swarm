@@ -31,5 +31,3 @@ def go =
   instant {repeatedlyPlaceApple 20};
   go;
   end;
-
-go;

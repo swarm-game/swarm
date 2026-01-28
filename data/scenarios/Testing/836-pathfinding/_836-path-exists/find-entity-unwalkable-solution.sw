@@ -19,5 +19,3 @@ def followRoute =
     nextDir <- path (inL ()) (inR goalItem);
     case nextDir pure $ goDir goalItem followRoute;
     end;
-
-followRoute;

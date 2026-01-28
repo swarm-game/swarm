@@ -8,16 +8,6 @@
 --
 -- Facilities for stepping the robot CESK machines, /i.e./ the actual
 -- interpreter for the Swarm language.
---
--- TODO (#495): get rid of IO in Swarm.Game.Step
---
--- == Note on the IO:
---
--- The only reason we need @IO@ is so that robots can run programs
--- loaded from files, via the 'Swarm.Language.Syntax.Run' command.
--- This could be avoided by using a hypothetical @import@ command instead and parsing
--- the required files at the time of declaration.
--- See <https://github.com/swarm-game/swarm/issues/495>.
 module Swarm.Game.Step (
   HasGameStepState,
 
@@ -39,7 +29,6 @@ import Control.Carrier.State.Lazy
 import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Error
 import Control.Effect.Lens
-import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (foldM, forM_, unless, when)
 import Data.Bifunctor (first)
@@ -57,7 +46,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Linear (zero)
 import Prettyprinter (pretty)
-import Swarm.Effect as Effect (Metric, Time, getNow)
+import Swarm.Effect as Effect (Cache, Metric, Time, getNow)
 import Swarm.Effect qualified as Effect
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
@@ -79,28 +68,27 @@ import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
 import Swarm.Game.Tick
-import Swarm.Language.Cache
 import Swarm.Language.Capability
 import Swarm.Language.Module (Module, moduleCtx, moduleTerm)
 import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Language.Value
 import Swarm.Language.WithType (WithType (..))
 import Swarm.Log
 import Swarm.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Util hiding (both)
-import Swarm.Util.GlobalCache (lookupCached)
 import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec)
 import Witch (From (from), into)
 import Prelude hiding (lookup)
 
--- | GameState with support for IO and Time effect
+-- | GameState with support for Time, Metric, and Cache effects
 type HasGameStepState sig m =
   ( Has (State GameState) sig m
-  , Has (Lift IO) sig m
   , Has Effect.Time sig m
   , Has Effect.Metric sig m
+  , Has (Effect.Cache (ImportLoc Import.Resolved) (Module Elaborated)) sig m
   )
 
 -- | The main function to do one game tick.
@@ -487,7 +475,7 @@ evaluateCESK cesk = do
 
 runCESK ::
   ( HasRobotStepState sig m
-  , Has (Lift IO) sig m
+  , Has (Cache (ImportLoc Import.Resolved) (Module Elaborated)) sig m
   ) =>
   CESK ->
   m Value
@@ -719,7 +707,7 @@ stepCESK cesk = case cesk of
   In (TSuspend t) e s k -> return $ Out (VSuspend t e) s k
   -- Evaluate the code corresponding to an import.
   In (TImportIn loc t) e s k -> do
-    mmod <- sendIO $ lookupCached moduleCache loc
+    mmod <- Effect.lookup loc
 
     pure $ case mmod of
       -- The import should have already been typechecked at this point, so
@@ -949,7 +937,9 @@ stepCESK cesk = case cesk of
 -- capable of executing any commands; the As command
 -- already requires "God" capability.
 runChildProg ::
-  (HasRobotStepState sig m, Has (Lift IO) sig m) =>
+  ( HasRobotStepState sig m
+  , Has (Cache (ImportLoc Import.Resolved) (Module Elaborated)) sig m
+  ) =>
   Store ->
   Robot Instantiated ->
   Value ->

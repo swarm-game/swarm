@@ -23,5 +23,7 @@ def visitNextWaypoint : (rec l. Unit + (Int * Int) * l) -> (rec l. Unit + (Int *
 
     end;
 
-let wps = waypoints "wp" in
-visitNextWaypoint wps wps;
+def go =
+  let wps = waypoints "wp" in
+  visitNextWaypoint wps wps;
+end

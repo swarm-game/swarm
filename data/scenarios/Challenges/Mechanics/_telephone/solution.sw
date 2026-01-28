@@ -1,21 +1,4 @@
-def x : Int -> Cmd a -> Cmd Unit = \n. \c.
-  if (n == 0) {} {c; x (n-1) c}
-end
-
-def ifC: ∀ a. Cmd Bool -> {Cmd a} -> {Cmd a} -> Cmd a
-  = \test. \then. \else.
-  b <- test;
-  if b then else
-end
-
-def while: ∀ a. Cmd Bool -> {Cmd a} -> Cmd Unit
-  = \test. \body.
-  ifC test {force body; while test body} {}
-end
-
-def for : Int -> (Int -> Cmd a) -> Cmd Unit = \n. \k.
-  if (n == 0) {} {k n; for (n-1) k}
-end
+import "~swarm/lib/control"
 
 def harvestMay =
   e <- isempty;
@@ -23,36 +6,36 @@ def harvestMay =
 end
 
 def harvestTrees =
-  turn back; move; turn left; x 5 move;
+  turn back; move; turn left; doN 5 move;
   turn left;
-  x 5 (x 10 (harvestMay; move); turn back; x 10 move; turn left; move; turn left);
-  turn left; x 10 move; turn right; move
+  doN 5 (doN 10 (harvestMay; move); turn back; doN 10 move; turn left; move; turn left);
+  turn left; doN 10 move; turn right; move
 end
 
 def getWater =
-  turn back; x 3 move; turn left; move;
-  x 32 grab;
-  turn back; move; turn right; x 3 move
+  turn back; doN 3 move; turn left; move;
+  doN 32 grab;
+  turn back; move; turn right; doN 3 move
 end
 
 def getPaper =
   harvestTrees;
   while (has "tree") {make "log"};
-  x 2 (make "board"); make "boat"; equip "boat";
-  getWater; x 4 (make "paper")
+  doN 2 (make "board"); make "boat"; equip "boat";
+  getWater; doN 4 (make "paper")
 end
 
 def scanAt : Int -> Int -> Cmd (Unit + Text) = \h. \v.
-  x h move; turn right; x v move;
+  doN h move; turn right; doN v move;
   s <- scan down;
-  turn back; x v move; turn left; x h move; turn back;
+  turn back; doN v move; turn left; doN h move; turn back;
   pure s
 end
 
 def atTerminal : Cmd a -> Cmd a = \c.
-  x 12 move; turn left; x 2 move;
+  doN 12 move; turn left; doN 2 move;
   a <- c;
-  turn back; x 2 move; turn right; x 12 move; turn back;
+  turn back; doN 2 move; turn right; doN 12 move; turn back;
   pure a
 end
 
@@ -63,9 +46,9 @@ end
 
 def go =
   getPaper;
-  x 2 move; turn left; x 4 move;
-  for 8 (\h.
-    for 4 (\v.
+  doN 2 move; turn left; doN 4 move;
+  for_ 8 (\h.
+    for_ 4 (\v.
       res <- scanAt (h-1) (v-1);
       case res
         (\_. pure ())
@@ -73,5 +56,3 @@ def go =
     )
   )
 end
-
-go;

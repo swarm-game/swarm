@@ -14,7 +14,7 @@ robots:
       invisible: false
       attr: robot
     program: |
-      run "scenarios/Testing/1356-portals/_automatic-waypoint-patrol/program.sw"
+      import "_automatic-waypoint-patrol/program"; go
 known: [flower, boulder]
 world:
   upperleft: [-1, 1]

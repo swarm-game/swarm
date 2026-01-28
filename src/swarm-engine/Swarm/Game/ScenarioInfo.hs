@@ -67,7 +67,7 @@ import Swarm.Failure
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Status
-import Swarm.ResourceLoading (getDataDirSafe, getSwarmSavePath)
+import Swarm.ResourceLoading (getDataDirThrow, getSwarmSavePath)
 import Swarm.Util (Encoding (..), lookupEither, readFileMay)
 import Swarm.Util.Effect (warn, withThrow)
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
@@ -169,7 +169,7 @@ normalizeScenarioPath col p =
         then return path
         else liftIO $ do
           canonPath <- canonicalizePath path
-          eitherDataDir <- runM . runThrow @SystemFailure $ getDataDirSafe Scenarios "." -- no way we got this far without data directory
+          eitherDataDir <- runM . runThrow @SystemFailure $ getDataDirThrow Scenarios "." -- no way we got this far without data directory
           d <- canonicalizePath $ fromRight' eitherDataDir
           let n =
                 stripPrefix (d </> "scenarios") canonPath
@@ -191,7 +191,7 @@ loadScenarios ::
   Bool ->
   m (ScenarioCollection ScenarioInfo)
 loadScenarios scenarioInputs loadTestScenarios = do
-  res <- runThrow @SystemFailure $ getDataDirSafe Scenarios "scenarios"
+  res <- runThrow @SystemFailure $ getDataDirThrow Scenarios "scenarios"
   case res of
     Left err -> do
       warn err

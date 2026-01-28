@@ -142,7 +142,7 @@ import Swarm.Language.Capability
 import Swarm.Language.Syntax (Phase (Raw), Syntax)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Language.Text.Markdown (Document, docToText)
-import Swarm.ResourceLoading (getDataFileNameSafe)
+import Swarm.ResourceLoading (getDataFileNameThrow)
 import Swarm.Util (binTuples, failT, findDup, plural, quote, (?))
 import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Yaml
@@ -643,7 +643,7 @@ loadEntities ::
 loadEntities = do
   let entityFile = "entities.yaml"
       entityFailure = AssetNotLoaded (Data Entities) entityFile
-  fileName <- getDataFileNameSafe Entities entityFile
+  fileName <- getDataFileNameThrow Entities entityFile
   decoded <-
     withThrow (entityFailure . CanNotParseYaml) . (liftEither <=< sendIO) $
       decodeFileEither fileName

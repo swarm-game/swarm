@@ -13,13 +13,14 @@ import Control.Lens (use, (^.))
 import Control.Monad.State (StateT, gets)
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
-import Swarm.Effect (runMetricIO, runTimeIO)
+import Swarm.Effect (runCacheIO, runMetricIO, runTimeIO)
 import Swarm.Game.Robot.Concrete (robotLog)
 import Swarm.Game.State (GameState, messageInfo, robotInfo, winCondition)
 import Swarm.Game.State.Robot (robotMap)
 import Swarm.Game.State.Substate (WinCondition (..), WinStatus (..), messageQueue)
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Tick (TickNumber)
+import Swarm.Language.Cache (moduleCache)
 import Swarm.Log (logToText)
 
 -- | Keep stepping a 'GameState' until completion, returning the
@@ -33,7 +34,7 @@ playUntilWin = do
     Just badErrs -> return $ Left badErrs
     Nothing -> case w of
       WinConditions (Won _ ts) _ -> return $ Right ts
-      _ -> runMetricIO (runTimeIO gameTick) >> playUntilWin
+      _ -> runCacheIO moduleCache (runMetricIO (runTimeIO gameTick)) >> playUntilWin
 
 -- | Extract any bad error messages from robot logs or the global
 --   message queue, where "bad" errors are either fatal errors or

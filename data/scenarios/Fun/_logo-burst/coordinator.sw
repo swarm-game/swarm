@@ -9,4 +9,6 @@ def alternate =
   make "bit (0)";
   end;
 
-forever alternate;
+def go =
+  forever alternate;
+end

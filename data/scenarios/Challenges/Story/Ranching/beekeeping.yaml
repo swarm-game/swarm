@@ -120,9 +120,9 @@ robots:
       char: 'Q'
       attr: bee
     program: |
-      run "scenarios/Challenges/Story/Ranching/_beekeeping/queenbee.sw"
+      import "_beekeeping/queenbee"; go
 solution: |
-  run "scenarios/Challenges/Story/Ranching/_beekeeping/solution.sw"
+  import "_beekeeping/solution"; go
 structures:
   - name: beehive
     recognize: [north]

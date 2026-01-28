@@ -48,5 +48,3 @@ def go =
 
     if amFirst {waitToReceive} {waitToGive};
     end;
-
-go;

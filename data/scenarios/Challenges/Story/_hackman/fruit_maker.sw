@@ -6,5 +6,7 @@ def go =
     } {go};
     end;
 
-go;
-selfdestruct;
+def fruit_maker =
+  go;
+  selfdestruct;
+end

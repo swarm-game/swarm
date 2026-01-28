@@ -15,7 +15,7 @@ objectives:
       j <- robotnumbered 1;
       as j {has "bitcoin"}
 solution: |
-  run "scenarios/Testing/144-subworlds/_subworld-mapped-robots/solution.sw"
+  import "_subworld-mapped-robots/solution"; go
 attrs:
   - name: portal_in
     fg: "#ff9a00"
@@ -62,7 +62,7 @@ robots:
       char: 'J'
       invisible: false
     program: |
-      run "scenarios/Testing/144-subworlds/_subworld-mapped-robots/judges.sw";
+      import "_subworld-mapped-robots/judges"; go
 known: [boulder]
 subworlds:
   - name: underground

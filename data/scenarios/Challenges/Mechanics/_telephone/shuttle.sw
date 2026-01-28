@@ -1,27 +1,8 @@
-def ifC: ∀ a. Cmd Bool -> {Cmd a} -> {Cmd a} -> Cmd a
-  = \test. \then. \else.
-  b <- test;
-  if b then else
-end
-
-def while: ∀ a. Cmd Bool -> {Cmd a} -> Cmd Unit
-  = \test. \body.
-  ifC test {force body; while test body} {}
-end
-
-def forever: ∀ a b. {Cmd a} -> Cmd b = \c. force c; forever c end
-
-def notC : Cmd Bool -> Cmd Bool = \c.
-  b <- c; pure (not b)
-end
-
-def or : Cmd Bool -> Cmd Bool -> Cmd Bool = \c1. \c2.
-  ifC c1 {pure true} {c2}
-end
+import "~swarm/lib/control"
 
 def followTrack : Cmd Unit =
   move;
-  while (or (isHere "track") (isHere "mountain")) { move };
+  while (orC (isHere "track") (isHere "mountain")) { move };
   turn back;
 end
 
@@ -42,6 +23,4 @@ def deliver : Text -> Cmd Unit = \thing.
   };
 end
 
-def go = forever {followTrack; thing <- pickup; deliver thing} end
-
-go;
+def go = forever (followTrack; thing <- pickup; deliver thing) end

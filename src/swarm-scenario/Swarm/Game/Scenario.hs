@@ -109,7 +109,7 @@ import Swarm.Language.Pipeline (Processable (..), processSyntax)
 import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (..), SwarmType, Syntax)
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Pretty (prettyText)
-import Swarm.ResourceLoading (getDataFileNameSafe)
+import Swarm.ResourceLoading (getDataFileNameThrow)
 import Swarm.Util (binTuples, commaList, failT, quote)
 import Swarm.Util.Effect (ignoreWarnings, throwToMaybe, withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)
@@ -424,8 +424,8 @@ getScenarioPath ::
   FilePath ->
   m (Maybe FilePath)
 getScenarioPath scenario = do
-  libScenario <- throwToMaybe @SystemFailure $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario
-  libScenarioExt <- throwToMaybe @SystemFailure $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario <.> "yaml"
+  libScenario <- throwToMaybe @SystemFailure $ getDataFileNameThrow Scenarios $ "scenarios" </> scenario
+  libScenarioExt <- throwToMaybe @SystemFailure $ getDataFileNameThrow Scenarios $ "scenarios" </> scenario <.> "yaml"
   let candidates = catMaybes [Just scenario, libScenarioExt, libScenario]
   listToMaybe <$> sendIO (filterM doesFileExist candidates)
 

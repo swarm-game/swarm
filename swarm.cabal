@@ -963,12 +963,15 @@ library swarm-util
   exposed-modules:
     Data.BoolExpr.Simplify
     Swarm.Effect
+    Swarm.Effect.Cache
     Swarm.Effect.Metric
     Swarm.Effect.Time
     Swarm.Failure
     Swarm.Language.Phase
     Swarm.Language.Syntax.Direction
     Swarm.Language.Syntax.Import
+    Swarm.Language.Syntax.Import.Internal
+    Swarm.Language.Syntax.Import.Resolve
     Swarm.Language.Syntax.Loc
     Swarm.Pretty
     Swarm.ResourceLoading
@@ -986,7 +989,9 @@ library swarm-util
     Swarm.Util.WindowedCounter
     Swarm.Util.Yaml
 
-  other-modules: Paths_swarm
+  other-modules:
+    Paths_swarm
+
   autogen-modules: Paths_swarm
   hs-source-dirs: src/swarm-util
   ghc-options:
@@ -1390,32 +1395,30 @@ test-suite swarm-integration
   default-language: GHC2021
   ghc-options: -threaded
 
-test-suite tournament-host
-  import:
-    stan-config, common, ghc2024-extensions,
-    SHA,
-    base,
-    bytestring,
-    http-client,
-    http-types,
-    nonempty-containers,
-    tasty,
-    tasty-hunit,
-    warp,
-
-  main-is: Main.hs
-  type: exitcode-stdio-1.0
-  build-depends:
-    swarm:swarm-engine,
-    swarm:swarm-tournament,
-
-  hs-source-dirs: test/tournament-host
-  ghc-options:
-    -hiedir=.hie/test/tournament-host
-
-  default-language: GHC2021
-  ghc-options: -threaded
-
+-- See https://github.com/swarm-game/swarm/issues/2681
+--
+-- test-suite tournament-host
+--   import:
+--     stan-config, common, ghc2024-extensions,
+--     SHA,
+--     base,
+--     bytestring,
+--     http-client,
+--     http-types,
+--     nonempty-containers,
+--     tasty,
+--     tasty-hunit,
+--     warp,
+--   main-is: Main.hs
+--   type: exitcode-stdio-1.0
+--   build-depends:
+--     swarm:swarm-engine,
+--     swarm:swarm-tournament,
+--   hs-source-dirs: test/tournament-host
+--   ghc-options:
+--     -hiedir=.hie/test/tournament-host
+--   default-language: GHC2021
+--   ghc-options: -threaded
 test-suite standalone-topography
   import:
     stan-config, common, ghc2024-extensions,

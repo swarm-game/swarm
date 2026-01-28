@@ -137,7 +137,9 @@ def invadeDen =
     doN 2 move;
     end;
 
-eatAllPellets;
-returnToCenter;
-waitToGive;
-invadeDen;
+def go =
+  eatAllPellets;
+  returnToCenter;
+  waitToGive;
+  invadeDen;
+end

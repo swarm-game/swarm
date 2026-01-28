@@ -25,7 +25,7 @@ objectives:
       - |
         **TIP:** writing function definitions at the prompt is annoying.
         You can also put definitions in a `.sw`{=path} file and load it
-        with the `run` command. Check out
+        with the `import`{=snippet} command. Check out
         https://github.com/swarm-game/swarm/tree/main/editors
         for help setting up an external editor with things like
         syntax and error highlighting.

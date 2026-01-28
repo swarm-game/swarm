@@ -46,7 +46,7 @@ robots:
     devices:
       - rattle
     program: |
-      run "scenarios/Fun/_snake/snake.sw"
+      import "_snake/snake"; go ""
   - name: spawn
     dir: north
     system: true
@@ -55,7 +55,7 @@ robots:
     inventory:
       - [100, apple]
     program: |
-      run "scenarios/Fun/_snake/spawn.sw"
+      import "_snake/spawn.sw"; go
 solution: |
   noop
 entities:

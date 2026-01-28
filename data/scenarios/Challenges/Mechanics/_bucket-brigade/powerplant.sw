@@ -1,4 +1,4 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+import "~swarm/lib/control"
 
 def flashLights =
     doN 8 (
@@ -17,4 +17,3 @@ def checkForEnergy = \lastCount.
     checkForEnergy energyCount;
     end;
 
-checkForEnergy 0;

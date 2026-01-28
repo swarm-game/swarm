@@ -31,5 +31,3 @@ def judge =
   numFlowers <- resonate "flower" ((-59,-19),(60,20));
   forever (judgeCount numFlowers);
 end;
-
-judge

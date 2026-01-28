@@ -17,7 +17,7 @@ import Swarm.Game.World.DSL.Parse (parseWExp, runParser)
 import Swarm.Game.World.DSL.Typecheck
 import Swarm.Language.Syntax.Loc (SrcLoc (..))
 import Swarm.Pretty (prettyText)
-import Swarm.ResourceLoading (getDataDirSafe)
+import Swarm.ResourceLoading (getDataDirThrow)
 import Swarm.Util (acquireAllWithExt)
 import Swarm.Util.Effect (withThrow)
 import System.FilePath (dropExtension, takeFileName)
@@ -30,7 +30,7 @@ loadWorlds ::
   TerrainEntityMaps ->
   m WorldMap
 loadWorlds tem = do
-  dir <- getDataDirSafe Worlds "worlds"
+  dir <- getDataDirThrow Worlds "worlds"
   worldFiles <- sendIO $ acquireAllWithExt dir "world"
   ws <- mapM (loadWorld tem) worldFiles
   return . M.fromList $ ws

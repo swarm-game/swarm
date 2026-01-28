@@ -7,6 +7,7 @@ module Swarm.Effect.Time (
   Time,
   getNow,
   measureCpuTimeInSec,
+  getZonedTime,
 
   -- ** Time Carrier
   TimeIOC,
@@ -21,13 +22,15 @@ import Control.Algebra
 import Control.Monad.Trans (MonadIO (liftIO))
 import Data.Functor (($>))
 import Data.Kind (Type)
-import System.CPUTime
+import Data.Time.LocalTime qualified as LT
+import System.CPUTime (getCPUTime)
 import System.Clock (Clock (Monotonic), TimeSpec, getTime, toNanoSecs)
 
 -- | Effect for things related to time
 data Time (m :: Type -> Type) k where
   GetNow :: Time m TimeSpec
   GetCpuTime :: Time m Integer
+  GetZonedTime :: Time m LT.ZonedTime
 
 getNow :: Has Time sig m => m TimeSpec
 getNow = send GetNow
@@ -42,6 +45,9 @@ measureCpuTimeInSec f = do
   pure (elapsedSec, res)
 {-# INLINE measureCpuTimeInSec #-}
 
+getZonedTime :: Has Time sig m => m LT.ZonedTime
+getZonedTime = send GetZonedTime
+
 newtype TimeIOC m a = TimeIOC (m a)
   deriving newtype (Applicative, Functor, Monad, MonadIO)
 
@@ -51,31 +57,34 @@ runTimeIO (TimeIOC m) = m
 
 instance (MonadIO m, Algebra sig m) => Algebra (Time :+: sig) (TimeIOC m) where
   alg hdl sig ctx = case sig of
-    L GetNow -> (<$ ctx) <$> liftIO (System.Clock.getTime System.Clock.Monotonic)
-    L GetCpuTime -> (<$ ctx) <$> liftIO System.CPUTime.getCPUTime
+    L cmd -> case cmd of
+      GetNow -> (<$ ctx) <$> liftIO (System.Clock.getTime System.Clock.Monotonic)
+      GetCpuTime -> (<$ ctx) <$> liftIO System.CPUTime.getCPUTime
+      GetZonedTime -> (<$ ctx) <$> liftIO LT.getZonedTime
     R other -> TimeIOC (alg (runTimeIO . hdl) other ctx)
   {-# INLINE alg #-}
 
-newtype FakeTime m a = FakeTime (TimeSpec -> m a)
+newtype FakeTime m a = FakeTime (TimeSpec -> LT.ZonedTime -> m a)
   deriving (Functor)
 
-runFakeTime :: TimeSpec -> FakeTime m a -> m a
-runFakeTime t (FakeTime act) = act t
+runFakeTime :: TimeSpec -> LT.ZonedTime -> FakeTime m a -> m a
+runFakeTime t zt (FakeTime act) = act t zt
 {-# INLINE runFakeTime #-}
 
 instance Applicative m => Applicative (FakeTime m) where
-  pure = FakeTime . const . pure
+  pure = FakeTime . const . const . pure
   {-# INLINE pure #-}
-  FakeTime f <*> FakeTime a = FakeTime (liftA2 (<*>) f a)
+  FakeTime f <*> FakeTime a = FakeTime ((liftA2 . liftA2) (<*>) f a)
   {-# INLINE (<*>) #-}
 
 instance Monad m => Monad (FakeTime m) where
-  FakeTime a >>= f = FakeTime (\r -> a r >>= runFakeTime r . f)
+  FakeTime a >>= f = FakeTime (\t z -> a t z >>= runFakeTime t z . f)
   {-# INLINE (>>=) #-}
 
 instance (Algebra sig m) => Algebra (Time :+: sig) (FakeTime m) where
-  alg hdl sig ctx = FakeTime $ \fakeTime -> case sig of
-    L GetNow -> pure (ctx $> fakeTime)
-    L GetCpuTime -> pure (ctx $> 1000 * toNanoSecs fakeTime)
-    R other -> alg (runFakeTime fakeTime . hdl) other ctx
+  alg hdl sig ctx = FakeTime $ \t z -> case sig of
+    L GetNow -> pure (ctx $> t)
+    L GetCpuTime -> pure (ctx $> 1000 * toNanoSecs t)
+    L GetZonedTime -> pure (ctx $> z)
+    R other -> alg (runFakeTime t z . hdl) other ctx
   {-# INLINE alg #-}

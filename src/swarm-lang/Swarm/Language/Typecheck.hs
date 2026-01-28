@@ -545,6 +545,8 @@ instance PrettyPrec TypeErr where
       fieldMismatchMsg expFs actFs
     EscapedSkolem x ->
       "Skolem variable" <+> ppr x <+> "would escape its scope"
+    UnboundVar "run" ->
+      "Undefined variable 'run'.  Note that the 'run' command was removed in the 0.9 release.  See https://github.com/swarm-game/swarm/wiki/Updating-from-run-to-import."
     UnboundVar x ->
       "Undefined variable" <+> ppr x
     UnboundType x ->
@@ -1209,7 +1211,6 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Whoami -> [tyQ| Cmd Text |]
   Setname -> [tyQ| Text -> Cmd Unit |]
   Random -> [tyQ| Int -> Cmd Int |]
-  Run -> [tyQ| Text -> Cmd Unit |]
   If -> [tyQ| Bool -> {a} -> {a} -> a |]
   Inl -> [tyQ| a -> a + b |]
   Inr -> [tyQ| b -> a + b |]

@@ -13,7 +13,7 @@ objectives:
         pure (not b)
       } { pure false }
 solution: |
-  run "scenarios/Challenges/Mazes/loopy_maze_sol.sw"
+  import "loopy_maze_sol"; solution
 robots:
   - name: base
     dir: north

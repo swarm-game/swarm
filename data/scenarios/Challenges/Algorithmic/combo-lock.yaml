@@ -48,9 +48,9 @@ robots:
     display:
       invisible: true
     program: |
-      run "scenarios/Challenges/Algorithmic/_combo-lock/setup.sw"
+      import "_combo-lock/setup"; go
 solution: |
-  run "scenarios/Challenges/Algorithmic/_combo-lock/solution.sw"
+  import "_combo-lock/solution"; go
 entities:
   - name: gate
     display:

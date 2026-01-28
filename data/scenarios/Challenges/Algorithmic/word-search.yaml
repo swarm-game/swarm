@@ -50,7 +50,7 @@ robots:
       - [376, capital O]
       - [376, capital W]
     program: |
-      run "scenarios/Challenges/Algorithmic/_word-search/create-puzzle.sw"
+      instant {import "_word-search/create-puzzle"; createPuzzle 25 15}
 solution: |
   // Hard-coded for seed=2:
   def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
@@ -70,7 +70,6 @@ solution: |
   drill down;
   move;
   drill down;
-  // run "scenarios/Challenges/Algorithmic/_word-search/solution.sw"
 entities:
   - name: capital C
     display:

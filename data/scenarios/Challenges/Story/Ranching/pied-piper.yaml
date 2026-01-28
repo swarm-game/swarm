@@ -67,7 +67,7 @@ robots:
     devices:
       - logger
     program: |
-      run "scenarios/Challenges/Story/Ranching/_pied-piper/rat.sw"
+      import "_pied-piper/rat"; rat
     walkable:
       never:
         - ladder
@@ -124,7 +124,7 @@ objectives:
         pure $ l == "tunnel";
       }
 solution: |
-  run "scenarios/Challenges/Story/Ranching/_pied-piper/solution.sw"
+  import "_pied-piper/solution"; go
 entities:
   - name: seed spreader
     display:

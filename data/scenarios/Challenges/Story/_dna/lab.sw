@@ -1,4 +1,4 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+import "~swarm/lib/control"
 
 def waypointByIndexRec : (rec l. Unit + (Int * Int) * l) -> Int -> (Int * Int) = \wps. \idx.
 
@@ -186,5 +186,3 @@ def go =
     turn east;
     go;
     end;
-
-go;

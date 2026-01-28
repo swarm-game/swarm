@@ -1,31 +1,6 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
-def until = \p. \c. q <- p; if q {} {c; until p c} end;
-def while = \p. until (x <- p; pure $ not x) end;
-
-def abs = \n. if (n < 0) {-n} {n} end;
-
-def intersperse = \n. \f2. \f1.
-    if (n > 0) {
-        f1;
-        if (n > 1) {
-            f2;
-        } {};
-        intersperse (n - 1) f2 f1;
-    } {};
-    end;
-
-def λcase = \f. \g. \s. case s f g end
-def λmatch = \f. \p. match p f end
-
-def mapTuple = \f. λmatch \a. \b. (f a, f b) end;
-
-def sumTuples = λmatch \t11. \t12. λmatch \t21. \t22.
-    (t11 + t21, t12 + t22);
-    end;
-
-def negateTuple = \t.
-    mapTuple (\x. -x) t;
-    end;
+import "~swarm/lib/control"
+import "~swarm/lib/arith"
+import "~swarm/lib/tuple"
 
 def getRelativeLocation = \absCurrentLoc. \absDestLoc.
     let negatedLoc = negateTuple absCurrentLoc in
@@ -76,7 +51,7 @@ def tryHarvest = \stashLoc.
         hasSome <- has item;
         harvest;
         if hasSome {} {
-            while isempty $ wait 1;
+            while isempty {wait 1};
             // Grab another one so that our "sentinel condition" won't
             // be invalidated when we go on to place it
             harvest;
@@ -136,14 +111,14 @@ def harvestForCounts = \rowLength. \stashLoc. \sweepCount.
 
     intersperse sweepCount (turnaround right) $
         intersperse 2 (turnaround left) $ doRow stashLoc rowLength;
-    
+
     turnaround right;
     doRow stashLoc rowLength;
     end;
 
 def go = \sweepCount.
     until (has "bell") $ wait 2;
-    
+
     move;
     rowLength <- countLine 0;
     let stashLoc = (rowLength - 1, -2) in
@@ -164,5 +139,3 @@ def go = \sweepCount.
     // Mark goal-checkability sentinel
     place "bell";
     end;
-
-go 3;

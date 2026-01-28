@@ -23,44 +23,7 @@ objectives:
     hidden: true
     optional: true
     condition: |
-      // run "scenarios/Challenges/Story/_blender/apprehension-checker.sw"
-      def hasMetBase = \r.
-          let basename = "base" in
-          x <- as r {whoami};
-          if (x == basename) {
-              pure false;
-          } {
-              mr0 <- as r {meet};
-              case mr0
-                (\_. pure false)
-                (\bot. name <- as bot {whoami}; pure $ name == basename);
-          };
-          end;
-
-      /**
-      Iterates sequentially until
-      encountering an invalid robot index.
-
-      Distinguishes system bots from the base by name.
-      Returns true if a bot has "met" the base.
-      */
-      def anyHasMetBase : Int -> Cmd Bool = \idx.
-
-          try {
-              bot <- robotnumbered idx;
-              intermediate <- hasMetBase bot;
-              let foo = intermediate in
-              let newIdx = idx + 1 in
-              recursiveResult <- anyHasMetBase newIdx;
-              pure $ foo || recursiveResult;
-          } {
-            // Terminates the recursion on the
-            // lowest index at which a robot does not exist
-            pure false;
-          };
-          end;
-
-      anyHasMetBase 1;
+      import "_blender/apprehension-checker"; anyHasMetBase 1
 robots:
   - name: base
     dir: east
@@ -93,7 +56,7 @@ robots:
       char: 'X'
       attr: robot
     program: |
-      run "scenarios/Challenges/Story/_blender/patrol-clockwise.sw"
+      import "_blender/patrol"; patrolCW
   - name: cw_robot_down
     system: true
     dir: south
@@ -102,7 +65,7 @@ robots:
       char: 'X'
       attr: robot
     program: |
-      run "scenarios/Challenges/Story/_blender/patrol-clockwise.sw"
+      import "_blender/patrol"; patrolCW
   - name: ccw_robot
     system: true
     dir: north
@@ -111,7 +74,7 @@ robots:
       char: 'X'
       attr: robot
     program: |
-      run "scenarios/Challenges/Story/_blender/patrol-counter-clockwise.sw"
+      import "_blender/patrol"; patrolCCW
   - name: ccw_robot_down
     system: true
     dir: south
@@ -120,9 +83,9 @@ robots:
       char: 'X'
       attr: robot
     program: |
-      run "scenarios/Challenges/Story/_blender/patrol-counter-clockwise.sw"
+      import "_blender/patrol"; patrolCCW
 solution: |
-  run "scenarios/Challenges/Story/_blender/solution.sw"
+  import "_blender/solution"; navigatePath
 entities:
   - name: granite boulder
     display:

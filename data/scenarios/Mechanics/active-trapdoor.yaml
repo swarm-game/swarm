@@ -49,9 +49,9 @@ robots:
     inventory:
       - [1, boulder]
     program: |
-      run "scenarios/Mechanics/_active-trapdoor/gate.sw"
+      import "_active-trapdoor/gate"; gate
 solution: |
-  run "scenarios/Mechanics/_active-trapdoor/solution.sw"
+  import "_active-trapdoor/solution"; solution
 known: [water, boulder, flower]
 seed: 0
 world:

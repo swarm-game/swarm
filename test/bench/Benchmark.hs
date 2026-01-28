@@ -13,7 +13,7 @@ import Data.Map qualified as M
 import Data.Sequence (Seq)
 import Data.Text qualified as T
 import Data.Tuple.Extra (dupe)
-import Swarm.Effect (runMetricIO, runTimeIO)
+import Swarm.Effect (runCacheIO, runMetricIO, runTimeIO)
 import Swarm.Failure (SystemFailure, simpleErrorHandle)
 import Swarm.Game.CESK (initMachine)
 import Swarm.Game.Cosmetic.Display (defaultRobotDisplay)
@@ -31,6 +31,7 @@ import Swarm.Game.Step (gameTick)
 import Swarm.Game.Terrain (blankTerrainIndex)
 import Swarm.Game.Universe (Cosmic (..), SubworldName (DefaultRootSubworld))
 import Swarm.Game.World (WorldFun (..), newWorld)
+import Swarm.Language.Cache (moduleCache)
 import Swarm.Language.Module (Module)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax
@@ -160,7 +161,7 @@ mkGameState prog robotMaker numRobots = do
 
 -- | Runs numGameTicks ticks of the game.
 runGame :: Int -> GameState -> IO ()
-runGame numGameTicks = evalStateT (replicateM_ numGameTicks . runMetricIO $ runTimeIO gameTick)
+runGame numGameTicks = evalStateT (replicateM_ numGameTicks . runCacheIO moduleCache . runMetricIO $ runTimeIO gameTick)
 
 main :: IO ()
 main = do

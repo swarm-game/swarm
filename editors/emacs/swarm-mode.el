@@ -112,7 +112,6 @@
       "whoami"
       "setname"
       "random"
-      "run"
       "pure"
       "try"
       "print"

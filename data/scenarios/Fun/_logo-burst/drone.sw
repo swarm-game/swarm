@@ -1,10 +1,5 @@
-
-def repeat : Int -> Cmd Unit -> Cmd Unit =
-  \n. \c. if (n == 0) {} {c ; repeat (n-1) c}
-end
-def abs = \n. if (n < 0) {-n} {n} end
-def elif = \t. \then. \else. {if t then else} end
-def else = \t. t end
+import "~swarm/lib/control"
+import "~swarm/lib/arith"
 
 def randdir : Cmd Dir =
   d <- random 4;
@@ -20,7 +15,7 @@ def wander =
   d <- randdir;
   turn d;
   dist <- random 4;
-  try {repeat dist move} {};
+  try {doN dist move} {};
 end;
 
 def disperse =
@@ -45,7 +40,7 @@ def converge = \loc. \currentLoc.
       turn west;
     } {};
   };
-  repeat (abs xDist) move;
+  doN (abs xDist) move;
 
   if (yDist < 0) {
     turn north;
@@ -54,7 +49,7 @@ def converge = \loc. \currentLoc.
       turn south;
     } {};
   };
-  repeat (abs yDist) move;
+  doN (abs yDist) move;
   end;
 
 def go = \loc.
@@ -64,5 +59,7 @@ def go = \loc.
   go loc;
   end;
 
-loc <- whereami;
-go loc;
+def drone =
+  loc <- whereami;
+  go loc;
+end

@@ -1,11 +1,4 @@
-def ifC : Cmd Bool -> {Cmd a} -> {Cmd a} -> Cmd a = \test. \then. \else.
-  b <- test; if b then else
-end
-
-def when : Cmd Bool -> Cmd a -> Cmd Unit = \test. \cmd.
-  b <- test;
-  if b {cmd; pure ()} {}
-end
+import "~swarm/lib/control"
 
 def x2 = \c. c;c end
 def x4 = \c. x2 c; x2 c end
@@ -26,5 +19,3 @@ def copyRow = x8 (copy; move) end
 def copyBlock = x6 (copyRow; turn back; x8 move; turn left; move; turn left) end
 
 def solve = turn right; copyBlock end
-
-solve

@@ -3,7 +3,7 @@ If, at any point, the base is more than two cells from its previous location,
 it must have teleported.
 */
 
-def abs = \n. if (n<0) {-n} {n} end;
+import "~swarm/lib/arith"
 
 def getBasePos =
     as base {whereami};
@@ -20,5 +20,7 @@ def go = \lastBasePos.
     } {go curBasePos};
     end;
 
-curBasePos <- getBasePos;
-go curBasePos;
+def monitor =
+  curBasePos <- getBasePos;
+  go curBasePos;
+end

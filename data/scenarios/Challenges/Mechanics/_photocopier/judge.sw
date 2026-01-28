@@ -1,28 +1,14 @@
-def forever: ∀ a b. {Cmd a} -> Cmd b = \c. force c; forever c end
+import "~swarm/lib/control"
+import "~swarm/lib/list"
 
-def x : Int -> Cmd a -> Cmd Unit = \n. \c.
-  if (n == 0) {} {c; x (n-1) c}
-end
-
-def andC : Cmd (e + Unit) -> Cmd (e + Unit)  -> Cmd (e + Unit) = \c1. \c2.
+def andC : Cmd (e + Unit) -> Cmd (e + Unit) -> Cmd (e + Unit) = \c1. \c2.
   b1 <- c1;
   case b1 (\e. pure (inl e)) (\_. c2)
 end
 
-tydef List a = rec l. Unit + a * l end
-
-def for : Int -> (Int -> Cmd a) -> Cmd (List a) = \n. \k.
-  if (n == 0)
-    { pure $ inl () }
-    { x <- k (n-1);
-      xs <- for (n-1) k;
-      pure (inr (x,xs))
-    }
-end
-
 def readRow : Int -> Cmd (List Bool) = \c.
   r <- for c (\_. s <- isempty; move; pure s);
-  turn back; x c move; turn right; move; turn right;
+  turn back; doN c move; turn right; move; turn right;
   pure r
 end
 
@@ -30,7 +16,7 @@ tydef Rect = List (List Bool) end
 
 def readRect : Int -> Int -> Cmd Rect = \r. \c.
   lst <- for r (\_. readRow c);
-  turn right; x r move; turn left;
+  turn right; doN r move; turn left;
   pure lst
 end
 
@@ -43,11 +29,8 @@ def checkCell : Bool -> Cmd ((Text * Int * Int) + Unit) = \pat.
   )
 end
 
-def λmatch = \f. \p. match p f end
-def λcase = \f. \g. \s. case s f g end
-
 def checkRow : Int -> List Bool -> Cmd ((Text * Int * Int) + Unit) = \c. λcase
-  (\_. turn back; x c move; turn right; move; turn right; pure (inr ()))
+  (\_. turn back; doN c move; turn right; move; turn right; pure (inr ()))
   (λmatch \hd. \tl. andC (checkCell hd) (checkRow c tl))
 end
 
@@ -87,4 +70,4 @@ def judge =
   }
 end
 
-forever {judge};
+def go = forever judge end

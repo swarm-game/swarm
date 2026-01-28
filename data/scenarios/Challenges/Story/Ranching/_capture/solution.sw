@@ -1,19 +1,10 @@
+import "~swarm/lib/control"
+
 /**
 Need to synchronize pushes so that in the same tick
 that the first boulder comes into contact with the
 opponent, there is no escape route.
 */
-
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
-
-def intersperse = \n. \f2. \f1. if (n > 0) {
-        f1;
-        if (n > 1) {
-            f2;
-        } {};
-        intersperse (n - 1) f2 f1;
-    } {};
-    end;
 
 def walkAround = \d1. \d2.
     turn d1;
@@ -108,7 +99,7 @@ def go =
     turn back;
     log "building bots 1!"; // 4,-6
     buildBot right;
-    
+
     // walk around the watched place
     turn right;
     move;
@@ -126,5 +117,3 @@ def go =
     place obj;
     move;
     end;
-
-go;

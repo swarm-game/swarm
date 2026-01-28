@@ -12,7 +12,7 @@ objectives:
         pure $ case itemAhead (\_. false) (\item. item == "water");
       };
 solution: |
-  run "scenarios/Testing/836-pathfinding/_836-path-exists/find-entity-unwalkable-solution.sw";
+  import "_836-path-exists/find-entity-unwalkable-solution"; followRoute
 entities:
   - name: wayfinder
     display:

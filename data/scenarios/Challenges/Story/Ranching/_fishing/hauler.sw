@@ -1,13 +1,5 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
-
-def intersperse = \n. \f2. \f1. if (n > 0) {
-        f1;
-        if (n > 1) {
-            f2;
-        } {};
-        intersperse (n - 1) f2 f1;
-    } {};
-    end;
+import "~swarm/lib/control"
+import "~swarm/lib/list"
 
 def isEnclosureFull : Int * Int -> Cmd Bool = \encl.
     prevLoc <- whereami;
@@ -23,14 +15,6 @@ def isEnclosureFull : Int * Int -> Cmd Bool = \encl.
     teleport self prevLoc;
     pure $ not notFull;
     end;
-
-def λcase = \f. \g. \s. case s f g end
-def λmatch = \f. \p. match p f end
-
-def any : (a -> Cmd Bool) -> (rec l. Unit + a * l) -> Cmd Bool = \p. λcase
-  (\_. pure false)
-  (λmatch \hd. \tl. b <- p hd; if b {pure true} {any p tl})
-end;
 
 def isEitherEnclosureFull =
     enclosures <- structures "rubbish enclosure";
@@ -89,5 +73,3 @@ def go =
     waitUntilEnclosureFull;
     go;
     end;
-
-go;

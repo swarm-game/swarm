@@ -22,7 +22,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Graphics.Vty qualified as V
-import Swarm.Effect (MetricIOC, TimeIOC)
+import Swarm.Effect (CacheIOC, MetricIOC, TimeIOC)
 import Swarm.Effect qualified as Effect
 import Swarm.Failure (SystemFailure)
 import Swarm.Game.CESK (continue)
@@ -36,10 +36,12 @@ import Swarm.Game.Step (finishGameTick)
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
+import Swarm.Language.Cache (moduleCache)
 import Swarm.Language.Capability (Capability (CDebug))
 import Swarm.Language.Module (Module, moduleTerm)
 import Swarm.Language.Pipeline (processSource)
 import Swarm.Language.Syntax hiding (Key)
+import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Language.Value (emptyEnv)
 import Swarm.Pretty
 import Swarm.TUI.Model (
@@ -217,35 +219,37 @@ resetViewport n = do
   vScrollToBeginning n
   hScrollToBeginning n
 
+type ModuleCacheIOC = CacheIOC (ImportLoc Import.Resolved) (Module Elaborated)
+
 zoomWithIO ::
   (MonadState so m, MonadIO m) =>
   Lens' so si ->
-  Fused.StateC si (MetricIOC (TimeIOC (Fused.LiftC IO))) a ->
+  Fused.StateC si (ModuleCacheIOC (MetricIOC (TimeIOC (Fused.LiftC IO)))) a ->
   m a
 zoomWithIO l f = do
   sInner <- use l
-  (sInner', a) <- liftIO . Fused.runM . Effect.runTimeIO . Effect.runMetricIO $ Fused.runState sInner f
+  (sInner', a) <- liftIO . Fused.runM . Effect.runTimeIO . Effect.runMetricIO . Effect.runCacheIO moduleCache $ Fused.runState sInner f
   l .= sInner'
   return a
 
 -- | Modifies the game state using a fused-effect state action.
 zoomGameStateFromAppState ::
   (MonadState AppState m, MonadIO m) =>
-  Fused.StateC GameState (MetricIOC (TimeIOC (Fused.LiftC IO))) a ->
+  Fused.StateC GameState (ModuleCacheIOC (MetricIOC (TimeIOC (Fused.LiftC IO)))) a ->
   m a
 zoomGameStateFromAppState = zoomWithIO $ playState . scenarioState . gameState
 
 -- | Modifies the game state using a fused-effect state action.
 zoomGameStateFromScenarioState ::
   (MonadState ScenarioState m, MonadIO m) =>
-  Fused.StateC GameState (MetricIOC (TimeIOC (Fused.LiftC IO))) a ->
+  Fused.StateC GameState (ModuleCacheIOC (MetricIOC (TimeIOC (Fused.LiftC IO)))) a ->
   m a
 zoomGameStateFromScenarioState = zoomWithIO gameState
 
 -- | Modifies the game state using a fused-effect state action.
 zoomGameStateFromPlayState ::
   (MonadState PlayState m, MonadIO m) =>
-  Fused.StateC GameState (MetricIOC (TimeIOC (Fused.LiftC IO))) a ->
+  Fused.StateC GameState (ModuleCacheIOC (MetricIOC (TimeIOC (Fused.LiftC IO)))) a ->
   m a
 zoomGameStateFromPlayState = zoomWithIO $ scenarioState . gameState
 

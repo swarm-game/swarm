@@ -228,7 +228,7 @@ robots:
       never:
         - gate
     program: |
-      run "scenarios/Challenges/Story/Ranching/_gated-paddock/meandering-sheep.sw";
+      import "_gated-paddock/meandering-sheep"; go
 entities:
   - name: fence
     display:
@@ -366,7 +366,7 @@ recipes:
 known: [mountain, tree, water]
 seed: 0
 solution: |
-  run "scenarios/Challenges/Story/Ranching/_gated-paddock/fence-construction.sw"
+  import "_gated-paddock/fence-construction"; go
 world:
   dsl: |
     {dirt, water}

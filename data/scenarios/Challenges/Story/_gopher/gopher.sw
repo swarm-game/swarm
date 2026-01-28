@@ -1,8 +1,5 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
-def abs = \n. if (n < 0) {-n} {n} end;
-
-def elif = \t. \then. \else. {if t then else} end
-def else = \t. t end
+import "~swarm/lib/control"
+import "~swarm/lib/arith"
 
 def randSign = \x.
     opposite <- random 2;
@@ -128,6 +125,8 @@ def go = \width. \height. \lastTauntIndex. \startingAmount. \dropping.
     };
     end;
 
-let dropping = "mound" in
-startingAmount <- count dropping;
-go 28 18 (-1) startingAmount dropping;
+def gopher =
+  let dropping = "mound" in
+  startingAmount <- count dropping;
+  go 28 18 (-1) startingAmount dropping;
+end

@@ -1,3 +1,5 @@
+import "~swarm/lib/control"
+
 def moveWithMorbidity =
     moldHere <- ishere "mold";
     if moldHere {
@@ -14,8 +16,6 @@ def moveWithMorbidity =
     } {};
     move;
     end;
-
-def λmatch = \f. \p. match p f end
 
 def goFoodDir = \f. λmatch \d. \_. 
     if (d == down) {
@@ -103,5 +103,7 @@ def go = \startLoc.
     go startLoc;
     end;
 
-startLoc <- whereami;
-go startLoc;
+def rat =
+  startLoc <- whereami;
+  go startLoc;
+end

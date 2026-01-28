@@ -24,6 +24,7 @@ import Swarm.Game.Robot.Concrete (isActive)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.Step (gameTick, hypotheticalRobot, stepCESK)
+import Swarm.Language.Cache (moduleCache)
 import Swarm.Language.Module (Module)
 import Swarm.Language.Pipeline (processSource)
 import Swarm.Language.Syntax (Phase (Elaborated, Instantiated))
@@ -57,7 +58,7 @@ runCESK :: Int -> CESK -> StateT (Robot Instantiated) (StateT GameState IO) (Eit
 runCESK _ (Up exn _ []) = Left . flip formatExn exn <$> lift (use $ landscape . terrainAndEntities . entityMap)
 runCESK !steps cesk = case finalValue cesk of
   Just v -> return (Right (v, steps))
-  Nothing -> (runMetricIO . runTimeIO $ stepCESK cesk) >>= runCESK (steps + 1)
+  Nothing -> (runCacheIO moduleCache . runMetricIO . runTimeIO $ stepCESK cesk) >>= runCESK (steps + 1)
 
 play :: GameState -> Text -> IO (Either Text (), GameState)
 play g = either (return . (,g) . Left) playPT <=< processTerm1
@@ -78,7 +79,7 @@ playUntilDone rid = do
   w <- use $ robotInfo . robotMap
   case w ^? ix rid . to isActive of
     Just True -> do
-      void . runMetricIO $ runTimeIO gameTick
+      void . runCacheIO moduleCache . runMetricIO . runTimeIO $ gameTick
       playUntilDone rid
     Just False -> return $ Right ()
     Nothing -> return $ Left . T.pack $ "The robot with ID " <> show rid <> " is nowhere to be found!"

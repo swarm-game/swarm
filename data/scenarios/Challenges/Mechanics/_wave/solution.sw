@@ -11,5 +11,3 @@ def start =
     } {};
     grab;
     end;
-
-start;

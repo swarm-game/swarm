@@ -28,7 +28,7 @@ objectives:
         succession.
     condition: |
       j <- robotnamed "setup";
-      as j {run "scenarios/Challenges/Logic/Sliding Puzzles/_sliding-puzzle/validate-board.sw"};
+      as j {import "_sliding-puzzle/validate-board"; go};
 robots:
   - name: base
     dir: east
@@ -115,7 +115,7 @@ robots:
       - [24, x-tile-ordinal]
       - [25, y-tile-ordinal]
     program: |
-      run "scenarios/Challenges/Logic/Sliding Puzzles/_sliding-puzzle/maintainer.sw";
+      import "_sliding-puzzle/maintainer"; maintain
   - name: setup
     system: true
     dir: east
@@ -149,9 +149,9 @@ robots:
       - [24, x-tile-ordinal]
       - [25, y-tile-ordinal]
     program: |
-      run "scenarios/Challenges/Logic/Sliding Puzzles/_sliding-puzzle/setup.sw";
+      import "_sliding-puzzle/setup.sw"; go 3 3
 solution: |
-  run "scenarios/Challenges/Logic/Sliding Puzzles/_sliding-puzzle/solution.sw"
+  import "_sliding-puzzle/solution"; go 3
 entities:
   - name: gradiator
     display:

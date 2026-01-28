@@ -1,6 +1,6 @@
 syn keyword Keyword def tydef rec end let in require stock
 syn keyword Builtins waypoint waypoints hastag tagmembers self parent base if inl inr case match force undefined fail not format read chars split charat tochar key
-syn keyword Command noop wait selfdestruct move backup volume path push stride turn grab harvest sow ignite place ping give equip unequip make has equipped count drill use build salvage reprogram say listen log view appear create halt time scout whereami locateme structures floorplan detect resonate density sniff chirp watch surveil heading blocked scan upload ishere isempty meet meetall whoami setname random run pure try print erase swap atomic instant installkeyhandler teleport warp as robotnamed robotnumbered knows destroy
+syn keyword Command noop wait selfdestruct move backup volume path push stride turn grab harvest sow ignite place ping give equip unequip make has equipped count drill use build salvage reprogram say listen log view appear create halt time scout whereami locateme structures floorplan detect resonate density sniff chirp watch surveil heading blocked scan upload ishere isempty meet meetall whoami setname random pure try print erase swap atomic instant installkeyhandler teleport warp as robotnamed robotnumbered knows destroy
 syn keyword Direction east north west south down forward left back right
 syn match Type "\<[A-Z][a-zA-Z_]*\>"
 syn match Operators "[-=!<>|&+*/^$:]"

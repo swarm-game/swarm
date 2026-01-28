@@ -1,12 +1,9 @@
+import "~swarm/lib/control"
+import "~swarm/lib/arith"
+
 /**
 If any blocking entity is touching me, escape.
 */
-
-def elif = \t. \then. \else. {if t then else} end
-def else = \t. t end
-def abs = \n. if (n < 0) {-n} {n} end;
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
-def until = \p. \c. q <- p; if q {} {c; until p c} end;
 
 def getDirection = \n.
     if (n == 0) {
@@ -127,5 +124,3 @@ def go =
     reWatchEntities handleBlockage;
     go;
     end;
-
-go;

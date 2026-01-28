@@ -15,7 +15,7 @@ objectives:
       z <- ishere "blocked three";
       pure (x && y && z)
 solution: |
-  run "scenarios/Challenges/Logic/_hanoi/hanoi-solution.sw"
+  import "_hanoi/hanoi-solution"; hanoi 3 0 (-2) 0 2
 robots:
   - name: base
     dir: south
@@ -58,7 +58,7 @@ robots:
       //  1. place north of me is NOT empty
       // then
       //  - lock X
-      run "scenarios/Challenges/Logic/_hanoi/hanoi-invariant.sw"
+      import "_hanoi/hanoi-invariant"; go
   - name: increasing
     dir: [0, 0]
     system: true
@@ -73,7 +73,7 @@ robots:
       //  - place "OK"
       // else
       //  - try to grab "OK"
-      run "scenarios/Challenges/Logic/_hanoi/hanoi-increasing.sw"
+      import "_hanoi/hanoi-increasing"; go
   - name: count
     dir: [0, 0]
     system: true
@@ -86,7 +86,7 @@ robots:
       // count all entities placed in columns
       // the final count should be either 2 or 3
       // place "two" or "three" at x=0 y=-6
-      run "scenarios/Challenges/Logic/_hanoi/hanoi-count.sw"
+      import "_hanoi/hanoi-count"; go
 entities:
   - name: bottom tee
     display:

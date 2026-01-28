@@ -1,4 +1,4 @@
-import "../../../lib/control"
+import "~swarm/lib/control"
 
 /** Teleports to a new location to execute a function
   then returns to the original location before

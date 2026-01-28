@@ -1,4 +1,4 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+import "~swarm/lib/control"
 
 def moveOne =
     move;
@@ -23,5 +23,3 @@ def moveCartToDiagonal =
 def go =
     doN 4 moveCartToDiagonal;
     end;
-
-go;

@@ -8,7 +8,8 @@
 module Swarm.ResourceLoading (
   -- * Generic data access
   getDataDirSafe,
-  getDataFileNameSafe,
+  getDataDirThrow,
+  getDataFileNameThrow,
 
   -- * Concrete data access
   getSwarmConfigIniFile,
@@ -63,36 +64,44 @@ guardDir dir = do
   ex <- sendIO $ doesDirectoryExist dir
   pure $ guard ex $> dir
 
--- | Get subdirectory from swarm data directory.
+-- | Get subdirectory from swarm data directory.  Return Nothing if
+--   not found. This will first look in Cabal generated path and then
+--   try a @data@ directory in 'XdgData' path.
+getDataDirSafe :: Has (Lift IO) sig m => FilePath -> m (Maybe FilePath)
+getDataDirSafe p = do
+  md <- tryDir getDataDir
+  case md of
+    Nothing -> tryDir (getSwarmXdgDataSubdir False "data")
+    Just d -> pure (Just d)
+ where
+  tryDir m = sendIO m >>= guardDir . normalise . (</> p)
+
+-- | Get subdirectory from swarm data directory; throw an error if not
+--   found. This will first look in Cabal generated path and then
+--   try a @data@ directory in 'XdgData' path.
 --
--- This will first look in Cabal generated path and then
--- try a @data@ directory in 'XdgData' path.
---
--- The idea is that when installing with Cabal/Stack the first
--- is preferred, but when the players install a binary they
--- need to extract the `data` archive to the XDG directory.
-getDataDirSafe ::
+--   The idea is that when installing with Cabal/Stack the first is
+--   preferred, but when the players install a binary they need to
+--   extract the `data` archive to the XDG directory.
+getDataDirThrow ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   AssetData ->
   FilePath ->
   m FilePath
-getDataDirSafe asset p = do
-  tryDir getDataDir
-    ??? tryDir (getSwarmXdgDataSubdir False "data")
+getDataDirThrow asset p = do
+  getDataDirSafe p
     ??? throwError (AssetNotLoaded (Data asset) p $ DoesNotExist Directory)
- where
-  tryDir m = sendIO m >>= guardDir . normalise . (</> p)
 
 -- | Get file from swarm data directory.
 --
 -- See the note in 'getDataDirSafe'.
-getDataFileNameSafe ::
+getDataFileNameThrow ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   AssetData ->
   FilePath ->
   m FilePath
-getDataFileNameSafe asset name = do
-  d <- getDataDirSafe asset "."
+getDataFileNameThrow asset name = do
+  d <- getDataDirThrow asset "."
   let fp = d </> name
   fe <- sendIO $ doesFileExist fp
   if fe
@@ -143,7 +152,7 @@ readAppData ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   m (Map Text Text)
 readAppData = do
-  d <- getDataDirSafe AppAsset "."
+  d <- getDataDirThrow AppAsset "."
   dirMembers :: [FilePath] <-
     (liftEither <=< sendIO) $
       (pure <$> listDirectory d) `catch` \(e :: IOException) ->

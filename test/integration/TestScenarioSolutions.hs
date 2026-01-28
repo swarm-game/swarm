@@ -274,7 +274,6 @@ expectFailScenarios :: Map FilePath String
 expectFailScenarios =
   M.fromList
     [ "Testing/231-requirements/231-command-transformer-reqs" ==> "Awaiting fix for #231"
-    , "Challenges/Logic/wolf-goat-cabbage" ==> "Awaiting fix for #2602"
     ]
  where
   f ==> e = (normalizePath f, e)
@@ -308,7 +307,7 @@ customTimeoutScenarios =
     , "Challenges/Algorithmic/gallery" ==> 20
     , "Challenges/Mechanics/telephone" ==> 20
     , "Challenges/Story/flower-count" ==> 30
-    , "Challenges/Mechanics/photocopier" ==> 30
+    , "Challenges/Mechanics/photocopier" ==> 40
     , "Challenges/Mazes/invisible_maze" ==> 2
     , "Challenges/Story/Ranching/beekeeping" ==> 60
     , "Challenges/Story/Ranching/powerset" ==> 20

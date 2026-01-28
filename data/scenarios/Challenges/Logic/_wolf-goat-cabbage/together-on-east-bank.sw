@@ -24,6 +24,8 @@ def all_on_bank = \baseX. \robotName.
     };
     end;
 
-baseX <- get_x_coord base;
+def go =
+  baseX <- get_x_coord base;
 
-all_on_bank baseX "east_detector";
+  all_on_bank baseX "east_detector";
+end

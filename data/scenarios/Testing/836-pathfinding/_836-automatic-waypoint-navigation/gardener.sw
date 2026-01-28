@@ -14,5 +14,3 @@ def go =
     harvestPlant;
     go;
     end;
-
-go;

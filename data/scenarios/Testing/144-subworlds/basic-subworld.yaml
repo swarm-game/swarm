@@ -10,7 +10,7 @@ objectives:
       j <- robotnamed "judge";
       as j {ishere "flower"}
 solution: |
-  run "scenarios/Testing/144-subworlds/_basic-subworld/solution.sw"
+  import "_basic-subworld/solution"; go
 attrs:
   - name: portal_in
     fg: "#ff9a00"

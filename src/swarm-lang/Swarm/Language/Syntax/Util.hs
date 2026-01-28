@@ -44,7 +44,8 @@ import Data.Tree
 import Swarm.Language.Phase
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Constants
-import Swarm.Language.Syntax.Import (Anchor, ImportLoc, Unresolvable, unresolveImportLoc)
+import Swarm.Language.Syntax.Import (Anchor, ImportLoc)
+import Swarm.Language.Syntax.Import.Resolve (Unresolvable, unresolveImportLoc)
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern
 import Swarm.Language.Var (LocVar, Var)

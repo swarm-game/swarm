@@ -9,7 +9,7 @@ objectives:
     condition: |
       as base {has "flower";}
 solution: |
-  run "scenarios/Testing/836-pathfinding/_836-path-exists/find-location-solution.sw";
+  import "_836-path-exists/find-location-solution"; followRoute
 entities:
   - name: wayfinder
     display:

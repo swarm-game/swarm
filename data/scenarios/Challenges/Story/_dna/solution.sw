@@ -1,4 +1,6 @@
-def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+import "~swarm/lib/control"
+import "~swarm/lib/list"
+import "common"
 
 def moveUntilBlocked =
     blockedHere <- blocked;
@@ -6,55 +8,6 @@ def moveUntilBlocked =
         move;
         moveUntilBlocked;
     }
-    end;
-
-def getBaseForNumber = \n.
-    if (n == 0) {
-        "guanine";
-    } {
-        if (n == 1) {
-            "cytosine";
-        } {
-            if (n == 2) {
-                "adenine";
-            } {
-                "thymine";
-            };
-        };
-    };
-    end;
-
-def getNumberForBase = \n.
-    if (n == "guanine") {
-        0;
-    } {
-        if (n == "cytosine") {
-            1;
-        } {
-            if (n == "adenine") {
-                2;
-            } {
-                3;
-            };
-        };
-    };
-    end;
-
-/** Toggle the lowest bit */
-def getComplementNumber = \n.
-    if (n == 0) {
-        1;
-    } {
-        if (n == 1) {
-            0;
-        } {
-            if (n == 2) {
-                3;
-            } {
-                2;
-            };
-        };
-    };
     end;
 
 def waitWhileHere = \item.
@@ -243,14 +196,6 @@ def completeDnaTask = \sentinel.
     returnToInputReceptacle;
     end;
 
-def λcase = \f. \g. \s. case s f g end
-def λmatch = \f. \p. match p f end
-
-def mapM_ : (a -> Cmd b) -> (rec l. Unit + a * l) -> Cmd Unit = \f. λcase
-  (\_. pure ())
-  (λmatch \hd. \tl. f hd; mapM_ f tl)
-end;
-
 def go =
     _sentinel <- pickFlowerAndWater;
     moveUntilBlocked;
@@ -258,5 +203,3 @@ def go =
     let organisms = tagmembers "organism" in
     mapM_ completeDnaTask organisms;
     end;
-
-go;
