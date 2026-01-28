@@ -129,6 +129,12 @@ testLanguagePipeline =
                     ]
                 )
             )
+        , testCase
+            "Special warning for unbound 'run'"
+            ( process
+                "run \"foo.sw\""
+                "1:1: Undefined variable 'run'.  Note that the 'run' command was removed"
+            )
         ]
     , testCase
         "Parse pair syntax #225"
