@@ -1,5 +1,5 @@
-import "../../../lib/control"
-import "../../../lib/arith"
+import "~swarm/lib/control"
+import "~swarm/lib/arith"
 
 def cnt = \x.
   if (x == inl ()) {0} {1}

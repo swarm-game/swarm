@@ -237,14 +237,14 @@ noSolutionScenarios =
     [ "blank"
     , "classic"
     , "creative"
-    , "World Examples/clearing"
-    , "World Examples/rorschach"
-    , "World Examples/stretch"
-    , "World Examples/translate"
-    , "Vignettes/roadway"
-    , "Fun/GoL"
-    , "Fun/logo-burst"
-    , "Fun/spider"
+    , "Demo/World Examples/clearing"
+    , "Demo/World Examples/rorschach"
+    , "Demo/World Examples/stretch"
+    , "Demo/World Examples/translate"
+    , "Demo/Vignettes/roadway"
+    , "Demo/Fun/GoL"
+    , "Demo/Fun/logo-burst"
+    , "Demo/Fun/spider"
     , "Speedruns/curry"
     , "Speedruns/forester"
     , "Speedruns/mithril"
@@ -286,8 +286,8 @@ customTimeoutScenarios =
     [ "Tutorials/move" ==> 10
     , "Tutorials/stock" ==> 3
     , "Tutorials/farming" ==> 5
-    , "Fun/snake" ==> 20
-    , "Fun/horton" ==> 10
+    , "Demo/Fun/snake" ==> 20
+    , "Demo/Fun/horton" ==> 10
     , "Challenges/Algorithmic/2048" ==> 10
     , "Challenges/Algorithmic/word-search" ==> 6
     , "Challenges/Story/bridge-building" ==> 10
