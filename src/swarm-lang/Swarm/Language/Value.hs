@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -14,6 +15,7 @@ module Swarm.Language.Value (
   Value (..),
   prettyValue,
   valueToTerm,
+  defaultValue,
 
   -- * Environments
   Env,
@@ -29,6 +31,7 @@ module Swarm.Language.Value (
   restrictEnv,
 ) where
 
+import Control.Applicative ((<|>))
 import Control.Lens hiding (Const)
 import Data.Bool (bool)
 import Data.Foldable (Foldable (..))
@@ -41,14 +44,15 @@ import Data.Set.Lens (setOf)
 import Data.Strict.Tuple (Pair (..))
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Graphics.Vty.Input.Events qualified as V
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Key (KeyCombo, prettyKeyCombo)
+import Swarm.Language.Key (KeyCombo, mkKeyCombo, prettyKeyCombo)
 import Swarm.Language.Requirements.Type (ReqCtx, Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.TDVar (TDVar)
-import Swarm.Language.Types (Polytype, TCtx, TDCtx, TydefInfo, Type, addBindingTD, emptyTDCtx, restrictTD)
+import Swarm.Language.Types
 import Swarm.Language.WithType
 import Swarm.Pretty (prettyText)
 import Prelude hiding (Foldable (..))
@@ -270,3 +274,45 @@ valueToTerm = \case
   VExc -> TConst Undefined
   VBlackhole -> TConst Undefined
   VType ty -> TType ty
+
+------------------------------------------------------------
+-- Default values
+------------------------------------------------------------
+
+-- | Try to produce a default value of a given type, or return Nothing
+--   if the type is unsupported (either because the type is
+--   uninhabited, or because producing a value of that type is
+--   difficult or dangerous).
+defaultValue :: TDCtx -> Type -> Maybe Value
+defaultValue tdCtx = \case
+  TyVoid -> Nothing
+  TyUnit -> Just VUnit
+  TyInt -> Just $ VInt 0
+  TyText -> Just $ VText ""
+  TyDir -> Just $ VDir (DRelative (DPlanar DForward))
+  TyBool -> Just $ VBool False
+  TyActor -> Just $ VRobot 0
+  TyKey -> Just $ VKey (mkKeyCombo [] (V.KChar ' '))
+  TyType -> Just $ VType TyUnit
+  ty1 :+: ty2 -> (VInj False <$> defaultValue tdCtx ty1) <|> (VInj True <$> defaultValue tdCtx ty2)
+  ty1 :*: ty2 -> VPair <$> defaultValue tdCtx ty1 <*> defaultValue tdCtx ty2
+  _ :->: ty -> (\v -> VClo "_" (valueToTerm v) emptyEnv) <$> defaultValue tdCtx ty
+  TyRcd m -> VRcd <$> traverse (defaultValue tdCtx) m
+  TyCmd ty -> VCApp Pure . (: []) <$> defaultValue tdCtx ty
+  TyDelay ty -> (\v -> VDelay (valueToTerm v) emptyEnv) <$> defaultValue tdCtx ty
+  ty@(TyUser {}) -> defaultValue tdCtx (whnfType tdCtx ty)
+  _ty@(TyRec {}) -> Nothing -- See Note [default values for recursive types]
+  _ -> Nothing
+
+-- ~~~~ Note [default values for recursive types]
+--
+-- This following seems like an obvious way to implement 'default'
+-- for recursive types:
+--
+--   defaultValue tdCtx (whnfType emptyTDCtx ty)
+--
+-- but it can get stuck in infinite recursion! Consider e.g. the type
+-- (rec l. (Int * l) + Unit).  Since we default to generating the left
+-- side of a sum type, this will recurse forever generating inl (0,
+-- inl (0, inl (0, ...))).  To support recursive types we would have
+-- to do more sophisticated analysis to find a finite value to pick.

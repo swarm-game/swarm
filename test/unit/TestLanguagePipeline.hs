@@ -789,6 +789,45 @@ testLanguagePipeline =
             "import from URL"
             (valid "import \"https://raw.githubusercontent.com/byorgey/swarm-defs/refs/heads/main/defs.sw\"; tL")
         ]
+    , testGroup
+        "Unsupported types for default"
+        [ testCase
+            "default @Void"
+            ( process
+                "default @Void"
+                "1:1: Unable to generate a default value of type Void"
+            )
+        , testCase
+            "default @(Void + (Void + Void))"
+            ( process
+                "default @(Void + (Void + Void))"
+                "1:1: Unable to generate a default value of type Void + (Void + Void)"
+            )
+        , testCase
+            "default @(Unit * Void)"
+            ( process
+                "default @(Unit * Void)"
+                "1:1: Unable to generate a default value of type Unit * Void"
+            )
+        , testCase
+            "default @[x : Unit, y : Void, z : Int]"
+            ( process
+                "default @[x : Unit, y : Void, z : Int]"
+                "1:1: Unable to generate a default value of type [x: Unit, y: Void, z: Int]"
+            )
+        , testCase
+            "default @(rec l. Int * l + Unit)"
+            ( process
+                "default @(rec l. Int * l + Unit)"
+                "1:1: Unable to generate a default value of type rec l. (Int * l) + Unit"
+            )
+        , testCase
+            "default must be fully saturated"
+            ( process
+                "let f : (Type -> Int) -> Int = \\g. g @Text in f default"
+                "1:49: 'default' must be explicitly applied to a type literal"
+            )
+        ]
     ]
  where
   valid = flip process ""
