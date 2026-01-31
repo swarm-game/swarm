@@ -3,9 +3,6 @@ creative.yaml
 blank.yaml
 Tutorials
 Challenges
-Fun
 Speedruns
+Demo
 Testing
-Vignettes
-Mechanics
-World Examples
