@@ -224,6 +224,8 @@ data Const
     Try
   | -- | Undefined
     Undefined
+  | -- | Default
+    Default
   | -- | User error
     Fail
   | -- Arithmetic unary operators
@@ -781,6 +783,7 @@ constInfo c = case c of
   Pure -> command 1 Intangible $ shortDoc Set.empty "Create a pure `Cmd a`{=type} computation that yields the given value."
   Try -> command 2 Intangible $ shortDoc Set.empty "Execute a command, catching errors."
   Undefined -> function 0 $ shortDoc Set.empty "A value of any type, that is evaluated as error."
+  Default -> function 1 $ shortDoc Set.empty "A default value of a given type."
   Fail -> function 1 $ shortDoc Set.empty "A value of any type, that is evaluated as error with message."
   If ->
     function 3 . doc Set.empty "If-Then-Else function." $

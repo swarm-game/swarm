@@ -123,6 +123,7 @@ constCaps = \case
   Say -> Nothing -- speaking is natural to robots (unlike listening)
   Setname -> Nothing
   Undefined -> Nothing
+  Default -> Nothing
   Use -> Nothing -- Recipes alone shall dictate whether things can be "used"
   View -> Nothing -- TODO: #17 should require equipping an antenna
   -- Some God-like abilities.

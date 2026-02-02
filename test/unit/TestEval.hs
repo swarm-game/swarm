@@ -16,6 +16,7 @@ import Graphics.Vty.Input.Events qualified as V
 import Swarm.Game.State
 import Swarm.Game.Value (Valuable (..))
 import Swarm.Language.Key
+import Swarm.Language.Syntax.AST (Term (TInt))
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Types
 import Swarm.Language.Value
@@ -23,7 +24,7 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
 import TestUtil
-import Witch (from)
+import Witch (from, into)
 
 testEval :: GameState -> TestTree
 testEval g =
@@ -515,6 +516,75 @@ testEval g =
             "list"
             ("@(rec l. Unit + Int * l)" `evaluatesTo` VType (TyRec "l" (TyUnit :+: (TyInt :*: Fix (TyRecVarF NZ)))))
         ]
+    , testGroup
+        "default"
+        [ testCase
+            "Unit"
+            ("default @Unit" `evaluatesTo` VUnit)
+        , testCase
+            "Int"
+            ("default @Int" `evaluatesTo` VInt 0)
+        , testCase
+            "Text"
+            ("default @Text" `evaluatesTo` VText "")
+        , testCase
+            "Dir"
+            ("default @Dir" `evaluatesTo` VDir (DRelative (DPlanar DForward)))
+        , testCase
+            "Bool"
+            ("default @Bool" `evaluatesTo` VBool False)
+        , testCase
+            "Actor"
+            ("default @Actor" `evaluatesTo` VRobot 0)
+        , testCase
+            "Key"
+            ("default @Key" `evaluatesTo` VKey (mkKeyCombo [] (V.KChar ' ')))
+        , testCase
+            "Type"
+            ("default @Type" `evaluatesTo` VType TyUnit)
+        , testCase
+            "Unit + Bool"
+            ("default @(Unit + Bool)" `evaluatesTo` VInj False VUnit)
+        , testCase
+            "Void + Unit"
+            ("default @(Void + Unit)" `evaluatesTo` VInj True VUnit)
+        , testCase
+            "Void + (Void + Unit)"
+            ("default @(Void + (Void + Unit))" `evaluatesTo` VInj True (VInj True VUnit))
+        , testCase
+            "Bool * Int"
+            ("default @(Bool * Int)" `evaluatesTo` VPair (VBool False) (VInt 0))
+        , testCase
+            "Bool * (Int * Text)"
+            ("default @(Bool * (Int * Text))" `evaluatesTo` VPair (VBool False) (VPair (VInt 0) (VText "")))
+        , testCase
+            "Int -> Bool"
+            ("default @(Int -> Bool) 3" `evaluatesTo` VBool False)
+        , testCase
+            "record"
+            ("default @[x: Int, y: Text, z: Bool]" `evaluatesTo` VRcd (M.fromList [("x", VInt 0), ("y", VText ""), ("z", VBool False)]))
+        , testCase
+            "Cmd Int"
+            ("default @(Cmd Int)" `evaluatesTo` VInt 0)
+        , testCase
+            "{Int}"
+            ("default @{Int}" `evaluatesTo` VDelay (TInt 0) emptyEnv)
+        , testCase
+            "tydef"
+            ("tydef X = [x: Int, y: Text, z: Bool] end; default @X" `evaluatesTo` VRcd (M.fromList [("x", VInt 0), ("y", VText ""), ("z", VBool False)]))
+        , testCase
+            "nested tydef"
+            ("tydef X = [x: Int, y: Text, z: Bool] end; tydef Y = Int * X end; default @Y" `evaluatesTo` VPair (VInt 0) (VRcd (M.fromList [("x", VInt 0), ("y", VText ""), ("z", VBool False)])))
+        , testCase
+            "recursive type (left)"
+            ("default @(rec l. Unit + Int * l)" `evaluatesTo` VInj False VUnit)
+        , testCase
+            "recursive type (right)"
+            ("default @(rec l. Int * l + Unit)" `evaluatesTo` VInj True VUnit)
+        , testCase
+            "recursive type (rose tree)"
+            ("default @(rec t. Int * (rec l. Unit + t * l))" `evaluatesTo` VPair (VInt 0) (VInj False VUnit))
+        ]
     ]
  where
   tquote :: String -> Text
@@ -533,7 +603,8 @@ testEval g =
   evaluatesTo :: Text -> Value -> Assertion
   evaluatesTo tm val = do
     result <- evaluate tm
-    assertBool "" $ Right val == (fst <$> result)
+    assertBool (into @String $ either id (prettyValue . fst) result) $
+      Right val == (fst <$> result)
 
   evaluatesToV :: Valuable v => Text -> v -> Assertion
   evaluatesToV tm val = tm `evaluatesTo` asValue val
