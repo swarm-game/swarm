@@ -160,6 +160,7 @@
       "match"
       "force"
       "undefined"
+      "default"
       "fail"
       "not"
       "format"
