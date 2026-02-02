@@ -575,6 +575,15 @@ testEval g =
         , testCase
             "nested tydef"
             ("tydef X = [x: Int, y: Text, z: Bool] end; tydef Y = Int * X end; default @Y" `evaluatesTo` VPair (VInt 0) (VRcd (M.fromList [("x", VInt 0), ("y", VText ""), ("z", VBool False)])))
+        , testCase
+            "recursive type (left)"
+            ("default @(rec l. Unit + Int * l)" `evaluatesTo` VInj False VUnit)
+        , testCase
+            "recursive type (right)"
+            ("default @(rec l. Int * l + Unit)" `evaluatesTo` VInj True VUnit)
+        , testCase
+            "recursive type (rose tree)"
+            ("default @(rec t. Int * (rec l. Unit + t * l))" `evaluatesTo` VPair (VInt 0) (VInj False VUnit))
         ]
     ]
  where

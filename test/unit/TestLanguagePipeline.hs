@@ -816,10 +816,16 @@ testLanguagePipeline =
                 "1:1: Unable to generate a default value of type [x: Unit, y: Void, z: Int]"
             )
         , testCase
-            "default @(rec l. Int * l + Unit)"
+            "default @(rec l. Int * l)"
             ( process
-                "default @(rec l. Int * l + Unit)"
-                "1:1: Unable to generate a default value of type rec l. (Int * l) + Unit"
+                "default @(rec l. Int * l)"
+                "1:1: Unable to generate a default value of type rec l. Int * l"
+            )
+        , testCase
+            "default @(rec l. Int * l + l)"
+            ( process
+                "default @(rec l. Int * l + l)"
+                "1:1: Unable to generate a default value of type rec l. (Int * l) + l"
             )
         , testCase
             "default must be fully saturated"

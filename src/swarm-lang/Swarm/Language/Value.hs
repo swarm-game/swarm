@@ -31,14 +31,16 @@ module Swarm.Language.Value (
   restrictEnv,
 ) where
 
-import Control.Applicative ((<|>))
+import Control.Applicative (Alternative (..))
 import Control.Lens hiding (Const)
+import Control.Monad.Reader (ReaderT, ask, local, runReaderT)
 import Data.Bool (bool)
 import Data.Foldable (Foldable (..))
 import Data.Function (on)
 import Data.Hashable (Hashable, hash)
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
 import Data.Strict.Tuple (Pair (..))
@@ -280,39 +282,38 @@ valueToTerm = \case
 ------------------------------------------------------------
 
 -- | Try to produce a default value of a given type, or return Nothing
---   if the type is unsupported (either because the type is
---   uninhabited, or because producing a value of that type is
---   difficult or dangerous).
+--   if the type is uninhabited.
 defaultValue :: TDCtx -> Type -> Maybe Value
-defaultValue tdCtx = \case
-  TyVoid -> Nothing
-  TyUnit -> Just VUnit
-  TyInt -> Just $ VInt 0
-  TyText -> Just $ VText ""
-  TyDir -> Just $ VDir (DRelative (DPlanar DForward))
-  TyBool -> Just $ VBool False
-  TyActor -> Just $ VRobot 0
-  TyKey -> Just $ VKey (mkKeyCombo [] (V.KChar ' '))
-  TyType -> Just $ VType TyUnit
-  ty1 :+: ty2 -> (VInj False <$> defaultValue tdCtx ty1) <|> (VInj True <$> defaultValue tdCtx ty2)
-  ty1 :*: ty2 -> VPair <$> defaultValue tdCtx ty1 <*> defaultValue tdCtx ty2
-  _ :->: ty -> (\v -> VClo "_" (valueToTerm v) emptyEnv) <$> defaultValue tdCtx ty
-  TyRcd m -> VRcd <$> traverse (defaultValue tdCtx) m
-  TyCmd ty -> VCApp Pure . (: []) <$> defaultValue tdCtx ty
-  TyDelay ty -> (\v -> VDelay (valueToTerm v) emptyEnv) <$> defaultValue tdCtx ty
-  ty@(TyUser {}) -> defaultValue tdCtx (whnfType tdCtx ty)
-  _ty@(TyRec {}) -> Nothing -- See Note [default values for recursive types]
-  _ -> Nothing
+defaultValue tdCtx = flip runReaderT S.empty . go
+ where
+  go :: Type -> ReaderT (Set Type) Maybe Value
+  go = failOnRepeat $ \case
+    TyVoid -> empty
+    TyUnit -> pure VUnit
+    TyInt -> pure $ VInt 0
+    TyText -> pure $ VText ""
+    TyDir -> pure $ VDir (DRelative (DPlanar DForward))
+    TyBool -> pure $ VBool False
+    TyActor -> pure $ VRobot 0
+    TyKey -> pure $ VKey (mkKeyCombo [] (V.KChar ' '))
+    TyType -> pure $ VType TyUnit
+    ty1 :+: ty2 -> (VInj False <$> go ty1) <|> (VInj True <$> go ty2)
+    ty1 :*: ty2 -> VPair <$> go ty1 <*> go ty2
+    _ :->: ty -> (\v -> VClo "_" (valueToTerm v) emptyEnv) <$> go ty
+    TyRcd m -> VRcd <$> traverse go m
+    TyCmd ty -> VCApp Pure . (: []) <$> go ty
+    TyDelay ty -> (\v -> VDelay (valueToTerm v) emptyEnv) <$> go ty
+    ty@(TyUser {}) -> go (whnfType tdCtx ty)
+    ty@(TyRec {}) -> go (whnfType tdCtx ty)
+    _ -> empty
 
--- ~~~~ Note [default values for recursive types]
---
--- This following seems like an obvious way to implement 'default'
--- for recursive types:
---
---   defaultValue tdCtx (whnfType emptyTDCtx ty)
---
--- but it can get stuck in infinite recursion! Consider e.g. the type
--- (rec l. (Int * l) + Unit).  Since we default to generating the left
--- side of a sum type, this will recurse forever generating inl (0,
--- inl (0, inl (0, ...))).  To support recursive types we would have
--- to do more sophisticated analysis to find a finite value to pick.
+  -- Check the input and fail if it is already a member of the set of
+  -- seen values; otherwise proceed while adding it locally to the set.
+  -- This is used to fail when we find an expansion path that would lead to
+  -- infinite recsruion.
+  failOnRepeat :: (Ord a, Alternative m, Monad m) => (a -> ReaderT (Set a) m b) -> (a -> ReaderT (Set a) m b)
+  failOnRepeat m a = do
+    seen <- ask
+    case a `S.member` seen of
+      True -> empty
+      False -> local (S.insert a) (m a)
