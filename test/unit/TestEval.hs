@@ -17,7 +17,6 @@ import Swarm.Game.State
 import Swarm.Game.Value (Valuable (..))
 import Swarm.Language.Key
 import Swarm.Language.Syntax.AST (Term (TInt))
-import Swarm.Language.Syntax.Constants (Const (Pure))
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Types
 import Swarm.Language.Value
