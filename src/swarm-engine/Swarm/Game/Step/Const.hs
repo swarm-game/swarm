@@ -1018,6 +1018,9 @@ execConst runChildProg c vs s k = do
       [c1, c2] -> return $ Out c1 s (FApp (VCApp Force []) : FExec : FTry c2 : k)
       _ -> badConst
     Undefined -> return $ Up (User "undefined") s k
+    -- 'default @Type' should have been replaced by a default value at
+    -- compile time, so if we encounter it here at runtime, it's a bug.
+    Default -> badConst
     Fail -> case vs of
       [VText msg] -> return $ Up (User msg) s k
       _ -> badConst

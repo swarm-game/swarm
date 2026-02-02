@@ -88,6 +88,7 @@ import Swarm.Language.Syntax.Import ()
 import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Language.TDVar (TDVar)
 import Swarm.Language.Types
+import Swarm.Language.Value (Value, defaultValue, valueToTerm)
 import Swarm.Pretty
 import Prelude hiding (lookup)
 
@@ -517,6 +518,12 @@ data TypeErr
     --   the import source map.  This should never happen and indicates
     --   a bug.
     UnknownImport (ImportLoc Import.Resolved)
+  | -- | We cannot produce a default value of the given type, either
+    --   because the type is uninhabited (e.g. Void), because it could
+    --   lead to infinite recursion, or for some other reason.
+    InvalidDefault Type
+  | -- | 'default' must be fully applied to a type literal.
+    UnsaturatedDefault
   deriving (Show)
 
 instance PrettyPrec TypeErr where
@@ -573,6 +580,10 @@ instance PrettyPrec TypeErr where
         [ "Unknown import encountered:" <+> ppr loc <> "."
         , "This should never happen; please report this as a bug at https://github.com/swarm-game/swarm/issues/new?template=bug_report.md"
         ]
+    InvalidDefault ty ->
+      "Unable to generate a default value of type" <+> ppr ty
+    UnsaturatedDefault ->
+      "'default' must be explicitly applied to a type literal"
    where
     pprCode :: PrettyPrec a => a -> Doc ann
     pprCode = bquote . ppr
@@ -956,6 +967,11 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- possible correct type, and knowing an expected type would provide
   -- no extra information.
   TUnit -> return $ Syntax l TUnit cs UTyUnit
+  -- 'default' must be explicitly applied to a type literal, so we can
+  -- replace it by a default value at compile time.  Since there is a
+  -- special case for such an application, if we see 'default' by
+  -- itself it can only be because it was unapplied.
+  TConst Default -> throwTypeErr l UnsaturatedDefault
   TConst c -> Syntax l (TConst c) cs <$> (instantiate . toU $ inferConst c)
   TDir d -> return $ Syntax l (TDir d) cs UTyDir
   TInt n -> return $ Syntax l (TInt n) cs UTyInt
@@ -1002,6 +1018,21 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     argTy' <- adaptToTypeErr l (UnboundType . getUnexpanded) $ expandTydefs argTy
     arg' <- check (RTerm (TType argTy')) UTyType
     pure $ Syntax l (SApp r' arg') cs (UTyFun UTyText (toU argTy'))
+
+  -- Special case for applying 'default' to a type argument.  We must
+  -- ensure that it is used at a supported type; then we actually
+  -- replace the application of 'default' with the appropriate default
+  -- value /at compile time/.
+  TConst Default :$: RTerm (TType ty) -> do
+    -- First, do kind- and scope-checking on the type
+    ty' <- adaptToTypeErr l KindErr $ processType ty
+    -- Now try to generate a default value for the given type, and
+    -- convert it back to a term
+    v <- valueToTerm <$> generateDefaultValue l ty'
+    -- Splice the resulting term in place of the 'default' call, and
+    -- check that it has the expected type (this check should always
+    -- succeed, unless there is a bug in 'generateDefaultValue').
+    check (RSyntax l v) (toU ty)
 
   -- It works better to handle applications in *inference* mode.
   -- Knowing the expected result type of an application does not
@@ -1220,6 +1251,7 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Pure -> [tyQ| a -> Cmd a |]
   Try -> [tyQ| {Cmd a} -> {Cmd a} -> Cmd a |]
   Undefined -> [tyQ| a |]
+  Default -> [tyQ| Type -> a |]
   Fail -> [tyQ| Text -> a |]
   Not -> [tyQ| Bool -> Bool |]
   Neg -> [tyQ| Int -> Int |]
@@ -1650,3 +1682,22 @@ isSimpleUType = \case
   -- Make the pattern-match coverage checker happy
   Free.Pure {} -> False
   Free.Free {} -> False
+
+------------------------------------------------------------
+-- Default value generation
+
+-- | Try to generate a default value of a given type, throwing a type
+--   error if the type is unsupported.
+generateDefaultValue ::
+  ( Has (Reader UCtx) sig m
+  , Has (Reader TCStack) sig m
+  , Has (Reader TDCtx) sig m
+  , Has Unification sig m
+  , Has (Throw ContextualTypeErr) sig m
+  ) =>
+  SrcLoc ->
+  Type ->
+  m Value
+generateDefaultValue l ty = do
+  tdCtx <- ask @TDCtx
+  maybe (throwTypeErr l $ InvalidDefault ty) pure $ defaultValue tdCtx ty

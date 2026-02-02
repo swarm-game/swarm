@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -14,6 +15,7 @@ module Swarm.Language.Value (
   Value (..),
   prettyValue,
   valueToTerm,
+  defaultValue,
 
   -- * Environments
   Env,
@@ -29,26 +31,30 @@ module Swarm.Language.Value (
   restrictEnv,
 ) where
 
+import Control.Applicative (Alternative (..))
 import Control.Lens hiding (Const)
+import Control.Monad.Reader (ReaderT, ask, local, runReaderT)
 import Data.Bool (bool)
 import Data.Foldable (Foldable (..))
 import Data.Function (on)
 import Data.Hashable (Hashable, hash)
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
 import Data.Strict.Tuple (Pair (..))
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Graphics.Vty.Input.Events qualified as V
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Key (KeyCombo, prettyKeyCombo)
+import Swarm.Language.Key (KeyCombo, mkKeyCombo, prettyKeyCombo)
 import Swarm.Language.Requirements.Type (ReqCtx, Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.TDVar (TDVar)
-import Swarm.Language.Types (Polytype, TCtx, TDCtx, TydefInfo, Type, addBindingTD, emptyTDCtx, restrictTD)
+import Swarm.Language.Types
 import Swarm.Language.WithType
 import Swarm.Pretty (prettyText)
 import Prelude hiding (Foldable (..))
@@ -270,3 +276,44 @@ valueToTerm = \case
   VExc -> TConst Undefined
   VBlackhole -> TConst Undefined
   VType ty -> TType ty
+
+------------------------------------------------------------
+-- Default values
+------------------------------------------------------------
+
+-- | Try to produce a default value of a given type, or return Nothing
+--   if the type is uninhabited.
+defaultValue :: TDCtx -> Type -> Maybe Value
+defaultValue tdCtx = flip runReaderT S.empty . go
+ where
+  go :: Type -> ReaderT (Set Type) Maybe Value
+  go = failOnRepeat $ \case
+    TyVoid -> empty
+    TyUnit -> pure VUnit
+    TyInt -> pure $ VInt 0
+    TyText -> pure $ VText ""
+    TyDir -> pure $ VDir (DRelative (DPlanar DForward))
+    TyBool -> pure $ VBool False
+    TyActor -> pure $ VRobot 0
+    TyKey -> pure $ VKey (mkKeyCombo [] (V.KChar ' '))
+    TyType -> pure $ VType TyUnit
+    ty1 :+: ty2 -> (VInj False <$> go ty1) <|> (VInj True <$> go ty2)
+    ty1 :*: ty2 -> VPair <$> go ty1 <*> go ty2
+    _ :->: ty -> (\v -> VClo "_" (valueToTerm v) emptyEnv) <$> go ty
+    TyRcd m -> VRcd <$> traverse go m
+    TyCmd ty -> VCApp Pure . (: []) <$> go ty
+    TyDelay ty -> (\v -> VDelay (valueToTerm v) emptyEnv) <$> go ty
+    ty@(TyUser {}) -> go (whnfType tdCtx ty)
+    ty@(TyRec {}) -> go (whnfType tdCtx ty)
+    _ -> empty
+
+  -- Check the input and fail if it is already a member of the set of
+  -- seen values; otherwise proceed while adding it locally to the set.
+  -- This is used to fail when we find an expansion path that would lead to
+  -- infinite recsruion.
+  failOnRepeat :: (Ord a, Alternative m, Monad m) => (a -> ReaderT (Set a) m b) -> (a -> ReaderT (Set a) m b)
+  failOnRepeat m a = do
+    seen <- ask
+    case a `S.member` seen of
+      True -> empty
+      False -> local (S.insert a) (m a)
