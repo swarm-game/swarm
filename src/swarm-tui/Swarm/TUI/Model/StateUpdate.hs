@@ -75,9 +75,7 @@ import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
   loadScenarios,
   normalizeScenarioPath,
-  pathifyCollection,
-  scenarioItemByPath,
-  _SISingle,
+  pathify,
  )
 import Swarm.Game.State
 import Swarm.Game.State.Initialize
@@ -88,7 +86,7 @@ import Swarm.Game.Tick (TickNumber (TickNumber))
 import Swarm.Game.World (Seed)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
 import Swarm.Pretty (prettyText)
-import Swarm.ResourceLoading (getSwarmHistoryPath)
+import Swarm.ResourceLoading (collectionItemByPath, getSwarmHistoryPath, _Single)
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Model qualified as EM
 import Swarm.TUI.Editor.Util qualified as EU
@@ -195,7 +193,7 @@ getScenarioInfoFromPath ::
 getScenarioInfoFromPath ss path =
   fromMaybe (ScenarioInfo path NotStarted) currentScenarioInfo
  where
-  currentScenarioInfo = ss ^? scenarioItemByPath path . _SISingle . getScenarioInfo
+  currentScenarioInfo = ss ^? collectionItemByPath path . _Single . getScenarioInfo
 
 -- | Construct an 'AppState' from an already-loaded 'RuntimeState' and
 --   'UIState', given the 'AppOpts' the app was started with.
@@ -360,8 +358,8 @@ startGameWithSeed siPair@(ScenarioWith _scene si) lp = do
   playState
     . progression
     . scenarios
-    . scenarioItemByPath p
-    . _SISingle
+    . collectionItemByPath p
+    . _Single
     . getScenarioInfo
     . scenarioStatus
     .= Played
@@ -369,7 +367,7 @@ startGameWithSeed siPair@(ScenarioWith _scene si) lp = do
       (Metric Attempted $ ProgressStats t emptyAttemptMetric)
       (prevBest t)
 
-  scenarioToAppState (pathifyCollection siPair) lp
+  scenarioToAppState (pathify <$> siPair) lp
 
   -- Warn the user that the use of debugging options means progress
   -- will not be saved.

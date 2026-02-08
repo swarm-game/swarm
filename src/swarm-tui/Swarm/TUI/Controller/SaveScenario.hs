@@ -24,6 +24,7 @@ import Swarm.Game.State
 import Swarm.Game.State.Substate
 import Swarm.Language.Module (moduleTerm)
 import Swarm.Language.Syntax (eraseRaw)
+import Swarm.ResourceLoading (Collection (Collection, collectionMap), CollectionItem (..), collectionItemByPath, _Single)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievements (attainAchievement, attainAchievement')
 import Swarm.TUI.Model.DebugOption (DebugOption)
@@ -52,12 +53,12 @@ applyCompletionAchievements won t p = do
         GlobalAchievement CompletedSingleTutorial
 
   -- Check if all tutorials have been completed
-  tutorialMap <- use $ scenarios . to getTutorials . to scMap
-  let isComplete (SISingle (ScenarioWith _ s)) = scenarioIsCompleted s
+  tutorialMap <- use $ scenarios . to getTutorials . to collectionMap
+  let isComplete (Single (ScenarioWith _ s)) = scenarioIsCompleted s
       -- There are not currently any subcollections within the
       -- tutorials, but checking subcollections recursively just seems
       -- like the right thing to do
-      isComplete (SICollection _ (SC m)) = all isComplete m
+      isComplete (SubCollection _ (Collection m)) = all isComplete m
 
   when (all isComplete tutorialMap) $
     attainAchievement $
@@ -77,7 +78,7 @@ saveScenarioInfoOnFinish p = do
   saved <- use $ scenarioState . gameState . completionStatsSaved
 
   let currentScenarioInfo :: Traversal' PlayState ScenarioInfo
-      currentScenarioInfo = progression . scenarios . scenarioItemByPath p . _SISingle . getScenarioInfo
+      currentScenarioInfo = progression . scenarios . collectionItemByPath p . _Single . getScenarioInfo
 
   replHist <- use $ scenarioState . uiGameplay . uiREPL . replHistory
   let determinator = CodeSizeDeterminators (eraseRaw <$> (moduleTerm =<< initialRunCode)) $ replHist ^. replHasExecutedManualInput

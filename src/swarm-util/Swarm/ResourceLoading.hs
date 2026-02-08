@@ -1,4 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -21,6 +25,19 @@ module Swarm.ResourceLoading (
   readAppData,
   NameGenerator (..),
   initNameGenerator,
+
+  -- ** Loading recursive collections
+  Collection (..),
+  CollectionItem (..),
+  _Single,
+  _SubCollection,
+  emptyCollection,
+  collectionItemName,
+  collectionToList,
+  flattenCollection,
+  collectionItemByPath,
+  CollectionConfig (..),
+  loadCollection,
 ) where
 
 import Control.Algebra (Has)
@@ -37,8 +54,15 @@ import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Paths_swarm (getDataDir)
-import Swarm.Failure
-import Swarm.Util
+import Swarm.Failure (
+  Asset (Data),
+  AssetData (AppAsset, NameGeneration),
+  Entry (Directory, File),
+  LoadingFailure (DoesNotExist, SystemFailure),
+  SystemFailure (AssetNotLoaded, CustomFailure),
+ )
+import Swarm.ResourceLoading.Collection
+import Swarm.Util (Encoding (UTF8), readFileMayT)
 import Swarm.Util.Effect ((???))
 import System.Directory (
   XdgDirectory (..),
@@ -48,8 +72,15 @@ import System.Directory (
   getXdgDirectory,
   listDirectory,
  )
-import System.FilePath
-import Witch
+import System.FilePath (
+  dropExtension,
+  normalise,
+  splitFileName,
+  takeExtension,
+  (<.>),
+  (</>),
+ )
+import Witch (into)
 
 -- | Read-only lists of adjectives and words for use in building random robot names
 data NameGenerator = NameGenerator
