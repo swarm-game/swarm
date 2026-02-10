@@ -106,7 +106,7 @@ pparens True = group . encloseWithIndent 2 lparen rparen
 pparens False = id
 
 -- | Same as pparens but does not indent the lines. Only encloses
---   the document with parantheses.
+--   the document with parentheses.
 pparens' :: Bool -> Doc ann -> Doc ann
 pparens' True = group . enclose lparen rparen
 pparens' False = id

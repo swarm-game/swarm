@@ -111,7 +111,7 @@ import Swarm.Util
 import Swarm.Util.Effect (asExceptT, withError)
 import System.Clock
 
--- | The resolution at which the animation manager checks animations for updates, in miliseconds
+-- | The resolution at which the animation manager checks animations for updates, in milliseconds
 animMgrTickDuration :: Int
 animMgrTickDuration = 33
 

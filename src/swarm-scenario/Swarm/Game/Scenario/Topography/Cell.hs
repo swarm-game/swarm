@@ -58,7 +58,7 @@ type Cell = PCell Entity
 -- | Supplements a cell with waypoint information
 type AugmentedCell e phase = SignpostableCell (PCell e phase)
 
--- | Re-usable serialization for variants of 'PCell'
+-- | Reusable serialization for variants of 'PCell'
 mkPCellJson :: ToJSON b => (Erasable a -> Maybe b) -> PCell a phase -> Value
 mkPCellJson modifier x =
   toJSON $
@@ -93,7 +93,7 @@ instance FromJSONE (TerrainEntityMaps, RobotMap Raw) (Cell Raw) where
       $ T.unwords
         [ "Unrecognized terrain type"
         , quote $ getTerrainWord terr
-        , "Avaliable:"
+        , "Available:"
         , showT $ M.keys $ terrainByName tm
         ]
 

@@ -42,7 +42,7 @@ tydef ListI = Int end
 // The length of a number is kept in the header and split into 7bit
 // chunks each prefixed by 1bit that marks if the byte is last in
 // the header (0=YES).
-/* EXAMPLE - [short_x,long_y] - concretly e.g. [42, 2^(2^7)]
+/* EXAMPLE - [short_x,long_y] - concretely e.g. [42, 2^(2^7)]
 
 0   < len short_x < 2^7
 2^7 < len long_y  < 2^14

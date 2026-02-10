@@ -505,7 +505,7 @@ addSeedBot e TickRange {tickRangeMin = minT, tickRangeMax = maxT} seedlingCount 
 --   after it is harvested.
 --
 -- NOTE: Seedling propagation delay (spreadable growth)
--- re-uses the growth timing parameters.
+-- reuses the growth timing parameters.
 seedProgram ::
   -- | min time
   Integer ->

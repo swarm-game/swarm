@@ -212,7 +212,7 @@ nonVacuous i ty@(Fix tyF) = case tyF of
   -- type, rejoice!
   TyConF {} -> pure True
   TyRcdF {} -> pure True
-  -- This last case can't actully happen if we already checked that
+  -- This last case can't actually happen if we already checked that
   -- the recursive type actually contains its bound variable (with
   -- 'containsVar'), since it would correspond to something like @rec
   -- x. y@.  However, it's still correct to return True.

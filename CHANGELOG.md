@@ -252,7 +252,7 @@ modules.
 #### UI enhancements
 
 * Fix REPL type display ([#1610](https://github.com/swarm-game/swarm/pull/1610))
-* Handle backword kill word event in REPL ([#1861](https://github.com/swarm-game/swarm/pull/1861))
+* Handle backward kill word event in REPL ([#1861](https://github.com/swarm-game/swarm/pull/1861))
 * Make log error messages ephemeral ([#1877](https://github.com/swarm-game/swarm/pull/1877))
 * Pretty print code blocks according to widget size ([#1897](https://github.com/swarm-game/swarm/pull/1897))
 * Automatically insert matching close brackets at REPL ([#1953](https://github.com/swarm-game/swarm/pull/1953))

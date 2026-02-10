@@ -9,7 +9,7 @@
 -- By convention, a @[Location]@ /does not/ include the
 -- starting location, whereas a @NonEmpty Location@ does.
 --
--- Consequentially, an empty @[Location]@ implies that
+-- Consequently, an empty @[Location]@ implies that
 -- the robot's current location is already at the goal location.
 --
 -- A gratuitous number of sum types are defined here
@@ -99,7 +99,7 @@ data DifferentArgument
   | NewDistanceLimit DistanceLimitChange
   deriving (Show, Eq, Generic, ToJSON)
 
--- | Reasons why we cannot re-use a precomputed path
+-- | Reasons why we cannot reuse a precomputed path
 -- from the cache upon re-invoking the 'Path' command
 data CacheRetreivalInapplicability
   = NotCached
