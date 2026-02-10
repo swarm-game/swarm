@@ -47,7 +47,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Build first, otherwise the ouput would go to temporary files
+# Build first, otherwise the output would go to temporary files
 cabal build -j -O0
 
 function compare_format() {

@@ -27,12 +27,12 @@ withThrow f = runThrow >=> either (throwError . f) return
 withError :: (Has (Error e2) sig m) => (e1 -> e2) -> ErrorC e1 m a -> m a
 withError f = runError >=> either (throwError . f) return
 
--- | Transform a @Throw e@ constrint into a concrete @Maybe@,
+-- | Transform a @Throw e@ constraint into a concrete @Maybe@,
 --   discarding the error.
 throwToMaybe :: forall e m a. Functor m => ThrowC e m a -> m (Maybe a)
 throwToMaybe = fmap eitherToMaybe . runThrow
 
--- | Transform a @Throw e@ constrint into a concrete @Maybe@,
+-- | Transform a @Throw e@ constraint into a concrete @Maybe@,
 --   logging any error as a warning.
 throwToWarning :: (Has (Accum (Seq e)) sig m) => ThrowC e m a -> m (Maybe a)
 throwToWarning m = do

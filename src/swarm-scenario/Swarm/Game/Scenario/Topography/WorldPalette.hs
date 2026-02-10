@@ -82,7 +82,7 @@ constructWorldMap mappedPairs maskChar =
 
 -- | All alphanumeric characters. These are used as supplemental
 -- map placeholders in case a pre-existing display character is
--- not available to re-use.
+-- not available to reuse.
 genericCharacterPool :: Set.Set Char
 genericCharacterPool = Set.fromList $ ['A' .. 'Z'] <> ['a' .. 'z'] <> ['0' .. '9']
 

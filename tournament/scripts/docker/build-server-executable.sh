@@ -5,7 +5,7 @@
 #
 #    build-server-executable.sh <output binary location>
 #
-# Note that we use 'cabal' instead of 'stack' becuase
+# Note that we use 'cabal' instead of 'stack' because
 # 'stack' fails to compile the 'vty' package within the Amazon Linux docker image.
 
 BUILD_TARGET=swarm:swarm-host-tournament

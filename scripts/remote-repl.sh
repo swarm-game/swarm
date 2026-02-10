@@ -6,7 +6,7 @@ HOST="localhost"
 function help {
   echo "Swarm remote REPL"
   echo
-  echo "This is a shortcut for sending to Swarm REPL via cURL and recieving responses:"
+  echo "This is a shortcut for sending to Swarm REPL via cURL and receiving responses:"
   echo "curl -XGET --header \"Content-Type: text/plain;charset=utf-8\" --data \"build {}\" $HOST:$PORT/code/run"
   echo
   echo "Options:"

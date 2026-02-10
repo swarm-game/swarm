@@ -44,7 +44,7 @@ getIndices (Encoder m) = map fst $ sortOn snd $ M.toList m
 
 -- | Translate each the first occurrence in the structure
 -- to a new integer as it is encountered.
--- Subsequent encounters re-use the allocated integer.
+-- Subsequent encounters reuse the allocated integer.
 encodeOccurrence :: Ord a => a -> OccurrenceEncoder a Int
 encodeOccurrence c = do
   Encoder currentMap <- get

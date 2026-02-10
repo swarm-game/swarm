@@ -25,7 +25,7 @@ close to the vision for it, but we've made great progress!  Some
 notable new features added since the initial announcement include:
 
 - New `scan`, `upload`, and `install` commands
-- Semicolons are no longer required beetween consecutive `def`s
+- Semicolons are no longer required between consecutive `def`s
 - Basic help panel, and panel shortcut keys
 - Dramatically reduced CPU usage when idle
 - An overhaul of parsing and pretty-printing of constants (makes

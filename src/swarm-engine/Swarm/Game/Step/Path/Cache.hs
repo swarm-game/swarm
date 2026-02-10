@@ -21,7 +21,7 @@
 -- location and a destination, including adding or removing
 -- particular entities at certain locations.
 --
--- Certain events allow for partial re-use of the previously
+-- Certain events allow for partial reuse of the previously
 -- computed path.
 module Swarm.Game.Step.Path.Cache (
   retrieveCachedPath,

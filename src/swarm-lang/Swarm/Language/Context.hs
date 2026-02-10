@@ -189,7 +189,7 @@ rollCtx s = Ctx m (CtxTree h (restructureCtx ctxStruct s))
 -- Context instances
 
 -- | Serialize a context simply as its hash; we assume that a
---   top-level CtxMap has been seralized somewhere, from which we can
+--   top-level CtxMap has been serialized somewhere, from which we can
 --   recover this context by looking it up.
 instance ToJSON (Ctx v t) where
   toJSON = toJSON . ctxHash

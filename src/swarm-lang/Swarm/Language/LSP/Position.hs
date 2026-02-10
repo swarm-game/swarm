@@ -152,7 +152,7 @@ pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
     SSuspend {} -> mempty
 
   d = descend pos
-  -- try and decend into the syntax element if it is contained with position
+  -- try and descend into the syntax element if it is contained with position
   descend ::
     ExplainableType (SwarmType phase) =>
     Int ->

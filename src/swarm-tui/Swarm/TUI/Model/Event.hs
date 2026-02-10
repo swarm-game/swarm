@@ -106,7 +106,7 @@ mainEvents = allKeyEvents $ \case
   ShowCESKDebugEvent -> "debug CESK"
   PauseEvent -> "pause"
   RunSingleTickEvent -> "run single tick"
-  IncreaseTpsEvent -> "increse TPS"
+  IncreaseTpsEvent -> "increase TPS"
   DecreaseTpsEvent -> "decrease TPS"
   FocusWorldEvent -> "focus World"
   FocusRobotEvent -> "focus Robot"

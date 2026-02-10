@@ -56,7 +56,7 @@ pattern RSyntax l t <- Syntax l t _ ()
 
 {-# COMPLETE RSyntax #-}
 
--- | Untyped syntax with assocated comments.
+-- | Untyped syntax with associated comments.
 pattern CSyntax :: (SwarmType phase ~ ()) => SrcLoc -> Term phase -> Comments -> Syntax phase
 pattern CSyntax l t cs = Syntax l t cs ()
 

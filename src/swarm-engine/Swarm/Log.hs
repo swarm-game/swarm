@@ -78,7 +78,7 @@ instance ToJSON LogSource where
   toJSON = genericToJSON optionsUntagged
 
 instance FromJSON LogSource where
-  -- This is not ambiguos for Robot/System constructor, but
+  -- This is not ambiguous for Robot/System constructor, but
   -- read aeson docs before adding new LogSource constructor
   parseJSON = genericParseJSON optionsUntagged
 

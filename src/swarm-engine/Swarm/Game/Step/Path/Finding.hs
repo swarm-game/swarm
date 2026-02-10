@@ -16,7 +16,7 @@
 -- Each @path@ invocation returns the direction of the
 -- next "move" along the computed shortest path.
 --
--- This internally stored path is re-used across invocations until some
+-- This internally stored path is reused across invocations until some
 -- event invalidates its cache (see "Swarm.Game.Step.Path.Cache").
 --
 -- == Max distance

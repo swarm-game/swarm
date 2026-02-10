@@ -218,7 +218,7 @@ logPort api savePort eport =
   logP p = logEvent SystemLog Info api ("started on :" <> T.pack (show p))
   logE e = logEvent SystemLog Error api (T.pack e)
 
--- | Build VTY with preffered color mode and bracketed paste mode if available.
+-- | Build VTY with preferred color mode and bracketed paste mode if available.
 --
 -- Note that this will also run whenever the event loop needs to reinitialize
 -- the terminal, e.g. on resume after suspension. See 'customMain'.
