@@ -4,6 +4,8 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 -- Description: Ordered map utilities
+--
+-- A few utilities which are missing from the ordered-containers package.
 module Swarm.Util.OrderedMap where
 
 import Control.Lens (Index, IxValue, Ixed (..), (<&>))
