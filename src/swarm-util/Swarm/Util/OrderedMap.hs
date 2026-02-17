@@ -34,9 +34,10 @@ instance Ord k => Ixed (OMap k a) where
     Just v -> f v <&> \v' -> OM.alter (const $ Just v') k m
     Nothing -> pure m
 
--- | Strangely, an 'elems' function is missing from the 'OMap' API.
+-- | Get the list of elements from an ordered map.
 elems :: OMap k a -> [a]
 elems = map snd . OM.assocs
 
+-- | Create an ordered map from a vanilla map.
 fromMap :: Ord k => Map k a -> OMap k a
 fromMap = OM.fromList . M.toList
