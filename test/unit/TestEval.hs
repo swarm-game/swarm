@@ -315,6 +315,9 @@ testEval g =
             "read down"
             ("read @Dir \"down\"" `evaluatesTo` VDir (DRelative DDown))
         , testCase
+            "read up"
+            ("read @Dir \"up\"" `evaluatesTo` VDir (DRelative DUp))
+        , testCase
             "read text"
             ("read @Text \"\\\"hi\\\"\"" `evaluatesToV` ("hi" :: Text))
         , testCase
