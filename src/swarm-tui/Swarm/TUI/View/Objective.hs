@@ -15,6 +15,7 @@ import Control.Lens hiding (Const, from)
 import Data.List (intercalate)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
+import Data.Maybe (mapMaybe)
 import Data.Vector qualified as V
 import Swarm.Game.Scenario.Objective
 import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (..), Syntax, Unresolvable)
@@ -31,8 +32,11 @@ makeListWidget :: GoalTracking -> BL.List Name GoalEntry
 makeListWidget (GoalTracking _announcements categorizedObjs) =
   BL.listMoveTo 1 $ BL.list (GoalWidgets ObjectivesList) (V.fromList objList) 1
  where
-  objList = intercalate [Spacer] $ map f $ M.toList categorizedObjs
-  f (h, xs) = Header h : map (Goal h) (NE.toList xs)
+  categoryDisplayOrder :: [GoalStatus]
+  categoryDisplayOrder = [Active, Upcoming, Completed, Failed]
+  objListList = mapMaybe (\cat -> (cat,) <$> M.lookup cat categorizedObjs) categoryDisplayOrder
+  objList = intercalate [Spacer] $ map itemize objListList
+  itemize (h, xs) = Header h : map (Goal h) (NE.toList xs)
 
 renderGoalsDisplay ::
   (Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) =>
