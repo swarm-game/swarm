@@ -125,6 +125,9 @@ west = V2 (-1) 0
 down :: Heading
 down = zero
 
+up :: Heading
+up = zero
+
 -- | The 'applyTurn' function gives the meaning of each 'Direction' by
 --   turning relative to the given heading or by turning to an absolute
 --   heading.
@@ -141,6 +144,7 @@ applyTurn d = case d of
     DPlanar DBack -> negated
     DPlanar DForward -> id
     DDown -> const down
+    DUp -> const up
   DAbsolute e -> const $ toHeading e
 
 -- | Mapping from heading to their corresponding cardinal directions.

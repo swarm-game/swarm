@@ -132,6 +132,7 @@
       "west"
       "south"
       "down"
+      "up"
       "forward"
       "left"
       "back"

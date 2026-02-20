@@ -92,7 +92,7 @@ instance FromJSONKey AbsoluteDir where
 -- | A relative direction is one which is defined with respect to the
 --   robot's frame of reference; no special capability is needed to
 --   use them.
-data RelativeDir = DPlanar PlanarRelativeDir | DDown
+data RelativeDir = DPlanar PlanarRelativeDir | DDown | DUp
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable)
 
 instance ToJSON RelativeDir where
@@ -142,4 +142,4 @@ isCardinal = \case
   _ -> False
 
 allDirs :: [Direction]
-allDirs = map DAbsolute enumerate <> map DRelative (DDown : map DPlanar enumerate)
+allDirs = map DAbsolute enumerate <> map DRelative (DDown : DUp : map DPlanar enumerate)
