@@ -32,7 +32,7 @@ import Swarm.Util (applyWhen)
 --   via the auto-derived @Ord@ instance, when the goal categories are
 --   listed (e.g. to display them in the UI) they are listed in the
 --   order shown here: Active goals first, then Upcoming goals, then
---   Completed, then Failed.
+--   Completed, then Failed.  See #1169.
 data GoalStatus
   = -- | Goals in this category may be pursued in parallel.
     -- However, they are only displayed if the "hidden" attribute
