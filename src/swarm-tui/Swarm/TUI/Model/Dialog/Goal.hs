@@ -26,17 +26,22 @@ import Swarm.Language.Syntax (Phase (..))
 import Swarm.TUI.Model.Name
 import Swarm.Util (applyWhen)
 
--- | These are intended to be used as keys in a map
--- of lists of goals.
+-- | These are intended to be used as keys in a map of lists of goals.
+--   Note that the order of the constructors here matters: the
+--   'CategorizedGoals' map uses 'GoalStatus' values as keys, and so,
+--   via the auto-derived @Ord@ instance, when the goal categories are
+--   listed (e.g. to display them in the UI) they are listed in the
+--   order shown here: Active goals first, then Upcoming goals, then
+--   Completed, then Failed.  See #1169.
 data GoalStatus
-  = -- | Goals in this category have other goals as prerequisites.
-    -- However, they are only displayed if the "previewable" attribute
-    -- is @true@.
-    Upcoming
-  | -- | Goals in this category may be pursued in parallel.
+  = -- | Goals in this category may be pursued in parallel.
     -- However, they are only displayed if the "hidden" attribute
     -- is @false@.
     Active
+  | -- | Goals in this category have other goals as prerequisites.
+    -- However, they are only displayed if the "previewable" attribute
+    -- is @true@.
+    Upcoming
   | -- | A goal's programmatic condition, as well as all its prerequisites, were completed.
     -- This is a "latch" mechanism; at some point the conditions required to meet the goal may
     -- no longer hold. Nonetheless, the goal remains "completed".

@@ -31,6 +31,8 @@ makeListWidget :: GoalTracking -> BL.List Name GoalEntry
 makeListWidget (GoalTracking _announcements categorizedObjs) =
   BL.listMoveTo 1 $ BL.list (GoalWidgets ObjectivesList) (V.fromList objList) 1
  where
+  -- Notice that the groups of objectives are generated here, and
+  -- hence shown in the goals widget, in order by their 'GoalStatus'.
   objList = intercalate [Spacer] $ map f $ M.toList categorizedObjs
   f (h, xs) = Header h : map (Goal h) (NE.toList xs)
 
