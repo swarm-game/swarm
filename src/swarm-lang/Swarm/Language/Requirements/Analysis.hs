@@ -162,7 +162,8 @@ requirements tdCtx ctx =
       expandEq (Loc _ x, Nothing) = TVar x
       expandEq (_, Just t) = t
     TProj t _ -> add (singletonCap CRecord) *> go t
-    TImportIn _loc t -> go t
+    TImportIn _ _loc t -> go t
+    TExportIn _ t -> go t
     -- A type ascription doesn't change requirements
     TAnnotate t ty -> go t *> polytypeRequirements ty
     TParens t -> go t

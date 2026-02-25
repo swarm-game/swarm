@@ -152,7 +152,8 @@ termSyntax fty floc fsyn = \case
   SSuspend s -> SSuspend <$> fsyn s
   SParens s -> SParens <$> fsyn s
   TType ty -> pure $ TType ty
-  SImportIn loc s -> SImportIn <$> floc loc <*> fsyn s
+  SImportIn ex loc s -> SImportIn ex <$> floc loc <*> fsyn s
+  SExportIn x s -> SExportIn x <$> fsyn s
 
 -- | Given a (possibly effectful) way to turn types from one phase
 --   into types at another phase, and likewise a way to transform
@@ -236,7 +237,8 @@ freeVarsS f = go S.empty
     SSuspend s1 -> rewrap $ SSuspend <$> go bound s1
     SParens s1 -> rewrap $ SParens <$> go bound s1
     TType {} -> pure s
-    SImportIn url s1 -> rewrap $ SImportIn url <$> go bound s1
+    SImportIn ex url s1 -> rewrap $ SImportIn ex url <$> go bound s1
+    SExportIn x s1 -> rewrap $ SExportIn x <$> go bound s1
    where
     rewrap s' = Syntax l <$> s' <*> pure ty <*> pure cmts
 

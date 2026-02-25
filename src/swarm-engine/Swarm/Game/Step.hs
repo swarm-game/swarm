@@ -705,8 +705,10 @@ stepCESK cesk = case cesk of
   -- If we see a primitive application of suspend, package it up as
   -- a value until it's time to execute.
   In (TSuspend t) e s k -> return $ Out (VSuspend t e) s k
+  -- Exporting a name has no effect on runtime behavior.
+  In (TExportIn _ t) e s k -> return $ In t e s k
   -- Evaluate the code corresponding to an import.
-  In (TImportIn loc t) e s k -> do
+  In (TImportIn _ loc t) e s k -> do
     mmod <- Effect.lookup loc
 
     pure $ case mmod of
@@ -853,11 +855,11 @@ stepCESK cesk = case cesk of
   -- resulting suspended environment, then resume by evaluating the
   -- body of the import in an environment extended by the suspended
   -- environment we got after processing the import.
-  Suspended _ moduleEnv s (FImport _ vars t e : k) -> do
+  Suspended _ moduleEnv s (FImport _ exports t e : k) -> do
     -- First, restrict the environment to only that which is actually
     -- supposed to be exported from the module.  See Note [Module
     -- exports].
-    let exportedEnv = restrictEnv vars moduleEnv
+    let exportedEnv = restrictEnv exports moduleEnv
     -- Now, continue evaluating the body following the import,
     -- with the old environment extended by the module's exported
     -- environment.

@@ -24,6 +24,7 @@ import Swarm.Language.Parser.Lex
 import Swarm.Language.Parser.Record (parseRecord)
 import Swarm.Language.Parser.Type
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.AST (Exportation (..))
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Types
 import Swarm.Util (failT, findDup)
@@ -100,7 +101,11 @@ parseTermAtom2 =
         <|> SRcd <$> brackets (parseRecord (optional (symbol "=" *> parseTerm)))
         <|> TType <$> (symbol "@" *> parseTypeAtom)
         <|> SImportIn
-          <$> (reserved "import" *> parseImportLocation)
+          <$> (NoReExport <$ reserved "import")
+          <*> parseImportLocation
+          <*> (optional (void (symbol ";") <|> reserved "in") *> (parseTerm <|> (eof $> sNoop)))
+        <|> reserved "export"
+          *> ((SExportIn <$> tmVar) <|> (SImportIn ReExport <$> parseImportLocation))
           <*> (optional (void (symbol ";") <|> reserved "in") *> (parseTerm <|> (eof $> sNoop)))
     )
     <|> parseLoc (mkTuple <$> parens (parseTerm `sepBy` symbol ","))

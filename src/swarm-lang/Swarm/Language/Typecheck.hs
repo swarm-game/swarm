@@ -78,12 +78,13 @@ import Swarm.Effect.Unify.Fast qualified as U
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Kindcheck (KindError (..), processPolytype, processType)
-import Swarm.Language.Module (Module (..))
+import Swarm.Language.Module (Module (..), ModuleExports (..), addTypeExport, addValueExport, lookupExport)
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Requirements.Analysis (requirements)
 import Swarm.Language.Requirements.Type (ReqCtx)
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.AST (Exportation (ReExport))
 import Swarm.Language.Syntax.Import ()
 import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Language.TDVar (TDVar)
@@ -402,6 +403,9 @@ instance HasBindings (Term Inferred) where
 
 instance HasBindings (Syntax Inferred) where
   applyBindings (Syntax l t cs u) = Syntax l <$> applyBindings t <*> pure cs <*> applyBindings u
+
+instance HasBindings (ModuleExports UCtx) where
+  applyBindings (ModuleExports v t) = ModuleExports <$> applyBindings v <*> applyBindings t
 
 instance HasBindings (Module Inferred) where
   applyBindings (Module t ctx imps time prov) = Module <$> applyBindings t <*> applyBindings ctx <*> pure imps <*> pure time <*> pure prov
@@ -907,13 +911,38 @@ checkTop ctx reqCtx tdCtx modCache t =
 
 -- | Collect up the names and types of any top-level definitions into
 --   a context.
-collectDefs :: Syntax Typed -> Pair TCtx TDCtx
-collectDefs (Syntax _ (SLet LSDef _ x _ _ _ body t) _ _) =
-  first (Ctx.singleton (locVal x) (body ^. sType) <>) (collectDefs t)
-collectDefs (Syntax _ (SImportIn _ t) _ _) = collectDefs t
-collectDefs (Syntax _ (STydef x _ (Just tdInfo) t) _ _) =
-  second (addBindingTD (locVal x) tdInfo) (collectDefs t)
-collectDefs _ = Ctx.empty :!: emptyTDCtx
+collectExports :: ModuleCache -> Syntax Typed -> ModuleExports TCtx
+collectExports modCache = run . runReader (mempty @(ModuleExports TCtx)) . go
+ where
+  -- The Reader keeps a context of things currently in scope.  Having
+  -- it called 'ModuleExports' is perhaps confusing, because it
+  -- represents not things that are exported per se, but rather things
+  -- that are in scope.  But the type we need is the same.  Returns a
+  -- 'ModuleExports TCtx' listing everything (both defs and tydefs)
+  -- that should be exported.
+  go :: Has (Reader (ModuleExports TCtx)) sig m => Syntax Typed -> m (ModuleExports TCtx)
+  go = \case
+    Syntax _ (SLet LSDef _ x _ _ _ body t) _ _ -> do
+      let addThing = addValueExport (locVal x) (body ^. sType)
+      local addThing $ addThing <$> go t
+    Syntax _ (STydef x _ (Just tdInfo) t) _ _ -> do
+      let addThing = addTypeExport (locVal x) tdInfo
+      local addThing $ addThing <$> go t
+    -- If we see an import, look up its ModuleExports and add it to the context while recursing, in case anything is re-exported later.
+    -- If the import is re-exported in its entirety, add it to the output as well.
+    Syntax _ (SImportIn e loc t) _ _ -> do
+      -- If the module is not in the global module cache, it's
+      -- definitely a bug, but one that would have been caught earlier
+      -- during typechecking, so we just replace a failed lookup with
+      -- an empty export context.
+      let modexps = maybe mempty moduleCtx $ modCache loc
+      local (modexps <>) $ (case e of ReExport -> (modexps <>); _ -> id) <$> go t
+    -- If a single name is re-exported, look it up in the current
+    -- context and add it to the output.
+    Syntax _ (SExportIn x t) _ _ -> do
+      curCtx <- ask @(ModuleExports TCtx)
+      (lookupExport x curCtx <>) <$> go t
+    _ -> pure mempty
 
 -- | Infer the type of a module, i.e. import, by (1) typechecking and
 --   annotating the term itself, and (2) collecting up the types of
@@ -927,9 +956,8 @@ inferModule modCache (Module ms _ imps time prov) = do
   -- Infer the type of the term
   mt <- traverse (inferTop mempty mempty emptyTDCtx modCache) ms
 
-  -- Now, if the term has top-level definitions, collect up their
-  -- types and put them in the context.
-  let ctx = maybe (Ctx.empty :!: emptyTDCtx) collectDefs mt
+  let ctx = maybe mempty (collectExports modCache) mt
+
   pure $ Module mt ctx imps time prov
 
 -- | Infer the type of a term, returning a type-annotated term.
@@ -1153,20 +1181,26 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- then infer @e@ in an extended context.  Because we make sure to
   -- typecheck modules in topological order, any dependencies will
   -- already be in the global module cache.
-  SImportIn loc t1 -> do
+  SImportIn ex loc t1 -> do
     modCache <- ask @ModuleCache
-    (mCtx :!: mTDCtx) <- case modCache loc of
+    ModuleExports mCtx mTDCtx <- case modCache loc of
       -- If it's not in the global module cache, that's a bug!  We
       -- ensure that we process modules in topological order, so any
       -- dependencies should have already been typechecked,
       -- elaborated, and added to the global module cache.
       Nothing -> throwTypeErr l $ UnknownImport loc
       -- Extract the context from the module in the global cache
-      Just emod -> pure (first toU . moduleCtx $ emod)
+      Just emod -> pure (toU . moduleCtx $ emod)
 
     -- Now infer t1 with the import's exports added to the context.
     t1' <- withBindings mCtx $ withBindingsTD mTDCtx $ infer t1
-    return $ Syntax l (SImportIn loc t1') cs (t1' ^. sType)
+    return $ Syntax l (SImportIn ex loc t1') cs (t1' ^. sType)
+  SExportIn x t1 -> do
+    -- Make sure the variable being exported is actually defined
+    _ <- lookup l x
+    -- If so, just infer the body.
+    t1' <- infer t1
+    return $ Syntax l (SExportIn x t1') cs (t1' ^. sType)
   TType ty -> pure $ Syntax l (TType ty) cs UTyType
   -- Fallback: to infer the type of anything else, make up a fresh unification
   -- variable for its type and check against it.
@@ -1663,6 +1697,7 @@ analyzeAtomic locals (Syntax l t _ _) = case t of
   -- explicitly in the surface syntax.
   SSuspend {} -> throwTypeErr l $ InvalidAtomic AtomicSuspend t
   SImportIn {} -> throwTypeErr l $ InvalidAtomic AtomicImport t
+  SExportIn {} -> throwTypeErr l $ InvalidAtomic AtomicImport t
 
 -- | A simple polytype is a simple type with no quantifiers.
 isSimpleUPolytype :: UPolytype -> Bool
