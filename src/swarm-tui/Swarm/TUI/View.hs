@@ -1490,11 +1490,11 @@ drawReqs = vBox . map (hCenter . drawReq)
 indent2 :: WrapSettings
 indent2 = defaultWrapSettings {fillStrategy = FillIndent 2}
 
--- | Only show the most recent entry, and any entries which were
---   produced by "say" or "log" commands.  Other entries (i.e. errors
---   or command status reports) are thus ephemeral, i.e. they are only
---   shown when they are the most recent log entry, but hidden once
---   something else is logged.
+-- | Only show the most recent entry, entries which were produced by
+--   "say" or "log" commands, and error messages.  Other entries
+--   (e.g. command status reports, system log messages) are thus
+--   ephemeral, i.e. they are only shown when they are the most recent
+--   log entry, but hidden once something else is logged.
 getLogEntriesToShow :: GameState -> [LogEntry]
 getLogEntriesToShow gs = logEntries ^.. traversed . ifiltered shouldShow
  where
@@ -1503,7 +1503,7 @@ getLogEntriesToShow gs = logEntries ^.. traversed . ifiltered shouldShow
 
   shouldShow i le =
     (i == n - 1) || case le ^. leSource of
-      RobotLog src _ _ -> src `elem` [Said, Logged]
+      RobotLog src _ _ -> src `elem` [Said, Logged, RobotError]
       SystemLog -> False
 
 drawRobotLog :: UIGameplay -> GameState -> Widget Name
