@@ -113,11 +113,12 @@ atPath :: FilePath -> Traversal' (Collection a) a
 atPath p = collectionItemByPath p . _Single
 
 -- | The name of the special file which indicates the order of
---   scenarios in a folder.
+--   items in a directory.
 orderFileName :: FilePath
 orderFileName = "00-ORDER.txt"
 
 -- | Read a special 00-ORDER.txt file indicating the order of
+--   items in a directory.
 readOrderFile :: FilePath -> IO (Maybe [String])
 readOrderFile orderFile = fmap nonEmptyLines <$> readFileMay UTF8 orderFile
  where
