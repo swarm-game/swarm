@@ -35,6 +35,7 @@ module Swarm.ResourceLoading (
   collectionToList,
   flattenCollection,
   collectionItemByPath,
+  atPath,
   CollectionConfig (..),
   loadCollection,
 ) where

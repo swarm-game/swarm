@@ -115,7 +115,7 @@ import Swarm.Language.Text.Markdown (Document)
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Log
 import Swarm.Pretty (prettyText, prettyTextLine, prettyTextWidth)
-import Swarm.ResourceLoading (CollectionItem (..), collectionItemByPath, _Single)
+import Swarm.ResourceLoading (CollectionItem (..), atPath)
 import Swarm.TUI.Border
 import Swarm.TUI.Controller (ticksPerFrameCap)
 import Swarm.TUI.Controller.EventHandlers (allEventHandlers, mainEventHandlers, replEventHandlers, robotEventHandlers, worldEventHandlers)
@@ -248,7 +248,7 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
         [] -> withAttr cyanAttr $ txt " ◉ "
         _ -> withAttr yellowAttr $ txt " ◎ "
    where
-    currentScenarioInfo = appState ^? playState . progression . scenarios . collectionItemByPath sPath . _Single . getScenarioInfo
+    currentScenarioInfo = appState ^? playState . progression . scenarios . atPath sPath . getScenarioInfo
 
   isCompleted :: BestRecords -> Bool
   isCompleted best = best ^. scenarioBestByTime . metricProgress == Completed
@@ -278,7 +278,7 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
    where
     vc = determineStaticViewCenter (s ^. scenarioLandscape) worldTuples
 
-    currentScenarioInfo = appState ^? playState . progression . scenarios . collectionItemByPath sPath . _Single . getScenarioInfo
+    currentScenarioInfo = appState ^? playState . progression . scenarios . atPath sPath . getScenarioInfo
 
     worldTuples = buildWorldTuples $ s ^. scenarioLandscape
     theWorlds =

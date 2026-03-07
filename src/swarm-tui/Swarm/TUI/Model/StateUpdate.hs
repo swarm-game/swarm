@@ -86,7 +86,7 @@ import Swarm.Game.Tick (TickNumber (TickNumber))
 import Swarm.Game.World (Seed)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
 import Swarm.Pretty (prettyText)
-import Swarm.ResourceLoading (collectionItemByPath, getSwarmHistoryPath, _Single)
+import Swarm.ResourceLoading (atPath, getSwarmHistoryPath)
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Model qualified as EM
 import Swarm.TUI.Editor.Util qualified as EU
@@ -193,7 +193,7 @@ getScenarioInfoFromPath ::
 getScenarioInfoFromPath ss path =
   fromMaybe (ScenarioInfo path NotStarted) currentScenarioInfo
  where
-  currentScenarioInfo = ss ^? collectionItemByPath path . _Single . getScenarioInfo
+  currentScenarioInfo = ss ^? atPath path . getScenarioInfo
 
 -- | Construct an 'AppState' from an already-loaded 'RuntimeState' and
 --   'UIState', given the 'AppOpts' the app was started with.
@@ -358,8 +358,7 @@ startGameWithSeed siPair@(ScenarioWith _scene si) lp = do
   playState
     . progression
     . scenarios
-    . collectionItemByPath p
-    . _Single
+    . atPath p
     . getScenarioInfo
     . scenarioStatus
     .= Played

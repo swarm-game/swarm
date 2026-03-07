@@ -24,7 +24,7 @@ import Swarm.Game.State
 import Swarm.Game.State.Substate
 import Swarm.Language.Module (moduleTerm)
 import Swarm.Language.Syntax (eraseRaw)
-import Swarm.ResourceLoading (Collection (Collection, collectionMap), CollectionItem (..), collectionItemByPath, _Single)
+import Swarm.ResourceLoading (Collection (Collection, collectionMap), CollectionItem (..), atPath)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievements (attainAchievement, attainAchievement')
 import Swarm.TUI.Model.DebugOption (DebugOption)
@@ -78,7 +78,7 @@ saveScenarioInfoOnFinish p = do
   saved <- use $ scenarioState . gameState . completionStatsSaved
 
   let currentScenarioInfo :: Traversal' PlayState ScenarioInfo
-      currentScenarioInfo = progression . scenarios . collectionItemByPath p . _Single . getScenarioInfo
+      currentScenarioInfo = progression . scenarios . atPath p . getScenarioInfo
 
   replHist <- use $ scenarioState . uiGameplay . uiREPL . replHistory
   let determinator = CodeSizeDeterminators (eraseRaw <$> (moduleTerm =<< initialRunCode)) $ replHist ^. replHasExecutedManualInput

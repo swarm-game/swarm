@@ -18,6 +18,7 @@ module Swarm.ResourceLoading.Collection (
   collectionToList,
   flattenCollection,
   collectionItemByPath,
+  atPath,
   CollectionConfig (..),
   loadCollection,
 ) where
@@ -105,6 +106,11 @@ collectionItemByPath path = ixp ps
     inner si = case si of
       Single {} -> pure si
       SubCollection n' col -> SubCollection n' <$> ixp xs f col
+
+-- | Traversal to directly access a Single item in a collection at a
+--   given path, if it exists.
+atPath :: FilePath -> Traversal' (Collection a) a
+atPath p = collectionItemByPath p . _Single
 
 -- | The name of the special file which indicates the order of
 --   scenarios in a folder.
