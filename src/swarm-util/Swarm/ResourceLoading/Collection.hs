@@ -197,7 +197,7 @@ loadCollectionItem ::
   m (CollectionItem a)
 loadCollectionItem cfg path = do
   isDir <- sendIO $ doesDirectoryExist path
-  let collectionName = into @Text . dropWhile isSpace . takeBaseName $ path
+  let collectionName = into @Text . takeBaseName $ path
   case isDir of
     True -> SubCollection collectionName <$> loadCollection cfg path
     False -> do
