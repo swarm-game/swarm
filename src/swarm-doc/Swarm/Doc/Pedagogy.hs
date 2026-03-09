@@ -48,16 +48,15 @@ import Swarm.Game.Scenario.Objective (objectiveGoal)
 import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
-  flatten,
   getTutorials,
   loadScenarios,
-  pathifyCollection,
-  scenarioCollectionToList,
+  pathify,
  )
 import Swarm.Game.World.DSL (loadWorlds)
 import Swarm.Language.Module (moduleTerm)
 import Swarm.Language.Syntax
 import Swarm.Language.Text.Markdown (docToText, findCode)
+import Swarm.ResourceLoading (flattenCollection)
 import Swarm.Util.Effect (ignoreWarnings)
 import Prelude hiding (Foldable (..))
 
@@ -161,12 +160,9 @@ computeCommandIntroductions =
 -- and derive their command coverage info.
 generateIntroductionsSequence :: ScenarioCollection ScenarioInfo -> [CoverageInfo]
 generateIntroductionsSequence =
-  computeCommandIntroductions . zipFrom 0 . getTuts . pathifyCollection
+  computeCommandIntroductions . zipFrom 0 . getTuts . (fmap . fmap) pathify
  where
-  getTuts =
-    concatMap flatten
-      . scenarioCollectionToList
-      . getTutorials
+  getTuts = flattenCollection . getTutorials
 
 -- * Rendering functions
 

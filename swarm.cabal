@@ -945,6 +945,7 @@ library swarm-util
     megaparsec,
     minimorph,
     mtl,
+    ordered-containers,
     prettyprinter,
     servant-docs,
     stm,
@@ -975,6 +976,7 @@ library swarm-util
     Swarm.Language.Syntax.Loc
     Swarm.Pretty
     Swarm.ResourceLoading
+    Swarm.ResourceLoading.Collection
     Swarm.Util
     Swarm.Util.Effect
     Swarm.Util.Erasable
@@ -984,6 +986,7 @@ library swarm-util
     Swarm.Util.JSON
     Swarm.Util.Lens
     Swarm.Util.OccurrenceEncoder
+    Swarm.Util.OrderedMap
     Swarm.Util.RingBuffer
     Swarm.Util.UnitInterval
     Swarm.Util.WindowedCounter

@@ -24,11 +24,11 @@ import Swarm.Game.Ingredients
 import Swarm.Game.Scenario.Status (ScenarioPath (..))
 import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
-  ScenarioItem (..),
+  ScenarioItem,
   ScenarioWith,
-  scenarioCollectionToList,
  )
 import Swarm.Game.World (Seed)
+import Swarm.ResourceLoading (CollectionItem, collectionToList)
 import Swarm.TUI.Model.Name
 
 ------------------------------------------------------------
@@ -104,11 +104,11 @@ mainMenu e = BL.list MenuList (V.fromList enumerate) 1 & BL.listMoveToElement e
 makePrisms ''Menu
 
 -- | Create a brick 'BL.List' of scenario items from a 'ScenarioCollection'.
-mkScenarioList :: ScenarioCollection a -> BL.List Name (ScenarioItem a)
+mkScenarioList :: ScenarioCollection a -> BL.List Name (CollectionItem (ScenarioWith a))
 mkScenarioList =
   flip (BL.list ScenarioList) 1
     . V.fromList
-    . scenarioCollectionToList
+    . collectionToList
 
 ------------------------------------------------------------
 -- Inventory list entries

@@ -89,7 +89,7 @@ import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Value (Value (VKey), emptyEnv, envTypes)
 import Swarm.Log
 import Swarm.Pretty (prettyString)
-import Swarm.ResourceLoading (getSwarmHistoryPath)
+import Swarm.ResourceLoading (CollectionItem (..), collectionToList, getSwarmHistoryPath)
 import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Controller.EventHandlers.Robot (showEntityDescription)
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
@@ -194,18 +194,18 @@ handleMainMenuEvent menu = \case
     forM_ (snd <$> BL.listSelectedElement menu) $ \case
       NewGame -> do
         ss <- use $ playState . progression . scenarios
-        uiState . uiMenu .= NewGameMenu (pure $ mkScenarioList $ pathifyCollection ss)
+        uiState . uiMenu .= NewGameMenu (pure . mkScenarioList . (fmap . fmap) pathify $ ss)
       Tutorial -> do
         ss <- use $ playState . progression . scenarios
 
         -- Extract the first unsolved tutorial challenge
         let tutorialCollection = getTutorials ss
-            tutorials = scenarioCollectionToList tutorialCollection
+            tutorials = collectionToList tutorialCollection
             -- Find first unsolved tutorial, or first tutorial if all are solved
             firstUnsolved :: Maybe (ScenarioItem ScenarioInfo)
             firstUnsolved = find unsolved tutorials <|> listToMaybe tutorials
             unsolved = \case
-              SISingle (ScenarioWith _ si) -> case si ^. scenarioStatus of
+              Single (ScenarioWith _ si) -> case si ^. scenarioStatus of
                 Played _ _ best
                   | Metric Completed _ <- best ^. scenarioBestByTime -> False
                   | otherwise -> True
@@ -213,7 +213,7 @@ handleMainMenuEvent menu = \case
               _ -> False
 
         case firstUnsolved of
-          Just (SISingle firstUnsolvedInfo) -> do
+          Just (Single firstUnsolvedInfo) -> do
             let firstUnsolvedName = firstUnsolvedInfo ^. getScenario . scenarioMetadata . scenarioName
 
             -- Now set up the menu stack as if the user had chosen "New Game > Tutorials > t"
@@ -221,18 +221,18 @@ handleMainMenuEvent menu = \case
             let topMenu =
                   BL.listFindBy
                     ((== tutorialsDirname) . T.unpack . scenarioItemName)
-                    (mkScenarioList $ pathifyCollection ss)
+                    (mkScenarioList . (fmap . fmap) pathify $ ss)
                 tutorialMenu =
                   BL.listFindBy
                     ((== firstUnsolvedName) . scenarioItemName)
-                    (mkScenarioList $ pathifyCollection tutorialCollection)
+                    (mkScenarioList . (fmap . fmap) pathify $ tutorialCollection)
                 menuStack = tutorialMenu :| pure topMenu
 
             -- Finally, set the menu stack, and start the scenario!
             uiState . uiMenu .= NewGameMenu menuStack
 
             let remainingTutorials = maybe mempty (getScenariosAfterSelection tutorialMenu) $ BL.listSelected tutorialMenu
-            startGame (pathifyCollection firstUnsolvedInfo :| remainingTutorials) Nothing
+            startGame (fmap pathify firstUnsolvedInfo :| remainingTutorials) Nothing
 
           -- This shouldn't normally happen, but it could if the
           -- correct data files aren't installed.  In that case, log
@@ -295,11 +295,11 @@ handleNewGameMenuEvent ::
 handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   Key V.KEnter ->
     forM_ (BL.listSelectedElement curMenu) $ \(pos, item) -> case item of
-      SISingle siPair -> do
+      Single siPair -> do
         invalidateCache
         let remaining = getScenariosAfterSelection curMenu pos
         startGame (siPair :| remaining) Nothing
-      SICollection _ c -> uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList c) scenarioStack)
+      SubCollection _ c -> uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList c) scenarioStack)
   CharKey 'o' -> showLaunchDialog
   CharKey 'O' -> showLaunchDialog
   Key V.KEsc -> exitNewGameMenu scenarioStack
@@ -311,7 +311,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   _ -> pure ()
  where
   showLaunchDialog = case snd <$> BL.listSelectedElement curMenu of
-    Just (SISingle (ScenarioWith s (ScenarioPath p))) -> do
+    Just (Single (ScenarioWith s (ScenarioPath p))) -> do
       ss <- use $ playState . progression . scenarios
       let si = getScenarioInfoFromPath ss p
       Brick.zoom (uiState . uiLaunchConfig) $ prepareLaunchDialog $ ScenarioWith s si
@@ -963,6 +963,6 @@ getScenariosAfterSelection ::
   Int ->
   [ScenarioWith a]
 getScenariosAfterSelection m selIndex =
-  [x | SISingle x <- V.toList remaining]
+  [x | Single x <- V.toList remaining]
  where
   remaining = snd $ BL.splitAt (selIndex + 1) $ listElements m
