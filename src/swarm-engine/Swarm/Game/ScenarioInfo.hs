@@ -13,20 +13,16 @@ module Swarm.Game.ScenarioInfo (
   _NotStarted,
   ScenarioInfo,
   scenarioPath,
+  normalizeScenarioPath,
   scenarioStatus,
   CodeSizeDeterminators (CodeSizeDeterminators),
   ScenarioWith,
 
   -- * Scenario collection
-  ScenarioCollection (..),
-  scenarioCollectionToList,
-  flatten,
-  scenarioItemByPath,
-  normalizeScenarioPath,
-  ScenarioItem (..),
+  ScenarioCollection,
+  ScenarioItem,
+  pathify,
   scenarioItemName,
-  _SISingle,
-  pathifyCollection,
 
   -- ** Tutorials
   tutorialsDirname,
@@ -42,109 +38,44 @@ import Control.Algebra (Has)
 import Control.Carrier.Error.Either (runError)
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
-import Control.Effect.Accum (Accum, add)
-import Control.Effect.Error (Error)
+import Control.Effect.Accum (Accum)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw (Throw, liftEither)
 import Control.Lens hiding (from, (<.>))
-import Control.Monad (filterM, forM_, void, when, (<=<))
+import Control.Monad (void, (<=<))
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.Char (isSpace)
-import Data.Either (partitionEithers)
 import Data.Either.Extra (fromRight')
-import Data.List (intercalate, isPrefixOf, stripPrefix, (\\))
-import Data.List.NonEmpty qualified as NE
-import Data.Map (Map)
-import Data.Map qualified as M
-import Data.Map.Ordered (OMap)
+import Data.List (intercalate, isPrefixOf, stripPrefix)
 import Data.Map.Ordered qualified as OM
 import Data.Maybe (isJust)
 import Data.Sequence (Seq)
-import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Yaml as Y
 import Swarm.Failure
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Status
-import Swarm.ResourceLoading (getDataDirThrow, getSwarmSavePath)
-import Swarm.Util (Encoding (..), lookupEither, readFileMay)
+import Swarm.ResourceLoading
 import Swarm.Util.Effect (warn, withThrow)
-import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
-import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
-import Witch (into)
+import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist)
+import System.FilePath (pathSeparator, splitDirectories, takeExtensions, (-<.>), (</>))
 
 ------------------------------------------------------------
+-- Scenario collection utilities
+------------------------------------------------------------
 
--- * Utilities
+type ScenarioCollection a = Collection (ScenarioWith a)
+type ScenarioItem a = CollectionItem (ScenarioWith a)
 
--- | Given an ordered list of keys and a map, return a partition consisting of:
--- * Left: the keys that were not present
--- * Right: the retrievable key-value pairs in corresponding order to the provided keys
-lookupInOrder :: Ord k => Map k v -> [k] -> ([k], [(k, v)])
-lookupInOrder m = partitionEithers . map produceKeyValuePair
- where
-  produceKeyValuePair k = sequenceA (k, lookupEither k m)
+pathify :: ScenarioInfo -> ScenarioPath
+pathify = ScenarioPath . view scenarioPath
 
--- ** Ordered Map utilities
-
-type instance Index (OMap k a) = k
-type instance IxValue (OMap k a) = a
-
--- | Adapted from:
--- https://hackage.haskell.org/package/lens-5.3.4/docs/src/Control.Lens.At.html#line-319
-instance Ord k => Ixed (OMap k a) where
-  ix k f m = case OM.lookup k m of
-    Just v -> f v <&> \v' -> OM.alter (const $ Just v') k m
-    Nothing -> pure m
-
--- | Strangely, an 'elems' function is missing from the 'OMap' API.
-orderedElems :: OMap k a -> [a]
-orderedElems = map snd . OM.assocs
-
-fromMapOM :: Ord k => Map k a -> OMap k a
-fromMapOM = OM.fromList . M.toList
-
--- ----------------------------------------------------------------------------
--- Scenario Item
--- ----------------------------------------------------------------------------
-
--- | A scenario item is either a specific scenario, or a collection of
---   scenarios (/e.g./ the scenarios contained in a subdirectory).
-data ScenarioItem a = SISingle (ScenarioWith a) | SICollection Text (ScenarioCollection a)
-  deriving (Functor)
-
--- | Retrieve the name of a scenario item.
+-- | Get the name of a scenario item, suitable for e.g. displaying in
+--   a menu (either a specific scenario, or a subcollection).
 scenarioItemName :: ScenarioItem a -> Text
-scenarioItemName (SISingle (ScenarioWith s _ss)) = s ^. scenarioMetadata . scenarioName
-scenarioItemName (SICollection name _) = name
-
--- | A scenario collection is a tree of scenarios, keyed by name,
---   together with an optional order.
---
---   /Invariant:/ every item in the
---   'scOrder' exists as a key in the 'scMap'.
-newtype ScenarioCollection a = SC
-  { scMap :: OMap FilePath (ScenarioItem a)
-  }
-  deriving (Functor)
-
-pathifyCollection :: Functor f => f ScenarioInfo -> f ScenarioPath
-pathifyCollection = fmap (ScenarioPath . view scenarioPath)
-
--- | Access and modify 'ScenarioItem's in collection based on their path.
-scenarioItemByPath :: FilePath -> Traversal' (ScenarioCollection a) (ScenarioItem a)
-scenarioItemByPath path = ixp ps
+scenarioItemName = collectionItemName name
  where
-  ps = splitDirectories path
-  ixp :: (Applicative f) => [String] -> (ScenarioItem a -> f (ScenarioItem a)) -> ScenarioCollection a -> f (ScenarioCollection a)
-  ixp [] _ col = pure col
-  ixp [s] f (SC m) = SC <$> ix s f m
-  ixp (d : xs) f (SC m) = SC <$> ix d inner m
-   where
-    inner si = case si of
-      SISingle {} -> pure si
-      SICollection n' col -> SICollection n' <$> ixp xs f col
+  name (ScenarioWith s _) = s ^. scenarioMetadata . scenarioName
 
 -- | Subdirectory of the scenarios directory where tutorials are stored.
 tutorialsDirname :: FilePath
@@ -153,9 +84,9 @@ tutorialsDirname = "Tutorials"
 -- | Extract just the collection of tutorial scenarios from the entire
 --   scenario collection.
 getTutorials :: ScenarioCollection a -> ScenarioCollection a
-getTutorials sc = case OM.lookup tutorialsDirname (scMap sc) of
-  Just (SICollection _ c) -> c
-  _ -> SC OM.empty
+getTutorials sc = case OM.lookup tutorialsDirname (collectionMap sc) of
+  Just (SubCollection _ c) -> c
+  _ -> emptyCollection
 
 -- | Canonicalize a scenario path, making it usable as a unique key.
 normalizeScenarioPath ::
@@ -165,7 +96,7 @@ normalizeScenarioPath ::
   m FilePath
 normalizeScenarioPath col p =
   let path = p -<.> "yaml"
-   in if isJust $ col ^? scenarioItemByPath path
+   in if isJust $ col ^? collectionItemByPath path
         then return path
         else liftIO $ do
           canonPath <- canonicalizePath path
@@ -176,13 +107,9 @@ normalizeScenarioPath col p =
                   & maybe canonPath (dropWhile (== pathSeparator))
           return n
 
--- | Convert a scenario collection to a list of scenario items.
-scenarioCollectionToList :: ScenarioCollection a -> [ScenarioItem a]
-scenarioCollectionToList (SC xs) = orderedElems xs
-
-flatten :: ScenarioItem a -> [ScenarioWith a]
-flatten (SISingle p) = [p]
-flatten (SICollection _ c) = concatMap flatten $ scenarioCollectionToList c
+------------------------------------------------------------
+-- Scenario collection loading
+------------------------------------------------------------
 
 -- | Load all the scenarios from the scenarios data directory.
 loadScenarios ::
@@ -193,59 +120,22 @@ loadScenarios ::
 loadScenarios scenarioInputs loadTestScenarios = do
   res <- runThrow @SystemFailure $ getDataDirThrow Scenarios "scenarios"
   case res of
-    Left err -> do
-      warn err
-      return $ SC OM.empty
-    Right dataDir -> loadScenarioDir scenarioInputs loadTestScenarios dataDir
+    Left err -> warn err >> pure emptyCollection
+    Right dataDir -> loadCollection (scenarioCollectionConfig scenarioInputs loadTestScenarios) dataDir
 
--- | The name of the special file which indicates the order of
---   scenarios in a folder.
-orderFileName :: FilePath
-orderFileName = "00-ORDER.txt"
-
-testingDirectory :: FilePath
-testingDirectory = "Testing"
-
-readOrderFile :: FilePath -> IO (Maybe [String])
-readOrderFile orderFile = fmap nonEmptyLines <$> readFileMay UTF8 orderFile
+-- | Configuration record for recursively loading the scenario collection.
+scenarioCollectionConfig :: ScenarioInputs -> Bool -> CollectionConfig (ScenarioWith ScenarioInfo)
+scenarioCollectionConfig scenarioInputs loadTestScenarios =
+  CollectionConfig
+    { shouldLoad = isYamlOrPublicDirectory
+    , warnUnordered = True
+    , loadItem = loadScenarioItem scenarioInputs
+    }
  where
-  nonEmptyLines :: String -> [String]
-  nonEmptyLines = filter (not . null) . lines
-
-loadScenarioDir ::
-  forall m sig.
-  (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
-  ScenarioInputs ->
-  Bool ->
-  FilePath ->
-  m (ScenarioCollection ScenarioInfo)
-loadScenarioDir scenarioInputs loadTestScenarios dir = do
-  itemPaths <- sendIO $ filterM (isYamlOrPublicDirectory dir) =<< listDirectory dir
-  scenarioMap <- loadItems itemPaths
-  sendIO (readOrderFile orderFile) >>= \case
-    Nothing -> loadUnorderedScenarioDir scenarioMap
-    Just order -> loadOrderedScenarioDir order scenarioMap
- where
-  dirName, orderFile, orderFileShortPath :: FilePath
-  dirName = takeBaseName dir
-  orderFile = dir </> orderFileName
-  orderFileShortPath = dirName </> orderFileName
-
-  -- The function for individual directory items either warns about SystemFailure,
-  -- or has thrown SystemFailure. The following code just adds that thrown failure to others.
-  loadItems :: [FilePath] -> m (Map FilePath (ScenarioItem ScenarioInfo))
-  loadItems items = do
-    let loadItem f = runError @SystemFailure $ (f,) <$> loadScenarioItem scenarioInputs loadTestScenarios (dir </> f)
-    (scenarioFailures, okScenarios) <- partitionEithers <$> mapM loadItem items
-    add (Seq.fromList scenarioFailures)
-    return $ M.fromList okScenarios
-
-  isHiddenDir :: String -> Bool
-  isHiddenDir f = not loadTestScenarios && f == testingDirectory
-
-  -- Keep only files which are .yaml files or directories not starting with an underscore.
-  -- Marked directories contain scenarios that can't be parsed (failure tests) or only script solutions.
-  isYamlOrPublicDirectory :: FilePath -> String -> IO Bool
+  -- Keep only files which are .yaml files or directories not starting
+  -- with an underscore.  Marked directories contain scenarios that
+  -- can't be parsed (failure tests) or only script solutions.
+  isYamlOrPublicDirectory :: FilePath -> FilePath -> IO Bool
   isYamlOrPublicDirectory d f = do
     isDir <- doesDirectoryExist $ d </> f
     return $
@@ -253,23 +143,18 @@ loadScenarioDir scenarioInputs loadTestScenarios dir = do
         then not ("_" `isPrefixOf` f || isHiddenDir f)
         else takeExtensions f == ".yaml"
 
-  -- warn that the ORDER file is missing
-  loadUnorderedScenarioDir :: Map FilePath (ScenarioItem a) -> m (ScenarioCollection a)
-  loadUnorderedScenarioDir scenarioMap = do
-    when (dirName /= testingDirectory) (warn $ OrderFileWarning orderFileShortPath NoOrderFile)
-    pure . SC $ fromMapOM scenarioMap
+  isHiddenDir :: String -> Bool
+  isHiddenDir f = not loadTestScenarios && f == "Testing"
 
-  -- warn if the ORDER file does not match directory contents
-  loadOrderedScenarioDir :: [String] -> Map FilePath (ScenarioItem a) -> m (ScenarioCollection a)
-  loadOrderedScenarioDir order scenarioMap = do
-    let missing = M.keys scenarioMap \\ order
-        (notPresent, loaded) = lookupInOrder scenarioMap order
-        dangling = filter (not . isHiddenDir) notPresent
-
-    forM_ (NE.nonEmpty missing) (warn . OrderFileWarning orderFileShortPath . MissingFiles)
-    forM_ (NE.nonEmpty dangling) (warn . OrderFileWarning orderFileShortPath . DanglingFiles)
-
-    pure $ SC $ OM.fromList loaded
+-- | Load a single scenario from a path, returning either a loading
+--   error, or a scenario along with a list of warnings.
+loadScenarioItem :: ScenarioInputs -> FilePath -> IO (Either SystemFailure ([SystemFailure], ScenarioWith ScenarioInfo))
+loadScenarioItem scenarioInputs path = runError @SystemFailure $ do
+  s <- loadScenarioFile scenarioInputs path
+  eitherSi <- runThrow @SystemFailure (loadScenarioInfo path)
+  case eitherSi of
+    Right si -> pure ([], ScenarioWith s si)
+    Left warning -> pure ([warning], ScenarioWith s $ ScenarioInfo path NotStarted)
 
 -- | How to transform scenario path to save path.
 scenarioPathToSavePath :: FilePath -> FilePath -> FilePath
@@ -281,7 +166,7 @@ loadScenarioInfo ::
   FilePath ->
   m ScenarioInfo
 loadScenarioInfo p = do
-  path <- sendIO $ normalizeScenarioPath (SC OM.empty) p
+  path <- sendIO $ normalizeScenarioPath (Collection OM.empty) p
   infoPath <- sendIO $ scenarioPathToSavePath path <$> getSwarmSavePath False
   hasInfo <- sendIO $ doesFileExist infoPath
   if not hasInfo
@@ -307,34 +192,8 @@ saveScenarioInfo path si = do
   -- We do not store the path in the save file (see #2390).
   encodeFile infoPath $ void si
 
--- | Load a scenario item (either a scenario, or a subdirectory
---   containing a collection of scenarios) from a particular path.
-loadScenarioItem ::
-  ( Has (Error SystemFailure) sig m
-  , Has (Accum (Seq SystemFailure)) sig m
-  , Has (Lift IO) sig m
-  ) =>
-  ScenarioInputs ->
-  Bool ->
-  FilePath ->
-  m (ScenarioItem ScenarioInfo)
-loadScenarioItem scenarioInputs loadTestScenarios path = do
-  isDir <- sendIO $ doesDirectoryExist path
-  let collectionName = into @Text . dropWhile isSpace . takeBaseName $ path
-  case isDir of
-    True -> SICollection collectionName <$> loadScenarioDir scenarioInputs loadTestScenarios path
-    False -> do
-      s <- loadScenarioFile scenarioInputs path
-      eitherSi <- runThrow @SystemFailure (loadScenarioInfo path)
-      case eitherSi of
-        Right si -> return $ SISingle $ ScenarioWith s si
-        Left warning -> do
-          warn warning
-          return . SISingle . ScenarioWith s $ ScenarioInfo path NotStarted
-
 ------------------------------------------------------------
 -- Some lenses + prisms
 ------------------------------------------------------------
 
-makePrisms ''ScenarioItem
 makePrisms ''ScenarioStatus

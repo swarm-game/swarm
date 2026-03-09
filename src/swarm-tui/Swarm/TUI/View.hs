@@ -100,12 +100,7 @@ import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Scenario.Status
 import Swarm.Game.Scenario.Topography.Center
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Swarm.Game.ScenarioInfo (
-  ScenarioItem (..),
-  scenarioItemByPath,
-  scenarioItemName,
-  _SISingle,
- )
+import Swarm.Game.ScenarioInfo (ScenarioItem, scenarioItemName)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Runtime
@@ -120,6 +115,7 @@ import Swarm.Language.Text.Markdown (Document)
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Log
 import Swarm.Pretty (prettyText, prettyTextLine, prettyTextWidth)
+import Swarm.ResourceLoading (CollectionItem (..), atPath)
 import Swarm.TUI.Border
 import Swarm.TUI.Controller (ticksPerFrameCap)
 import Swarm.TUI.Controller.EventHandlers (allEventHandlers, mainEventHandlers, replEventHandlers, robotEventHandlers, worldEventHandlers)
@@ -237,11 +233,11 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
       ]
 
   launchOptionsMessage = case (displayedFor, snd <$> BL.listSelectedElement l) of
-    (Nothing, Just (SISingle _)) -> hCenter $ txt "Press 'o' for launch options, or 'Enter' to launch with defaults"
+    (Nothing, Just (Single _)) -> hCenter $ txt "Press 'o' for launch options, or 'Enter' to launch with defaults"
     _ -> txt " "
 
-  drawScenarioItem (SISingle (ScenarioWith s (ScenarioPath sPath))) = padRight (Pad 1) (drawStatusInfo s sPath) <+> txt (s ^. scenarioMetadata . scenarioName)
-  drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
+  drawScenarioItem (Single (ScenarioWith s (ScenarioPath sPath))) = padRight (Pad 1) (drawStatusInfo s sPath) <+> txt (s ^. scenarioMetadata . scenarioName)
+  drawScenarioItem (SubCollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
 
   drawStatusInfo s sPath = case currentScenarioInfo of
     Nothing -> emptyWidget
@@ -252,7 +248,7 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
         [] -> withAttr cyanAttr $ txt " ◉ "
         _ -> withAttr yellowAttr $ txt " ◎ "
    where
-    currentScenarioInfo = appState ^? playState . progression . scenarios . scenarioItemByPath sPath . _SISingle . getScenarioInfo
+    currentScenarioInfo = appState ^? playState . progression . scenarios . atPath sPath . getScenarioInfo
 
   isCompleted :: BestRecords -> Bool
   isCompleted best = best ^. scenarioBestByTime . metricProgress == Completed
@@ -270,8 +266,8 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
       . mapMaybe (fmap (scenarioItemName . snd) . BL.listSelectedElement)
 
   drawDescription :: ScenarioItem ScenarioPath -> Widget Name
-  drawDescription (SICollection _ _) = txtWrap " "
-  drawDescription (SISingle (ScenarioWith s (ScenarioPath sPath))) =
+  drawDescription (SubCollection _ _) = txtWrap " "
+  drawDescription (Single (ScenarioWith s (ScenarioPath sPath))) =
     vBox
       [ drawMarkdown (s ^. scenarioOperation . scenarioDescription)
       , cached (ScenarioPreview sPath) $
@@ -282,7 +278,7 @@ drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
    where
     vc = determineStaticViewCenter (s ^. scenarioLandscape) worldTuples
 
-    currentScenarioInfo = appState ^? playState . progression . scenarios . scenarioItemByPath sPath . _SISingle . getScenarioInfo
+    currentScenarioInfo = appState ^? playState . progression . scenarios . atPath sPath . getScenarioInfo
 
     worldTuples = buildWorldTuples $ s ^. scenarioLandscape
     theWorlds =
