@@ -187,6 +187,8 @@ data Frame
   | -- | If an exception bubbles all the way up to this frame, then
     --   switch to Suspended mode with this saved top-level context.
     FRestoreEnv Env
+  | -- | XXX
+    FUnfold Value [Value]
   deriving (Generic)
 
 instance ToJSON Frame where
@@ -460,6 +462,8 @@ prettyFrame f (p, inner) = case f of
   FProj x -> (11, pparens (p < 11) inner <> "." <> ppr x)
   FSuspend _ -> (10, "suspend" <+> pparens (p < 11) inner)
   FRestoreEnv _ -> (10, "restore" <+> pparens (p < 11) inner)
+  FUnfold _f _vs -> undefined -- XXX
+  -- (v0:v1:v2:...:unfold <f>) ?
 
 -- | Pretty-print a special "prefix application" frame, i.e. a frame
 --   formatted like @X· inner@.  Unlike typical applications, these

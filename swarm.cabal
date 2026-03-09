@@ -424,6 +424,7 @@ library swarm-lang
   import:
     stan-config, common, ghc2024-extensions,
     aeson,
+    array,
     base,
     commonmark,
     commonmark-extensions,
@@ -465,6 +466,7 @@ library swarm-lang
     Swarm.Effect.Unify.Common
     Swarm.Effect.Unify.Fast
     Swarm.Effect.Unify.Naive
+    Swarm.Language.Array
     Swarm.Language.Cache
     Swarm.Language.Capability
     Swarm.Language.Context

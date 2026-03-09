@@ -50,6 +50,7 @@ module Swarm.Language.Types (
   pattern TyRcd,
   pattern TyCmd,
   pattern TyDelay,
+  pattern TyArray,
   pattern TyUser,
   pattern TyRec,
 
@@ -75,6 +76,7 @@ module Swarm.Language.Types (
   pattern UTyRcd,
   pattern UTyCmd,
   pattern UTyDelay,
+  pattern UTyArray,
   pattern UTyUser,
   pattern UTyRec,
 
@@ -227,6 +229,8 @@ data TyCon
     TCProd
   | -- | Function types.
     TCFun
+  | -- | Array types.
+    TCArray
   | -- | User-defined type constructor.
     TCUser TDVar
   deriving (Eq, Ord, Show, Data, Generic, Hashable)
@@ -245,6 +249,7 @@ instance PrettyPrec TyCon where
     TCSum -> "Sum"
     TCProd -> "Prod"
     TCFun -> "Fun"
+    TCArray -> "Array"
     TCUser t -> ppr t
 
 -- | The arity of a type, /i.e./ the number of type parameters it
@@ -707,6 +712,9 @@ pattern TyCmd ty = TyConApp TCCmd [ty]
 pattern TyDelay :: Type -> Type
 pattern TyDelay ty = TyConApp TCDelay [ty]
 
+pattern TyArray :: Type -> Type
+pattern TyArray ty = TyConApp TCArray [ty]
+
 pattern TyUser :: TDVar -> [Type] -> Type
 pattern TyUser v tys = TyConApp (TCUser v) tys
 
@@ -774,6 +782,9 @@ pattern UTyCmd ty = UTyConApp TCCmd [ty]
 
 pattern UTyDelay :: UType -> UType
 pattern UTyDelay ty = UTyConApp TCDelay [ty]
+
+pattern UTyArray :: UType -> UType
+pattern UTyArray ty = UTyConApp TCArray [ty]
 
 pattern UTyUser :: TDVar -> [UType] -> UType
 pattern UTyUser v tys = UTyConApp (TCUser v) tys
@@ -997,6 +1008,7 @@ tcArity tydefs =
     TCSum -> Just 2
     TCProd -> Just 2
     TCFun -> Just 2
+    TCArray -> Just 1
     TCUser t -> getArity . view tydefArity <$> lookupTD t tydefs
 
 ------------------------------------------------------------

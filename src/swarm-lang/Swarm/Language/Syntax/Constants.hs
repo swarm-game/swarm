@@ -27,7 +27,7 @@ module Swarm.Language.Syntax.Constants (
   globalMaxVolume,
 ) where
 
-import Data.Aeson.Types hiding (Key)
+import Data.Aeson.Types (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Data (Data)
 import Data.Hashable (Hashable)
 import Data.Int (Int32)
@@ -284,6 +284,12 @@ data Const
     CharAt
   | -- | Create a singleton text value with the given character code.
     ToChar
+  | -- Array operations
+
+    -- | Unfold array XXX
+    UnfoldArray
+  | -- | Index into an array XXX
+    Index
   | -- Function composition with nice operators
 
     -- | Application operator - helps to avoid parentheses:
@@ -846,6 +852,10 @@ constInfo c = case c of
     function 1 . doc Set.empty "Create a singleton `text` value from the given character code." $
       [ "That is, `chars (toChar c) == 1` and `charAt 0 (toChar c) == c`."
       ]
+  UnfoldArray ->
+    function 2 $ shortDoc Set.empty "Create an `Array` via an unfold."
+  Index ->
+    function 2 $ shortDoc Set.empty "Index into an `Array`."
   AppF ->
     binaryOp "$" 0 R . doc Set.empty "Apply the function on the left to the value on the right." $
       [ "This operator is useful to avoid nesting parentheses."

@@ -40,7 +40,7 @@ import Swarm.Language.Syntax.Pattern (sComments, pattern RTerm)
 import Swarm.Language.Syntax.Util (eraseRaw, unTuple)
 import Swarm.Language.TDVar (TDVar)
 import Swarm.Language.Types
-import Swarm.Pretty (PrettyPrec (..), encloseWithIndent, pparens, ppr, prettyEquality)
+import Swarm.Pretty (PrettyPrec (..), bbrackets, encloseWithIndent, pparens, ppr, prettyEquality)
 import Text.Show.Unicode (ushow)
 
 -- | Pretty-print a syntax node with comments.
@@ -139,6 +139,7 @@ instance (Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFo
         ppr x <+> "<-" <+> prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
     SRcd m -> brackets $ hsep (punctuate "," (map (prettyEquality . first locVal) m))
     SProj t x -> prettyPrec 11 t <> "." <> ppr x
+    SArray ss -> bbrackets $ hsep (punctuate "," (map ppr ss))
     SAnnotate t pt ->
       pparens (p > 0) $
         prettyPrec 1 t <+> ":" <+> ppr pt

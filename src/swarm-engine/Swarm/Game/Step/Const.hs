@@ -83,6 +83,7 @@ import Swarm.Game.Terrain (TerrainType)
 import Swarm.Game.Tick
 import Swarm.Game.Universe
 import Swarm.Game.Value
+import Swarm.Language.Array qualified as A
 import Swarm.Language.Capability
 import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Parser.Value (readValue)
@@ -1297,6 +1298,14 @@ execConst runChildProg c vs s k = do
             raise ToChar ["Value", prettyValue (VInt i), "is an invalid character code"]
         | otherwise ->
             return . mkReturn . T.singleton . chr . fromIntegral $ i
+      _ -> badConst
+    UnfoldArray -> case vs of
+      [f, b] -> return $ Out b s (FApp f : FUnfold f [] : k)
+      _ -> badConst
+    Index -> case vs of
+      [VArray arr, VInt i] -> case arr A.!? fromIntegral i of
+        Nothing -> throwError $ cmdExn c ["Out-of-bounds array index (" <> showT i <> ")."]
+        Just v -> return . mkReturn $ v
       _ -> badConst
     AppF ->
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"

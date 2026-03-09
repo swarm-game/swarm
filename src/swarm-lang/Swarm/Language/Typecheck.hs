@@ -621,6 +621,7 @@ tyConNounPhrase = \case
   TCSum -> "a sum"
   TCProd -> "a pair"
   TCFun -> "a function"
+  TCArray -> "an array"
   TCUser t -> ppr t
 
 -- | Return an English noun phrase describing things with the given
@@ -1310,6 +1311,8 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Split -> [tyQ| Int -> Text -> (Text * Text) |]
   CharAt -> [tyQ| Int -> Text -> Int |]
   ToChar -> [tyQ| Int -> Text |]
+  UnfoldArray -> [tyQ| (b -> Unit + (a * b)) -> b -> Array a |]
+  Index -> [tyQ| Array a -> Int -> a |]
   AppF -> [tyQ| (a -> b) -> a -> b |]
   Swap -> [tyQ| Text -> Cmd Text |]
   Atomic -> [tyQ| {Cmd a} -> Cmd a |]
@@ -1653,6 +1656,7 @@ analyzeAtomic locals (Syntax l t _ _) = case t of
     analyzeField (Loc _ x, Nothing) = analyzeAtomic locals (Syntax NoLoc (TVar x) mempty ())
     analyzeField (_, Just s) = analyzeAtomic locals s
   SProj {} -> return 0
+  SArray ss -> sum <$> traverse (analyzeAtomic locals) ss
   -- Variables are allowed if bound locally, or if they have a simple type.
   TVar x
     | x `S.member` locals -> return 0

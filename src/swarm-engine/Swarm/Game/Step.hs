@@ -68,6 +68,7 @@ import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
 import Swarm.Game.Tick
+import Swarm.Language.Array qualified as A
 import Swarm.Language.Capability
 import Swarm.Language.Module (Module, moduleCtx, moduleTerm)
 import Swarm.Language.Requirements qualified as R
@@ -735,6 +736,13 @@ stepCESK cesk = case cesk of
         --     environment.
         Just mt ->
           In (insertSuspend $ erase mt ^. sTerm) emptyEnv s (FImport loc (moduleCtx m) t e : k)
+  Out (VInj False VUnit) s (FUnfold _ as : k) ->
+    return $ Out (VArray $ A.fromList (reverse as)) s k
+  Out (VInj True (VPair a b)) s (FUnfold f as : k) ->
+    return $ Out b s (FApp f : FUnfold f (a : as) : k)
+  Out _ _s (FUnfold _f _as : _k) -> error "FUnfold for unexpected value"
+  -- XXX impossible; if f typechecked we should get
+  -- one of the above two cases
 
   -- Ignore explicit parens.
   In (TParens t) e s k -> return $ In t e s k
