@@ -31,7 +31,6 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw (throwError)
 import Control.Lens (Ixed (..), Traversal', makePrisms)
 import Control.Monad (filterM, forM_, when)
-import Data.Char (isSpace)
 import Data.Either (partitionEithers)
 import Data.List ((\\))
 import Data.List.NonEmpty qualified as NE
@@ -166,7 +165,7 @@ loadCollection cfg dir = do
     add (Seq.fromList itemFailures)
     return $ M.fromList okItems
 
-  -- Load a collection with items in no particular order, and
+  -- Load a collection with items sorted alphabetically by file path, and
   -- optionally warn that the ORDER file is missing.
   loadUnorderedCollection :: Map FilePath (CollectionItem a) -> m (Collection a)
   loadUnorderedCollection collectionItemMap = do
