@@ -588,6 +588,18 @@ testEval g =
             "recursive type (rose tree)"
             ("default @(rec t. Int * (rec l. Unit + t * l))" `evaluatesTo` VPair (VInt 0) (VInj False VUnit))
         ]
+    , testGroup
+        "import/export"
+        [ testCase
+            "shadow re-export"
+            ("import \"data/test/export/shadow/a.sw\" in (a, b)" `evaluatesTo` VPair (VInt 3) (VInt 5))
+        , testCase
+            "module re-export shadows"
+            ("import \"data/test/export/shadow/c.sw\" in d" `evaluatesTo` VInt 3)
+        , testCase
+            "individual re-export shadows"
+            ("import \"data/test/export/shadow/e.sw\" in f" `evaluatesTo` VInt 3)
+        ]
     ]
  where
   tquote :: String -> Text
@@ -601,7 +613,7 @@ testEval g =
       Left err ->
         p err
           @? "Expected predicate did not hold on error message "
-            ++ from @Text @String err
+          ++ from @Text @String err
 
   evaluatesTo :: Text -> Value -> Assertion
   evaluatesTo tm val = do

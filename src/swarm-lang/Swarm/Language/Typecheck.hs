@@ -957,7 +957,6 @@ inferModule modCache (Module ms _ imps time prov) = do
   mt <- traverse (inferTop mempty mempty emptyTDCtx modCache) ms
 
   let ctx = maybe mempty (collectExports modCache) mt
-
   pure $ Module mt ctx imps time prov
 
 -- | Infer the type of a term, returning a type-annotated term.
