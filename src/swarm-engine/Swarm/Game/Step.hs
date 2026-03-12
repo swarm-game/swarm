@@ -670,6 +670,10 @@ stepCESK cesk = case cesk of
       Nothing -> badMachineState s $ T.unwords ["Record projection for variable", x, "that does not exist"]
       Just xv -> return $ Out xv s k
     _ -> badMachineState s "FProj frame with non-record value"
+  In (TArray []) _ s k -> return $ Out (VArray (A.fromList [])) s k
+  In (TArray (t : ts)) e s k -> return $ In t e s (FArray [] e ts : k)
+  Out v s (FArray vs _ [] : k) -> return $ Out (VArray (A.fromList (reverse (v : vs)))) s k
+  Out v s (FArray vs e (t : ts) : k) -> return $ In t e s (FArray (v : vs) e ts : k)
   -- To evaluate non-recursive let expressions, we start by focusing on the
   -- let-bound expression.
   In (TLet _ False x _ mty mreq t1 t2) e s k ->

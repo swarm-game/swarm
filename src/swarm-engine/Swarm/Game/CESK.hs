@@ -181,14 +181,17 @@ data Frame
     FRcd Env [(Var, Value)] Var [(Var, Maybe (Term Resolved))]
   | -- | We are in the middle of evaluating a record field projection.
     FProj Var
+  | -- | In the middle of evaluating an array literal.  Elements
+    --   already evaluated + environment + remaining elements.
+    FArray [Value] Env [Term Resolved]
+  | -- | In the middle of evaluating a call to unfoldArray.
+    FUnfold Value [Value]
   | -- | We should suspend with the given environment once we finish
     --   the current evaluation.
     FSuspend Env
   | -- | If an exception bubbles all the way up to this frame, then
     --   switch to Suspended mode with this saved top-level context.
     FRestoreEnv Env
-  | -- | XXX
-    FUnfold Value [Value]
   deriving (Generic)
 
 instance ToJSON Frame where
@@ -462,6 +465,7 @@ prettyFrame f (p, inner) = case f of
   FProj x -> (11, pparens (p < 11) inner <> "." <> ppr x)
   FSuspend _ -> (10, "suspend" <+> pparens (p < 11) inner)
   FRestoreEnv _ -> (10, "restore" <+> pparens (p < 11) inner)
+  FArray _vs _env _ts -> undefined -- XXX
   FUnfold _f _vs -> undefined -- XXX
   -- (v0:v1:v2:...:unfold <f>) ?
 
