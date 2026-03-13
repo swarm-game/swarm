@@ -783,7 +783,8 @@ decomposeTyConApp1 c t ty = do
   return a
 
 decomposeCmdTy
-  , decomposeDelayTy ::
+  , decomposeDelayTy
+  , decomposeArrayTy ::
     ( Has Unification sig m
     , Has (Throw ContextualTypeErr) sig m
     , Has (Reader TDCtx) sig m
@@ -794,6 +795,7 @@ decomposeCmdTy
     m UType
 decomposeCmdTy = decomposeTyConApp1 TCCmd
 decomposeDelayTy = decomposeTyConApp1 TCDelay
+decomposeArrayTy = decomposeTyConApp1 TCArray
 
 -- | Decompose a type which is expected to be a record type.  There
 --   are three possible outcomes:
@@ -1153,6 +1155,12 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     m' <- traverse (itraverse $ \x -> infer . fromMaybe (RTerm (TVar (locVal x)))) m
     let rcdTy = M.fromList $ map (locVal *** (^. sType)) m'
     return $ Syntax l (SRcd ((map . second) Just m')) cs (UTyRcd rcdTy)
+  SArray [] -> Syntax l (SArray []) cs . UTyArray <$> fresh
+  SArray (t1 : ts) -> do
+    -- XXX do we need a withFrame?
+    t1' <- infer t1
+    ts' <- mapM (`check` (t1' ^. sType)) ts
+    return $ Syntax l (SArray (t1' : ts')) cs (UTyArray (t1' ^. sType))
 
   -- Once we're typechecking, we don't need to keep around explicit
   -- parens any more
@@ -1522,6 +1530,10 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
             (\(x, mt, ty) -> (x,) . Just <$> check (fromMaybe (RTerm (TVar (locVal x))) mt) ty)
             fieldsWithTypes
         return $ Syntax l (SRcd fields') cs expected
+  SArray ss -> do
+    eltTy <- decomposeArrayTy s (Expected, expected)
+    ss' <- mapM (`check` eltTy) ss
+    return $ Syntax l (SArray ss') cs expected
 
   -- The type of @suspend t@ is @Cmd T@ if @t : T@.
   SSuspend s1 -> do

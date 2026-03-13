@@ -43,6 +43,7 @@ module Swarm.Language.Parser.Lex (
   braces,
   parens,
   brackets,
+  abrackets,
 ) where
 
 import Control.Lens (use, view, (%=), (.=))
@@ -309,3 +310,6 @@ parens = between (symbol "(") (symbol ")")
 
 brackets :: Parser a -> Parser a
 brackets = between (symbol "[") (symbol "]")
+
+abrackets :: Parser a -> Parser a
+abrackets = between (symbol "[[") (symbol "]]")
