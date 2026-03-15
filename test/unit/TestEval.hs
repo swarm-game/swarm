@@ -15,6 +15,7 @@ import Data.Text qualified as T
 import Graphics.Vty.Input.Events qualified as V
 import Swarm.Game.State
 import Swarm.Game.Value (Valuable (..))
+import Swarm.Language.Array qualified as A
 import Swarm.Language.Key
 import Swarm.Language.Syntax.AST (Term (TInt))
 import Swarm.Language.Syntax.Direction
@@ -600,10 +601,43 @@ testEval g =
             "individual re-export shadows"
             ("import \"data/test/export/shadow/e.sw\" in f" `evaluatesTo` VInt 3)
         ]
+    , testGroup
+        "arrays"
+        [ testCase
+            "array literal"
+            ("[| 1, 2+3, 4 |]" `evaluatesTo` mkArray (map VInt [1, 5, 4]))
+        , testCase
+            "empty array literal"
+            ("[| |]" `evaluatesTo` mkArray [])
+        , testCase
+            "singleton array literal"
+            ("[| \"hi\" |]" `evaluatesTo` mkArray [VText "hi"])
+        , testCase
+            "nested array literal"
+            ("[| [| 1, 2 |], [| 3, 4 |] |]" `evaluatesTo` mkArray [mkArray [VInt 1, VInt 2], mkArray [VInt 3, VInt 4]])
+        , testCase
+            "array size"
+            ("size [| 3, 5, 4 |]" `evaluatesTo` VInt 3)
+        , testCase
+            "size of empty array"
+            ("size [||]" `evaluatesTo` VInt 0)
+        , testCase
+            "unfoldArray"
+            ("unfoldArray (\\n. if (n==0) {inl()} {inr(n, n-1)}) 4" `evaluatesTo` mkArray (map VInt [4, 3, 2, 1]))
+        , testCase
+            "fromList"
+            ("tydef List a = rec l. Unit + a * l end; def id = \\x. x end; def fromList = unfoldArray (id : List a -> Unit + a * List a) end; pure $ fromList (inr (4, inr (6, inl ())))" `evaluatesTo` mkArray (map VInt [4, 6]))
+        , testCase
+            "generate"
+            ("def generate : Int -> (Int -> a) -> Array a = \\n. \\f. unfoldArray (\\k. if (k == n) {inl ()} {inr (f k, k + 1)}) 0 end; pure $ generate 4 (\\k. k*k)" `evaluatesTo` mkArray (map VInt [0, 1, 4, 9]))
+        ]
     ]
  where
   tquote :: String -> Text
   tquote = T.pack . show
+
+  mkArray :: [Value] -> Value
+  mkArray = VArray . A.fromList
 
   throwsError :: Text -> (Text -> Bool) -> Assertion
   throwsError tm p = do
@@ -613,7 +647,7 @@ testEval g =
       Left err ->
         p err
           @? "Expected predicate did not hold on error message "
-            ++ from @Text @String err
+          ++ from @Text @String err
 
   evaluatesTo :: Text -> Value -> Assertion
   evaluatesTo tm val = do
