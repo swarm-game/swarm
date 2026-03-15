@@ -630,6 +630,15 @@ testEval g =
         , testCase
             "generate"
             ("def generate : Int -> (Int -> a) -> Array a = \\n. \\f. unfoldArray (\\k. if (k == n) {inl ()} {inr (f k, k + 1)}) 0 end; pure $ generate 4 (\\k. k*k)" `evaluatesTo` mkArray (map VInt [0, 1, 4, 9]))
+        , testCase
+            "toList"
+            ("import \"~swarm/lib/array\" in toList [| 5, 3, 1 |]" `evaluatesToV` [5 :: Int, 3, 1])
+        , testCase
+            "fromList . toList"
+            ("import \"~swarm/lib/array\" in fromList (toList [| 5, 3, 1 |])" `evaluatesTo` mkArray (map VInt [5, 3, 1]))
+        , testCase
+            "appendArray"
+            ("import \"~swarm/lib/array\" in appendArray [| 6, 2 |] [| 5, 8, 3 |]" `evaluatesTo` mkArray (map VInt [6, 2, 5, 8, 3]))
         ]
     ]
  where
