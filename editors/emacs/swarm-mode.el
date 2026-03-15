@@ -170,6 +170,9 @@
       "split"
       "charat"
       "tochar"
+      "unfoldarray"
+      "arraysize"
+      "indexarray"
       "key"
       )
     t)

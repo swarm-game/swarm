@@ -289,9 +289,9 @@ data Const
     -- | Create an array via an unfold.
     UnfoldArray
   | -- | Size of an array
-    Size
+    ArraySize
   | -- | Access the array element at a specified index.
-    Index
+    IndexArray
   | -- Function composition with nice operators
 
     -- | Application operator - helps to avoid parentheses:
@@ -856,10 +856,10 @@ constInfo c = case c of
       ]
   UnfoldArray ->
     function 2 $ shortDoc Set.empty "Create an `Array` via an unfold."
-  Size ->
+  ArraySize ->
     function 1 $ shortDoc Set.empty "Compute the size (number of elements) of an `Array`."
-  Index ->
-    function 2 $ shortDoc Set.empty "Index into an `Array`."
+  IndexArray ->
+    function 2 $ shortDoc Set.empty "Index into an `Array` (0-based)."
   AppF ->
     binaryOp "$" 0 R . doc Set.empty "Apply the function on the left to the value on the right." $
       [ "This operator is useful to avoid nesting parentheses."

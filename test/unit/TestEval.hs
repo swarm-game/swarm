@@ -616,11 +616,20 @@ testEval g =
             "nested array literal"
             ("[| [| 1, 2 |], [| 3, 4 |] |]" `evaluatesTo` mkArray [mkArray [VInt 1, VInt 2], mkArray [VInt 3, VInt 4]])
         , testCase
+            "array index 0"
+            ("indexArray [| 4, 5, 6 |] 0" `evaluatesToV` (4 :: Int))
+        , testCase
+            "array index 1"
+            ("indexArray [| 4, 5, 6 |] 1" `evaluatesToV` (5 :: Int))
+        , testCase
+            "array index 2"
+            ("indexArray [| 4, 5, 6 |] 2" `evaluatesToV` (6 :: Int))
+        , testCase
             "array size"
-            ("size [| 3, 5, 4 |]" `evaluatesTo` VInt 3)
+            ("arraySize [| 3, 5, 4 |]" `evaluatesTo` VInt 3)
         , testCase
             "size of empty array"
-            ("size [||]" `evaluatesTo` VInt 0)
+            ("arraySize [||]" `evaluatesTo` VInt 0)
         , testCase
             "unfoldArray"
             ("unfoldArray (\\n. if (n==0) {inl()} {inr(n, n-1)}) 4" `evaluatesTo` mkArray (map VInt [4, 3, 2, 1]))

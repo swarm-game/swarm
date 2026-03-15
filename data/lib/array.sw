@@ -7,9 +7,9 @@ end
 
 def appendArray : Array a -> Array a -> Array a
   = \y. \z.
-    let m = size y in
-    let n = size z in
-    generate (m + n) (\k. if (k < m) {index y k} {index z (k - m)})
+    let m = arraySize y in
+    let n = arraySize z in
+    generate (m + n) (\k. if (k < m) {indexArray y k} {indexArray z (k - m)})
 end
 
 // Spell out the type (rec l. Unit + a * l) instead of using the tydef List,
@@ -20,6 +20,6 @@ def fromList : (rec l. Unit + a * l) -> Array a
 end
 
 def toList : Array a -> (rec l. Unit + a * l) = \arr.
-  let n = size arr
-  in  unfoldr (\k. if (k == n) {inl ()} {inr (index arr k, k+1)}) 0
+  let n = arraySize arr
+  in  unfoldr (\k. if (k == n) {inl ()} {inr (indexArray arr k, k+1)}) 0
 end

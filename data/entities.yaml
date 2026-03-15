@@ -405,6 +405,18 @@
       ```
   properties: [pickable]
   capabilities: ["++"]
+- name: pigeon coop
+  display:
+    attr: wood
+    char: '■'
+  description:
+    - |
+      A series of holes suitable for housing pigeons, or other objects. Like so:
+    - |
+      ```
+      [|1, 2, 3|]
+  properties: [pickable]
+  capabilities: ["array", "indexArray", "arraySize"]
 - name: caliper
   display:
     attr: silver
