@@ -115,10 +115,10 @@ pparens' True = group . enclose lparen rparen
 pparens' False = id
 
 labracket :: Doc ann
-labracket = "[["
+labracket = "[|"
 
 rabracket :: Doc ann
-rabracket = "]]"
+rabracket = "|]"
 
 abrackets :: Doc ann -> Doc ann
 abrackets = enclose labracket rabracket

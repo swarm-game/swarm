@@ -288,6 +288,8 @@ data Const
 
     -- | Unfold array XXX
     UnfoldArray
+  | -- | Size of an array
+    Size
   | -- | Index into an array XXX
     Index
   | -- Function composition with nice operators
@@ -854,6 +856,8 @@ constInfo c = case c of
       ]
   UnfoldArray ->
     function 2 $ shortDoc Set.empty "Create an `Array` via an unfold."
+  Size ->
+    function 1 $ shortDoc Set.empty "Compute the size (number of elements) of an `Array`."
   Index ->
     function 2 $ shortDoc Set.empty "Index into an `Array`."
   AppF ->

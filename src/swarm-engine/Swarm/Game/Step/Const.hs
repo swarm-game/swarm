@@ -1302,6 +1302,9 @@ execConst runChildProg c vs s k = do
     UnfoldArray -> case vs of
       [f, b] -> return $ Out b s (FApp f : FUnfold f [] : k)
       _ -> badConst
+    Size -> case vs of
+      [VArray arr] -> return . mkReturn . A.size $ arr
+      _ -> badConst
     Index -> case vs of
       [VArray arr, VInt i] -> case arr A.!? fromIntegral i of
         Nothing -> throwError $ cmdExn c ["Out-of-bounds array index (" <> showT i <> ")."]

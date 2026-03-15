@@ -6,6 +6,7 @@ module Swarm.Language.Array (
   SwarmArray (..),
   fromList,
   toList,
+  size,
   (!?),
 ) where
 
@@ -29,6 +30,9 @@ instance (Eq a, Hashable a) => Hashable (SwarmArray a) where
 
 instance ToJSON a => ToJSON (SwarmArray a) where
   toJSON = toJSON . toList
+
+size :: SwarmArray a -> Int
+size = succ . snd . A.bounds . getSwarmArray
 
 -- | Safe indexing.
 (!?) :: SwarmArray a -> Int -> Maybe a

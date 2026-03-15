@@ -312,4 +312,4 @@ brackets :: Parser a -> Parser a
 brackets = between (symbol "[") (symbol "]")
 
 abrackets :: Parser a -> Parser a
-abrackets = between (symbol "[[") (symbol "]]")
+abrackets = between (symbol "[|") (symbol "|]")
