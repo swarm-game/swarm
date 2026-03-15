@@ -1157,7 +1157,6 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     return $ Syntax l (SRcd ((map . second) Just m')) cs (UTyRcd rcdTy)
   SArray [] -> Syntax l (SArray []) cs . UTyArray <$> fresh
   SArray (t1 : ts) -> do
-    -- XXX do we need a withFrame?
     t1' <- infer t1
     ts' <- mapM (`check` (t1' ^. sType)) ts
     return $ Syntax l (SArray (t1' : ts')) cs (UTyArray (t1' ^. sType))

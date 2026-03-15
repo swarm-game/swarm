@@ -286,11 +286,11 @@ data Const
     ToChar
   | -- Array operations
 
-    -- | Unfold array XXX
+    -- | Create an array via an unfold.
     UnfoldArray
   | -- | Size of an array
     Size
-  | -- | Index into an array XXX
+  | -- | Access the array element at a specified index.
     Index
   | -- Function composition with nice operators
 

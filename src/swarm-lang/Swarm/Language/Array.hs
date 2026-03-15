@@ -1,7 +1,8 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Arrays XXX
+-- A convenient newtype wrapper around a concrete array
+-- implementation, along with useful utility functions.
 module Swarm.Language.Array (
   SwarmArray (..),
   fromList,

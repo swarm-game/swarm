@@ -740,14 +740,17 @@ stepCESK cesk = case cesk of
         --     environment.
         Just mt ->
           In (insertSuspend $ erase mt ^. sTerm) emptyEnv s (FImport loc (moduleCtx m) t e : k)
+  -- If we're in the middle of an unfold, check if we got inl or inr from the function call
   Out (VInj False VUnit) s (FUnfold _ as : k) ->
+    -- inl: we're finished, so create an array with the values we accumulated
     return $ Out (VArray $ A.fromList (reverse as)) s k
   Out (VInj True (VPair a b)) s (FUnfold f as : k) ->
+    -- inr: we get a pair (a,b); add 'a' to the accumulated values and run the function on the new 'b'
     return $ Out b s (FApp f : FUnfold f (a : as) : k)
-  Out _ _s (FUnfold _f _as : _k) -> error "FUnfold for unexpected value"
-  -- XXX impossible; if f typechecked we should get
-  -- one of the above two cases
-
+  -- Anything else should not be possible, since the call to unfoldArray typechecked
+  Out _ s (FUnfold _f _as : k) ->
+    let errMsg = "Got something besides inl() or inr(a,b) from unfold function while evaluating unfoldArray"
+     in return $ Up (Fatal errMsg) s k
   -- Ignore explicit parens.
   In (TParens t) e s k -> return $ In t e s k
   ------------------------------------------------------------

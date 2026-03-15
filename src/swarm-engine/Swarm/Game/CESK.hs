@@ -465,9 +465,8 @@ prettyFrame f (p, inner) = case f of
   FProj x -> (11, pparens (p < 11) inner <> "." <> ppr x)
   FSuspend _ -> (10, "suspend" <+> pparens (p < 11) inner)
   FRestoreEnv _ -> (10, "restore" <+> pparens (p < 11) inner)
-  FArray _vs _env _ts -> undefined -- XXX
-  FUnfold _f _vs -> undefined -- XXX
-  -- (v0:v1:v2:...:unfold <f>) ?
+  FArray vs _ ts -> (11, encloseSep "[|" "|]" ", " (map (ppr . valueToTerm) (reverse vs) ++ [inner] ++ map ppr ts))
+  FUnfold _ vs -> (11, encloseSep "(" ")" ": " (map (ppr . valueToTerm) (reverse vs) ++ [inner] ++ ["..."]))
 
 -- | Pretty-print a special "prefix application" frame, i.e. a frame
 --   formatted like @X· inner@.  Unlike typical applications, these
