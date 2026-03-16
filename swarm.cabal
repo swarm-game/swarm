@@ -58,6 +58,7 @@ data-files:
   scenarios/**/*.sw
   scenarios/**/*.txt
   scenarios/**/*.yaml
+  test/export/**/*.sw
   test/import/**/*.sw
   test/language-snippets/**/*.sw
   test/saves/*.yaml
@@ -738,7 +739,6 @@ library swarm-engine
     prettyprinter,
     random,
     servant-docs,
-    strict,
     text,
     time,
     transformers,

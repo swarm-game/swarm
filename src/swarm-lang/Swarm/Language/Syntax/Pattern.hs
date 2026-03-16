@@ -29,6 +29,7 @@ module Swarm.Language.Syntax.Pattern (
   pattern TAnnotate,
   pattern TSuspend,
   pattern TImportIn,
+  pattern TExportIn,
   pattern TParens,
   noLoc,
 ) where
@@ -134,9 +135,13 @@ pattern TAnnotate t pt = SAnnotate (RTerm t) pt
 pattern TSuspend :: (SwarmType phase ~ ()) => Term phase -> Term phase
 pattern TSuspend t = SSuspend (RTerm t)
 
--- | Match a TImportIn without annotations.
-pattern TImportIn :: (SwarmType phase ~ ()) => ImportLoc (ImportPhaseFor phase) -> Term phase -> Term phase
-pattern TImportIn loc t = SImportIn loc (RTerm t)
+-- | Match a SImportIn without annotations.
+pattern TImportIn :: (SwarmType phase ~ ()) => Exportation -> ImportLoc (ImportPhaseFor phase) -> Term phase -> Term phase
+pattern TImportIn ex loc t = SImportIn ex loc (RTerm t)
+
+-- | Match a SExportIn without annotations.
+pattern TExportIn :: (SwarmType phase ~ ()) => Var -> Term phase -> Term phase
+pattern TExportIn x t = SExportIn x (RTerm t)
 
 -- | Match a TParens without annotations.
 pattern TParens :: (SwarmType phase ~ ()) => Term phase -> Term phase
@@ -144,4 +149,4 @@ pattern TParens t = SParens (RTerm t)
 
 -- COMPLETE pragma tells GHC using this set of patterns is complete for Term
 
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequire, TStock, TRequirements, TVar, TPair, TLam, TApp, TLet, TTydef, TBind, TDelay, TRcd, TProj, TAnnotate, TSuspend, TImportIn, TParens #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequire, TStock, TRequirements, TVar, TPair, TLam, TApp, TLet, TTydef, TBind, TDelay, TRcd, TProj, TAnnotate, TSuspend, TImportIn, TExportIn, TParens #-}

@@ -750,7 +750,7 @@ testLanguagePipeline =
             "missing end"
             ( process
                 "def x = 3;\n def y = 3 end;\n def z = 3 end"
-                "3:15:\n  |\n3 |  def z = 3 end\n  |               ^\nunexpected end of input\nexpecting \"!=\", \"&&\", \"()\", \"++\", \"<=\", \"==\", \">=\", \"def\", \"false\", \"import\", \"let\", \"require\", \"requirements\", \"stock\", \"true\", \"tydef\", \"||\", '\"', '$', '(', '*', '+', '-', '.', '/', ':', ';', '<', '>', '@', '[', '\\', '^', 'end' keyword for definition of 'x', '{', built-in user function, direction constant, integer literal, or variable name\n"
+                "3:15:\n  |\n3 |  def z = 3 end\n  |               ^\nunexpected end of input\nexpecting \"!=\", \"&&\", \"()\", \"++\", \"<=\", \"==\", \">=\", \"def\", \"export\", \"false\", \"import\", \"let\", \"require\", \"requirements\", \"stock\", \"true\", \"tydef\", \"||\", '\"', '$', '(', '*', '+', '-', '.', '/', ':', ';', '<', '>', '@', '[', '\\', '^', 'end' keyword for definition of 'x', '{', built-in user function, direction constant, integer literal, or variable name\n"
             )
         ]
     , testGroup
@@ -788,6 +788,30 @@ testLanguagePipeline =
         , testCase
             "import from URL"
             (valid "import \"https://raw.githubusercontent.com/byorgey/swarm-defs/refs/heads/main/defs.sw\"; tL")
+        ]
+    , testGroup
+        "Export #2697"
+        [ testCase
+            "simple module re-export"
+            (valid "import \"data/test/export/simple/a.sw\"; pure (a + b + c)")
+        , testCase
+            "simple name re-export"
+            (valid "import \"data/test/export/simple/c.sw\"; pure d1")
+        , testCase
+            "other names are not re-exported"
+            ( process
+                "import \"data/test/export/simple/c.sw\"; pure d2"
+                "1:45: Undefined variable d2"
+            )
+        , testCase
+            "can't re-export a name not in scope"
+            ( process
+                "def x : Int = 3 end; export y"
+                "1:22: Undefined variable y"
+            )
+        , testCase
+            "complex re-export"
+            (valid "import \"data/test/export/complex/a.sw\"")
         ]
     , testGroup
         "Unsupported types for default"

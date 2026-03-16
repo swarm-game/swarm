@@ -87,7 +87,6 @@ import Control.Lens (Lens', Traversal', lens, traversal, (^.))
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
-import Data.Strict.Tuple (Pair)
 import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..), encloseSep, hsep, (<+>))
 import Swarm.Game.Entity (Entity)
@@ -96,7 +95,7 @@ import Swarm.Game.Ingredients (Count)
 import Swarm.Game.Tick
 import Swarm.Game.World (WorldUpdate (..))
 import Swarm.Language.Elaborate (insertSuspend)
-import Swarm.Language.Module (Module, moduleTerm)
+import Swarm.Language.Module (Module, ModuleExports, moduleTerm)
 import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Import qualified as Import
@@ -167,7 +166,7 @@ data Frame
     --   continue with in the scope of the import; the final field
     --   records the environment of in-scope values at the time we
     --   encountered the import.
-    FImport (ImportLoc Import.Resolved) (Pair TCtx TDCtx) (Term Resolved) Env
+    FImport (ImportLoc Import.Resolved) (ModuleExports TCtx) (Term Resolved) Env
   | -- | Apply specific updates to the world and current robot.
     --
     -- The 'Const' is used to track the original command for error messages.
