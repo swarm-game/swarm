@@ -415,8 +415,9 @@
     - |
       ```
       [|1, 2, 3|]
+      ```
   properties: [pickable]
-  capabilities: ["array", "indexArray", "arraySize"]
+  capabilities: [array, indexArray, arraySize]
 - name: caliper
   display:
     attr: silver
