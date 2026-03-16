@@ -159,7 +159,7 @@ data Term phase
     SRcd [(LocVar, Maybe (Syntax phase))]
   | -- | Record projection @e.x@
     SProj (Syntax phase) Var
-  | -- | Array literal @[e1, e2, ..., en]@
+  | -- | Array literal @[| e1, e2, ..., en |]@
     SArray [Syntax phase]
   | -- | Annotate a term with a type
     SAnnotate (Syntax phase) RawPolytype

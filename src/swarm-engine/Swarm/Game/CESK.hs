@@ -184,7 +184,10 @@ data Frame
   | -- | In the middle of evaluating an array literal.  Elements
     --   already evaluated + environment + remaining elements.
     FArray [Value] Env [Term Resolved]
-  | -- | In the middle of evaluating a call to unfoldArray.
+  | -- | In the middle of evaluating a call to unfoldArray.  The first
+    --   value is the unfolding function, i.e. the first argument to
+    --   @unfoldArray@.  The list of values are those accumulated so
+    --   far (in reverse order).
     FUnfold Value [Value]
   | -- | We should suspend with the given environment once we finish
     --   the current evaluation.
