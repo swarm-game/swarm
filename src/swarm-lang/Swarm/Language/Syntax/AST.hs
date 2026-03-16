@@ -10,6 +10,7 @@
 -- Types representing the surface syntax and terms for Swarm programming language.
 module Swarm.Language.Syntax.AST (
   SwarmType,
+  Exportation (..),
   Syntax (..),
   LetSyntax (..),
   Term (..),
@@ -172,8 +173,14 @@ data Term phase
     TType Type
   | -- | Import a term containing definitions, which will be in scope
     --   in the following term.
-    SImportIn (ImportLoc (ImportPhaseFor phase)) (Syntax phase)
+    SImportIn Exportation (ImportLoc (ImportPhaseFor phase)) (Syntax phase)
+  | -- | Re-export a name.
+    SExportIn Var (Syntax phase)
   deriving (Generic)
+
+-- | Should we re-export an imported module?
+data Exportation = ReExport | NoReExport
+  deriving (Eq, Show, Data, Generic, Hashable)
 
 deriving instance (Eq (Anchor (ImportPhaseFor phase)), Eq (SwarmType phase)) => Eq (Term phase)
 deriving instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase)) => Show (Term phase)

@@ -132,6 +132,7 @@ pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
     SParens s -> d s
     -- TODO (#2660): what to do with import here?
     SImportIn {} -> mempty
+    SExportIn {} -> mempty
     -- atoms - return their position and end recursion
     TUnit -> mempty
     TConst {} -> mempty

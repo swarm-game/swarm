@@ -300,7 +300,8 @@ validateImport loc = maybe (pure ()) validate . moduleTerm
   validateTerm :: Term Resolved -> m ()
   validateTerm = \case
     SLet LSDef _ _ _ _ _ _ t -> validate t
-    SImportIn _ t -> validate t
+    SImportIn _ _ t -> validate t
+    SExportIn _ t -> validate t
     STydef _ _ _ t -> validate t
     TConst Noop -> pure ()
     TBind _ _ _ t1 _ -> throwError $ ImpureImport loc (prettyText t1)

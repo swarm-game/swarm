@@ -43,13 +43,13 @@ import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
-import Data.Strict.Tuple (Pair (..))
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Graphics.Vty.Input.Events qualified as V
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Key (KeyCombo, mkKeyCombo, prettyKeyCombo)
+import Swarm.Language.Module (ModuleExports (..))
 import Swarm.Language.Requirements.Type (ReqCtx, Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
@@ -203,8 +203,8 @@ addValueBinding x v = envVals %~ Ctx.addBinding x v
 addTydef :: TDVar -> TydefInfo -> Env -> Env
 addTydef x pty = envTydefs %~ addBindingTD x pty
 
-restrictEnv :: Pair TCtx TDCtx -> Env -> Env
-restrictEnv (rtctx :!: rtdctx) (Env tctx rctx vals tdctx) =
+restrictEnv :: ModuleExports TCtx -> Env -> Env
+restrictEnv (ModuleExports rtctx rtdctx) (Env tctx rctx vals tdctx) =
   Env (Ctx.restrict rtctx tctx) (Ctx.restrict rtctx rctx) (Ctx.restrict rtctx vals) (restrictTD rtdctx tdctx)
 
 type instance Index Env = Var

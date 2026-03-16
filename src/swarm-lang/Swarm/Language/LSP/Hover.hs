@@ -91,6 +91,7 @@ explain trm = case trm ^. sTerm of
   TType {} -> literal "A type literal."
   SParens s -> explain s
   SImportIn {} -> literal "An import expression."
+  SExportIn {} -> literal "An export expression."
   -- type ascription
   SAnnotate lhs typeAnn ->
     Node

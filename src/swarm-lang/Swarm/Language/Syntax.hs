@@ -82,6 +82,7 @@ module Swarm.Language.Syntax (
   pattern TAnnotate,
   pattern TSuspend,
   pattern TImportIn,
+  pattern TExportIn,
   pattern TParens,
 
   -- * Terms

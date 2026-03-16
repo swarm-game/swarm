@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -9,18 +10,52 @@
 -- loaded from.
 module Swarm.Language.Module where
 
+import Control.Lens (makeLenses, (%~))
 import Data.Aeson (ToJSON)
 import Data.Data (Data, Typeable)
 import Data.Hashable (Hashable)
 import Data.Set (Set)
 import Data.Set qualified as S
-import Data.Strict.Tuple
 import Data.Time.Clock (UTCTime)
 import GHC.Generics (Generic)
+import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Language.Syntax.Util (Erasable (..))
-import Swarm.Language.Types (TCtx, TDCtx, UCtx)
+import Swarm.Language.TDVar (TDVar)
+import Swarm.Language.Types (Polytype, TCtx, TDCtx, TydefInfo, UCtx, addBindingTD, emptyTDCtx)
+
+-- | The names exported from a module, along with their types (for
+--   value-level names) or definitions (for type aliases).
+data ModuleExports tctx = ModuleExports
+  { _valueExports :: !tctx
+  , _typeExports :: !TDCtx
+  }
+  deriving (Show, Functor, Foldable, Traversable, Data, Generic, ToJSON)
+
+makeLenses ''ModuleExports
+
+instance Semigroup tctx => Semigroup (ModuleExports tctx) where
+  ModuleExports v1 t1 <> ModuleExports v2 t2 = ModuleExports (v1 <> v2) (t1 <> t2)
+
+instance Monoid tctx => Monoid (ModuleExports tctx) where
+  mempty = ModuleExports mempty mempty
+
+-- | Add a name and its type to the exports for a module.
+addValueExport :: Var -> Polytype -> ModuleExports TCtx -> ModuleExports TCtx
+addValueExport x ty = valueExports %~ Ctx.addBinding x ty
+
+-- | Add a name and type definition to the exports for a module.
+addTypeExport :: TDVar -> TydefInfo -> ModuleExports tctx -> ModuleExports tctx
+addTypeExport n i = typeExports %~ addBindingTD n i
+
+-- | Look up a name, and return a new 'ModuleExports' containing only
+--   the binding for that name.
+lookupExport :: Var -> ModuleExports TCtx -> ModuleExports TCtx
+lookupExport x (ModuleExports vexp _) =
+  ModuleExports
+    (maybe mempty (Ctx.singleton x) $ Ctx.lookup x vexp)
+    emptyTDCtx -- For now, can't re-export tydef names
 
 -- | The context for a module, which allows us to quickly answer the
 --   question: if we import this module, what things are brought into
@@ -41,10 +76,10 @@ import Swarm.Language.Types (TCtx, TDCtx, UCtx)
 type family ModuleCtx (phase :: Phase) where
   ModuleCtx Raw = ()
   ModuleCtx Resolved = ()
-  ModuleCtx Inferred = Pair UCtx TDCtx
-  ModuleCtx Typed = Pair TCtx TDCtx
-  ModuleCtx Elaborated = Pair TCtx TDCtx
-  ModuleCtx Instantiated = Pair TCtx TDCtx
+  ModuleCtx Inferred = ModuleExports UCtx
+  ModuleCtx Typed = ModuleExports TCtx
+  ModuleCtx Elaborated = ModuleExports TCtx
+  ModuleCtx Instantiated = ModuleExports TCtx
 
 -- | With a newly parsed, raw module we don't know any import
 --   information.  After that, we cache the set of imports for a

@@ -70,6 +70,7 @@ boundVars (Syntax _ t _ _) = case t of
   SParens {} -> mempty
   (SRequirements _ _) -> mempty
   SImportIn {} -> mempty
+  SExportIn {} -> mempty
   TVar {} -> mempty
   TUnit {} -> mempty
   TConst {} -> mempty
