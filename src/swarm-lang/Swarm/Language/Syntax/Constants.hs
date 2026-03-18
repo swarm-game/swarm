@@ -288,6 +288,8 @@ data Const
 
     -- | Create an array via an unfold.
     UnfoldArray
+  | -- | Create an array via an effectful unfold.
+    UnfoldArrayC
   | -- | Size of an array
     ArraySize
   | -- | Access the array element at a specified index.
@@ -856,6 +858,8 @@ constInfo c = case c of
       ]
   UnfoldArray ->
     function 2 $ shortDoc Set.empty "Create an `Array` via an unfold."
+  UnfoldArrayC ->
+    command 2 long $ shortDoc Set.empty "Create an `Array` via an effectful unfold."
   ArraySize ->
     function 1 $ shortDoc Set.empty "Compute the size (number of elements) of an `Array`."
   IndexArray ->

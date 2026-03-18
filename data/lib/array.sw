@@ -13,8 +13,8 @@ def appendArray : Array a -> Array a -> Array a
 end
 
 // Spell out the type (rec l. Unit + a * l) instead of using the tydef List,
-// so that downstream users can make use of it without needing to import that tydef.
-// Once we have 'export' we should just re-export the List tydef instead.
+// so that downstream users can make use of it without needing to import the list module.
+// Once we have the ability to 'export' tydefs, we should just re-export the List tydef instead.
 def fromList : (rec l. Unit + a * l) -> Array a
   = unfoldArray ((\x.x) : List a -> Unit + a * List a)
 end

@@ -184,11 +184,12 @@ data Frame
   | -- | In the middle of evaluating an array literal.  Elements
     --   already evaluated + environment + remaining elements.
     FArray [Value] Env [Term Resolved]
-  | -- | In the middle of evaluating a call to unfoldArray.  The first
-    --   value is the unfolding function, i.e. the first argument to
+  | -- | In the middle of evaluating a call to unfoldArray.  The Bool
+    --   determines whether the unfold is effectful. The first Value is
+    --   the unfolding function, i.e. the first argument to
     --   @unfoldArray@.  The list of values are those accumulated so
     --   far (in reverse order).
-    FUnfold Value [Value]
+    FUnfold Bool Value [Value]
   | -- | We should suspend with the given environment once we finish
     --   the current evaluation.
     FSuspend Env
@@ -469,7 +470,7 @@ prettyFrame f (p, inner) = case f of
   FSuspend _ -> (10, "suspend" <+> pparens (p < 11) inner)
   FRestoreEnv _ -> (10, "restore" <+> pparens (p < 11) inner)
   FArray vs _ ts -> (11, encloseSep "[|" "|]" ", " (map (ppr . valueToTerm) (reverse vs) ++ [inner] ++ map ppr ts))
-  FUnfold _ vs -> (11, encloseSep "(" ")" ": " (map (ppr . valueToTerm) (reverse vs) ++ [inner] ++ ["..."]))
+  FUnfold _ _ vs -> (11, encloseSep "(" ")" ": " (map (ppr . valueToTerm) (reverse vs) ++ [inner] ++ ["..."]))
 
 -- | Pretty-print a special "prefix application" frame, i.e. a frame
 --   formatted like @X· inner@.  Unlike typical applications, these

@@ -1319,6 +1319,7 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   CharAt -> [tyQ| Int -> Text -> Int |]
   ToChar -> [tyQ| Int -> Text |]
   UnfoldArray -> [tyQ| (b -> Unit + (a * b)) -> b -> Array a |]
+  UnfoldArrayC -> [tyQ| (b -> Cmd (Unit + (a * b))) -> b -> Cmd (Array a) |]
   ArraySize -> [tyQ| Array a -> Int |]
   IndexArray -> [tyQ| Array a -> Int -> a |]
   AppF -> [tyQ| (a -> b) -> a -> b |]

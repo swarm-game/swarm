@@ -32,6 +32,7 @@ import Control.Effect.Lens
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (foldM, forM_, unless, when)
 import Data.Bifunctor (first)
+import Data.Bool (bool)
 import Data.Foldable.Extra (notNull)
 import Data.Functor (void)
 import Data.IntMap qualified as IM
@@ -741,14 +742,14 @@ stepCESK cesk = case cesk of
         Just mt ->
           In (insertSuspend $ erase mt ^. sTerm) emptyEnv s (FImport loc (moduleCtx m) t e : k)
   -- If we're in the middle of an unfold, check if we got inl or inr from the function call
-  Out (VInj False VUnit) s (FUnfold _ as : k) ->
+  Out (VInj False VUnit) s (FUnfold _ _ as : k) ->
     -- inl: we're finished, so create an array with the values we accumulated
     return $ Out (VArray $ A.fromList (reverse as)) s k
-  Out (VInj True (VPair a b)) s (FUnfold f as : k) ->
+  Out (VInj True (VPair a b)) s (FUnfold eff f as : k) ->
     -- inr: we get a pair (a,b); add 'a' to the accumulated values and run the function on the new 'b'
-    return $ Out b s (FApp f : FUnfold f (a : as) : k)
+    return $ Out b s (FApp f : bool id (FExec :) eff (FUnfold eff f (a : as) : k))
   -- Anything else should not be possible, since the call to unfoldArray typechecked
-  Out _ s (FUnfold _f _as : k) ->
+  Out _ s (FUnfold _ _f _as : k) ->
     let errMsg = "Got something besides inl() or inr(a,b) from unfold function while evaluating unfoldArray"
      in return $ Up (Fatal errMsg) s k
   -- Ignore explicit parens.

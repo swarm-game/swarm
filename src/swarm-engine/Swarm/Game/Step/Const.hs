@@ -1300,7 +1300,10 @@ execConst runChildProg c vs s k = do
             return . mkReturn . T.singleton . chr . fromIntegral $ i
       _ -> badConst
     UnfoldArray -> case vs of
-      [f, b] -> return $ Out b s (FApp f : FUnfold f [] : k)
+      [f, b] -> return $ Out b s (FApp f : FUnfold False f [] : k)
+      _ -> badConst
+    UnfoldArrayC -> case vs of
+      [f, b] -> return $ Out b s (FApp f : FExec : FUnfold True f [] : k)
       _ -> badConst
     ArraySize -> case vs of
       [VArray arr] -> return . mkReturn . A.size $ arr
