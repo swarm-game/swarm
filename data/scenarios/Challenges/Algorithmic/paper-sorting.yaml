@@ -1,0 +1,278 @@
+version: 1
+name: Paper sorting
+author: Brent Yorgey
+description: |
+  Sort a pile of papers
+creative: false
+objectives:
+  - teaser: Sort
+    goal:
+      - |
+        Someone knocked over a stack of papers, and now they are
+        hopelessly jumbled all over the floor!
+      - |
+        The first step is to put the papers back in order.  Each paper
+        has a capital letter written on it; you should arrange them in
+        alphabetical order from left to right.
+    condition: |
+      import "_paper-sorting/judge"; judge
+robots:
+  - name: base
+    dir: east
+    devices:
+      - solar panel
+      - dictionary
+      - lambda
+      - logger
+      - treads
+      - grabber
+      - scanner
+      - branch predictor
+      - comparator
+      - calculator
+      - Elmer's glue
+      - decoder ring
+      - strange loop
+    inventory:
+  - name: judge
+    system: true
+    dir: east
+    display:
+      invisible: true
+    program: |
+      instant {import "_paper-sorting/setup"; setup}
+solution: |
+  import "_paper-sorting/solution"; go
+known:
+  - 'paper: A'
+  - 'paper: B'
+  - 'paper: C'
+  - 'paper: D'
+  - 'paper: E'
+  - 'paper: F'
+  - 'paper: G'
+  - 'paper: H'
+  - 'paper: I'
+  - 'paper: J'
+  - 'paper: K'
+  - 'paper: L'
+  - 'paper: M'
+  - 'paper: N'
+  - 'paper: O'
+  - 'paper: P'
+  - 'paper: Q'
+  - 'paper: R'
+  - 'paper: S'
+  - 'paper: T'
+  - 'paper: U'
+  - 'paper: V'
+  - 'paper: W'
+  - 'paper: X'
+  - 'paper: Y'
+  - 'paper: Z'
+entities:
+  - name: 'paper: A'
+    display:
+      char: A
+      attr: white
+    description:
+      - A piece of paper containing the letter A.
+    properties: [pickable]
+  - name: 'paper: B'
+    display:
+      char: B
+      attr: white
+    description:
+      - A piece of paper containing the letter B.
+    properties: [pickable]
+  - name: 'paper: C'
+    display:
+      char: C
+      attr: white
+    description:
+      - A piece of paper containing the letter C.
+    properties: [pickable]
+  - name: 'paper: D'
+    display:
+      char: D
+      attr: white
+    description:
+      - A piece of paper containing the letter D.
+    properties: [pickable]
+  - name: 'paper: E'
+    display:
+      char: E
+      attr: white
+    description:
+      - A piece of paper containing the letter E.
+    properties: [pickable]
+  - name: 'paper: F'
+    display:
+      char: F
+      attr: white
+    description:
+      - A piece of paper containing the letter F.
+    properties: [pickable]
+  - name: 'paper: G'
+    display:
+      char: G
+      attr: white
+    description:
+      - A piece of paper containing the letter G.
+    properties: [pickable]
+  - name: 'paper: H'
+    display:
+      char: H
+      attr: white
+    description:
+      - A piece of paper containing the letter H.
+    properties: [pickable]
+  - name: 'paper: I'
+    display:
+      char: I
+      attr: white
+    description:
+      - A piece of paper containing the letter I.
+    properties: [pickable]
+  - name: 'paper: J'
+    display:
+      char: J
+      attr: white
+    description:
+      - A piece of paper containing the letter J.
+    properties: [pickable]
+  - name: 'paper: K'
+    display:
+      char: K
+      attr: white
+    description:
+      - A piece of paper containing the letter K.
+    properties: [pickable]
+  - name: 'paper: L'
+    display:
+      char: L
+      attr: white
+    description:
+      - A piece of paper containing the letter L.
+    properties: [pickable]
+  - name: 'paper: M'
+    display:
+      char: M
+      attr: white
+    description:
+      - A piece of paper containing the letter M.
+    properties: [pickable]
+  - name: 'paper: N'
+    display:
+      char: 'N'
+      attr: white
+    description:
+      - A piece of paper containing the letter N.
+    properties: [pickable]
+  - name: 'paper: O'
+    display:
+      char: O
+      attr: white
+    description:
+      - A piece of paper containing the letter O.
+    properties: [pickable]
+  - name: 'paper: P'
+    display:
+      char: P
+      attr: white
+    description:
+      - A piece of paper containing the letter P.
+    properties: [pickable]
+  - name: 'paper: Q'
+    display:
+      char: Q
+      attr: white
+    description:
+      - A piece of paper containing the letter Q.
+    properties: [pickable]
+  - name: 'paper: R'
+    display:
+      char: R
+      attr: white
+    description:
+      - A piece of paper containing the letter R.
+    properties: [pickable]
+  - name: 'paper: S'
+    display:
+      char: S
+      attr: white
+    description:
+      - A piece of paper containing the letter S.
+    properties: [pickable]
+  - name: 'paper: T'
+    display:
+      char: T
+      attr: white
+    description:
+      - A piece of paper containing the letter T.
+    properties: [pickable]
+  - name: 'paper: U'
+    display:
+      char: U
+      attr: white
+    description:
+      - A piece of paper containing the letter U.
+    properties: [pickable]
+  - name: 'paper: V'
+    display:
+      char: V
+      attr: white
+    description:
+      - A piece of paper containing the letter V.
+    properties: [pickable]
+  - name: 'paper: W'
+    display:
+      char: W
+      attr: white
+    description:
+      - A piece of paper containing the letter W.
+    properties: [pickable]
+  - name: 'paper: X'
+    display:
+      char: X
+      attr: white
+    description:
+      - A piece of paper containing the letter X.
+    properties: [pickable]
+  - name: 'paper: Y'
+    display:
+      char: 'Y'
+      attr: white
+    description:
+      - A piece of paper containing the letter Y.
+    properties: [pickable]
+  - name: 'paper: Z'
+    display:
+      char: Z
+      attr: white
+    description:
+      - A piece of paper containing the letter Z.
+    properties: [pickable]
+world:
+  dsl: |
+    overlay
+    [ {terrain: stone}
+    , if (x/5 + (-y)/5) % 2 == 0 then {terrain: dirt} else {blank}
+    , if (((3 - y) % 20)/11 + ((x + 3) % 20)/11) == 0 then {terrain: grass} else {blank}
+    ]
+  upperleft: [0, 11]
+  palette:
+    'B': [stone, null, base]
+    'j': [stone, null, judge]
+    'x': [stone]
+    'd': [dirt]
+    '.': [stone]
+    'w': [stone, wall]
+  map: |
+    wwwwwwwwwwwwwwwwwwwwwwwwww
+    w........................w
+    w...dddddddddddddddddd...w
+    w.B.djxxxxxxxxxxxxxxxd...w
+    w...dddddddddddddddddd...w
+    w........................w
+    wwwwwwwwwwwwwwwwwwwwwwwwww

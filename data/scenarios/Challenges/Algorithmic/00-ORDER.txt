@@ -3,3 +3,4 @@ combo-lock.yaml
 dimsum.yaml
 gallery.yaml
 word-search.yaml
+paper-sorting.yaml
