@@ -7,68 +7,63 @@ queue_rules:
       {{ body }}
     queue_conditions:
       - or:
-        - and:
-          - -files~=\.hs$
-          - -files~=\.sw$
-          - -files~=\.cabal$
-          - -files=stack.yaml
-          - -files~=cabal.project.*
-          - -files~=^[^/]*\.yaml$
-          - -files~=^data/.*\.yaml$
-        - and:
-          - or:
-            - check-success=Enforce issue references
-            - -files~=\.hs$
-          - or:
-            - check-success=Normalize cabal
-            - -files~=\.cabal$
-          - or:
-            - check-success=HLint
-            - -files~=\.hs$
-          - check-success=Haskell-CI - Linux - ghc-9.12.1
-          - check-success=Haskell-CI - Linux - ghc-9.10.1
-          - check-success=Haskell-CI - Linux - ghc-9.8.2
-          - check-success=Haskell-CI - Linux - ghc-9.6.6
-          - check-success=Simple CI - windows-latest - ghc-9.12.1
-          - check-success=Simple CI - macos-latest - ghc-9.12.1
+          - and:
+              - -files~=\.hs$
+              - -files~=\.sw$
+              - -files~=\.cabal$
+              - -files=stack.yaml
+              - -files~=cabal.project.*
+              - -files~=^[^/]*\.yaml$
+              - -files~=^data/.*\.yaml$
+          - and:
+              - or:
+                  - check-success=Enforce issue references
+                  - -files~=\.hs$
+              - or:
+                  - check-success=Normalize cabal
+                  - -files~=\.cabal$
+              - or:
+                  - check-success=HLint
+                  - -files~=\.hs$
+              - check-success=Haskell-CI - Linux - ghc-9.12.1
+              - check-success=Haskell-CI - Linux - ghc-9.10.1
+              - check-success=Haskell-CI - Linux - ghc-9.8.2
+              - check-success=Haskell-CI - Linux - ghc-9.6.6
+              - check-success=Simple CI - windows-latest - ghc-9.12.1
+              - check-success=Simple CI - macos-latest - ghc-9.12.1
 
 pull_request_rules:
-- actions:
-    queue:
-      name: default
+  - actions:
+      queue:
+        name: default
 
-  name: Automatically merge pull requests
-  conditions:
-  - or:
-    - and:
-      - -files~=\.hs$
-      - -files~=\.sw$
-      - -files~=\.cabal$
-      - -files=stack.yaml
-      - -files~=cabal.project.*
-      - -files~=^[^/]*\.yaml$
-      - -files~=^data/.*\.yaml$
-    - and:
+    name: Automatically merge pull requests
+    conditions:
       - or:
-        - check-success=Enforce issue references
-        - -files~=\.hs$
-      - or:
-        - check-success=Normalize cabal
-        - -files~=\.cabal$
-      - or:
-        - check-success=HLint
-        - -files~=\.hs$
-      - check-success=Haskell-CI - Linux - ghc-9.12.1
-      - check-success=Haskell-CI - Linux - ghc-9.10.1
-      - check-success=Haskell-CI - Linux - ghc-9.8.2
-      - check-success=Haskell-CI - Linux - ghc-9.6.6
-      - check-success=Simple CI - windows-latest - ghc-9.12.1
-      - check-success=Simple CI - macos-latest - ghc-9.12.1
-  - label=merge me
-  - ! '#approved-reviews-by>=1'
-  - ! '#changes-requested-reviews-by=0'
-- actions:
-    delete_head_branch: {}
-  name: Delete head branch after merge
-  conditions:
-  - merged
+          - and:
+              - -files~=\.hs$
+              - -files~=\.sw$
+              - -files~=\.cabal$
+              - -files=stack.yaml
+              - -files~=cabal.project.*
+              - -files~=^[^/]*\.yaml$
+              - -files~=^data/.*\.yaml$
+          - and:
+              - or:
+                  - check-success=Enforce issue references
+                  - -files~=\.hs$
+              - or:
+                  - check-success=Normalize cabal
+                  - -files~=\.cabal$
+              - or:
+                  - check-success=HLint
+                  - -files~=\.hs$
+              - check-success=Haskell-CI - Linux - ghc-9.12.1
+              - check-success=Haskell-CI - Linux - ghc-9.10.1
+              - check-success=Haskell-CI - Linux - ghc-9.8.2
+              - check-success=Haskell-CI - Linux - ghc-9.6.6
+              - check-success=Simple CI - windows-latest - ghc-9.12.1
+              - check-success=Simple CI - macos-latest - ghc-9.12.1
+      - label=merge me
+      - '#approved-reviews-by>=1'
+      - '#changes-requested-reviews-by=0'
