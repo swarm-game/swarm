@@ -7,7 +7,7 @@ on:
       - '**.cabal'
       - '*.yaml'
       - 'data/**.yaml'
-      - '.github/workflows/haskell-ci-windows.yml'
+      - '.github/workflows/haskell-ci-simple.yml'
     branches:
       - "main"
   # reuse the same filter for pull-requests
@@ -19,7 +19,7 @@ on:
       - 'stack.yaml'
       - '*.yaml'
       - 'data/**.yaml'
-      - '.github/workflows/haskell-ci-windows.yml'
+      - '.github/workflows/haskell-ci-simple.yml'
     branches:
       - "main"
 jobs:
