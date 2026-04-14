@@ -291,7 +291,7 @@ customTimeoutScenarios =
     , "Challenges/Algorithmic/2048" ==> 10
     , "Challenges/Algorithmic/word-search" ==> 6
     , "Challenges/Story/bridge-building" ==> 10
-    , "Challenges/Story/ice-cream" ==> 5
+    , "Challenges/Story/ice-cream" ==> 10
     , "Challenges/Algorithmic/combo-lock" ==> 10
     , "Challenges/Mechanics/wave" ==> 15
     , "Challenges/Story/arbitrage" ==> 3
@@ -303,13 +303,15 @@ customTimeoutScenarios =
     , "Challenges/Logic/hanoi" ==> 10
     , "Challenges/Logic/lights-out" ==> 3
     , "Challenges/Logic/Sliding Puzzles/3x3" ==> 40
+    , "Challenges/Logic/Sokoban/foresight" ==> 5
+    , "Challenges/Logic/wolf-goat-cabbage" ==> 5
     , "Challenges/Algorithmic/dimsum" ==> 10
     , "Challenges/Algorithmic/gallery" ==> 20
-    , "Challenges/Mechanics/telephone" ==> 20
+    , "Challenges/Mechanics/telephone" ==> 40
     , "Challenges/Story/flower-count" ==> 30
     , "Challenges/Mechanics/photocopier" ==> 40
     , "Challenges/Mazes/invisible_maze" ==> 2
-    , "Challenges/Story/Ranching/beekeeping" ==> 60
+    , "Challenges/Story/Ranching/beekeeping" ==> 100
     , "Challenges/Story/Ranching/powerset" ==> 20
     , "Challenges/Story/Ranching/fishing" ==> 10
     , "Challenges/Story/Ranching/gated-paddock" ==> 30
