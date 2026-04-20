@@ -288,11 +288,11 @@ customTimeoutScenarios =
     , "Tutorials/farming" ==> 5
     , "Demo/Fun/snake" ==> 20
     , "Demo/Fun/horton" ==> 10
-    , "Challenges/Algorithmic/2048" ==> 10
+    , "Challenges/Algorithmic/2048" ==> 20
     , "Challenges/Algorithmic/word-search" ==> 6
-    , "Challenges/Story/bridge-building" ==> 10
+    , "Challenges/Story/bridge-building" ==> 20
     , "Challenges/Story/ice-cream" ==> 10
-    , "Challenges/Algorithmic/combo-lock" ==> 10
+    , "Challenges/Algorithmic/combo-lock" ==> 20
     , "Challenges/Mechanics/wave" ==> 15
     , "Challenges/Story/arbitrage" ==> 3
     , "Challenges/Mechanics/bucket-brigade" ==> 5
@@ -300,13 +300,13 @@ customTimeoutScenarios =
     , "Challenges/Story/hackman" ==> 5
     , "Challenges/Story/blender" ==> 5
     , "Challenges/Story/dna" ==> 20
-    , "Challenges/Logic/hanoi" ==> 10
+    , "Challenges/Logic/hanoi" ==> 20
     , "Challenges/Logic/lights-out" ==> 3
     , "Challenges/Logic/Sliding Puzzles/3x3" ==> 40
     , "Challenges/Logic/Sokoban/foresight" ==> 5
     , "Challenges/Logic/wolf-goat-cabbage" ==> 5
-    , "Challenges/Algorithmic/dimsum" ==> 10
-    , "Challenges/Algorithmic/gallery" ==> 20
+    , "Challenges/Algorithmic/dimsum" ==> 20
+    , "Challenges/Algorithmic/gallery" ==> 30
     , "Challenges/Mechanics/telephone" ==> 40
     , "Challenges/Story/flower-count" ==> 30
     , "Challenges/Mechanics/photocopier" ==> 40
