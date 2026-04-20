@@ -92,7 +92,7 @@ capabilityName = \case
 -- >>> all (\c -> Just c == parseCapability (capabilityName c)) enumerate
 -- True
 parseCapability :: Text -> Maybe Capability
-parseCapability t = find (\c -> capabilityName c == T.toLower t) enumerate
+parseCapability t = find (\c -> T.toLower (capabilityName c) == T.toLower t) enumerate
 
 instance ToJSON Capability where
   toJSON = String . capabilityName

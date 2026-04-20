@@ -51,6 +51,7 @@ module Swarm.Util (
   failT,
   showT,
   showLowT,
+  showFirstLowT,
 
   -- * English language utilities
   reflow,
@@ -128,7 +129,7 @@ import System.Directory (doesDirectoryExist, doesFileExist, getModificationTime,
 import System.FilePath (normalise, takeExtension, (</>))
 import System.IO hiding (readFile, writeFile)
 import System.IO.Error (catchIOError)
-import Witch (from)
+import Witch (from, into)
 import Witherable (wither)
 import Prelude hiding (Foldable (..), readFile, writeFile)
 
@@ -474,7 +475,15 @@ showT = from @String . show
 
 -- | Show a value in all lowercase, but as Text.
 showLowT :: Show a => a -> Text
-showLowT = from @String . map toLower . show
+showLowT = T.toLower . showT
+
+-- | Show a value with the first letter converted to lowercase.
+showFirstLowT :: Show a => a -> Text
+showFirstLowT = into @Text . onHead toLower . show
+
+onHead :: (a -> a) -> [a] -> [a]
+onHead _ [] = []
+onHead f (c : cs) = f c : cs
 
 ------------------------------------------------------------
 -- Some language-y stuff

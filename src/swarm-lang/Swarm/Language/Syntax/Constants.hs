@@ -40,7 +40,7 @@ import GHC.Generics (Generic)
 import Prettyprinter (pretty)
 import Swarm.Language.Syntax.CommandMetadata
 import Swarm.Pretty (PrettyPrec (..), pparens)
-import Swarm.Util (showT)
+import Swarm.Util (showFirstLowT)
 
 ------------------------------------------------------------
 -- Constants
@@ -904,7 +904,7 @@ constInfo c = case c of
       }
   command a f d =
     ConstInfo
-      { syntax = lowShow c
+      { syntax = showFirstLowT c
       , fixity = 11
       , constMeta = ConstMFunc a True
       , constDoc = d
@@ -912,15 +912,12 @@ constInfo c = case c of
       }
   function a d =
     ConstInfo
-      { syntax = lowShow c
+      { syntax = showFirstLowT c
       , fixity = 11
       , constMeta = ConstMFunc a False
       , constDoc = d
       , tangibility = Intangible
       }
-
-  lowShow :: Show a => a -> Text
-  lowShow = T.toLower . showT
 
 -- | Maximum perception distance for
 -- 'Chirp' and 'Sniff' commands
