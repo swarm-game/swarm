@@ -17,6 +17,7 @@ import Data.Map.Strict qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Failure (SystemFailure)
+import Swarm.Language.Array qualified as A
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Load (resolve')
@@ -75,6 +76,7 @@ toValue = \case
     _ -> Nothing
   TPair t1 t2 -> VPair <$> toValue t1 <*> toValue t2
   TRcd m -> VRcd . M.fromList <$> traverse (traverse (>>= toValue) . first locVal) m
+  TArray ts -> VArray . A.fromList <$> traverse toValue ts
   TParens t -> toValue t
   -- List the other cases explicitly, instead of a catch-all, so that
   -- we will get a warning if we ever add new constructors in the

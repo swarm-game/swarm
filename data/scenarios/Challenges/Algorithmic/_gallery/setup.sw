@@ -86,7 +86,7 @@ def busts : (rec l. Unit + Text * l) = tagmembers "bust" end
 def bustCount : Int = length busts end
 
 def placeThing = \entIdx.
-    let entName = index entIdx busts in
+    let entName = indexList entIdx busts in
     create entName;
     place entName;
     end;
@@ -111,7 +111,7 @@ def populateInventory = \baseCount. \idx.
 
     if (idx < bustCount) {
 
-        let item = index idx busts in
+        let item = indexList idx busts in
 
         // Give copies to the base
         baseExtras <- random 5;

@@ -30,6 +30,12 @@
     - [1, PhD thesis]
   time: 65536
 - in:
+    - [1, paper]
+  required:
+    - [1, pigeon coop]
+  out:
+    - [1, origami pigeon]
+- in:
     - [1, log]
   out:
     - [1, logger]
@@ -76,6 +82,11 @@
     - [8, wooden gear]
   out:
     - [1, typewriter]
+- in:
+    - [8, box]
+    - [2, Elmer's glue]
+  out:
+    - [1, pigeon coop]
 #########################################
 ##                BITS                 ##
 #########################################

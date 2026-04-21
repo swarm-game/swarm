@@ -114,6 +114,7 @@ getUsage bindings (CSyntax _pos t _comments) = case t of
   SDelay s -> getUsage bindings s
   SRcd m -> foldMap (\(Loc _ x, mt) -> maybe (getUsage bindings (RTerm (TVar x))) (getUsage bindings) mt) m
   SProj s _ -> getUsage bindings s
+  SArray ss -> foldMap (getUsage bindings) ss
   SAnnotate s _ -> getUsage bindings s
   SSuspend s -> getUsage bindings s
   SImportIn _ _ s -> getUsage bindings s

@@ -32,6 +32,7 @@ import Control.Effect.Lens
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (foldM, forM_, unless, when)
 import Data.Bifunctor (first)
+import Data.Bool (bool)
 import Data.Foldable.Extra (notNull)
 import Data.Functor (void)
 import Data.IntMap qualified as IM
@@ -68,6 +69,7 @@ import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
 import Swarm.Game.Tick
+import Swarm.Language.Array qualified as A
 import Swarm.Language.Capability
 import Swarm.Language.Module (Module, moduleCtx, moduleTerm)
 import Swarm.Language.Requirements qualified as R
@@ -669,6 +671,10 @@ stepCESK cesk = case cesk of
       Nothing -> badMachineState s $ T.unwords ["Record projection for variable", x, "that does not exist"]
       Just xv -> return $ Out xv s k
     _ -> badMachineState s "FProj frame with non-record value"
+  In (TArray []) _ s k -> return $ Out (VArray (A.fromList [])) s k
+  In (TArray (t : ts)) e s k -> return $ In t e s (FArray [] e ts : k)
+  Out v s (FArray vs _ [] : k) -> return $ Out (VArray (A.fromList (reverse (v : vs)))) s k
+  Out v s (FArray vs e (t : ts) : k) -> return $ In t e s (FArray (v : vs) e ts : k)
   -- To evaluate non-recursive let expressions, we start by focusing on the
   -- let-bound expression.
   In (TLet _ False x _ mty mreq t1 t2) e s k ->
@@ -735,7 +741,17 @@ stepCESK cesk = case cesk of
         --     environment.
         Just mt ->
           In (insertSuspend $ erase mt ^. sTerm) emptyEnv s (FImport loc (moduleCtx m) t e : k)
-
+  -- If we're in the middle of an unfold, check if we got inl or inr from the function call
+  Out (VInj False VUnit) s (FUnfold _ _ as : k) ->
+    -- inl: we're finished, so create an array with the values we accumulated
+    return $ Out (VArray $ A.fromList (reverse as)) s k
+  Out (VInj True (VPair a b)) s (FUnfold eff f as : k) ->
+    -- inr: we get a pair (a,b); add 'a' to the accumulated values and run the function on the new 'b'
+    return $ Out b s (FApp f : bool id (FExec :) eff (FUnfold eff f (a : as) : k))
+  -- Anything else should not be possible, since the call to unfoldArray typechecked
+  Out _ s (FUnfold _ _f _as : k) ->
+    let errMsg = "Got something besides inl() or inr(a,b) from unfold function while evaluating unfoldArray"
+     in return $ Up (Fatal errMsg) s k
   -- Ignore explicit parens.
   In (TParens t) e s k -> return $ In t e s k
   ------------------------------------------------------------

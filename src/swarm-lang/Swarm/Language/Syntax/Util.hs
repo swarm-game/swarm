@@ -148,6 +148,7 @@ termSyntax fty floc fsyn = \case
   SDelay s -> SDelay <$> fsyn s
   SRcd m -> SRcd <$> (traverse . traverse . traverse) fsyn m
   SProj s x -> SProj <$> fsyn s <*> pure x
+  SArray ss -> SArray <$> traverse fsyn ss
   SAnnotate s pty -> SAnnotate <$> fsyn s <*> pure pty
   SSuspend s -> SSuspend <$> fsyn s
   SParens s -> SParens <$> fsyn s
@@ -233,6 +234,7 @@ freeVarsS f = go S.empty
     SDelay s1 -> rewrap $ SDelay <$> go bound s1
     SRcd m -> rewrap $ SRcd <$> (traverse . traverse . traverse) (go bound) m
     SProj s1 x -> rewrap $ SProj <$> go bound s1 <*> pure x
+    SArray ss -> rewrap $ SArray <$> traverse (go bound) ss
     SAnnotate s1 pty -> rewrap $ SAnnotate <$> go bound s1 <*> pure pty
     SSuspend s1 -> rewrap $ SSuspend <$> go bound s1
     SParens s1 -> rewrap $ SParens <$> go bound s1
