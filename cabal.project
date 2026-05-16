@@ -1,0 +1,5 @@
+packages: .
+
+constraints:
+  # Required for build success with ghc-9.6 and ghc-9.8
+  lsp-types >= 2.1.1
