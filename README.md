@@ -79,6 +79,7 @@ ways you can contribute to Swarm development!
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/patrickestrada"><img src="https://avatars.githubusercontent.com/u/212604433?v=4?s=100" width="100px;" alt="Patrick Estrada"/><br /><sub><b>Patrick Estrada</b></sub></a><br /><a href="https://github.com/swarm-game/swarm/commits?author=patrickestrada" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/stmonty"><img src="https://avatars.githubusercontent.com/u/52518999?v=4?s=100" width="100px;" alt="Monty"/><br /><sub><b>Monty</b></sub></a><br /><a href="https://github.com/swarm-game/swarm/commits?author=stmonty" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/AlamarW"><img src="https://avatars.githubusercontent.com/u/54247703?v=4?s=100" width="100px;" alt="Alamar"/><br /><sub><b>Alamar</b></sub></a><br /><a href="#platform-AlamarW" title="Packaging/porting to new platform">📦</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="http://pdddd.one"><img src="https://avatars.githubusercontent.com/u/11584452?v=4?s=100" width="100px;" alt="Patrik Drbal"/><br /><sub><b>Patrik Drbal</b></sub></a><br /><a href="https://github.com/swarm-game/swarm/issues?q=author%3Awhaypr" title="Bug reports">🐛</a> <a href="#infra-whaypr" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
     </tr>
   </tbody>
 </table>
