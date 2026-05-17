@@ -339,6 +339,16 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "whaypr",
+      "name": "Patrik Drbal",
+      "avatar_url": "https://avatars.githubusercontent.com/u/11584452?v=4",
+      "profile": "http://pdddd.one",
+      "contributions": [
+        "bug",
+        "infra"
+      ]
     }
   ],
   "files": [
