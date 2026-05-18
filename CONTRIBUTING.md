@@ -152,7 +152,7 @@ standard container types like `Data.Set` and `Data.Map`. Being
 familiar with using `lens` will probably also help. If you'd like to
 learn enough Haskell to contribute to Swarm, we recommend starting by
 [working through these introductory Haskell course
-materials](https://www.cis.upenn.edu/~cis194/spring13/).
+materials](https://www.cis.upenn.edu/~cis1940/fall16/).
 
 If you'd like to contribute some code but are unsure where to begin,
 you can start by looking through [issues tagged "Low-Hanging
