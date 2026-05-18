@@ -347,7 +347,8 @@
       "profile": "http://pdddd.one",
       "contributions": [
         "bug",
-        "infra"
+        "infra",
+        "doc"
       ]
     }
   ],
