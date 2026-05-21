@@ -330,6 +330,26 @@
       "contributions": [
         "platform"
       ]
+    },
+    {
+      "login": "EarlPitts",
+      "name": "Bendeguz Seres",
+      "avatar_url": "https://avatars.githubusercontent.com/u/34306800?v=4",
+      "profile": "http://bendeguz.xyz",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "whaypr",
+      "name": "Patrik Drbal",
+      "avatar_url": "https://avatars.githubusercontent.com/u/11584452?v=4",
+      "profile": "http://pdddd.one",
+      "contributions": [
+        "bug",
+        "infra",
+        "doc"
+      ]
     }
   ],
   "files": [

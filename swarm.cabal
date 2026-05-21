@@ -241,7 +241,10 @@ common linear
   build-depends: linear >=1.21.6 && <1.24
 
 common lsp
-  build-depends: lsp >=2.4 && <2.8
+  -- See https://github.com/swarm-game/swarm/issues/2713
+  build-depends:
+    lsp >=2.4 && <2.8,
+    lsp-types >=2.1.1,
 
 common megaparsec
   build-depends: megaparsec >=9.6.1 && <9.8

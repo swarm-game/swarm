@@ -58,4 +58,4 @@ testEditorFiles =
           <> "\nin file "
           <> fp
       )
-      (removeLW t `T.isInfixOf` removeLW f)
+      (T.toLower (removeLW t) `T.isInfixOf` removeLW f)
