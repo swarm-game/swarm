@@ -665,7 +665,7 @@ testEval g =
   mkArray = VArray . A.fromList
 
   prettyArray :: [Int] -> Text
-  prettyArray = T.pack . ("[|"++) . (++"|]") . intercalate "," . map show
+  prettyArray = T.pack . ("[|" ++) . (++ "|]") . intercalate "," . map show
 
   throwsError :: Text -> (Text -> Bool) -> Assertion
   throwsError tm p = do
