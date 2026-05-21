@@ -305,6 +305,8 @@ customTimeoutScenarios =
     , "Challenges/Logic/Sliding Puzzles/3x3" ==> 40
     , "Challenges/Algorithmic/dimsum" ==> 10
     , "Challenges/Algorithmic/gallery" ==> 20
+    , "Challenges/Algorithmic/iterate-perm" ==> 5
+    , "Challenges/Algorithmic/iterate-perm-hard" ==> 5
     , "Challenges/Mechanics/telephone" ==> 20
     , "Challenges/Story/flower-count" ==> 30
     , "Challenges/Mechanics/photocopier" ==> 40
