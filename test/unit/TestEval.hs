@@ -21,6 +21,7 @@ import Swarm.Language.Syntax.AST (Term (TInt))
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Types
 import Swarm.Language.Value
+import Swarm.Util (showT)
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
@@ -650,11 +651,11 @@ testEval g =
             ("import \"~swarm/lib/array\" in appendArray [| 6, 2 |] [| 5, 8, 3 |]" `evaluatesTo` mkArray (map VInt [6, 2, 5, 8, 3]))
         , testCase
             "array comparison"
-            ("[|1,4,6,2|] < [|1,4,3,2|]" `evaluatesToV` True)
+            ("[|1,4,6,2|] < [|1,4,8,2|]" `evaluatesToV` True)
         , testProperty
             "array comparison"
             $ \xs ys ->
-              (prettyArray xs ++ " < " ++ prettyArray ys) `evaluatesToP` (xs < ys)
+              (prettyArray xs <> " < " <> prettyArray ys) `evaluatesToP` VBool (xs < ys)
         ]
     ]
  where
@@ -665,7 +666,7 @@ testEval g =
   mkArray = VArray . A.fromList
 
   prettyArray :: [Int] -> Text
-  prettyArray = T.pack . ("[|" ++) . (++ "|]") . intercalate "," . map show
+  prettyArray = ("[|" <>) . (<> "|]") . T.intercalate "," . map showT
 
   throwsError :: Text -> (Text -> Bool) -> Assertion
   throwsError tm p = do
