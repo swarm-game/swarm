@@ -171,6 +171,7 @@
       "charat"
       "tochar"
       "unfoldarray"
+      "unfoldarrayc"
       "arraysize"
       "indexarray"
       "key"

@@ -648,6 +648,13 @@ testEval g =
         , testCase
             "appendArray"
             ("import \"~swarm/lib/array\" in appendArray [| 6, 2 |] [| 5, 8, 3 |]" `evaluatesTo` mkArray (map VInt [6, 2, 5, 8, 3]))
+        , testCase
+            "array comparison"
+            ("[|1,4,6,2|] < [|1,4,3,2|]" `evaluatesToV` True)
+        , testProperty
+            "array comparison"
+            $ \xs ys ->
+              (prettyArray xs ++ " < " ++ prettyArray ys) `evaluatesToP` (xs < ys)
         ]
     ]
  where
@@ -656,6 +663,9 @@ testEval g =
 
   mkArray :: [Value] -> Value
   mkArray = VArray . A.fromList
+
+  prettyArray :: [Int] -> Text
+  prettyArray = T.pack . ("[|"++) . (++"|]") . intercalate "," . map show
 
   throwsError :: Text -> (Text -> Bool) -> Assertion
   throwsError tm p = do
