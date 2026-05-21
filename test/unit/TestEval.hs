@@ -632,13 +632,13 @@ testEval g =
             ("arraySize [||]" `evaluatesTo` VInt 0)
         , testCase
             "unfoldArray"
-            ("unfoldArray (\\n. if (n==0) {inl()} {inr(n, n-1)}) 4" `evaluatesTo` mkArray (map VInt [4, 3, 2, 1]))
+            ("unfoldArray 4 (\\n. if (n==0) {inl()} {inr(n, n-1)})" `evaluatesTo` mkArray (map VInt [4, 3, 2, 1]))
         , testCase
             "fromList"
-            ("tydef List a = rec l. Unit + a * l end; def id = \\x. x end; def fromList = unfoldArray (id : List a -> Unit + a * List a) end; pure $ fromList (inr (4, inr (6, inl ())))" `evaluatesTo` mkArray (map VInt [4, 6]))
+            ("tydef List a = rec l. Unit + a * l end; def id = \\x. x end; def fromList = \\xs. unfoldArray xs (id : List a -> Unit + a * List a) end; pure $ fromList (inr (4, inr (6, inl ())))" `evaluatesTo` mkArray (map VInt [4, 6]))
         , testCase
             "generate"
-            ("def generate : Int -> (Int -> a) -> Array a = \\n. \\f. unfoldArray (\\k. if (k == n) {inl ()} {inr (f k, k + 1)}) 0 end; pure $ generate 4 (\\k. k*k)" `evaluatesTo` mkArray (map VInt [0, 1, 4, 9]))
+            ("def generate : Int -> (Int -> a) -> Array a = \\n. \\f. unfoldArray 0 (\\k. if (k == n) {inl ()} {inr (f k, k + 1)}) end; pure $ generate 4 (\\k. k*k)" `evaluatesTo` mkArray (map VInt [0, 1, 4, 9]))
         , testCase
             "toList"
             ("import \"~swarm/lib/array\" in toList [| 5, 3, 1 |]" `evaluatesToV` [5 :: Int, 3, 1])
