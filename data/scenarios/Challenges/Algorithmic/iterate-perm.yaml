@@ -1,0 +1,270 @@
+version: 1
+name: Permutation Iteration
+author: Brent Yorgey
+description: |
+  Repeatedly apply a permutation.
+creative: false
+objectives:
+  - teaser: Sort
+    goal:
+      - |
+        When you went to bed last night, the alphabet was laid out
+        neatly in order from A to Z.  But while you slept, someone has
+        rearranged the letters!  You briefly consider putting the
+        letters back in order, but then you reconsider: what if this
+        order is better?  But then you realize that if rearranging the
+        letters in this way is better, doing the same rearrangement
+        repeatedly will be MUCH better!
+      - |
+        The operation performed by the mysterious person overnight
+        consists of moving the letter in each position to a (possibly)
+        new position.  For example, if the letter A is now in the
+        third position, that means they took the letter in the first
+        position and moved it to the third position.  Your goal is to
+        perform the same operation (i.e. taking the letter that is now
+        in the first position and moving it to the third position, and
+        so on) five more times.
+    condition: |
+      judge <- robotNamed "judge";
+      as judge {
+        has "bitcoin"
+      }
+robots:
+  - name: base
+    dir: east
+    devices:
+      - solar panel
+      - dictionary
+      - lambda
+      - logger
+      - treads
+      - grabber
+      - scanner
+      - branch predictor
+      - comparator
+      - calculator
+      - Elmer's glue
+      - decoder ring
+      - strange loop
+      - linotype
+      - parsley
+      - pigeon coop
+      - origami pigeon
+      - hyperloop
+  - name: judge
+    system: true
+    dir: east
+    display:
+      invisible: true
+    program: |
+      perm <- instant {import "_iterate-perm/judge"; setup};
+      import "_iterate-perm/judge"; judge 5 perm
+solution: |
+  import "_iterate-perm/solution-naive"; go 5
+known: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+entities:
+  - name: 'A'
+    display:
+      char: A
+      attr: white
+    description:
+      - The letter A.
+    properties: [pickable]
+  - name: 'B'
+    display:
+      char: B
+      attr: white
+    description:
+      - The letter B.
+    properties: [pickable]
+  - name: 'C'
+    display:
+      char: C
+      attr: white
+    description:
+      - The letter C.
+    properties: [pickable]
+  - name: 'D'
+    display:
+      char: D
+      attr: white
+    description:
+      - The letter D.
+    properties: [pickable]
+  - name: 'E'
+    display:
+      char: E
+      attr: white
+    description:
+      - The letter E.
+    properties: [pickable]
+  - name: 'F'
+    display:
+      char: F
+      attr: white
+    description:
+      - The letter F.
+    properties: [pickable]
+  - name: 'G'
+    display:
+      char: G
+      attr: white
+    description:
+      - The letter G.
+    properties: [pickable]
+  - name: 'H'
+    display:
+      char: H
+      attr: white
+    description:
+      - The letter H.
+    properties: [pickable]
+  - name: 'I'
+    display:
+      char: I
+      attr: white
+    description:
+      - The letter I.
+    properties: [pickable]
+  - name: 'J'
+    display:
+      char: J
+      attr: white
+    description:
+      - The letter J.
+    properties: [pickable]
+  - name: 'K'
+    display:
+      char: K
+      attr: white
+    description:
+      - The letter K.
+    properties: [pickable]
+  - name: 'L'
+    display:
+      char: L
+      attr: white
+    description:
+      - The letter L.
+    properties: [pickable]
+  - name: 'M'
+    display:
+      char: M
+      attr: white
+    description:
+      - The letter M.
+    properties: [pickable]
+  - name: 'N'
+    display:
+      char: 'N'
+      attr: white
+    description:
+      - The letter N.
+    properties: [pickable]
+  - name: 'O'
+    display:
+      char: O
+      attr: white
+    description:
+      - The letter O.
+    properties: [pickable]
+  - name: 'P'
+    display:
+      char: P
+      attr: white
+    description:
+      - The letter P.
+    properties: [pickable]
+  - name: 'Q'
+    display:
+      char: Q
+      attr: white
+    description:
+      - The letter Q.
+    properties: [pickable]
+  - name: 'R'
+    display:
+      char: R
+      attr: white
+    description:
+      - The letter R.
+    properties: [pickable]
+  - name: 'S'
+    display:
+      char: S
+      attr: white
+    description:
+      - The letter S.
+    properties: [pickable]
+  - name: 'T'
+    display:
+      char: T
+      attr: white
+    description:
+      - The letter T.
+    properties: [pickable]
+  - name: 'U'
+    display:
+      char: U
+      attr: white
+    description:
+      - The letter U.
+    properties: [pickable]
+  - name: 'V'
+    display:
+      char: V
+      attr: white
+    description:
+      - The letter V.
+    properties: [pickable]
+  - name: 'W'
+    display:
+      char: W
+      attr: white
+    description:
+      - The letter W.
+    properties: [pickable]
+  - name: 'X'
+    display:
+      char: X
+      attr: white
+    description:
+      - The letter X.
+    properties: [pickable]
+  - name: 'Y'
+    display:
+      char: 'Y'
+      attr: white
+    description:
+      - The letter Y.
+    properties: [pickable]
+  - name: 'Z'
+    display:
+      char: 'Z'
+      attr: white
+    description:
+      - The letter Z.
+    properties: [pickable]
+world:
+  dsl: |
+    overlay
+    [ {terrain: stone}
+    , if (x/5 + (-y)/5) % 2 == 0 then {terrain: dirt} else {blank}
+    , if (((3 - y) % 20)/11 + ((x + 3) % 20)/11) == 0 then {terrain: grass} else {blank}
+    ]
+  upperleft: [-5, 3]
+  palette:
+    'B': [stone, null, base]
+    'j': [stone, null, judge]
+    'x': [stone]
+    'd': [dirt]
+    '.': [stone]
+    'w': [stone, wall]
+  map: |
+    wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww
+    w..................................w
+    w...dddddddddddddddddddddddddddd...w
+    w.B.djxxxxxxxxxxxxxxxxxxxxxxxxxd...w
+    w...dddddddddddddddddddddddddddd...w
+    w..................................w
+    wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww

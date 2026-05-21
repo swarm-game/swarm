@@ -87,6 +87,7 @@ explain trm = case trm ^. sTerm of
   TVar v -> pure $ typeSignature v ty ""
   SRcd {} -> literal "A record literal."
   SProj {} -> literal "A record projection."
+  SArray {} -> literal "An array literal."
   STydef {} -> literal "A type synonym definition."
   TType {} -> literal "A type literal."
   SParens s -> explain s

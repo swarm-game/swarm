@@ -10,11 +10,13 @@ module Swarm.Game.Step.Arithmetic where
 import Control.Carrier.State.Lazy
 import Control.Effect.Error
 import Control.Monad (zipWithM)
+import Data.Array (bounds, (!))
 import Data.Function (on)
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Swarm.Game.Exception
 import Swarm.Game.Step.Util
+import Swarm.Language.Array (SwarmArray (..))
 import Swarm.Language.Syntax
 import Swarm.Language.Value
 import Witch (From (from))
@@ -38,6 +40,17 @@ evalCmp c v1 v2 = decideCmp c $ compareValues v1 v2
     Geq -> fmap (/= LT)
     _ -> const . throwError . Fatal . T.append "evalCmp called on bad constant " . from $ show c
 
+-- | Compare two arrays lexicographically.
+compareArrays :: Has (Throw Exn) sig m => SwarmArray Value -> SwarmArray Value -> m Ordering
+compareArrays (SwarmArray a1) (SwarmArray a2) = go 0
+ where
+  n1 = 1 + snd (bounds a1)
+  n2 = 1 + snd (bounds a2)
+  go !i
+    | i == n1 && i == n2 = pure EQ
+    | i == n1 || i == n2 = pure (compare n1 n2)
+    | otherwise = (<>) <$> compareValues (a1 ! i) (a2 ! i) <*> go (i + 1)
+
 -- | Compare two values, returning an 'Ordering' if they can be
 --   compared, or @Nothing@ if they cannot.
 compareValues :: Has (Throw Exn) sig m => Value -> Value -> m Ordering
@@ -57,6 +70,7 @@ compareValues = \cases
     (<>) <$> compareValues v11 v21 <*> compareValues v12 v22
   (VRcd m1) (VRcd m2) ->
     mconcat <$> (zipWithM compareValues `on` M.elems) m1 m2
+  (VArray a1) (VArray a2) -> compareArrays a1 a2
   v1 v2 ->
     if incomparable v1 || incomparable v2
       then incomparableErr v1 v2
