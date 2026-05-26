@@ -131,9 +131,8 @@ resolve ::
   Syntax Raw ->
   m (SourceMap Resolved, (LocalModules, Syntax Resolved))
 resolve prov s = do
-  -- First, remove any scale module cache entries, defined as those
-  -- which have an on-disk modification time more recent than the
-  -- cache timestamp, or which have any stale dependencies.
+  -- First, remove any stale module cache entries, to make sure we get
+  -- the most up-to-date versions of everything.
   cullModuleCache
 
   cur <- resolveImportDir $
@@ -161,10 +160,7 @@ resolve' = traverseSyntax pure (throwError . DisallowedImport)
 --   stale module is defined as one which EITHER (a) has a
 --   modification time on disk newer than the cached timestamp, or (b)
 --   has a stale dependency.
-cullModuleCache ::
-  forall sig m.
-  (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) =>
-  m ()
+cullModuleCache :: (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) => m ()
 cullModuleCache = dfs =<< sendIO (GC.cacheKeys moduleCache)
  where
   dfs = evalState emptyImportSet . mapM_ cullRoot
