@@ -97,8 +97,8 @@ module Swarm.Language.Syntax (
 
   -- * Traversals
 
-  -- ** Term + type traversal
-  termSyntax,
+  -- ** AST traversal
+  traverseTerm,
   traverseSyntax,
 
   -- ** Erasure
