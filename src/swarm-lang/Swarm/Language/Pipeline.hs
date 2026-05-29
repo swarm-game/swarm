@@ -49,6 +49,11 @@ import Swarm.Language.Value (Env, emptyEnv, envReqs, envTydefs, envTypes)
 import Swarm.Util.Effect (withError, withThrow)
 import Swarm.Util.GlobalCache (freezeCache, insertCached)
 
+traceIO :: String -> IO ()
+traceIO string = do
+  t <- getCurrentTime
+  appendFile "log.txt" $ show t <> " " <> string <> "\n"
+
 -- | Given raw 'Text' representing swarm-lang source code:
 --
 --   1. Parse it (see "Swarm.Language.Parse")
@@ -75,6 +80,7 @@ processSource ::
   Text ->
   m (Module Elaborated)
 processSource prov menv txt = do
+  sendIO . traceIO $ "TODO: ONDRA - processSource " <> show prov
   mt <- withThrow CanNotParseMegaparsec . liftEither $ readTerm' defaultParserConfig txt
   case mt of
     Nothing -> pure emptyModule
@@ -97,6 +103,7 @@ processTerm ::
   Syntax Raw ->
   m (Module Elaborated)
 processTerm prov txt menv tm = do
+  sendIO . traceIO $ "TODO: ONDRA - processTerm " <> show prov
   let e = fromMaybe emptyEnv menv
 
   -- Resolve + recursively collect up any imports that aren't already

@@ -49,6 +49,8 @@ import Swarm.Language.Syntax.Import.Resolve (Unresolvable, unresolveImportLoc)
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern
 import Swarm.Language.Var (LocVar, Var)
+import System.IO.Unsafe (unsafePerformIO)
+import Data.Time (getCurrentTime)
 
 -- Setup for doctests
 
@@ -123,7 +125,7 @@ termSyntax ::
   (Syntax a -> f (Syntax b)) ->
   Term a ->
   f (Term b)
-termSyntax fty floc fsyn = \case
+termSyntax fty floc fsyn trm = trace ("TODO: ONDRA - termSyntax " <> shortTerm trm) $ case trm of
   TUnit -> pure TUnit
   TConst c -> pure $ TConst c
   TDir d -> pure $ TDir d
@@ -152,8 +154,41 @@ termSyntax fty floc fsyn = \case
   SSuspend s -> SSuspend <$> fsyn s
   SParens s -> SParens <$> fsyn s
   TType ty -> pure $ TType ty
-  SImportIn ex loc s -> SImportIn ex <$> floc loc <*> fsyn s
+  SImportIn ex loc s -> SImportIn ex <$> trace "simport floc" (floc loc) <*> trace "simport fsyn" (fsyn s)
   SExportIn x s -> SExportIn x <$> fsyn s
+
+shortTerm :: Term phase -> String
+shortTerm = \case
+  TUnit {} -> "TUnit"
+  TConst {} -> "TConst"
+  TDir {} -> "TDir"
+  TInt {} -> "TInt"
+  TAntiInt {} -> "TAntiInt"
+  TText {} -> "TText"
+  TAntiText {} -> "TAntiText"
+  TBool {} -> "TBool"
+  TAntiSyn {} -> "TAntiSyn"
+  TRobot {} -> "TRobot"
+  TRef {} -> "TRef"
+  TRequire {} -> "TRequire"
+  TStock {} -> "TStock"
+  SRequirements {} -> "SRequirements"
+  TVar {} -> "TVar"
+  SPair {} -> "SPair"
+  SLam {} -> "SLam"
+  SApp {} -> "SApp"
+  SLet {} -> "SLet"
+  STydef {} -> "STydef"
+  SBind {} -> "SBind"
+  SDelay {} -> "SDelay"
+  SRcd {} -> "SRcd"
+  SProj {} -> "SProj"
+  SAnnotate {} -> "SAnnotate"
+  SSuspend {} -> "SSuspend"
+  SParens {} -> "SParens"
+  TType {} -> "TType"
+  SImportIn {} -> "SImportIn"
+  SExportIn {} -> "SExportIn"
 
 -- | Given a (possibly effectful) way to turn types from one phase
 --   into types at another phase, and likewise a way to transform
@@ -170,7 +205,15 @@ traverseSyntax ::
   Syntax a ->
   f (Syntax b)
 traverseSyntax f g (Syntax loc t com ty) =
-  Syntax loc <$> termSyntax f g (traverseSyntax f g) t <*> pure com <*> f ty
+  Syntax loc <$> termSyntax f g (trace ("TODO: ONDRA - traverseSyntax " <> show loc) $ traverseSyntax f g) t <*> pure com <*> f ty
+
+trace :: String -> a -> a
+trace string expr = unsafePerformIO $ do
+    t <- getCurrentTime
+    appendFile "log.txt" $ show t <> " " <> string <> "\n"
+    return expr
+
+
 
 ------------------------------------------------------------
 -- Type erasure

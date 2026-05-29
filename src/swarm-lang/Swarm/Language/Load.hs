@@ -23,7 +23,7 @@ import Control.Effect.Accum (Accum, add)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.State (State, get, modify)
 import Control.Effect.Throw (Throw, throwError)
-import Control.Lens ((?~))
+import Control.Lens ((?~), (^.))
 import Control.Monad (forM_, when)
 import Data.Function ((&))
 import Data.Map.Ordered (OMap)
@@ -131,6 +131,7 @@ resolve ::
   Syntax Raw ->
   m (SourceMap Resolved, (LocalModules, Syntax Resolved))
 resolve prov s = do
+  sendIO . appendFile "log.txt" $ "TODO: ONDRA - resolve " <> show prov <> "\n"
   -- First, remove any stale module cache entries, to make sure we get
   -- the most up-to-date versions of everything.
   cullModuleCache
@@ -258,7 +259,9 @@ resolveImports ::
   ImportDir Import.Resolved ->
   Syntax Raw ->
   m (LocalModules, Syntax Resolved)
-resolveImports parent = runAccum emptyImportSet . traverseSyntax pure (resolveImport parent)
+resolveImports parent s = do
+  sendIO . traceIO $ "TODO: ONDRA - resolveImports " <> show (s ^. sLoc)
+  runAccum emptyImportSet $ traverseSyntax pure (resolveImport parent) s
 
 -- | Given a parent directory relative to which any local imports
 --   should be interpreted, load an import and all its imports,
@@ -279,22 +282,31 @@ resolveImport ::
   ImportLoc Import.Raw ->
   m ResolvedLoc
 resolveImport parent loc = do
+  sendIO $ traceIO "TODO: ONDRA - resolveImport canonicalLoc"
   -- Compute the canonicalized location for the import, and record it
   canonicalLoc <- resolveImportLoc (unresolveImportDir parent <//> loc)
 
+  sendIO $ traceIO "TODO: ONDRA - resolveImport Accumulate"
   -- Accumulate the resolved import location; this is used in
   -- 'resolveImports' to collect the set of all imports of a given
   -- module.
   add @LocalModules $ S.singleton canonicalLoc
 
+  sendIO $ traceIO "TODO: ONDRA - resolveImport needsLoad"
   -- Check whether the module needs to be loaded (either because it is
   -- not in the cache, or the version on disk is newer than the
   -- version in the cache).
   needsLoad <- moduleNeedsLoad canonicalLoc
 
+  sendIO $ traceIO "TODO: ONDRA - resolveImport ambient"
   -- If it does, import it and stick it in the ambient SourceMap.
   when needsLoad $ importModule canonicalLoc
   pure canonicalLoc
+
+traceIO :: String -> IO ()
+traceIO string = do
+  t <- getCurrentTime
+  appendFile "log.txt" $ show t <> " " <> string <> "\n"
 
 -- | Load a module from a specific import location, i.e. from disk or
 --   over the network, as well as recursively loading any modules it
@@ -314,12 +326,15 @@ importModule canonicalLoc =
   S.member canonicalLoc <$> get @VisitedModules >>= \case
     True -> pure ()
     False -> do
+      sendIO $ traceIO "TODO: ONDRA - importModule Record"
       -- Record that we have seen this module.
       modify @VisitedModules $ S.insert canonicalLoc
 
+      sendIO $ traceIO "TODO: ONDRA - importModule network/disk"
       -- Read it from network/disk
       (mt, mtime) <- readLoc canonicalLoc
 
+      sendIO $ traceIO "TODO: ONDRA - importModule Recursively"
       -- Recursively resolve any imports it contains
       mres <- traverse (resolveImports (importDir canonicalLoc)) mt
       -- sequence :: Maybe (Set a, b) -> (Set a, Maybe b)
@@ -328,9 +343,11 @@ importModule canonicalLoc =
       -- Build the final resolved module.
       let m = Module mt' () imps mtime (FromImport canonicalLoc)
 
+      sendIO $ traceIO "TODO: ONDRA - importModule validateImport"
       -- Make sure imports are pure, i.e. contain ONLY defs + imports.
       validateImport canonicalLoc m
 
+      sendIO $ traceIO "TODO: ONDRA - importModule SourceMap"
       -- Finally, add the resolved module to the SourceMap.
       modify @(SourceMap Resolved) $ (OM.|> (canonicalLoc, m))
 
