@@ -17,9 +17,8 @@ module Swarm.Language.Load (
 where
 
 import Control.Algebra (Has)
-import Control.Carrier.Accum.Strict (runAccum)
+import Control.Carrier.Accum.Strict (runAccum, AccumC (..))
 import Control.Carrier.State.Strict (evalState, runState)
-import Control.Effect.Accum (Accum, add)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.State (State, get, modify)
 import Control.Effect.Throw (Throw, throwError)
@@ -275,13 +274,12 @@ resolveImport ::
   ( Has (Throw SystemFailure) sig m
   , Has (State (SourceMap Resolved)) sig m
   , Has (State VisitedModules) sig m
-  , Has (Accum LocalModules) sig m
   , Has (Lift IO) sig m
   ) =>
   ImportDir Import.Resolved ->
   ImportLoc Import.Raw ->
-  m ResolvedLoc
-resolveImport parent loc = do
+  AccumC LocalModules m ResolvedLoc
+resolveImport parent loc = AccumC $ \w -> do
   sendIO $ traceIO "TODO: ONDRA - resolveImport canonicalLoc"
   -- Compute the canonicalized location for the import, and record it
   canonicalLoc <- resolveImportLoc (unresolveImportDir parent <//> loc)
@@ -290,7 +288,7 @@ resolveImport parent loc = do
   -- Accumulate the resolved import location; this is used in
   -- 'resolveImports' to collect the set of all imports of a given
   -- module.
-  add @LocalModules $ S.singleton canonicalLoc
+  let w' = S.insert canonicalLoc w
 
   sendIO $ traceIO "TODO: ONDRA - resolveImport needsLoad"
   -- Check whether the module needs to be loaded (either because it is
@@ -301,7 +299,7 @@ resolveImport parent loc = do
   sendIO $ traceIO "TODO: ONDRA - resolveImport ambient"
   -- If it does, import it and stick it in the ambient SourceMap.
   when needsLoad $ importModule canonicalLoc
-  pure canonicalLoc
+  pure (w', canonicalLoc)
 
 traceIO :: String -> IO ()
 traceIO string = do
