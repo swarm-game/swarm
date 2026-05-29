@@ -17,7 +17,7 @@ module Swarm.Language.Load (
 where
 
 import Control.Algebra (Has)
-import Control.Carrier.Accum.Strict (runAccum, AccumC (..))
+import Control.Carrier.Accum.Strict (AccumC (..), runAccum)
 import Control.Carrier.State.Strict (evalState, runState)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.State (State, get, modify)
