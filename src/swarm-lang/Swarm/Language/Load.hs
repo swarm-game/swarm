@@ -17,9 +17,8 @@ module Swarm.Language.Load (
 where
 
 import Control.Algebra (Has)
-import Control.Carrier.Accum.Strict (runAccum)
+import Control.Carrier.Accum.Strict (runAccum, AccumC (..))
 import Control.Carrier.State.Strict (evalState, runState)
-import Control.Effect.Accum (Accum, add)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.State (State, get, modify)
 import Control.Effect.Throw (Throw, throwError)
@@ -219,20 +218,19 @@ resolveImport ::
   ( Has (Throw SystemFailure) sig m
   , Has (State (SourceMap Resolved)) sig m
   , Has (State VisitedModules) sig m
-  , Has (Accum LocalModules) sig m
   , Has (Lift IO) sig m
   ) =>
   ImportDir Import.Resolved ->
   ImportLoc Import.Raw ->
-  m ResolvedLoc
-resolveImport parent loc = do
+  AccumC LocalModules m ResolvedLoc
+resolveImport parent loc = AccumC $ \w -> do
   -- Compute the canonicalized location for the import, and record it
   canonicalLoc <- resolveImportLoc (unresolveImportDir parent <//> loc)
 
   -- Accumulate the resolved import location; this is used in
   -- 'resolveImports' to collect the set of all imports of a given
   -- module.
-  add @LocalModules $ S.singleton canonicalLoc
+  let w' = S.insert canonicalLoc w
 
   -- Check whether the module needs to be loaded (either because it is
   -- not in the cache, or the version on disk is newer than the
@@ -241,7 +239,7 @@ resolveImport parent loc = do
 
   -- If it does, import it and stick it in the ambient SourceMap.
   when needsLoad $ importModule canonicalLoc
-  pure canonicalLoc
+  pure (w', canonicalLoc)
 
 -- | Load a module from a specific import location, i.e. from disk or
 --   over the network, as well as recursively loading any modules it
