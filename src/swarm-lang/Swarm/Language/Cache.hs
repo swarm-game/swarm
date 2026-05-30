@@ -9,6 +9,7 @@
 module Swarm.Language.Cache (
   moduleCache,
   moduleNeedsLoad,
+  module GC,
 )
 where
 

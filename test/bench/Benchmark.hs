@@ -13,6 +13,7 @@ import Data.Map qualified as M
 import Data.Sequence (Seq)
 import Data.Text qualified as T
 import Data.Tuple.Extra (dupe)
+import ImportChain
 import Swarm.Effect (runCacheIO, runMetricIO, runTimeIO)
 import Swarm.Failure (SystemFailure, simpleErrorHandle)
 import Swarm.Game.CESK (initMachine)
@@ -171,6 +172,7 @@ main = do
   movers <- mkGameStates robotNumbers moverProgram
   wavesInlined <- mkGameStates robotNumbers $ waveProgram True
   wavesWithDef <- mkGameStates robotNumbers $ waveProgram False
+  genImportChain
   -- In theory we should force the evaluation of these game states to normal
   -- form before running the benchmarks. In practice, the first of the many
   -- criterion runs for each of these benchmarks doesn't look like an outlier.
@@ -191,6 +193,7 @@ main = do
                 )
             ]
         ]
+    , benchImportChain
     ]
  where
   bgroupTicks label ticks bots =
