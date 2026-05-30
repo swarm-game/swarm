@@ -87,4 +87,5 @@ worldAttributes =
         , ("blue", AnsiColor Blue)
         , ("white", AnsiColor White)
         , ("black", Triple $ RGB 0 0 0)
+        , ("grey", AnsiColor Grey)
         ]

@@ -2,9 +2,9 @@ import "control"
 
 tydef List a = rec l. Unit + a * l end
 
-def index : Int -> List a -> a = \i. λcase
+def indexList : Int -> List a -> a = \i. λcase
   (\_. fail "bad index")
-  (λmatch \hd. \tl. if (i == 0) {hd} {index (i-1) tl})
+  (λmatch \hd. \tl. if (i == 0) {hd} {indexList (i-1) tl})
 end
 
 def length : List a -> Int = λcase
@@ -14,6 +14,12 @@ end
 def sum : List Int -> Int = λcase
   (\_. 0)
   (λmatch \hd. \tl. hd + sum tl)
+end
+
+def unfoldr : (b -> Unit + a * b) -> b -> List a = \f. \b.
+  case (f b)
+    (\_. inl ())
+    (λmatch \a. \b. inr (a, unfoldr f b))
 end
 
 def for : Int -> (Int -> Cmd a) -> Cmd (List a) = \n. \k.

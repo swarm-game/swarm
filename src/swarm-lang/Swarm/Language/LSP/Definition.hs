@@ -65,6 +65,7 @@ boundVars (Syntax _ t _ _) = case t of
   SDelay {} -> mempty
   SRcd {} -> mempty
   SProj {} -> mempty
+  SArray {} -> mempty
   SAnnotate {} -> mempty
   SSuspend {} -> mempty
   SParens {} -> mempty

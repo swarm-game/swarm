@@ -621,6 +621,7 @@ tyConNounPhrase = \case
   TCSum -> "a sum"
   TCProd -> "a pair"
   TCFun -> "a function"
+  TCArray -> "an array"
   TCUser t -> ppr t
 
 -- | Return an English noun phrase describing things with the given
@@ -782,7 +783,8 @@ decomposeTyConApp1 c t ty = do
   return a
 
 decomposeCmdTy
-  , decomposeDelayTy ::
+  , decomposeDelayTy
+  , decomposeArrayTy ::
     ( Has Unification sig m
     , Has (Throw ContextualTypeErr) sig m
     , Has (Reader TDCtx) sig m
@@ -793,6 +795,7 @@ decomposeCmdTy
     m UType
 decomposeCmdTy = decomposeTyConApp1 TCCmd
 decomposeDelayTy = decomposeTyConApp1 TCDelay
+decomposeArrayTy = decomposeTyConApp1 TCArray
 
 -- | Decompose a type which is expected to be a record type.  There
 --   are three possible outcomes:
@@ -1152,6 +1155,11 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     m' <- traverse (itraverse $ \x -> infer . fromMaybe (RTerm (TVar (locVal x)))) m
     let rcdTy = M.fromList $ map (locVal *** (^. sType)) m'
     return $ Syntax l (SRcd ((map . second) Just m')) cs (UTyRcd rcdTy)
+  SArray [] -> Syntax l (SArray []) cs . UTyArray <$> fresh
+  SArray (t1 : ts) -> do
+    t1' <- infer t1
+    ts' <- mapM (`check` (t1' ^. sType)) ts
+    return $ Syntax l (SArray (t1' : ts')) cs (UTyArray (t1' ^. sType))
 
   -- Once we're typechecking, we don't need to keep around explicit
   -- parens any more
@@ -1310,6 +1318,10 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Split -> [tyQ| Int -> Text -> (Text * Text) |]
   CharAt -> [tyQ| Int -> Text -> Int |]
   ToChar -> [tyQ| Int -> Text |]
+  UnfoldArray -> [tyQ| b -> (b -> Unit + (a * b)) -> Array a |]
+  UnfoldArrayC -> [tyQ| b -> (b -> Cmd (Unit + (a * b))) -> Cmd (Array a) |]
+  ArraySize -> [tyQ| Array a -> Int |]
+  IndexArray -> [tyQ| Array a -> Int -> a |]
   AppF -> [tyQ| (a -> b) -> a -> b |]
   Swap -> [tyQ| Text -> Cmd Text |]
   Atomic -> [tyQ| {Cmd a} -> Cmd a |]
@@ -1519,6 +1531,10 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
             (\(x, mt, ty) -> (x,) . Just <$> check (fromMaybe (RTerm (TVar (locVal x))) mt) ty)
             fieldsWithTypes
         return $ Syntax l (SRcd fields') cs expected
+  SArray ss -> do
+    eltTy <- decomposeArrayTy s (Expected, expected)
+    ss' <- mapM (`check` eltTy) ss
+    return $ Syntax l (SArray ss') cs expected
 
   -- The type of @suspend t@ is @Cmd T@ if @t : T@.
   SSuspend s1 -> do
@@ -1653,6 +1669,7 @@ analyzeAtomic locals (Syntax l t _ _) = case t of
     analyzeField (Loc _ x, Nothing) = analyzeAtomic locals (Syntax NoLoc (TVar x) mempty ())
     analyzeField (_, Just s) = analyzeAtomic locals s
   SProj {} -> return 0
+  SArray ss -> sum <$> traverse (analyzeAtomic locals) ss
   -- Variables are allowed if bound locally, or if they have a simple type.
   TVar x
     | x `S.member` locals -> return 0

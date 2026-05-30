@@ -116,6 +116,7 @@
       "try"
       "print"
       "erase"
+      "unfoldarrayc"
       "swap"
       "atomic"
       "instant"
@@ -170,6 +171,9 @@
       "split"
       "charat"
       "tochar"
+      "unfoldarray"
+      "arraysize"
+      "indexarray"
       "key"
       )
     t)

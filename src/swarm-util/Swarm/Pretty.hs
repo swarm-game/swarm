@@ -23,6 +23,9 @@ module Swarm.Pretty (
   -- * Pretty-printing utilities
   pparens,
   pparens',
+  labracket,
+  rabracket,
+  abrackets,
   encloseWithIndent,
   bquote,
   prettyShowLow,
@@ -110,6 +113,15 @@ pparens False = id
 pparens' :: Bool -> Doc ann -> Doc ann
 pparens' True = group . enclose lparen rparen
 pparens' False = id
+
+labracket :: Doc ann
+labracket = "[|"
+
+rabracket :: Doc ann
+rabracket = "|]"
+
+abrackets :: Doc ann -> Doc ann
+abrackets = enclose labracket rabracket
 
 encloseWithIndent :: Int -> Doc ann -> Doc ann -> Doc ann -> Doc ann
 encloseWithIndent i l r = nest i . enclose (l <> line') (nest (-2) $ line' <> r)
