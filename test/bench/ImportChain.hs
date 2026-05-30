@@ -6,11 +6,11 @@ import Control.Carrier.Lift (runM)
 import Control.Monad (forM_)
 import Data.Text.IO.Utf8 qualified as T8
 import Swarm.Failure (SystemFailure)
+import Swarm.Language.Cache
 import Swarm.Language.Module (Module)
 import Swarm.Language.Pipeline (processSource)
 import Swarm.Language.Syntax (Elaborated)
 import Swarm.Pretty (prettyString)
-import Swarm.Language.Cache
 import Swarm.Util.GlobalCache
 import Test.Tasty.Bench (Benchmark, bench, bgroup, whnfAppIO)
 
