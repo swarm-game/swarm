@@ -473,6 +473,7 @@ library swarm-lang
     Swarm.Language.Context
     Swarm.Language.Elaborate
     Swarm.Language.Format
+    Swarm.Language.Help
     Swarm.Language.JSON
     Swarm.Language.Key
     Swarm.Language.Kindcheck

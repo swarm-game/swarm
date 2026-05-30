@@ -39,7 +39,7 @@ import Witch (into)
 -- Failure descriptions
 
 -- | Enumeration of various assets we can attempt to load.
-data AssetData = AppAsset | NameGeneration | Entities | Terrain | Recipes | Worlds | Scenarios | Script
+data AssetData = AppAsset | NameGeneration | Entities | Terrain | Recipes | Worlds | Scenarios | Script | Help
   deriving (Eq, Show)
 
 -- | Overarching enumeration of various assets we can attempt to load.
@@ -56,6 +56,7 @@ data LoadingFailure
   | EntryNot Entry
   | CanNotDecodeUTF8 T.UnicodeException
   | CanNotParseYaml ParseException
+  | CanNotParse String
   | BadURL Text
   | Duplicate AssetData Text
   | SystemFailure SystemFailure
@@ -130,6 +131,9 @@ instance PrettyPrec LoadingFailure where
       nest 2 . vcat $
         "Parse failure:"
           : map pretty (T.lines (into @Text (prettyPrintParseException p)))
+    CanNotParse err ->
+      nest 2 . vcat $
+        ["Parse failure:", pretty err]
     BadURL err -> "Bad URL:" <+> pretty err
     Duplicate thing duped -> "Duplicate" <+> ppr thing <> ":" <+> squotes (pretty duped)
     SystemFailure g -> prettyPrec prec g
