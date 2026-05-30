@@ -4,7 +4,7 @@ module ImportChain (benchImportChain, genImportChain) where
 import Control.Carrier.Error.Either (runError)
 import Control.Carrier.Lift (runM)
 import Control.Monad (forM_)
-import Data.Text.IO.Utf8 qualified as T8
+import Data.Text.IO qualified as T -- GHC >9.6 use .Utf8
 import Swarm.Failure (SystemFailure)
 import Swarm.Language.Cache
 import Swarm.Language.Module (Module)
@@ -33,7 +33,7 @@ importFile :: Int -> IO (Module Elaborated)
 importFile i = do
   let path = pathA i
   resetCache moduleCache
-  importText <- T8.readFile path
+  importText <- T.readFile path
   res <- runM . runError @SystemFailure $ processSource (Just path) Nothing importText
   case res of
     Left e -> fail $ "Failed to process " <> path <> ": " <> prettyString e
