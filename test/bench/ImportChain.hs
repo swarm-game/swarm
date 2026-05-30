@@ -10,6 +10,8 @@ import Swarm.Language.Module (Module)
 import Swarm.Language.Pipeline (processSource)
 import Swarm.Language.Syntax (Elaborated)
 import Swarm.Pretty (prettyString)
+import Swarm.Language.Cache
+import Swarm.Util.GlobalCache
 import Test.Tasty.Bench (Benchmark, bench, bgroup, whnfAppIO)
 
 benchImportChain :: Benchmark
@@ -19,6 +21,8 @@ benchImportChain =
     [ bench "import a_000" $ whnfAppIO importFile 0
     , bench "import a_001" $ whnfAppIO importFile 1
     , bench "import a_010" $ whnfAppIO importFile 10
+    , bench "import a_020" $ whnfAppIO importFile 20
+    , bench "import a_050" $ whnfAppIO importFile 50
     , bench "import a_100" $ whnfAppIO importFile 100
     ]
 
@@ -28,6 +32,7 @@ longImports = "example/long_import/"
 importFile :: Int -> IO (Module Elaborated)
 importFile i = do
   let path = pathA i
+  resetCache moduleCache
   importText <- T8.readFile path
   res <- runM . runError @SystemFailure $ processSource (Just path) Nothing importText
   case res of
