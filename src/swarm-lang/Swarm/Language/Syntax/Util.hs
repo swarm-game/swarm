@@ -17,7 +17,7 @@ module Swarm.Language.Syntax.Util (
   -- * Traversals
 
   -- ** Term + type traversal
-  termSyntax,
+  traverseTerm,
   traverseSyntax,
 
   -- ** Erasure
@@ -111,19 +111,17 @@ locVarToSyntax (Loc s v) = Syntax s (TVar v) Empty
 -- Term + type traversal
 ------------------------------------------------------------
 
--- | Traversal to pick out all Syntax nodes and types inside a Term.
---   Generic over the phase so we can use it to change phase.
---
---   This would in fact be some kind of 'Tritraversal' (if there were
---   such a thing defined in the lens package).
-termSyntax ::
+-- | Given a (possibly effectful) way to turn types from one phase
+--   into types at another phase, and likewise a way to transform
+--   imports, traverse a term, effectfully
+--   changing the phase of the term as a whole.
+traverseTerm ::
   Applicative f =>
   (SwarmType a -> f (SwarmType b)) ->
   (ImportLoc (ImportPhaseFor a) -> f (ImportLoc (ImportPhaseFor b))) ->
-  (Syntax a -> f (Syntax b)) ->
   Term a ->
   f (Term b)
-termSyntax fty floc fsyn = \case
+traverseTerm fty floc = \case
   TUnit -> pure TUnit
   TConst c -> pure $ TConst c
   TDir d -> pure $ TDir d
@@ -137,32 +135,28 @@ termSyntax fty floc fsyn = \case
   TRef x -> pure $ TRef x
   TRequire d -> pure $ TRequire d
   TStock n d -> pure $ TStock n d
-  SRequirements t s -> SRequirements t <$> fsyn s
+  SRequirements t s -> SRequirements t <$> traverseSyntax fty floc s
   TVar x -> pure $ TVar x
-  SPair s1 s2 -> SPair <$> fsyn s1 <*> fsyn s2
-  SLam x ty s -> SLam x ty <$> fsyn s
-  SApp s1 s2 -> SApp <$> fsyn s1 <*> fsyn s2
-  SLet ls r x rty ty req s1 s2 -> SLet ls r x rty ty req <$> fsyn s1 <*> fsyn s2
-  STydef x ty info s -> STydef x ty info <$> fsyn s
-  SBind x t1 t2 req s1 s2 -> SBind x <$> traverse fty t1 <*> pure t2 <*> pure req <*> fsyn s1 <*> fsyn s2
-  SDelay s -> SDelay <$> fsyn s
-  SRcd m -> SRcd <$> (traverse . traverse . traverse) fsyn m
-  SProj s x -> SProj <$> fsyn s <*> pure x
-  SAnnotate s pty -> SAnnotate <$> fsyn s <*> pure pty
-  SSuspend s -> SSuspend <$> fsyn s
-  SParens s -> SParens <$> fsyn s
+  SPair s1 s2 -> SPair <$> traverseSyntax fty floc s1 <*> traverseSyntax fty floc s2
+  SLam x ty s -> SLam x ty <$> traverseSyntax fty floc s
+  SApp s1 s2 -> SApp <$> traverseSyntax fty floc s1 <*> traverseSyntax fty floc s2
+  SLet ls r x rty ty req s1 s2 -> SLet ls r x rty ty req <$> traverseSyntax fty floc s1 <*> traverseSyntax fty floc s2
+  STydef x ty info s -> STydef x ty info <$> traverseSyntax fty floc s
+  SBind x t1 t2 req s1 s2 -> SBind x <$> traverse fty t1 <*> pure t2 <*> pure req <*> traverseSyntax fty floc s1 <*> traverseSyntax fty floc s2
+  SDelay s -> SDelay <$> traverseSyntax fty floc s
+  SRcd m -> SRcd <$> (traverse . traverse . traverse) (traverseSyntax fty floc) m
+  SProj s x -> SProj <$> traverseSyntax fty floc s <*> pure x
+  SAnnotate s pty -> SAnnotate <$> traverseSyntax fty floc s <*> pure pty
+  SSuspend s -> SSuspend <$> traverseSyntax fty floc s
+  SParens s -> SParens <$> traverseSyntax fty floc s
   TType ty -> pure $ TType ty
-  SImportIn ex loc s -> SImportIn ex <$> floc loc <*> fsyn s
-  SExportIn x s -> SExportIn x <$> fsyn s
+  SImportIn ex loc s -> SImportIn ex <$> floc loc <*> traverseSyntax fty floc s
+  SExportIn x s -> SExportIn x <$> traverseSyntax fty floc s
 
 -- | Given a (possibly effectful) way to turn types from one phase
 --   into types at another phase, and likewise a way to transform
---   imports, map over all types in a syntax tree, effectfully
+--   imports, traverse a syntax tree, effectfully
 --   changing the phase of the syntax tree as a whole.
---
---   We could make this a @Traversal (Syntax a) (Syntax b) (SwarmType
---   a) (SwarmType b)@ but we just keep an explicit type like this for
---   simplicity.
 traverseSyntax ::
   Applicative f =>
   (SwarmType a -> f (SwarmType b)) ->
@@ -170,7 +164,7 @@ traverseSyntax ::
   Syntax a ->
   f (Syntax b)
 traverseSyntax f g (Syntax loc t com ty) =
-  Syntax loc <$> termSyntax f g (traverseSyntax f g) t <*> pure com <*> f ty
+  Syntax loc <$> traverseTerm f g t <*> pure com <*> f ty
 
 ------------------------------------------------------------
 -- Type erasure
@@ -186,8 +180,8 @@ instance Erasable Syntax where
   eraseRaw = runIdentity . traverseSyntax (const (pure ())) (pure . unresolveImportLoc)
 
 instance Erasable Term where
-  erase = runIdentity . termSyntax (const (pure ())) pure (pure . erase)
-  eraseRaw = runIdentity . termSyntax (const (pure ())) (pure . unresolveImportLoc) (pure . eraseRaw)
+  erase = runIdentity . traverseTerm (const (pure ())) pure
+  eraseRaw = runIdentity . traverseTerm (const (pure ())) (pure . unresolveImportLoc)
 
 ------------------------------------------------------------
 -- Free variable traversals
