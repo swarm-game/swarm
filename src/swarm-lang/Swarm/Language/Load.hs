@@ -27,6 +27,7 @@ import Control.Monad (forM_, when)
 import Data.Function ((&))
 import Data.Map.Ordered (OMap)
 import Data.Map.Ordered qualified as OM
+import Data.Maybe (isNothing)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
@@ -129,6 +130,10 @@ resolve ::
   Syntax Raw ->
   m (SourceMap Resolved, (LocalModules, Syntax Resolved))
 resolve prov s = do
+  -- First, remove any stale module cache entries, to make sure we get
+  -- the most up-to-date versions of everything.
+  cullModuleCache
+
   cur <- resolveImportDir $
     case prov of
       Nothing -> currentDir
@@ -149,6 +154,54 @@ resolve prov s = do
 resolve' ::
   (Has (Throw SystemFailure) sig m) => Syntax Raw -> m (Syntax Resolved)
 resolve' = traverseSyntax pure (throwError . DisallowedImport)
+
+-- | Do a DFS through the module cache, removing any stale modules.  A
+--   stale module is defined as one which EITHER (a) has a
+--   modification time on disk newer than the cached timestamp, or (b)
+--   has a stale dependency.
+--
+--   Note that we call cullRoot on *every* module, but all within the
+--   context of a global visited set---so cullRoot does nothing when
+--   called on a module that has already been visited.  Hence this is
+--   still O(n) in the size of the module cache.
+cullModuleCache :: (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) => m ()
+cullModuleCache = evalState emptyImportSet $ mapM_ cullRoot =<< sendIO (GC.cacheKeys moduleCache)
+
+-- | DFS to recursively cull stale modules from the module cache starting
+--   from a particular root, traversing the given root and all its
+--   transitive dependencies (which have not already been visited).
+--   Returns True if the root was culled.
+cullRoot :: (Has (Lift IO) sig m, Has (State VisitedModules) sig m) => ResolvedLoc -> m Bool
+cullRoot loc =
+  S.member loc <$> get @VisitedModules >>= \case
+    -- Root has already been visited: check if it is still in the
+    -- cache to see if it was culled.
+    True -> isNothing <$> sendIO (GC.lookupCached moduleCache loc)
+    -- Root has not been visited before.
+    False -> do
+      -- Add the root to the visited set.
+      modify @VisitedModules $ S.insert loc
+
+      -- Now look it up in the module cache --- in particular, we need
+      -- to know its immediate imports so we can recursively cull
+      -- them.
+      res <- sendIO (GC.lookupCached moduleCache loc)
+      case res of
+        -- (The Nothing case cannot actually happen, since cullRoot
+        -- will only be called on things that started out in the
+        -- module cache in the first place.)
+        Nothing -> pure True
+        Just m -> do
+          -- Recursively cull all its dependencies.
+          depsCulled <- or <$> mapM cullRoot (S.toList $ moduleImports m)
+          -- Check if the root is outdated.
+          outdated <- moduleOutdated loc m
+          -- We should cull the root if it is outdated OR any of its deps were culled.
+          let shouldCull = depsCulled || outdated
+          -- Cull the root if needed.
+          when shouldCull $ sendIO (GC.deleteCached moduleCache loc)
+          -- Report whether the root was culled.
+          pure shouldCull
 
 -- | Given a 'SourceMap' containing newly loaded + resolved modules,
 --   ensure that the resulting import graph contains no import cycles.

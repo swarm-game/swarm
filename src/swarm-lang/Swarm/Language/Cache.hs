@@ -9,6 +9,7 @@
 module Swarm.Language.Cache (
   moduleCache,
   moduleNeedsLoad,
+  moduleOutdated,
   module GC,
 )
 where
@@ -35,7 +36,7 @@ moduleCache = unsafePerformIO GC.newGlobalCache
 moduleNeedsLoad :: (Has (Lift IO) sig m) => ImportLoc Import.Resolved -> m Bool
 moduleNeedsLoad loc = do
   cached <- sendIO $ GC.lookupCached moduleCache loc
-  maybe (pure True) (isOutdated loc) cached
+  maybe (pure True) (moduleOutdated loc) cached
 
 -- | Check whether a module is outdated and needs to be reloaded +
 --   rechecked.  For local files, this is determined by comparing the
@@ -48,8 +49,8 @@ moduleNeedsLoad loc = do
 --   those loaded from local files.  If you want to pick up a change
 --   to a module imported from a URL, you can restart the entire app
 --   to clear the cache.
-isOutdated :: (Has (Lift IO) sig m) => ImportLoc Import.Resolved -> Module phase -> m Bool
-isOutdated cloc (moduleTimestamp -> mt) = case locToPath cloc of
+moduleOutdated :: (Has (Lift IO) sig m) => ImportLoc Import.Resolved -> Module phase -> m Bool
+moduleOutdated cloc (moduleTimestamp -> mt) = case locToPath cloc of
   -- URLs are never outdated
   URL {} -> pure False
   -- For local files, get the modification time and compare to

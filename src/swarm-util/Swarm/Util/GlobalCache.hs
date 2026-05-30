@@ -10,6 +10,7 @@ module Swarm.Util.GlobalCache (
   freezeCache,
   insertCached,
   deleteCached,
+  cacheKeys,
   resetCache,
 )
 where
@@ -26,6 +27,7 @@ data GlobalCache k v = GlobalCache
   , freezeCache :: IO (k -> Maybe v)
   , insertCached :: k -> v -> IO ()
   , deleteCached :: k -> IO ()
+  , cacheKeys :: IO [k]
   , resetCache :: IO ()
   }
 
@@ -43,6 +45,7 @@ newGlobalCache = do
       , freezeCache = freezeCacheImpl var
       , insertCached = insertCachedImpl var
       , deleteCached = deleteCachedImpl var
+      , cacheKeys = cacheKeysImpl var
       , resetCache = resetCachedImpl var
       }
  where
@@ -57,6 +60,9 @@ newGlobalCache = do
 
   deleteCachedImpl :: TVar (HashMap k v) -> k -> IO ()
   deleteCachedImpl var k = atomically $ modifyTVar' var (HashMap.delete k)
+
+  cacheKeysImpl :: TVar (HashMap k v) -> IO [k]
+  cacheKeysImpl var = HashMap.keys <$> readTVarIO var
 
   resetCachedImpl :: TVar (HashMap k v) -> IO ()
   resetCachedImpl var = atomically $ modifyTVar' var (const HashMap.empty)
