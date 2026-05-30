@@ -34,3 +34,5 @@ package.json
 *.eventlog
 *.eventlog.html
 *.prof
+
+example/long_import/*.sw

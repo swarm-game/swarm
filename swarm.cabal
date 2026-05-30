@@ -1469,6 +1469,7 @@ benchmark benchmark
     text,
 
   main-is: Benchmark.hs
+  other-modules: ImportChain
   hs-source-dirs: test/bench
   ghc-options:
     -hiedir=.hie/test/bench
