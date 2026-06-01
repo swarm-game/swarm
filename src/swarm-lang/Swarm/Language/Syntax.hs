@@ -113,7 +113,10 @@ module Swarm.Language.Syntax (
 
   -- ** Miscellaneous traversals
   asTree,
-  measureAstSize,
+
+  -- * Code size metrics
+  measureASTSize,
+  measureASTChars,
 ) where
 
 import Swarm.Language.Phase

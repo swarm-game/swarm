@@ -39,7 +39,7 @@ import Data.Time.Clock (getCurrentTime)
 import Swarm.Failure (SystemFailure (..))
 import Swarm.Language.Cache
 import Swarm.Language.Elaborate
-import Swarm.Language.Load (resolve, resolve')
+import Swarm.Language.Load (collectTransitiveImports, resolve, resolve')
 import Swarm.Language.Module (Module (..), ModuleProvenance (..), emptyModule, moduleTerm)
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
@@ -129,15 +129,14 @@ processTerm prov txt menv tm = do
   time <- sendIO getCurrentTime
 
   -- Calculate all transitive imports
-  let getTransImports = maybe S.empty moduleTransImports . flip OM.lookup srcMapRes
-  let timps = S.unions . map getTransImports $ S.toList imps
+  timps <- collectTransitiveImports srcMapRes imps
 
   -- Package up elaborated term as a Module.  Note that we put an
   -- empty context in the resulting Module, which is not really
   -- correct, but since we are processing a top-level term, we won't
   -- ever use this module as an import to some other module, so the
   -- context is not really needed.
-  let modElab = Module (Just tmElab) mempty imps (imps `S.union` timps) (Just time) (maybe NoProvenance FromFile prov)
+  let modElab = Module (Just tmElab) mempty imps timps (Just time) (maybe NoProvenance FromFile prov)
 
   -- Return the elaborated module.
   pure modElab

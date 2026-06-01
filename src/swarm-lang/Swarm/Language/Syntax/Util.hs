@@ -31,7 +31,10 @@ module Swarm.Language.Syntax.Util (
 
   -- ** Miscellaneous traversals
   asTree,
-  measureAstSize,
+
+  -- * Code size metrics
+  measureASTSize,
+  measureASTChars,
 ) where
 
 import Control.Lens (Traversal', para, universe, (%~), (^.), pattern Empty)
@@ -39,6 +42,7 @@ import Data.Data (Data, Typeable)
 import Data.Functor.Identity (runIdentity)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Semigroup (Sum (..))
 import Data.Set qualified as S
 import Data.Tree
 import Swarm.Language.Phase
@@ -265,10 +269,14 @@ mapFreeS x f = freeVarsS %~ (\t -> case t ^. sTerm of TVar y | y == x -> f t; _ 
 asTree :: (Data (Anchor (ImportPhaseFor phase)), Typeable phase, Typeable (ImportPhaseFor phase), Data (SwarmType phase)) => Syntax phase -> Tree (Syntax phase)
 asTree = para Node
 
+------------------------------------------------------------
+-- Code size metrics
+------------------------------------------------------------
+
 -- | Each constructor is a assigned a value of 1, plus
 --   any recursive syntax it entails.
-measureAstSize :: (Data (Anchor (ImportPhaseFor phase)), Typeable phase, Typeable (ImportPhaseFor phase), Data (SwarmType phase)) => Syntax phase -> Int
-measureAstSize = length . filter (not . isNoop) . universe
+measureASTSize :: (Data (Anchor (ImportPhaseFor phase)), Typeable phase, Typeable (ImportPhaseFor phase), Data (SwarmType phase)) => Syntax phase -> Sum Int
+measureASTSize = Sum . length . filter (not . isNoop) . universe
 
 -- | Don't count "noop" nodes towards the code size.  They are usually
 --   inserted automatically, either in @{}@ or after a bare @def@.
@@ -276,3 +284,7 @@ isNoop :: Syntax a -> Bool
 isNoop = \case
   Syntax _ (TConst Noop) _ _ -> True
   _ -> False
+
+-- | The number of characters in an AST can be computed from the top-level SrcLoc.
+measureASTChars :: Syntax phase -> Sum Int
+measureASTChars (Syntax srcLoc _ _ _) = spanSize srcLoc

@@ -4,6 +4,7 @@
 module TestScoring where
 
 import Control.Carrier.Error.Either (runError)
+import Data.Semigroup (Sum (..))
 import Data.Time.Calendar.OrdinalDate
 import Data.Time.LocalTime
 import Swarm.Failure (SystemFailure)
@@ -30,14 +31,30 @@ testHighScores =
     "Scoring"
     [ testGroup
         "Code size"
-        [ compareAstSize 1 "single-move-bare.sw"
-        , compareAstSize 2 "single-move-def.sw"
-        , compareAstSize 3 "single-move-let-with-invocation.sw"
-        , compareAstSize 5 "double-move-let-with-invocation.sw"
-        , compareAstSize 3 "single-move-def-with-invocation.sw"
-        , compareAstSize 5 "double-move-def-with-invocation.sw"
-        , compareAstSize 25 "single-def-two-args-recursive.sw"
-        , compareAstSize 30 "single-def-two-args-recursive-with-invocation.sw"
+        [ compareASTSize 1 "single-move-bare.sw"
+        , compareASTSize 2 "single-move-def.sw"
+        , compareASTSize 3 "single-move-let-with-invocation.sw"
+        , compareASTSize 5 "double-move-let-with-invocation.sw"
+        , compareASTSize 3 "single-move-def-with-invocation.sw"
+        , compareASTSize 5 "double-move-def-with-invocation.sw"
+        , compareASTSize 25 "single-def-two-args-recursive.sw"
+        , compareASTSize 30 "single-def-two-args-recursive-with-invocation.sw"
+        , compareASTSize 6 "c.sw"
+        , compareASTSize 8 "def-with-import.sw"
+        , compareASTSize 28 "diamond-import.sw"
+        ]
+    , testGroup
+        "Code character count"
+        [ compareASTChars 4 "single-move-bare.sw"
+        , compareASTChars 22 "single-move-def.sw"
+        , compareASTChars 28 "single-move-let-with-invocation.sw"
+        , compareASTChars 34 "double-move-let-with-invocation.sw"
+        , compareASTChars 32 "single-move-def-with-invocation.sw"
+        , compareASTChars 38 "double-move-def-with-invocation.sw"
+        , compareASTChars 56 "single-def-two-args-recursive.sw"
+        , compareASTChars 70 "single-def-two-args-recursive-with-invocation.sw"
+        , compareASTChars (47 + 16) "def-with-import.sw"
+        , compareASTChars (40 + 29 + 29 + 17) "diamond-import.sw"
         ]
     , testGroup
         "Precedence"
@@ -60,13 +77,20 @@ testHighScores =
         ]
     ]
 
-compareAstSize :: Int -> FilePath -> TestTree
-compareAstSize expectedSize path = testCase (unwords ["size of", path]) $ do
+compareASTMetric :: (Eq m, Monoid m, Show m) => String -> (Syntax Elaborated -> m) -> m -> FilePath -> TestTree
+compareASTMetric desc measure expected path = testCase (unwords [desc, path]) $ do
   let filePath = baseTestPath </> path
-  contents <- readFileMayT UTF8 (baseTestPath </> path) ??? assertFailure "Can't read file!"
-  src <- runError @SystemFailure $ requireNonEmptyTerm =<< processSource (Just filePath) Nothing contents
+  contents <- readFileMayT UTF8 filePath ??? assertFailure "Can't read file!"
+  src <- runError @SystemFailure $ processSource (Just filePath) Nothing contents
   t <- either (assertFailure . prettyString) pure src
-  assertEqual "incorrect size" expectedSize (measureAstSize t)
+  size <- transitively measure t
+  assertEqual "incorrect metric" expected size
+
+compareASTSize :: Int -> FilePath -> TestTree
+compareASTSize = compareASTMetric "size of" measureASTSize . Sum
+
+compareASTChars :: Int -> FilePath -> TestTree
+compareASTChars = compareASTMetric "characters in" measureASTChars . Sum
 
 betterReplTimeAfterCodeSizeRecord :: TestTree
 betterReplTimeAfterCodeSizeRecord =

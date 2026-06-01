@@ -11,11 +11,13 @@ module Swarm.Language.Syntax.Loc (
   Located (..),
   srcLocStartsBefore,
   srcLocEndsBefore,
+  spanSize,
 ) where
 
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Data (Data)
 import Data.Hashable (Hashable)
+import Data.Semigroup (Sum (..))
 import GHC.Generics (Generic)
 import Swarm.Language.Syntax.Import (ImportLoc, Resolved)
 import Swarm.Util.JSON (optionsUntagged)
@@ -68,6 +70,10 @@ srcLocStartsBefore _ _ = False
 srcLocEndsBefore :: SrcLoc -> SrcLoc -> Bool
 srcLocEndsBefore (SrcLoc l1 _ a) (SrcLoc l2 _ b) = l1 == l2 && a <= b
 srcLocEndsBefore _ _ = False
+
+spanSize :: SrcLoc -> Sum Int
+spanSize NoLoc = Sum 0
+spanSize (SrcLoc _ start end) = Sum $ end - start
 
 -- | A value with associated source location.
 data Located v = Loc {lvSrcLoc :: SrcLoc, locVal :: v}
