@@ -26,14 +26,14 @@ import Swarm.Failure (SystemFailure)
 import Swarm.Game.CESK (continue)
 import Swarm.Game.Robot.Concrete (machine)
 import Swarm.Game.Scenario
-import Swarm.Game.Scenario.Scoring.CodeSize (ScenarioCodeMetrics (..), codeMetricsFromSyntax)
+import Swarm.Game.Scenario.Scoring.CodeSize (codeMetricsFromSyntax)
 import Swarm.Game.Scenario.Status (ScenarioWith (..), emptyLaunchParams)
 import Swarm.Game.State
 import Swarm.Game.State.Initialize (scenarioToGameState)
 import Swarm.Game.State.Runtime (RuntimeOptions (..), initRuntimeState, initScenarioInputs, pauseOnObjectiveCompletion, stdGameConfigInputs)
 import Swarm.Game.State.Substate (initState, seed)
 import Swarm.Game.Step.Validate (playUntilWin)
-import Swarm.Language.Module (Module (moduleTerm))
+import Swarm.Language.Module (Module)
 import Swarm.Language.Pipeline
 import Swarm.Language.Syntax (Phase (..))
 import Swarm.Pretty (prettyString, prettyText)
@@ -216,6 +216,8 @@ verifySolution (SolutionTimeout timeoutSeconds) sol gs = do
 
   tickCount <- except $ left ErrorsDuringExecution eitherTickCount
 
+  codeMetrics <- liftIO $ codeMetricsFromSyntax sol
+
   return $
     SolutionCharacterization
       actualTime
@@ -223,5 +225,4 @@ verifySolution (SolutionTimeout timeoutSeconds) sol gs = do
       (gs ^. randomness . seed)
       codeMetrics
  where
-  codeMetrics = maybe (ScenarioCodeMetrics 0 0) codeMetricsFromSyntax (moduleTerm sol)
   gs' = gs & baseRobot . machine %~ continue sol
