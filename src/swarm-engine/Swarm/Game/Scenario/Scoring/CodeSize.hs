@@ -6,7 +6,7 @@
 module Swarm.Game.Scenario.Scoring.CodeSize where
 
 import Data.Aeson
-import Data.Semigroup (Sum)
+import Data.Semigroup (Sum (..))
 import Data.Set qualified as S
 import GHC.Generics (Generic)
 import Swarm.Language.Cache (moduleCache)
@@ -31,14 +31,16 @@ transitively measure m = do
   pure (measureMM (Just m) <> impMeas)
 
 data ScenarioCodeMetrics = ScenarioCodeMetrics
-  { sourceTextLength :: Sum Int
-  , astSize :: Sum Int
+  { sourceTextLength :: Int
+  , astSize :: Int
   }
   deriving (Eq, Ord, Show, Read, Generic, ToJSON, FromJSON)
 
 codeMetricsFromSyntax :: Module Elaborated -> IO ScenarioCodeMetrics
 codeMetricsFromSyntax m =
-  ScenarioCodeMetrics <$> transitively measureASTChars m <*> transitively measureASTSize m
+  ScenarioCodeMetrics
+    <$> fmap getSum (transitively measureASTChars m)
+    <*> fmap getSum (transitively measureASTSize m)
 
 codeSizeFromDeterminator :: CodeSizeDeterminators -> IO (Maybe ScenarioCodeMetrics)
 codeSizeFromDeterminator (CodeSizeDeterminators maybeInitialCode usedRepl) =
