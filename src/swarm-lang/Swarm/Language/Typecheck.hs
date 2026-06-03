@@ -408,7 +408,8 @@ instance HasBindings (ModuleExports UCtx) where
   applyBindings (ModuleExports v t) = ModuleExports <$> applyBindings v <*> applyBindings t
 
 instance HasBindings (Module Inferred) where
-  applyBindings (Module t ctx imps time prov) = Module <$> applyBindings t <*> applyBindings ctx <*> pure imps <*> pure time <*> pure prov
+  applyBindings (Module t ctx imps timps time prov) =
+    Module <$> applyBindings t <*> applyBindings ctx <*> pure imps <*> pure timps <*> pure time <*> pure prov
 
 ------------------------------------------------------------
 -- Converting between mono- and polytypes
@@ -952,12 +953,12 @@ inferModule ::
   ModuleCache ->
   Module Resolved ->
   m (Module Typed)
-inferModule modCache (Module ms _ imps time prov) = do
+inferModule modCache (Module ms _ imps timps time prov) = do
   -- Infer the type of the term
   mt <- traverse (inferTop mempty mempty emptyTDCtx modCache) ms
 
   let ctx = maybe mempty (collectExports modCache) mt
-  pure $ Module mt ctx imps time prov
+  pure $ Module mt ctx imps timps time prov
 
 -- | Infer the type of a term, returning a type-annotated term.
 --

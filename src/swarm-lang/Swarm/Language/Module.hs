@@ -120,7 +120,9 @@ data Module phase = Module
   --   via @def@ with their types, and type aliases defined via @tydef@
   --   with their definitions.  See Note [Module exports].
   , moduleImports :: ModuleImports phase
-  -- ^ The moduleImports are mostly for convenience, e.g. for checking modules for cycles.
+  -- ^ The set of modules directly imported by this module.
+  , moduleTransImports :: ModuleImports phase
+  -- ^ The set of all modules directly or transitively imported by this module.
   , moduleTimestamp :: Maybe UTCTime
   -- ^ The time at which the module was loaded
   , moduleProvenance :: ModuleProvenance
@@ -134,11 +136,11 @@ deriving instance (Eq (Anchor (ImportPhaseFor phase)), Data (Anchor (ImportPhase
 deriving instance (Hashable (ModuleImports phase), Hashable (ModuleCtx phase), Hashable (SwarmType phase), Hashable (Anchor (ImportPhaseFor phase)), Generic (Anchor (ImportPhaseFor phase))) => Hashable (Module phase)
 
 emptyModule :: Module Elaborated
-emptyModule = Module Nothing mempty S.empty Nothing NoProvenance
+emptyModule = Module Nothing mempty S.empty S.empty Nothing NoProvenance
 
 instance Erasable Module where
-  erase (Module t _ _ time prov) = Module (erase <$> t) () S.empty time prov
-  eraseRaw (Module t _ _ time prov) = Module (eraseRaw <$> t) () () time prov
+  erase (Module t _ _ _ time prov) = Module (erase <$> t) () S.empty S.empty time prov
+  eraseRaw (Module t _ _ _ time prov) = Module (eraseRaw <$> t) () () () time prov
 
 -- ~~~~ Note [Module exports]
 --

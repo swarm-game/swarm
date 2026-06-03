@@ -58,6 +58,7 @@ instance FromJSONE ModuleProvenance (Module Raw) where
       <$> liftE (Just <$> parseJSON @(Syntax Raw) v)
       <*> pure ()
       <*> pure ()
+      <*> pure ()
       <*> pure Nothing
       <*> getE
 

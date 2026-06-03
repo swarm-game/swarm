@@ -128,12 +128,16 @@ processTerm prov txt menv tm = do
   -- we might as well.
   time <- sendIO getCurrentTime
 
+  -- Calculate all transitive imports
+  let getTransImports = maybe S.empty moduleTransImports . flip OM.lookup srcMapRes
+  let timps = S.unions . map getTransImports $ S.toList imps
+
   -- Package up elaborated term as a Module.  Note that we put an
   -- empty context in the resulting Module, which is not really
   -- correct, but since we are processing a top-level term, we won't
   -- ever use this module as an import to some other module, so the
   -- context is not really needed.
-  let modElab = Module (Just tmElab) mempty imps (Just time) (maybe NoProvenance FromFile prov)
+  let modElab = Module (Just tmElab) mempty imps (imps `S.union` timps) (Just time) (maybe NoProvenance FromFile prov)
 
   -- Return the elaborated module.
   pure modElab
@@ -163,7 +167,7 @@ processTermNoImports txt tm menv = do
         (e ^. envTydefs)
         (const Nothing)
         tmRes
-  pure $ Module (Just $ elaborate tmTy) mempty S.empty Nothing NoProvenance
+  pure $ Module (Just $ elaborate tmTy) mempty S.empty S.empty Nothing NoProvenance
 
 ------------------------------------------------------------
 -- Utility adapters for processTerm
@@ -196,8 +200,8 @@ class Processable t where
 
 instance Processable Module where
   process = \case
-    Module Nothing _ _ ts prov -> pure $ Module Nothing mempty S.empty ts prov
-    Module (Just t) _ _ _ prov -> processTerm (fileProv prov) "" Nothing t
+    Module Nothing _ _ _ ts prov -> pure $ Module Nothing mempty S.empty S.empty ts prov
+    Module (Just t) _ _ _ _ prov -> processTerm (fileProv prov) "" Nothing t
    where
     fileProv = \case
       FromFile f -> Just f

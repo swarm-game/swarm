@@ -329,8 +329,32 @@ importModule canonicalLoc =
       -- sequence :: Maybe (Set a, b) -> (Set a, Maybe b)
       let (imps, mt') = sequence mres
 
+      -- Collect all transitive imports: for each direct import, look
+      -- it up in the SourceMap of resolved modules OR the module
+      -- cache + extract its transitive imports.  We have to look in
+      -- both the SourceMap and the module cache since modules we have
+      -- just resolved will only be in the SourceMap and not the
+      -- module cache yet (they won't go in the module cache until
+      -- later, when they are typechecked and elaborated); but modules
+      -- that got skipped because they are cached will only be in the
+      -- module cache and not the SourceMap.
+      srcMap <- get @(SourceMap Resolved)
+      let getTransImportsFrom ::
+            (ModuleImports phase ~ Set ResolvedLoc, Functor f) =>
+            (ResolvedLoc -> f (Maybe (Module phase))) ->
+            (ResolvedLoc -> f (Set ResolvedLoc))
+          getTransImportsFrom lkup = fmap (maybe S.empty moduleTransImports) . lkup
+
+          getTransImports :: ResolvedLoc -> IO (Set ResolvedLoc)
+          getTransImports =
+            mconcat
+              [ getTransImportsFrom (GC.lookupCached moduleCache)
+              , getTransImportsFrom (pure . flip OM.lookup srcMap)
+              ]
+      timps <- fmap S.unions . traverse (sendIO . getTransImports) $ S.toList imps
+
       -- Build the final resolved module.
-      let m = Module mt' () imps mtime (FromImport canonicalLoc)
+      let m = Module mt' () imps (imps `S.union` timps) mtime (FromImport canonicalLoc)
 
       -- Make sure imports are pure, i.e. contain ONLY defs + imports.
       validateImport canonicalLoc m
