@@ -83,7 +83,7 @@ compareASTMetric desc measure expected path = testCase (unwords [desc, path]) $ 
   contents <- readFileMayT UTF8 filePath ??? assertFailure "Can't read file!"
   src <- runError @SystemFailure $ processSource (Just filePath) Nothing contents
   t <- either (assertFailure . prettyString) pure src
-  size <- transitively measure t
+  size <- transitiveMetric measure t
   assertEqual "incorrect metric" expected size
 
 compareASTSize :: Int -> FilePath -> TestTree

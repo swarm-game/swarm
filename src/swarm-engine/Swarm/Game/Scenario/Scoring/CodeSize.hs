@@ -22,8 +22,8 @@ data CodeSizeDeterminators = CodeSizeDeterminators
 
 -- | Take an AST metric, call it on on all transitive imports, and
 --   collect the results.
-transitively :: forall metric. Monoid metric => (Syntax Elaborated -> metric) -> Module Elaborated -> IO metric
-transitively measure m = do
+transitiveMetric :: forall metric. Monoid metric => (Syntax Elaborated -> metric) -> Module Elaborated -> IO metric
+transitiveMetric measure m = do
   let timps = S.toList $ moduleTransImports m
       measureMM :: Maybe (Module Elaborated) -> metric
       measureMM = maybe mempty measure . (>>= moduleTerm)
@@ -39,8 +39,8 @@ data ScenarioCodeMetrics = ScenarioCodeMetrics
 codeMetricsFromSyntax :: Module Elaborated -> IO ScenarioCodeMetrics
 codeMetricsFromSyntax m =
   ScenarioCodeMetrics
-    <$> fmap getSum (transitively measureASTChars m)
-    <*> fmap getSum (transitively measureASTSize m)
+    <$> fmap getSum (transitiveMetric measureASTChars m)
+    <*> fmap getSum (transitiveMetric measureASTSize m)
 
 codeSizeFromDeterminator :: CodeSizeDeterminators -> IO (Maybe ScenarioCodeMetrics)
 codeSizeFromDeterminator (CodeSizeDeterminators maybeInitialCode usedRepl) =
