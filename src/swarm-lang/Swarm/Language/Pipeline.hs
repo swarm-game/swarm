@@ -103,6 +103,9 @@ processTerm prov txt menv tm = do
   -- cached
   (srcMapRes, (imps, tmRes)) <- resolve prov tm
 
+  -- Calculate set of all transitive imports
+  timps <- collectTransitiveImports srcMapRes imps
+
   -- Typecheck + elaborate each import that wasn't in the global cache
   forM_ (OM.assocs srcMapRes) $ \(loc, m) -> do
     modCache <- sendIO $ freezeCache moduleCache
@@ -127,9 +130,6 @@ processTerm prov txt menv tm = do
   -- loaded via an import location) won't go in the module cache.  But
   -- we might as well.
   time <- sendIO getCurrentTime
-
-  -- Calculate all transitive imports
-  timps <- collectTransitiveImports srcMapRes imps
 
   -- Package up elaborated term as a Module.  Note that we put an
   -- empty context in the resulting Module, which is not really

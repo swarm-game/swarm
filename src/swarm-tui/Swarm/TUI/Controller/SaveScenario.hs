@@ -84,7 +84,6 @@ saveScenarioInfoOnFinish p = do
   -- Don't update scenario statistics if we have previously saved
   -- statistics for the current scenario upon scenario completion.
   unless saved $ do
-    -- There's probably a nice lens-y way to do this in one line
     mcsi <- preuse currentScenarioInfo
     case mcsi of
       Nothing -> pure ()

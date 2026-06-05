@@ -156,6 +156,4 @@ updateScenarioInfoOnFinish
       pure . ScenarioInfo p $
         Played launchParams newPlayMetric $
           updateBest newPlayMetric prevBestRecords
-     where
-
     _ -> pure si

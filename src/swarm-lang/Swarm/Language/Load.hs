@@ -354,17 +354,16 @@ importModule canonicalLoc =
 --   will only be in the module cache and not the SourceMap.
 collectTransitiveImports :: Has (Lift IO) sig m => SourceMap Resolved -> Set ResolvedLoc -> m (Set ResolvedLoc)
 collectTransitiveImports srcMap imps = do
-  let getTransImportsFrom ::
-        (ModuleImports phase ~ Set ResolvedLoc, Functor f) =>
-        (ResolvedLoc -> f (Maybe (Module phase))) ->
-        (ResolvedLoc -> f (Set ResolvedLoc))
-      getTransImportsFrom lkup = fmap (maybe S.empty moduleTransImports) . lkup
+  let maybeTransImports ::
+        (ModuleImports phase ~ Set ResolvedLoc) =>
+        Maybe (Module phase) -> Set ResolvedLoc
+      maybeTransImports = maybe S.empty moduleTransImports
 
       getTransImports :: ResolvedLoc -> IO (Set ResolvedLoc)
       getTransImports =
         mconcat
-          [ getTransImportsFrom (GC.lookupCached moduleCache)
-          , getTransImportsFrom (pure . flip OM.lookup srcMap)
+          [ fmap maybeTransImports . GC.lookupCached moduleCache
+          , pure . maybeTransImports . flip OM.lookup srcMap
           ]
   timps <- fmap S.unions . traverse (sendIO . getTransImports) $ S.toList imps
   pure (imps `S.union` timps)
