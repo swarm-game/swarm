@@ -14,7 +14,7 @@ import Swarm.Language.Syntax
 import Unsafe.Coerce (unsafeCoerce)
 
 elaborateModule :: Module Typed -> Module Elaborated
-elaborateModule (Module t ctx imps time prov) = Module (fmap elaborate t) ctx imps time prov
+elaborateModule modul = modul {moduleTerm = elaborate <$> moduleTerm modul}
 
 -- | Perform some elaboration / rewriting on a fully type-annotated
 --   term.  This currently performs such operations as rewriting @if@

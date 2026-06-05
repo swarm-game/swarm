@@ -39,7 +39,7 @@ import Data.Time.Clock (getCurrentTime)
 import Swarm.Failure (SystemFailure (..))
 import Swarm.Language.Cache
 import Swarm.Language.Elaborate
-import Swarm.Language.Load (resolve, resolve')
+import Swarm.Language.Load (collectTransitiveImports, resolve, resolve')
 import Swarm.Language.Module (Module (..), ModuleProvenance (..), emptyModule, moduleTerm)
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
@@ -103,6 +103,9 @@ processTerm prov txt menv tm = do
   -- cached
   (srcMapRes, (imps, tmRes)) <- resolve prov tm
 
+  -- Calculate set of all transitive imports
+  timps <- collectTransitiveImports srcMapRes imps
+
   -- Typecheck + elaborate each import that wasn't in the global cache
   forM_ (OM.assocs srcMapRes) $ \(loc, m) -> do
     modCache <- sendIO $ freezeCache moduleCache
@@ -133,7 +136,7 @@ processTerm prov txt menv tm = do
   -- correct, but since we are processing a top-level term, we won't
   -- ever use this module as an import to some other module, so the
   -- context is not really needed.
-  let modElab = Module (Just tmElab) mempty imps (Just time) (maybe NoProvenance FromFile prov)
+  let modElab = Module (Just tmElab) mempty imps timps (Just time) (maybe NoProvenance FromFile prov)
 
   -- Return the elaborated module.
   pure modElab
@@ -163,7 +166,7 @@ processTermNoImports txt tm menv = do
         (e ^. envTydefs)
         (const Nothing)
         tmRes
-  pure $ Module (Just $ elaborate tmTy) mempty S.empty Nothing NoProvenance
+  pure $ Module (Just $ elaborate tmTy) mempty S.empty S.empty Nothing NoProvenance
 
 ------------------------------------------------------------
 -- Utility adapters for processTerm
@@ -196,8 +199,8 @@ class Processable t where
 
 instance Processable Module where
   process = \case
-    Module Nothing _ _ ts prov -> pure $ Module Nothing mempty S.empty ts prov
-    Module (Just t) _ _ _ prov -> processTerm (fileProv prov) "" Nothing t
+    Module Nothing _ _ _ ts prov -> pure $ Module Nothing mempty S.empty S.empty ts prov
+    Module (Just t) _ _ _ _ prov -> processTerm (fileProv prov) "" Nothing t
    where
     fileProv = \case
       FromFile f -> Just f

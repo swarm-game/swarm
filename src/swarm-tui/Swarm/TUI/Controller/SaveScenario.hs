@@ -22,8 +22,6 @@ import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.State.Substate
-import Swarm.Language.Module (moduleTerm)
-import Swarm.Language.Syntax (eraseRaw)
 import Swarm.ResourceLoading (Collection (Collection, collectionMap), CollectionItem (..), atPath)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievements (attainAchievement, attainAchievement')
@@ -81,13 +79,17 @@ saveScenarioInfoOnFinish p = do
       currentScenarioInfo = progression . scenarios . atPath p . getScenarioInfo
 
   replHist <- use $ scenarioState . uiGameplay . uiREPL . replHistory
-  let determinator = CodeSizeDeterminators (eraseRaw <$> (moduleTerm =<< initialRunCode)) $ replHist ^. replHasExecutedManualInput
+  let determinator = CodeSizeDeterminators initialRunCode $ replHist ^. replHasExecutedManualInput
 
   -- Don't update scenario statistics if we have previously saved
   -- statistics for the current scenario upon scenario completion.
-  unless saved $
-    currentScenarioInfo
-      %= updateScenarioInfoOnFinish determinator t ts won
+  unless saved $ do
+    mcsi <- preuse currentScenarioInfo
+    case mcsi of
+      Nothing -> pure ()
+      Just csi -> do
+        csi' <- liftIO $ updateScenarioInfoOnFinish determinator t ts won csi
+        currentScenarioInfo .= csi'
 
   status <- preuse currentScenarioInfo
   forM_ status $ \si -> do

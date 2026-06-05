@@ -138,23 +138,22 @@ updateScenarioInfoOnFinish ::
   TickNumber ->
   Bool ->
   ScenarioInfo ->
-  ScenarioInfo
+  IO ScenarioInfo
 updateScenarioInfoOnFinish
   csd
   z
   ticks
   completed
   si@(ScenarioInfo p prevPlayState) = case prevPlayState of
-    Played launchParams (Metric _ (ProgressStats start _currentPlayMetrics)) prevBestRecords ->
-      ScenarioInfo p $
+    Played launchParams (Metric _ (ProgressStats start _currentPlayMetrics)) prevBestRecords -> do
+      cs <- codeSizeFromDeterminator csd
+      let el = (diffUTCTime `on` zonedTimeToUTC) z start
+          newCompletionFlag = if completed then Completed else Attempted
+          newPlayMetric =
+            Metric newCompletionFlag $
+              ProgressStats start $
+                AttemptMetrics (DurationMetrics el ticks) cs
+      pure . ScenarioInfo p $
         Played launchParams newPlayMetric $
           updateBest newPlayMetric prevBestRecords
-     where
-      el = (diffUTCTime `on` zonedTimeToUTC) z start
-      cs = codeSizeFromDeterminator csd
-      newCompletionFlag = if completed then Completed else Attempted
-      newPlayMetric =
-        Metric newCompletionFlag $
-          ProgressStats start $
-            AttemptMetrics (DurationMetrics el ticks) cs
-    _ -> si
+    _ -> pure si

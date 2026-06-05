@@ -120,7 +120,18 @@ data Module phase = Module
   --   via @def@ with their types, and type aliases defined via @tydef@
   --   with their definitions.  See Note [Module exports].
   , moduleImports :: ModuleImports phase
-  -- ^ The moduleImports are mostly for convenience, e.g. for checking modules for cycles.
+  -- ^ The set of modules directly imported by this module.  This is
+  --   used e.g. when checking for import cycles, or when culling
+  --   cached modules that need to be reloaded.  More generally, it
+  --   can be used every time we want to do some kind of graph
+  --   traversal through the import graph.
+  , moduleTransImports :: ModuleImports phase
+  -- ^ The set of all modules directly or transitively imported by
+  --   this module.  This is used e.g. when measuring code size, to
+  --   make sure we count all transitively imported modules.  More
+  --   generally, it can be used whenever we just want to know all
+  --   transitive imports and don't want to bother doing our own
+  --   redundant graph traversal.
   , moduleTimestamp :: Maybe UTCTime
   -- ^ The time at which the module was loaded
   , moduleProvenance :: ModuleProvenance
@@ -134,11 +145,11 @@ deriving instance (Eq (Anchor (ImportPhaseFor phase)), Data (Anchor (ImportPhase
 deriving instance (Hashable (ModuleImports phase), Hashable (ModuleCtx phase), Hashable (SwarmType phase), Hashable (Anchor (ImportPhaseFor phase)), Generic (Anchor (ImportPhaseFor phase))) => Hashable (Module phase)
 
 emptyModule :: Module Elaborated
-emptyModule = Module Nothing mempty S.empty Nothing NoProvenance
+emptyModule = Module Nothing mempty S.empty S.empty Nothing NoProvenance
 
 instance Erasable Module where
-  erase (Module t _ _ time prov) = Module (erase <$> t) () S.empty time prov
-  eraseRaw (Module t _ _ time prov) = Module (eraseRaw <$> t) () () time prov
+  erase (Module t _ _ _ time prov) = Module (erase <$> t) () S.empty S.empty time prov
+  eraseRaw (Module t _ _ _ time prov) = Module (eraseRaw <$> t) () () () time prov
 
 -- ~~~~ Note [Module exports]
 --
