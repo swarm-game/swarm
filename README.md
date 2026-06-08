@@ -81,6 +81,7 @@ ways you can contribute to Swarm development!
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/AlamarW"><img src="https://avatars.githubusercontent.com/u/54247703?v=4?s=100" width="100px;" alt="Alamar"/><br /><sub><b>Alamar</b></sub></a><br /><a href="#platform-AlamarW" title="Packaging/porting to new platform">📦</a></td>
       <td align="center" valign="top" width="14.28%"><a href="http://bendeguz.xyz"><img src="https://avatars.githubusercontent.com/u/34306800?v=4?s=100" width="100px;" alt="Bendeguz Seres"/><br /><sub><b>Bendeguz Seres</b></sub></a><br /><a href="https://github.com/swarm-game/swarm/commits?author=EarlPitts" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="http://pdddd.one"><img src="https://avatars.githubusercontent.com/u/11584452?v=4?s=100" width="100px;" alt="Patrik Drbal"/><br /><sub><b>Patrik Drbal</b></sub></a><br /><a href="https://github.com/swarm-game/swarm/issues?q=author%3Awhaypr" title="Bug reports">🐛</a> <a href="#infra-whaypr" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="https://github.com/swarm-game/swarm/commits?author=whaypr" title="Documentation">📖</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/tomcss"><img src="https://avatars.githubusercontent.com/u/1023605?v=4?s=100" width="100px;" alt="Tom Scheper"/><br /><sub><b>Tom Scheper</b></sub></a><br /><a href="#content-tomcss" title="Content">🖋</a></td>
     </tr>
   </tbody>
 </table>
