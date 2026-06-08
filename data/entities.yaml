@@ -1058,7 +1058,7 @@
       gives you the ability to create recursive types: the type
       `rec t. T(t)`{=snippet} (where `T(t)`{=snippet} is some type
       containing `t`{=type}) is the type `t`{=type} such that
-      `t = T(t)`{=snippet}. For exmple, `rec l. Unit + Int * l`{=type} is
+      `t = T(t)`{=snippet}. For example, `rec l. Unit + Int * l`{=type} is
       the type of lists of integers.
   properties: [pickable]
   capabilities: ['+', '-', neg, '*', '/', '^', sum, prod, rectype]
