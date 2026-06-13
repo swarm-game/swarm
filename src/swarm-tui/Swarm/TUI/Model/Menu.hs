@@ -79,6 +79,7 @@ makeLenses ''Modal
 data MainMenuEntry
   = NewGame
   | Tutorial
+  | Help
   | Achievements
   | Messages
   | About

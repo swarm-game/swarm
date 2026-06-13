@@ -417,6 +417,7 @@ drawMainMenuEntry :: AppState -> MainMenuEntry -> Widget Name
 drawMainMenuEntry s = \case
   NewGame -> txt "New game"
   Tutorial -> txt "Tutorial"
+  Help -> txt "Help"
   Achievements -> txt "Achievements"
   About -> txt "About"
   Messages -> highlightMessages $ txt "Messages"
