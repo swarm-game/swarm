@@ -238,6 +238,7 @@ handleMainMenuEvent menu = \case
           -- correct data files aren't installed.  In that case, log
           -- an error.
           _ -> runtimeState . eventLog %= logEvent SystemLog Error "Tutorials" "No tutorials found!"
+      Help -> pure ()   -- XXX pop up help!
       Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
       Messages -> do
         runtimeState . eventLog . notificationsCount .= 0
