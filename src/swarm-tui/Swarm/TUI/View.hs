@@ -40,7 +40,7 @@ import Brick.Widgets.Border (
   vBorder,
  )
 import Brick.Widgets.Center (centerLayer, hCenter)
-import Brick.Widgets.Dialog
+import Brick.Widgets.Dialog (dialog, renderDialog)
 import Brick.Widgets.Edit (getEditContents, renderEditor)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
@@ -110,11 +110,12 @@ import Swarm.Game.Universe
 import Swarm.Game.World (Seed)
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (..), constCaps)
+import Swarm.Language.Help (HelpPage, helpDoc, helpMetadata)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Log
 import Swarm.Pretty (prettyText, prettyTextLine, prettyTextWidth)
-import Swarm.ResourceLoading (CollectionItem (..), atPath)
+import Swarm.ResourceLoading (Collection, CollectionItem (..), atPath)
 import Swarm.TUI.Border
 import Swarm.TUI.Controller (ticksPerFrameCap)
 import Swarm.TUI.Controller.EventHandlers (allEventHandlers, mainEventHandlers, replEventHandlers, robotEventHandlers, worldEventHandlers)
@@ -146,7 +147,7 @@ import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Static
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.TUI.View.Util as VU
-import Swarm.Text.Markdown (Document)
+import Swarm.Text.Markdown (Document, toText)
 import Swarm.Util
 import Text.Printf
 import Text.Wrap
@@ -157,8 +158,25 @@ drawUI :: AppState -> [Widget Name]
 drawUI s = drawPopups s : mainLayers
  where
   mainLayers
+    | Just curHelp <- s ^. uiState . uiHelp = drawHelpUI (s ^. runtimeState . helpData) curHelp
     | s ^. uiState . uiPlaying = drawGameUI s
     | otherwise = drawMenuUI s
+
+drawHelpUI :: Collection HelpPage -> FilePath -> [Widget Name]
+drawHelpUI help hp = [helpPageWidget (help ^? atPath hp)]
+
+-- XXX move this somewhere else, i.e. Swarm.TUI.View.Help
+helpPageWidget :: Maybe HelpPage -> Widget Name
+helpPageWidget = \case
+  Nothing -> txt "Error, help page not found" -- XXX improve me
+  -- XXX vertical scroll bars
+  Just p -> borderWithLabels labels . padBottom Max . padRight Max . padLeft (Pad 1) . padTop (Pad 1) . drawMarkdown $ p ^. helpDoc
+   where
+    labels :: BorderLabels Name
+    labels = plainBorder & topLabels .~ (plainHBorder & centerLabel ?~ txt (toText title))
+
+    title :: Document (Syntax Raw)
+    title = fromMaybe mempty (p ^. helpMetadata . at "title")
 
 drawMenuUI :: AppState -> [Widget Name]
 drawMenuUI s = case s ^. uiState . uiMenu of
@@ -479,7 +497,7 @@ drawGameUI s =
   uig = ps ^. uiGameplay
 
   h =
-    ToplevelConfigurationHelp
+    TopLevelHelpInfo
       (s ^. runtimeState . webPort)
       keyConf
 
@@ -625,7 +643,7 @@ chooseCursor s locs = do
 
 -- | Draw a dialog window, if one should be displayed right now.
 drawDialog ::
-  ToplevelConfigurationHelp ->
+  TopLevelHelpInfo ->
   Bool ->
   ScenarioState ->
   Widget Name
@@ -642,13 +660,14 @@ drawDialog h isNoMenu ps =
 
 -- | Draw one of the various types of modal dialog.
 drawModal ::
-  ToplevelConfigurationHelp ->
+  TopLevelHelpInfo ->
   ScenarioState ->
   Bool ->
   ModalType ->
   Widget Name
 drawModal h ps isNoMenu = \case
   MidScenarioModal x -> case x of
+    -- XXX info like current seed, port, etc. should be displayed somewhere else.
     HelpModal -> helpWidget h $ gs ^. randomness . seed
     RobotsModal -> drawRobotsDisplayModal uig gs $ uig ^. uiDialogs . uiRobot
     RecipesModal -> availableListWidget gs RecipeList
@@ -686,13 +705,19 @@ drawModal h ps isNoMenu = \case
   uig = ps ^. uiGameplay
   aMap = uig ^. uiAttributeMap
 
-data ToplevelConfigurationHelp = ToplevelConfigurationHelp
+-- | Information provided from the top-level state to be displayed in the help dialog.
+--
+--   XXX eventually we probably just want to make the help dialog its
+--   own special thing that can be displayed at the top level, so it
+--   can be displayed from the main menu OR from within a game.
+data TopLevelHelpInfo = TopLevelHelpInfo
   { _helpPort :: Maybe Port
   , _helpKeyConf :: KeyConfig SE.SwarmEvent
   }
 
-helpWidget :: ToplevelConfigurationHelp -> Seed -> Widget Name
-helpWidget (ToplevelConfigurationHelp mport keyConf) theSeed =
+-- XXX get rid of this eventually?
+helpWidget :: TopLevelHelpInfo -> Seed -> Widget Name
+helpWidget (TopLevelHelpInfo mport keyConf) theSeed =
   padLeftRight 2 . vBox $
     padTop (Pad 1)
       <$> [ info

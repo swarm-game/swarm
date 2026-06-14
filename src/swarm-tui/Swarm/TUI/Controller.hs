@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -119,6 +120,7 @@ import Web.Browser (openBrowser)
 -- | The top-level event handler for the TUI.
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleEvent e = do
+  help <- use $ uiState . uiHelp . to isJust
   playing <- use $ uiState . uiPlaying
   case e of
     -- the query for upstream version could finish at any time, so we have to handle it here
@@ -140,9 +142,10 @@ handleEvent e = do
         AnimScheduled -> pure False
         AnimActive _ -> pure True
 
-      if playing
-        then handleMainEvent forceRedraw e
-        else handleMenuEvent e
+      if
+        | help -> handleHelpEvent e
+        | playing -> handleMainEvent forceRedraw e
+        | otherwise -> handleMenuEvent e
 
 startPopupIfNeeded :: EventM Name AppState ()
 startPopupIfNeeded = do
@@ -166,6 +169,11 @@ handleUpstreamVersionResponse ev = do
     Left (sev, e) -> runtimeState . eventLog %= logEvent SystemLog sev "Release" e
     Right _ -> pure ()
   runtimeState . upstreamRelease .= ev
+
+handleHelpEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleHelpEvent = \case
+  Key V.KEsc -> uiState . uiHelp .= Nothing
+  _ -> pure ()
 
 handleMenuEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMenuEvent e =
@@ -240,7 +248,7 @@ handleMainMenuEvent menu = \case
           -- correct data files aren't installed.  In that case, log
           -- an error.
           _ -> runtimeState . eventLog %= logEvent SystemLog Error "Tutorials" "No tutorials found!"
-      Help -> pure ()   -- XXX pop up help!
+      Help -> uiState . uiHelp .= Just "index.md"
       Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
       Messages -> do
         runtimeState . eventLog . notificationsCount .= 0
@@ -389,6 +397,7 @@ handleMainEvent forceRedraw ev = do
             uiGameplay . uiWorldCursor .= mouseCoordsM
         REPLInput -> handleREPLEvent ev
         UILink dest -> void . liftIO $ openBrowser (T.unpack dest)
+        -- XXX help
         (UIShortcut "Help") -> Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal HelpModal
         (UIShortcut "Robots") -> Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal RobotsModal
         (UIShortcut "Commands") -> Brick.zoom (playState . scenarioState) $ toggleDiscoveryNotificationModal CommandsModal availableCommands

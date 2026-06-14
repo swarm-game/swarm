@@ -17,6 +17,7 @@ module Swarm.Game.State.Runtime (
   upstreamRelease,
   eventLog,
   appData,
+  helpData,
   stdGameConfigInputs,
   metrics,
 
@@ -38,8 +39,9 @@ import Swarm.Game.Recipe (loadRecipes)
 import Swarm.Game.Scenario (GameStateInputs (..), ScenarioInputs (..))
 import Swarm.Game.State.Substate
 import Swarm.Game.World.DSL (loadWorlds)
+import Swarm.Language.Help (HelpPage, loadHelp)
 import Swarm.Log
-import Swarm.ResourceLoading (initNameGenerator, readAppData)
+import Swarm.ResourceLoading (Collection, initNameGenerator, readAppData)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import System.Metrics qualified as Metrics
 
@@ -50,6 +52,7 @@ data RuntimeState = RuntimeState
   , _eventLog :: Notifications LogEntry
   , _stdGameConfigInputs :: GameStateConfig
   , _appData :: Map Text Text
+  , _helpData :: Collection HelpPage
   , _metrics :: Metrics.Store
   }
 
@@ -106,6 +109,7 @@ initRuntimeState opts = do
   store <- liftIO Metrics.newStore
   liftIO $ Metrics.registerGcMetrics store
   gsc <- initGameStateConfig opts
+  helpCollection <- loadHelp
   return $
     RuntimeState
       { _webPort = Nothing
@@ -113,6 +117,7 @@ initRuntimeState opts = do
       , _upstreamRelease = Left (Info, "No upstream release found.")
       , _eventLog = mempty
       , _appData = initAppDataMap gsc
+      , _helpData = helpCollection
       , _stdGameConfigInputs = gsc
       , _metrics = store
       }
@@ -141,6 +146,9 @@ stdGameConfigInputs :: Lens' RuntimeState GameStateConfig
 -- | Free-form data loaded from the @data@ directory, for things like
 --   the logo, about page, tutorial story, etc.
 appData :: Lens' RuntimeState (Map Text Text)
+
+-- | Collection of help/documentation loaded from disk.
+helpData :: Lens' RuntimeState (Collection HelpPage)
 
 -- | The EKG store of metrics for Swarm. Individual components can
 -- register counters, gauges and distributions to this store. Then they

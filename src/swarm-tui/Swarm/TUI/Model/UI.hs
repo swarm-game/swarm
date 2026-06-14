@@ -10,6 +10,7 @@ module Swarm.TUI.Model.UI (
   UIState (..),
   uiMenu,
   uiPlaying,
+  uiHelp,
   uiDebugOptions,
   uiLaunchConfig,
   uiAttrMap,
@@ -45,6 +46,7 @@ import Swarm.Util.Lens (makeLensesNoSigs)
 data UIState = UIState
   { _uiMenu :: Menu
   , _uiPlaying :: Bool
+  , _uiHelp :: Maybe FilePath
   , _uiDebugOptions :: Set DebugOption
   , _uiLaunchConfig :: LaunchOptions
   , _uiAttrMap :: AttrMap
@@ -64,6 +66,11 @@ uiMenu :: Lens' UIState Menu
 -- * False = we should
 --   display the current menu.
 uiPlaying :: Lens' UIState Bool
+
+-- | The path to the currently-displayed help page, if any.  If this
+--   is Just, then it means the help system is currently active and
+--   being displayed over top of anything else.
+uiHelp :: Lens' UIState (Maybe FilePath)
 
 -- | Debugging features, for example are we allowed to turn creative mode on and off?
 uiDebugOptions :: Lens' UIState (Set DebugOption)
@@ -110,6 +117,7 @@ initUIState UIInitOptions {..} = do
     UIState
       { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
       , _uiPlaying = not showMainMenu
+      , _uiHelp = Nothing
       , _uiDebugOptions = debugOptions
       , _uiLaunchConfig = launchConfigPanel
       , _uiAttrMap = swarmAttrMap

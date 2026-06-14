@@ -130,10 +130,11 @@ generateModal s mt =
  where
   currentScenario = s ^. uiGameplay . scenarioRef
 
+  helpWidth = 160
   descriptionWidth = 100
   (title, buttons, requiredWidth) =
     case mt of
-      HelpModal -> (" Help ", Nothing, descriptionWidth)
+      HelpModal -> (" Help ", Nothing, helpWidth)
       RobotsModal -> ("Robots", Nothing, descriptionWidth)
       RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
       CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
