@@ -287,7 +287,7 @@ populateInventoryList (Just r) = do
           -- Also do a literal substring search within entity
           -- descriptions.  Since descriptions are long, a fuzzy
           -- search tends to yield too many false positives.
-          || maybe (const True) T.isInfixOf search (Markdown.docToText (e ^. E.entityDescription))
+          || maybe (const True) T.isInfixOf search (Markdown.toText (e ^. E.entityDescription))
 
       items =
         (r ^. robotInventory . to (itemList True mkInvEntry "Compendium"))

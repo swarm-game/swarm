@@ -104,7 +104,7 @@ drawGoalListItem _isSelected e = case e of
   Header gs -> withAttr boldAttr $ str $ show gs
   Goal gs obj -> getCompletionIcon obj gs <+> titleWidget
    where
-    textSource = obj ^. objectiveTeaser <|> obj ^. objectiveId <|> Just (Markdown.docToText $ obj ^. objectiveGoal)
+    textSource = obj ^. objectiveTeaser <|> obj ^. objectiveId <|> Just (Markdown.toText $ obj ^. objectiveGoal)
     titleWidget = maybe (txt "?") (titleColor . withEllipsis End) textSource
     titleColor = applyWhen (obj ^. objectiveOptional) $ withAttr grayAttr
 

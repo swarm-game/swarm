@@ -141,7 +141,7 @@ import Swarm.Game.Terrain (TerrainType)
 import Swarm.Language.Capability
 import Swarm.Language.Syntax (Phase (Raw), Syntax)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
-import Swarm.Language.Text.Markdown (Document, docToText)
+import Swarm.Language.Text.Markdown (Document, toText)
 import Swarm.ResourceLoading (getDataFileNameThrow)
 import Swarm.Util (binTuples, failT, findDup, plural, quote, (?))
 import Swarm.Util.Effect (withThrow)
@@ -401,7 +401,7 @@ instance Hashable Entity where
       `hashWithSalt` disp
       `hashWithSalt` nm
       `hashWithSalt` pl
-      `hashWithSalt` docToText descr
+      `hashWithSalt` toText descr
       `hashWithSalt` tags
       `hashWithSalt` orient
       `hashWithSalt` grow
