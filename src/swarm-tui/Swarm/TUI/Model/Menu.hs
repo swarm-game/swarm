@@ -39,7 +39,7 @@ data ScenarioOutcome = WinModal | LoseModal
   deriving (Show, Eq)
 
 data MidScenarioModalType
-  = HelpModal
+  = HelpModal FilePath
   | RecipesModal
   | CommandsModal
   | MessagesModal

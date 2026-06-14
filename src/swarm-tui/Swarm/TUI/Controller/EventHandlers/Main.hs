@@ -51,7 +51,7 @@ mainEventHandlers = allHandlers Main $ \case
   QuitEvent -> ("Open quit game dialog", toggleQuitGameDialog)
   ViewHelpEvent ->
     ( "View Help screen"
-    , Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal HelpModal
+    , Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal (HelpModal "index.md")
     )
   ViewRobotsEvent ->
     ( "View Robots screen"

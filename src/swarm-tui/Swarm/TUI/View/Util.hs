@@ -128,10 +128,11 @@ generateModal s mt =
  where
   currentScenario = s ^. uiGameplay . scenarioRef
 
+  helpWidth = 160
   descriptionWidth = 100
   (title, buttons, requiredWidth) =
     case mt of
-      HelpModal -> (" Help ", Nothing, descriptionWidth)
+      HelpModal _hp -> (" Help ", Nothing, helpWidth)
       RobotsModal -> ("Robots", Nothing, descriptionWidth)
       RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
       CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
@@ -172,12 +173,14 @@ drawMarkdown d = do
     ctx <- getContext
     let w = ctx ^. availWidthL
     let docLines = Markdown.chunksOf w . Markdown.toStream <$> Markdown.paragraphs d
-    render . layoutParagraphs $ vBox . map (hBox . map mTxt) <$> docLines
+    render . layoutParagraphs $ vBox . map streamToWidget <$> docLines
  where
+  streamToWidget = hBox . map mTxt
   mTxt = \case
     Markdown.TextNode as t -> foldr applyAttr (txt t) as
     Markdown.CodeNode t -> withAttr highlightAttr $ txt t
     Markdown.RawNode f t -> withAttr (rawAttr f) $ txt t
+    Markdown.LinkNode _d _t c -> withAttr highlightAttr $ streamToWidget c --  XXX
   applyAttr a = withAttr $ case a of
     Markdown.Strong -> boldAttr
     Markdown.Emphasis -> italicAttr

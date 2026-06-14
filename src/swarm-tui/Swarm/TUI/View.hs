@@ -40,7 +40,7 @@ import Brick.Widgets.Border (
   vBorder,
  )
 import Brick.Widgets.Center (centerLayer, hCenter)
-import Brick.Widgets.Dialog
+import Brick.Widgets.Dialog (dialog, renderDialog)
 import Brick.Widgets.Edit (getEditContents, renderEditor)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
@@ -110,12 +110,13 @@ import Swarm.Game.Universe
 import Swarm.Game.World (Seed)
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (..), constCaps)
+import Swarm.Language.Help (HelpPage, helpDoc, helpMetadata)
 import Swarm.Language.Syntax
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Log
 import Swarm.Pretty (prettyText, prettyTextLine, prettyTextWidth)
-import Swarm.ResourceLoading (CollectionItem (..), atPath)
+import Swarm.ResourceLoading (Collection, CollectionItem (..), atPath)
 import Swarm.TUI.Border
 import Swarm.TUI.Controller (ticksPerFrameCap)
 import Swarm.TUI.Controller.EventHandlers (allEventHandlers, mainEventHandlers, replEventHandlers, robotEventHandlers, worldEventHandlers)
@@ -482,9 +483,10 @@ drawGameUI s =
   uig = ps ^. uiGameplay
 
   h =
-    ToplevelConfigurationHelp
+    TopLevelHelpInfo
       (s ^. runtimeState . webPort)
       keyConf
+      (s ^. runtimeState . helpData)
 
   isNoMenu = case s ^. uiState . uiMenu of
     NoMenu -> True
@@ -628,7 +630,7 @@ chooseCursor s locs = do
 
 -- | Draw a dialog window, if one should be displayed right now.
 drawDialog ::
-  ToplevelConfigurationHelp ->
+  TopLevelHelpInfo ->
   Bool ->
   ScenarioState ->
   Widget Name
@@ -645,14 +647,20 @@ drawDialog h isNoMenu ps =
 
 -- | Draw one of the various types of modal dialog.
 drawModal ::
-  ToplevelConfigurationHelp ->
+  TopLevelHelpInfo ->
   ScenarioState ->
   Bool ->
   ModalType ->
   Widget Name
 drawModal h ps isNoMenu = \case
   MidScenarioModal x -> case x of
-    HelpModal -> helpWidget h $ gs ^. randomness . seed
+    -- XXX cache current HelpPage so we don't have to look it up every time we draw?
+    -- maybe HelpModal should actually contain a HelpPage?
+    -- Or maybe a *rendered* HelpPage, i.e. a Document?
+    HelpModal hp -> case _helpCollection h ^? atPath hp of
+      Just page -> helpPage page
+      Nothing -> helpPage (error $ "Unknown page " ++ hp)
+    -- helpWidget h $ gs ^. randomness . seed
     RobotsModal -> drawRobotsDisplayModal uig gs $ uig ^. uiDialogs . uiRobot
     RecipesModal -> availableListWidget gs RecipeList
     CommandsModal -> commandsListWidget aMap gs
@@ -689,13 +697,26 @@ drawModal h ps isNoMenu = \case
   uig = ps ^. uiGameplay
   aMap = uig ^. uiAttributeMap
 
-data ToplevelConfigurationHelp = ToplevelConfigurationHelp
+-- | Information provided from the top-level state to be displayed in the help dialog.
+--
+--   XXX eventually we probably just want to make the help dialog its
+--   own special thing that can be displayed at the top level, so it
+--   can be displayed from the main menu OR from within a game.
+data TopLevelHelpInfo = TopLevelHelpInfo
   { _helpPort :: Maybe Port
   , _helpKeyConf :: KeyConfig SE.SwarmEvent
+  , _helpCollection :: Collection HelpPage
   }
 
-helpWidget :: ToplevelConfigurationHelp -> Seed -> Widget Name
-helpWidget (ToplevelConfigurationHelp mport keyConf) theSeed =
+-- | Display a specific help page as a widget.
+helpPage :: HelpPage -> Widget Name
+helpPage p = padLeftRight 2 . padTop (Pad 1) . drawMarkdown $ p ^. helpDoc
+ where
+  _title :: Document (Syntax Raw)
+  _title = fromMaybe mempty (p ^. helpMetadata . at "title")
+
+_helpWidget :: TopLevelHelpInfo -> Seed -> Widget Name
+_helpWidget (TopLevelHelpInfo mport keyConf _) theSeed =
   padLeftRight 2 . vBox $
     padTop (Pad 1)
       <$> [ info

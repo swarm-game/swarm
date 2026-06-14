@@ -85,14 +85,14 @@ pureP :: Node c -> Paragraph c
 pureP = Paragraph . (: [])
 
 -- | Inline leaf nodes.
---
--- The raw node is from the raw_annotation extension,
--- and can be used for types/entities/invalid code.
 data Node c
   = LeafText (Set TxtAttr) Text
-  | LeafRaw String Text
+  | -- | The raw node is from the raw_annotation extension,
+    -- and can be used for types, entities, or invalid code.
+    LeafRaw String Text
   | LeafCode c
   | LeafCodeBlock String c
+  | LeafLink Text Text (Paragraph c)
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 txt :: Text -> Node c
@@ -143,10 +143,6 @@ instance GHC.Exts.IsString (Paragraph (Syntax Raw)) where
     [] -> mempty
     (p : _) -> p
 
--- | Surround some text in double quotes if it is not empty.
-quoteMaybe :: Text -> Text
-quoteMaybe t = if T.null t then t else T.concat ["\"", t, "\""]
-
 instance Mark.IsInline (Paragraph Text) where
   lineBreak = pureP $ txt "\n"
   softBreak = pureP $ txt " "
@@ -155,7 +151,7 @@ instance Mark.IsInline (Paragraph Text) where
   escapedChar c = Mark.str $ T.pack ['\\', c]
   emph = mapP $ addTextAttribute Emphasis
   strong = mapP $ addTextAttribute Strong
-  link dest title desc = pureP (txt "[") <> desc <> pureP (txt $ "](" <> dest <> quoteMaybe title <> ")")
+  link dest title desc = pureP (LeafLink dest title desc)
   image dest title desc = pureP (txt "!") <> Mark.link dest title desc
   code = pureP . LeafCode
   rawInline (Mark.Format f) = pureP . LeafRaw (T.unpack f)
@@ -255,6 +251,7 @@ data StreamNode' t
   = TextNode (Set TxtAttr) t
   | CodeNode t
   | RawNode String t
+  | LinkNode t t [StreamNode' t] -- XXX should we emit "link start" + "link end" nodes, then normal nodes in between?  I think I need to spend some time going through + understanding/writing notes + comments on this whole module...
   deriving (Eq, Show, Functor)
 
 type StreamNode = StreamNode' Text
@@ -264,6 +261,7 @@ unStream = \case
   TextNode a t -> (TextNode a, t)
   CodeNode t -> (CodeNode, t)
   RawNode a t -> (RawNode a, t)
+  LinkNode _a _b _ts -> undefined
 
 -- | Get chunks of nodes not exceeding length and broken at word boundary.
 chunksOf :: Int -> [StreamNode] -> [[StreamNode]]
@@ -310,6 +308,7 @@ streamToText = T.concat . map nodeToText
     TextNode _a t -> t
     RawNode _s t -> t
     CodeNode stx -> stx
+    LinkNode _ _ s -> streamToText s
 
 -- | Convert elements to one dimensional stream of nodes,
 -- that is easy to format and layout.
@@ -325,6 +324,7 @@ instance PrettyPrec a => ToStream (Node a) where
     LeafCode t -> [CodeNode (prettyTextLine t)]
     LeafRaw s t -> [RawNode s t]
     LeafCodeBlock _i t -> [CodeNode (prettyText t)]
+    LeafLink dest title content -> [LinkNode (prettyText dest) (prettyText title) (toStream content)]
 
 instance PrettyPrec a => ToStream (Paragraph a) where
   toStream = concatMap toStream . nodes
@@ -333,12 +333,17 @@ instance PrettyPrec a => ToStream (Paragraph a) where
 -- Markdown
 --------------------------------------------------------------
 
+-- | Surround some text in double quotes if it is not empty.
+quoteMaybe :: Text -> Text
+quoteMaybe t = if T.null t then t else T.concat ["\"", t, "\""]
+
 nodeToMark :: PrettyPrec a => Node a -> Text
 nodeToMark = \case
   LeafText a t -> foldl attr t a
   LeafRaw _ c -> wrap "`" c
   LeafCode c -> wrap "`" (prettyText c)
   LeafCodeBlock f c -> codeBlock f $ prettyText c
+  LeafLink dest title content -> "[" <> paragraphToMark content <> "](" <> dest <> quoteMaybe title <> ")"
  where
   codeBlock f t = wrap "```" $ T.pack f <> "\n" <> t <> "\n"
   wrap c t = c <> t <> c

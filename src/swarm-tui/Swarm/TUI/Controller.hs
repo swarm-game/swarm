@@ -238,7 +238,7 @@ handleMainMenuEvent menu = \case
           -- correct data files aren't installed.  In that case, log
           -- an error.
           _ -> runtimeState . eventLog %= logEvent SystemLog Error "Tutorials" "No tutorials found!"
-      Help -> pure ()   -- XXX pop up help!
+      Help -> pure () -- XXX pop up help!  How to get it to work whether we're playing a game or not?
       Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
       Messages -> do
         runtimeState . eventLog . notificationsCount .= 0
@@ -386,7 +386,7 @@ handleMainEvent forceRedraw ev = do
           when shouldUpdateCursor $
             uiGameplay . uiWorldCursor .= mouseCoordsM
         REPLInput -> handleREPLEvent ev
-        (UIShortcut "Help") -> Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal HelpModal
+        (UIShortcut "Help") -> Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal (HelpModal "index.md")
         (UIShortcut "Robots") -> Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal RobotsModal
         (UIShortcut "Commands") -> Brick.zoom (playState . scenarioState) $ toggleDiscoveryNotificationModal CommandsModal availableCommands
         (UIShortcut "Recipes") -> Brick.zoom (playState . scenarioState) $ toggleDiscoveryNotificationModal RecipesModal availableRecipes
