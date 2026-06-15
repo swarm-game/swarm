@@ -6,15 +6,16 @@
 -- Test Markdown processing capabilities.
 module TestMarkdown (testMarkdown) where
 
+import Data.Char (isSpace)
 import Data.Map (Map, (!?))
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
-import Swarm.Language.Text.Markdown (chunksOf, fromTextM, streamToText, toStream)
+import Swarm.Language.Text.Markdown (fromTextM, toTextWidth)
 import Swarm.Util (acquireAllWithExt)
 import System.FilePath (dropExtension, takeExtension)
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (assertEqual, testCase)
+import Test.Tasty.HUnit (Assertion, assertEqual, testCase)
 
 -- | Generate test tree to check that the .md files in
 --   @data/test/markdown/@ can be processed and laid out successfully.
@@ -44,6 +45,11 @@ testMarkdown = do
       mkMarkdownTest md (w, golden) =
         testCase (show w) $ do
           doc <- fromTextM md
-          assertEqual "Laid-out markdown does not match" golden (T.unlines . map streamToText . chunksOf w $ toStream doc)
+          assertEqualUpToTrailingWS "Laid-out markdown does not match" golden (toTextWidth (Just w) doc)
 
   pure . testGroup "Check markdown processing" $ map checkMarkdown testFiles
+
+assertEqualUpToTrailingWS :: String -> Text -> Text -> Assertion
+assertEqualUpToTrailingWS msg x y = assertEqual msg (trim x) (trim y)
+ where
+  trim = T.dropWhileEnd isSpace

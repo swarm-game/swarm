@@ -4,6 +4,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+-- XXX split this out into more modules
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -29,34 +31,36 @@ module Swarm.Language.Text.Markdown (
   docToMark,
 
   -- ** Token stream
-  StreamNode' (..),
-  StreamNode,
+  Token' (..),
+  OutputToken,
   ToStream (..),
-  streamToText,
   toText,
+  toTextWidth,
 
   -- ** Utilities
   findCode,
-  chunksOf,
-  splitWordsAt,
+  tokenize,
 ) where
 
 import Commonmark qualified as Mark
 import Commonmark.Extensions qualified as Mark (rawAttributeSpec)
 import Control.Applicative ((<|>))
-import Control.Arrow (left)
+import Control.Arrow (left, (***))
 import Control.Carrier.Error.Either (runError)
-import Control.Lens ((%~), (&), _head, _last)
+import Control.Lens (both, over)
+import Data.Bifunctor (first)
 import Data.Char (isSpace)
 import Data.Functor.Identity (Identity (..))
+import Data.Kind (Type)
 import Data.List (intercalate)
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NE
 import Data.List.Split (chop)
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Tuple.Extra (both, first)
 import Data.Vector (toList)
 import Data.Yaml
 import GHC.Exts qualified (IsList (..), IsString (..))
@@ -65,7 +69,7 @@ import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Phase (ImportPhaseFor)
 import Swarm.Language.Pipeline (processTermNoImports)
 import Swarm.Language.Syntax (Anchor, Phase (Raw), Syntax, Unresolvable)
-import Swarm.Pretty (PrettyPrec (..), prettyText, prettyTextLine)
+import Swarm.Pretty (PrettyPrec (..), prettyText, prettyTextLine, prettyTextWidth)
 import Swarm.Util (showT)
 
 ------------------------------------------------------------
@@ -140,22 +144,6 @@ txt = LeafText mempty
 addTextAttribute :: TxtAttr -> Node c -> Node c
 addTextAttribute a (LeafText as t) = LeafText (Set.insert a as) t
 addTextAttribute _ n = n
-
--- | Normalise a paragraph, by combining consecutive 'LeafText' nodes with the same attributes.
---
--- XXX WHY do we want to do this?  What happens if we don't?
--- It was introduced in https://github.com/swarm-game/swarm/pull/1413 .
-normalise :: (Eq c, Semigroup c) => Paragraph c -> Paragraph c
-normalise (Paragraph a) = Paragraph $ go a
- where
-  go = \case
-    [] -> []
-    (n : ns) -> let (n', ns') = mergeSame n ns in n' : go ns'
-  mergeSame = \case
-    l@(LeafText attrs1 t1) -> \case
-      (LeafText attrs2 t2 : rss) | attrs1 == attrs2 -> mergeSame (LeafText attrs1 $ t1 <> t2) rss
-      rs -> (l, rs)
-    l -> (l,)
 
 -- | Extract all the code embedded in a document.
 findCode :: Document c -> [c]
@@ -241,8 +229,7 @@ fromTextPure :: Text -> Either Text (Document Text)
 fromTextPure t = do
   let spec = Mark.rawAttributeSpec <> Mark.defaultSyntaxSpec
   let runSimple = left showT . runIdentity
-  Document tokenizedDoc <- runSimple $ Mark.commonmarkWith spec "markdown" t
-  return . Document $ normalise <$> tokenizedDoc
+  runSimple $ Mark.commonmarkWith spec "markdown" t
 
 ------------------------------------------------------------
 -- Markdown -> Document with Swarm code processing
@@ -263,10 +250,6 @@ parseSyntax s = case readTerm s of
     -- elaborated AST, and just go back to using the original parsed
     -- (*unelaborated*) AST.  See #1496.
     Right _ -> Right t
-
--- | Convert a 'Paragraph' to JSON by converting it to simple text.
-instance (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase)) => ToJSON (Paragraph (Syntax phase)) where
-  toJSON = String . toText -- XXX is this really what we want?
 
 -- | Convert a 'Document' to JSON by reserializing it to Markdown format.
 instance (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase)) => ToJSON (Document (Syntax phase)) where
@@ -310,145 +293,361 @@ fromText = either (Document . (: []) . pureP . LeafRaw "") ((mapD . mapP) proces
     LeafText a b -> LeafText a b
     LeafRaw a b -> LeafRaw a b
 
+------------------------------------------------------------
+-- Utility functions on text
+------------------------------------------------------------
+
+-- | Split text into individual whitespace and non-whitespace tokens.
+--   Each newline is made into an individual token; other whitespace
+--   are grouped into consecutive equal characters.
+--
+-- >>> tokenize "Hello   there, \n\nworld!"
+-- ["Hello","   ","there,"," ","\n","\n","world!"]
+tokenize :: Text -> [Text]
+tokenize t = case T.uncons t of
+  Nothing -> []
+  Just (c, t')
+    | c == '\n' -> "\n" : tokenize t'
+    | isSpace c -> let (spc, rest) = T.span (== c) t in spc : tokenize rest
+    | otherwise -> let (tok, rest) = T.span (not . isSpace) t in tok : tokenize rest
+
 --------------------------------------------------------------
 -- Document -> token stream conversion
 --------------------------------------------------------------
 
+-- XXX: Check #574
+
 -- A Document is intended to have e.g. hierarchical structure
 -- (especially once we add things like links, lists, etc.); for
 -- rendering purposes we want to first convert a structured Document
--- into a simple token stream.
---
--- In addition, a Document can contain Nodes consisting of rather
--- large chunks of text. We can split tokens into smaller bits so that
--- they can e.g. flow to fit available space.
+-- into a simple token stream, split into lines at some specified
+-- maximum line width.
+
+--------------------------------------------------
+-- Tokens
+
+-- | At different phases we have different types of tokens available.
+--   During the layout phase, we have various types of special tokens
+--   which we translate away by the output phase.
+data TokenPhase = Layout | Unglued | Output deriving (Eq, Ord, Show)
+
+type Token = Token' Layout
+type OutputToken = Token' Output
 
 -- | Tokens in a stream that can be easily converted to text or brick widgets.
---
--- TODO: #574 Code blocks should probably be handled separately.
-data StreamNode' t
-  = TextNode (Set TxtAttr) t
-  | CodeNode t
-  | RawNode String t
-  deriving (Eq, Show, Functor)
+data Token' :: TokenPhase -> Type where
+  -- | Basic text token, with attributes such as bold or italic.
+  TextToken :: Set TxtAttr -> Text -> Token' p
+  -- | "Raw" token, with an arbitrary label.  We use this to
+  --   highlight specific semantic classes (e.g. entities or types).
+  RawToken :: String -> Text -> Token' p
+  -- | A token which is part of some code.
+  CodeToken :: Text -> Token' p
+  -- | Line break.
+  Newline :: Token' p
+  -- | Paragraph break.
+  Para :: Token' p
+  -- | A "soft" space which is used only to separate other tokens.
+  --   It should be displayed as a single space in between tokens,
+  --   or discarded if it falls at the beginning or end of a line.
+  SoftSpace :: Token' Layout
+  -- | A "hard" or required space which must be displayed.  The Int
+  --   is the number of consecutive space characters.  For example,
+  --   a hard space may be generated at the beginning of a line in a
+  --   code block, since the indentation is semantically meaningful
+  --   and should neither be discarded nor turned into a single
+  --   space.
+  HardSpace :: Int -> Token' Layout
+  -- | Several primitive tokens glued together, considered as an
+  --   unbreakable group for the purposes of layout, but still kept
+  --   separate so we can style or render them independently.
+  Glue :: NonEmpty Token -> Token' Layout
+  -- | Empty token.  Takes no space and produces no output.
+  EmptyToken :: Token' Layout
 
-type StreamNode = StreamNode' Text
+deriving instance Eq (Token' p)
+deriving instance Show (Token' p)
 
-instance GHC.Exts.IsString StreamNode where
-  fromString = TextNode mempty . T.pack
+-- | The width of a token is the amount of horizontal space it takes
+--   up on a line.  Hence e.g. the width of a Newline token is
+--   considered to be 0.
+tokenWidth :: Token' p -> Int
+tokenWidth = \case
+  TextToken _ t -> T.length t
+  RawToken _ t -> T.length t
+  CodeToken t -> T.length t
+  Newline -> 0
+  Para -> 0
+  SoftSpace -> 1
+  HardSpace n -> n
+  Glue ts -> sum (fmap tokenWidth ts)
+  EmptyToken -> 0
 
-nodeLength :: StreamNode -> Int
-nodeLength = \case
-  TextNode _ t -> T.length t
-  CodeNode t -> T.length t -- XXX length of a CodeNode is not really relevant if it has newlines...
-  RawNode _ t -> T.length t
+-- | Create a single plain text token.
+plain :: Text -> Token' p
+plain = TextToken mempty
 
--- XXX this seems unnecessarily complicated.  Let's figure out a way to get rid of this?
-unStream :: StreamNode' t -> (t -> StreamNode' t, t)
-unStream = \case
-  TextNode a t -> (TextNode a, t)
-  CodeNode t -> (CodeNode, t)
-  RawNode a t -> (RawNode a, t)
+instance GHC.Exts.IsString Token where
+  fromString = plain . T.pack
 
--- XXX does this properly handle raw code blocks with internal newlines??
--- XXX need to add some test cases!  Are there any?
+-- | Glue a list of tokens into a single token appropriately.
+glue :: [Token] -> Token
+glue [] = EmptyToken
+glue [t] = t
+glue (t : ts) = Glue (t :| ts)
 
--- | Break a stream of nodes into chunks such that the total length of
---   each chunk does not exceed the given line width, possibly
---   splitting nodes into smaller nodes (at word boundaries) to
---   achieve this.
-chunksOf :: Int -> [StreamNode] -> [[StreamNode]]
-chunksOf n = chop (splitter True n)
+-- | Some tokens are "sticky" and like to stick to the other tokens to
+-- their left or right.
+data Stickiness = StickyL | StickyR | StickyBoth | NotSticky deriving (Eq, Ord, Show)
+
+-- | The "stickiness" of a token, i.e. whether it prefers to stick to
+--   tokens on its left or right.
+stickiness :: Token -> Stickiness
+stickiness = \case
+  TextToken _ t
+    | t `elem` T.words "( [ {" -> StickyR
+    | t `elem` T.words ". , ; : ? ! ) ] } - -- /" -> StickyL
+    | t `elem` T.words "\" '" -> StickyBoth
+    | otherwise -> NotSticky
+  RawToken {} -> NotSticky
+  CodeToken {} -> NotSticky
+  Newline -> NotSticky
+  Para -> NotSticky
+  SoftSpace -> NotSticky
+  HardSpace {} -> StickyR
+  Glue {} -> NotSticky
+  EmptyToken -> NotSticky
+
+-- | Split a token into two, such that the first is no longer than the
+--   specified length.
+splitTokenAt :: Int -> Token -> (Token, Token)
+splitTokenAt w = \case
+  TextToken attrs t -> over both (mkNE (TextToken attrs)) (T.splitAt w t)
+  RawToken ann t -> over both (mkNE (RawToken ann)) (T.splitAt w t)
+  CodeToken t -> over both (mkNE CodeToken) (T.splitAt w t)
+  Newline -> (Newline, EmptyToken)
+  Para -> (Para, EmptyToken)
+  SoftSpace -> (SoftSpace, EmptyToken)
+  HardSpace n -> (HardSpace (min n w), if min n w == n then EmptyToken else HardSpace (n - min n w))
+  Glue ts -> over both glue (splitTokenListAt w (NE.toList ts))
+  EmptyToken -> (EmptyToken, EmptyToken)
  where
-  -- start = are we at the start of a line?
-  -- i = remaining total width for this line
+  mkNE tok t
+    | T.null t = EmptyToken
+    | otherwise = tok t
 
-  -- Split a stream into an initial part no longer than i, and a
-  -- remaining part, possibly splitting a StreamNode into two if it
-  -- hangs over the end of the line and can be usefully split.
-  --
-  -- XXX however, don't do anything with CodeNodes?
-  splitter :: Bool -> Int -> [StreamNode] -> ([StreamNode], [StreamNode])
-  splitter start i = \case
-    [] -> ([], [])
-    (tn : ss) ->
-      let l = nodeLength tn
-       in if l <= i
-            then first (tn :) $ splitter False (i - l) ss
-            else let (tn1, tn2) = cut start i tn in ([tn1], tn2 : ss)
-  cut :: Bool -> Int -> StreamNode -> (StreamNode, StreamNode)
-  cut start i tn =
-    let (con, t) = unStream tn
-        endSpace = T.takeWhileEnd isSpace t
-        startSpace = T.takeWhile isSpace t
-        twords = T.words t & _head %~ (startSpace <>) & _last %~ (<> endSpace)
-     in case splitWordsAt i twords of
-          ([], []) -> (con "", con "")
-          ([], ws@(ww : wws)) ->
-            both (con . T.unwords) $
-              -- In case single word (e.g. web link) does not fit on line we must put
-              -- it there and guarantee progress (otherwise chop will cycle)
-              if start then ([T.take i ww], T.drop i ww : wws) else ([], ws)
-          splitted -> both (con . T.unwords) splitted
+  splitTokenListAt :: Int -> [Token] -> ([Token], [Token])
+  splitTokenListAt _ [] = ([], [])
+  splitTokenListAt n (t : ts) = case compare (tokenWidth t) n of
+    LT -> first (t :) (splitTokenListAt (n - tokenWidth t) ts)
+    EQ -> ([t], ts)
+    GT -> ((: []) *** (: ts)) (splitTokenAt n t)
 
--- | Given a target length, split a list of words into an maximal
---   initial prefix whose length (*including* one space between each
---   word) does not exceed the target length, and the rest of the
---   words.
---
---   That is, if @splitWordsAt l xs = (ys,zs)@ then
---     1. @ys ++ zs == xs@,
---     2. @map T.length ys + length ys - 1 <= l@ (or, in other
---        words, @T.length (T.unwords ys) <= l@), and
---     3. ys is as long as possible.
-splitWordsAt :: Int -> [Text] -> ([Text], [Text])
-splitWordsAt i = \case
-  [] -> ([], [])
-  (w : ws) ->
-    let l = T.length w
-     in if l <= i
-          then first (w :) $ splitWordsAt (i - l - 1) ws
-          else ([], w : ws)
+--------------------------------------------------
+-- ToStream class, Node conversion
 
--- | Simple stream -> Text conversion, ignoring formatting.  Intended
---   for debugging or otherwise displaying a document in a text-only
---   format.
-streamToText :: [StreamNode] -> Text
-streamToText = T.concat . map nodeToText
+-- | Things that can be converted into a stream of tokens, possibly
+--   taking into account an optional line width.
+class ToStream a p where
+  -- | Convert to a stream of tokens, taking into account an optional line width.
+  --   a specified line width by inserting Newline tokens.  If no line
+  --   width is given, no extra Newline tokens will be inserted
+  --   (though some may still be generated by e.g. code blocks).
+  toStream :: Maybe Int -> a -> [Token' p]
+
+-- | Convert a document node into a token stream.  The line width is
+--   used only for pretty-printing code blocks; all other nodes are
+--   simply turned into a linear stream without newline tokens.
+instance PrettyPrec a => ToStream (Node a) Layout where
+  toStream :: PrettyPrec a => Maybe Int -> Node a -> [Token]
+  toStream mw = \case
+    -- Text and Raw nodes just turn into single tokens, with special
+    -- cases for Text nodes to recognize spaces and punctuation.
+    LeafText a t
+      | T.all isSpace t -> [SoftSpace]
+      | otherwise -> [TextToken a t]
+    LeafRaw a t -> map (mkToken (RawToken a) True) (tokenize t)
+    -- Inline code nodes get pretty-printed as a single line, then split
+    -- into code tokens separated by soft spaces.
+    -- XXX later: don't use tokenize, the pretty-printer should directly emit tokens!
+    LeafCode c -> map (mkToken CodeToken False) . tokenize . prettyTextLine $ c
+    -- Code blocks get pretty-printed onto multiple lines using an
+    -- appropriate line width, then split into code tokens with hard
+    -- spaces.
+    LeafCodeBlock _i c -> map (mkToken CodeToken True) . tokenize $ maybe (prettyText c) (prettyTextWidth c) mw
+   where
+    mkToken tokenClass hard = \case
+      "\n" -> Newline
+      t
+        | T.all isSpace t -> if hard then HardSpace (T.length t) else SoftSpace
+        | otherwise -> tokenClass t
+
+--------------------------------------------------
+-- Token stream normalisation
+
+-- | Final normalisation step on a token stream:
+--     - Get rid of special token types like HardSpace, SoftSpace, Glue, and EmptyToken
+--     - Chunk tokens together as much as possible, to cut down on e.g. number of brick widgets generated
+normalise :: [Token] -> [OutputToken]
+normalise = mergeTokens . normaliseTokens
  where
-  nodeToText = \case
-    TextNode _a t -> t
-    RawNode _s t -> t
-    CodeNode stx -> stx
+  -- First, get rid of layout tokens, converting spaces into the right
+  -- kind of token depending on their neighbors
+  normaliseTokens :: [Token] -> [OutputToken]
+  normaliseTokens = \case
+    [] -> []
+    -- SoftSpace surrounded by CodeTokens or RawTokens turns into the same kind of token
+    t1@(CodeToken {}) : SoftSpace : t2@(CodeToken {}) : ts -> normaliseToken t1 ++ CodeToken " " : normaliseTokens (t2 : ts)
+    t1@(RawToken a1 _) : SoftSpace : t2@(RawToken a2 _) : ts
+      | a1 == a2 -> normaliseToken t1 ++ RawToken a1 " " : normaliseTokens (t2 : ts)
+    -- HardSpace next to CodeToken or RawToken turns into the same kind
+    HardSpace n : t@(CodeToken {}) : ts -> CodeToken (T.replicate n " ") : normaliseTokens (t : ts)
+    HardSpace n : t@(RawToken a _) : ts -> RawToken a (T.replicate n " ") : normaliseTokens (t : ts)
+    t@(CodeToken {}) : HardSpace n : ts -> normaliseToken t ++ normaliseTokens (CodeToken (T.replicate n " ") : ts)
+    t@(RawToken a _) : HardSpace n : ts -> normaliseToken t ++ normaliseTokens (RawToken a (T.replicate n " ") : ts)
+    -- Otherwise, spaces turn into Text tokens
+    SoftSpace : ts -> plain " " : normaliseTokens ts
+    HardSpace n : ts -> plain (T.replicate n " ") : normaliseTokens ts
+    -- Discard empty tokens
+    EmptyToken : ts -> normaliseTokens ts
+    -- Expand glue tokens
+    Glue gs : ts -> normaliseTokens (NE.toList gs ++ ts)
+    t : ts -> normaliseToken t ++ normaliseTokens ts
 
--- XXX make toStream take an optional line width, so we can pass it to
--- the pretty-printer!  Then we don't have to call chunksOf afterwards.
+  -- Normalise a single token.
+  normaliseToken :: Token -> [OutputToken]
+  normaliseToken = \case
+    TextToken a t -> [TextToken a t]
+    RawToken a t -> [RawToken a t]
+    CodeToken t -> [CodeToken t]
+    Newline -> [Newline]
+    Para -> [Para]
+    SoftSpace -> [plain " "]
+    HardSpace n -> [plain (T.replicate n " ")]
+    -- These last two cases shouldn't happen, since we only call
+    -- normaliseToken after expanding Glue tokens and filtering out EmptyTokens in normalise.
+    Glue ts -> concatMap normaliseToken (NE.toList ts)
+    EmptyToken -> []
 
--- | Things that can be converted into a stream of nodes.
-class ToStream a where
-  -- | Convert to a stream of nodes, optionally broken into lines at a
-  --   specified line width.  If no line width is given, returns a
-  --   single list of nodes.
-  toStream :: a -> [StreamNode] -- XXX
+  -- Now, merge as many consecutive tokens as we can.
+  mergeTokens :: [OutputToken] -> [OutputToken]
+  mergeTokens = \case
+    [] -> []
+    [t] -> [t]
+    (t1 : t2 : ts)
+      | Just t' <- merge2 t1 t2 -> mergeTokens (t' : ts)
+      | otherwise -> t1 : mergeTokens (t2 : ts)
 
-instance PrettyPrec a => ToStream (Node a) where
-  toStream = \case
-    LeafText a t -> [TextNode a t]
-    LeafCode t -> [CodeNode (prettyTextLine t)]
-    LeafRaw s t -> [RawNode s t]
-    LeafCodeBlock _i t -> [CodeNode (prettyText t)]
+  -- \| A partial merge operation that attempts to merge two consecutive output tokens of the same type.
+  merge2 :: OutputToken -> OutputToken -> Maybe OutputToken
+  merge2 = \cases
+    (TextToken a1 t1) (TextToken a2 t2) | a1 == a2 -> Just (TextToken a1 (T.append t1 t2))
+    (RawToken a1 t1) (RawToken a2 t2) | a1 == a2 -> Just (RawToken a1 (T.append t1 t2))
+    (CodeToken t1) (CodeToken t2) -> Just (CodeToken (T.append t1 t2))
+    _ _ -> Nothing
 
-instance PrettyPrec a => ToStream (Paragraph a) where
-  toStream = concatMap toStream . nodes
+--------------------------------------------------
+-- Paragraph -> token stream conversion + layout
 
-instance PrettyPrec a => ToStream (Document a) where
-  toStream = intercalate ["\n\n"] . map toStream . paragraphs
+-- | Convert a paragraph into a token stream.  The line width is used
+--   to flow the paragraph by inserting newline tokens appropriately.
+--   The resulting token stream is also normalized by merging together
+--   consecutive tokens of the same type as much as possible, e.g. to cut
+--   down on the number of Brick widgets to be generated.
+instance PrettyPrec a => ToStream (Paragraph a) Output where
+  toStream mw =
+    normalise
+      . maybe id (\w -> splitter w w) mw
+      . glueTokens
+      . concatMap (toStream mw)
+      . nodes
+   where
+    -- Preprocess a token stream by gluing together any sticky tokens.
+    glueTokens :: [Token] -> [Token]
+    glueTokens = chop (first glue . goR)
 
--- | This is the naive and easy way to get text from anything that can
---   be converted to a token stream (such as 'Document'), ignoring any
---   formatting.
-toText :: ToStream a => a -> Text
-toText = streamToText . toStream
+    -- Look for consecutive right-sticky tokens...
+    goR :: [Token] -> ([Token], [Token])
+    goR [] = ([], [])
+    goR (t : ts)
+      | stickiness t `elem` [StickyR, StickyBoth] = first (t :) (goR ts)
+      -- Followed by any other token...
+      | otherwise = first (t :) (goL ts)
+
+    -- ...and then consecutive left-sticky tokens.
+    goL [] = ([], [])
+    goL (t : ts)
+      | stickiness t `elem` [StickyL, StickyBoth] = first (t :) (goL ts)
+      | otherwise = ([], t : ts)
+
+    -- Split a token stream into lines by inserting newline tokens,
+    -- and ensure there are no SoftSpace tokens at the beginning or
+    -- end of any line.
+    --
+    -- The first Int is the max line width for each line.
+    -- The second Int tells us how much width remains on the current line.
+    splitter :: Int -> Int -> [Token] -> [Token]
+    splitter width remaining = \case
+      [] -> []
+      -- If we encounter an existing newline token, just emit it and
+      -- move on to the next line, resetting the available width
+      Newline : ts -> Newline : splitter width width ts
+      -- Special handling for SoftSpace
+      SoftSpace : ts -> case ts of
+        -- Discard a SoftSpace at the end of a line
+        [] -> []
+        Newline : ts' -> Newline : splitter width width ts'
+        (t : ts')
+          -- Discard a SoftSpace at the beginning of a line
+          | width == remaining -> splitter width remaining ts
+          -- If we can emit the space + next token, do so
+          | 1 + tokenWidth t <= remaining -> SoftSpace : t : splitter width (remaining - 1 - tokenWidth t) ts'
+          -- Otherwise, discard the SoftSpace + move to the next line.
+          | otherwise -> Newline : splitter width width ts
+      -- In the general case, check if we can emit the next token
+      t : ts
+        | tokenWidth t <= remaining -> t : splitter width (remaining - tokenWidth t) ts
+        -- ...but if the next token doesn't fit and we are at the
+        -- beginning of the line, we must chop it into pieces to force
+        -- progress
+        | width == remaining ->
+            let (t1, t2) = splitTokenAt width t in t1 : Newline : splitter width width (t2 : ts)
+      -- Finally, if nothing fits, emit a Newline and proceed to the next line
+      ts -> Newline : splitter width width ts
+
+--------------------------------------------------
+-- Document -> token stream
+
+-- | Convert an entire document into a token stream, inserting
+--   paragraph breaks in between consecutive paragraphs.
+instance PrettyPrec a => ToStream (Document a) Output where
+  toStream mw = intercalate [Para] . map (toStream mw) . paragraphs
+
+------------------------------------------------------------
+-- Token stream -> text conversion
+------------------------------------------------------------
+
+tokenToText :: OutputToken -> Text
+tokenToText = \case
+  TextToken _ t -> t
+  RawToken _ t -> t
+  CodeToken t -> t
+  Newline -> "\n"
+  Para -> "\n\n"
+
+streamToText :: [OutputToken] -> Text
+streamToText = T.concat . map tokenToText
+
+-- | Turn anything that can be converted to a token stream (such as
+--   'Document') into text, ignoring any formatting.
+toText :: ToStream a Output => a -> Text
+toText = toTextWidth Nothing
+
+-- | Turn anything that can be converted to a token stream (such as
+--   'Document') into text, ignoring any formatting but wrapping to a
+--   specified line width.
+toTextWidth :: ToStream a Output => Maybe Int -> a -> Text
+toTextWidth mw = streamToText . toStream mw
 
 --------------------------------------------------------------
 -- Re-serializing Document -> Markdown

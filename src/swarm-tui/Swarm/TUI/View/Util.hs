@@ -12,6 +12,7 @@ import Control.Lens hiding (Const, from)
 import Control.Monad.Reader (withReaderT)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
+import Data.List.Split (splitOn)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isJust)
@@ -161,7 +162,7 @@ drawType ty = Widget Fixed Fixed $ do
         | otherwise = T.take (w `div` 2 - 2 - 3) renderedTy <> "..."
   render . withAttr infoAttr . padLeftRight 1 . txt $ displayedTy
 
--- | Draw markdown document with simple code/bold/italic attributes.
+-- | Draw a markdown document with simple code, bold, or italic attributes.
 --
 -- TODO: #574 Code blocks should probably be handled separately.
 drawMarkdown ::
@@ -171,13 +172,18 @@ drawMarkdown d = do
   Widget Greedy Fixed $ do
     ctx <- getContext
     let w = ctx ^. availWidthL
-    let docLines = Markdown.chunksOf w . Markdown.toStream <$> Markdown.paragraphs d
-    render . layoutParagraphs $ vBox . map (hBox . map mTxt) <$> docLines
+    let docStream :: [Markdown.OutputToken] = Markdown.toStream (Just w) d
+
+    render . layoutParagraphs . map renderPara . splitOn [Markdown.Para] $ docStream
  where
+  renderPara = vBox . map (hBox . map mTxt) . splitOn [Markdown.Newline]
   mTxt = \case
-    Markdown.TextNode as t -> foldr applyAttr (txt t) as
-    Markdown.CodeNode t -> withAttr highlightAttr $ txt t
-    Markdown.RawNode f t -> withAttr (rawAttr f) $ txt t
+    Markdown.TextToken as t -> foldr applyAttr (txt t) as
+    Markdown.RawToken f t -> withAttr (rawAttr f) $ txt t
+    Markdown.CodeToken t -> withAttr highlightAttr $ txt t
+    -- These cases shouldn't happen, since we split on Para and Newline
+    Markdown.Newline -> txt "\n"
+    Markdown.Para -> txt "\n\n"
   applyAttr a = withAttr $ case a of
     Markdown.Strong -> boldAttr
     Markdown.Emphasis -> italicAttr

@@ -1,4 +1,4 @@
-This is a Markdown file.  It has some inline code and a code block:
+This is a Markdown file. It has some inline code and a code block:
 
 def main: Cmd Unit = move; move; place "rock" end
 
