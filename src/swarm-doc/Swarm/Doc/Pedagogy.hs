@@ -55,7 +55,7 @@ import Swarm.Game.ScenarioInfo (
 import Swarm.Game.World.DSL (loadWorlds)
 import Swarm.Language.Module (moduleTerm)
 import Swarm.Language.Syntax
-import Swarm.Language.Text.Markdown (docToText, findCode)
+import Swarm.Language.Text.Markdown (toText, findCode)
 import Swarm.ResourceLoading (flattenCollection)
 import Swarm.Util.Effect (ignoreWarnings)
 import Prelude hiding (Foldable (..))
@@ -188,7 +188,7 @@ renderUsagesMarkdown (CoverageInfo (TutorialInfo (ScenarioWith s (ScenarioPath s
     intercalate
       [""]
       [ pure . surround "`" . T.pack $ sp
-      , pure . surround "*" . T.strip . docToText $ view (scenarioOperation . scenarioDescription) s
+      , pure . surround "*" . T.strip . toText $ view (scenarioOperation . scenarioDescription) s
       , renderSection "Introduced in solution" . renderCmdList $ M.keysSet novelCmds
       , renderSection "Referenced in description" $ renderCmdList dCmds
       ]

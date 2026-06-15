@@ -31,6 +31,7 @@ import Test.Tasty.HUnit (assertFailure, testCase)
 import TestEditorFiles
 import TestFormat
 import TestLoadingErrors
+import TestMarkdown
 import TestRecipeCoverage
 import TestScenarioParse
 import TestScenarioSolutions
@@ -48,6 +49,7 @@ main = do
       rs' = rs & eventLog .~ mempty
   recipeTests <- testRecipeCoverage
   formatTests <- testFormatting
+  markdownTests <- testMarkdown
   defaultMain $
     testGroup
       "Tests"
@@ -56,6 +58,7 @@ main = do
       , exampleTests scenarioPrograms
       , scenarioParseTests scenarioInputs scenarioPaths
       , formatTests
+      , markdownTests
       , noScenarioOverlap
       , testScenarioSolutions scenarioPaths $ PersistentState rs' ui key progState
       , testEditorFiles

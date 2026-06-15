@@ -32,6 +32,7 @@ module Swarm.Language.Text.Markdown (
   StreamNode' (..),
   StreamNode,
   ToStream (..),
+  streamToText,
   toText,
 
   -- ** Utilities
@@ -423,13 +424,12 @@ streamToText = T.concat . map nodeToText
 -- XXX make toStream take an optional line width, so we can pass it to
 -- the pretty-printer!  Then we don't have to call chunksOf afterwards.
 
--- | Convert elements to a one dimensional stream of nodes,
---   that is easy to format and layout.
---
---   If you want to split the stream at a specific line length, use
---   the 'chunksOf' function afterward.
+-- | Things that can be converted into a stream of nodes.
 class ToStream a where
-  toStream :: a -> [StreamNode]
+  -- | Convert to a stream of nodes, optionally broken into lines at a
+  --   specified line width.  If no line width is given, returns a
+  --   single list of nodes.
+  toStream :: a -> [StreamNode] -- XXX
 
 instance PrettyPrec a => ToStream (Node a) where
   toStream = \case

@@ -1381,6 +1381,7 @@ test-suite swarm-integration
     TestEditorFiles
     TestFormat
     TestLoadingErrors
+    TestMarkdown
     TestRecipeCoverage
     TestScenarioParse
     TestScenarioSolutions
