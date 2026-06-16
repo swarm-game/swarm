@@ -10,6 +10,7 @@ import Brick.Widgets.Dialog
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
 import Control.Monad.Reader (withReaderT)
+import Control.Monad.State (State, evalState)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.List.Split (splitOn)
@@ -172,21 +173,44 @@ drawMarkdown d = do
   Widget Greedy Fixed $ do
     ctx <- getContext
     let w = ctx ^. availWidthL
+
+    -- Compile + layout the parsed Markdown document into a token stream
     let docStream :: [Markdown.OutputToken] = Markdown.toStream (Just w) d
 
+    -- Split the stream at paragraph breaks, render each paragraph,
+    -- and lay them out with spacing
     render . layoutParagraphs . map renderPara . splitOn [Markdown.Para] $ docStream
  where
-  renderPara = vBox . map (hBox . map mTxt) . splitOn [Markdown.Newline]
-  mTxt = \case
-    Markdown.TextToken as t -> foldr applyAttr (txt t) as
-    Markdown.RawToken f t -> withAttr (rawAttr f) $ txt t
-    Markdown.CodeToken t -> withAttr highlightAttr $ txt t
-    -- These cases shouldn't happen, since we split on Para and Newline
-    Markdown.Newline -> txt "\n"
-    Markdown.Para -> txt "\n\n"
+  -- To render a paragraph, split on newlines and then render each
+  -- line while keeping track of an attribute stack.
+  renderPara :: [Markdown.OutputToken] -> Widget Name
+  renderPara =
+    flip evalState [] .
+    fmap vBox .
+    mapM (fmap (hBox . catMaybes) . mapM renderToken) .
+    splitOn [Markdown.Newline]
+
+  renderToken :: Markdown.OutputToken -> State [Markdown.TxtAttr] (Maybe (Widget Name))
+  renderToken = \case
+    Markdown.TextToken t -> Just <$> applyAttrs (txt t)
+    Markdown.PushAttr a -> Nothing <$ modify (a :)
+    Markdown.PopAttr -> Nothing <$ modify (drop 1)
+    -- These last two cases shouldn't happen, since we split on Para and
+    -- Newline.  Output something that will make it obvious if we ever
+    -- violate that invariant.
+    Markdown.Newline -> pure . Just $ txt "[[NEWLINE]]"
+    Markdown.Para -> pure . Just $ txt "[[PARA]]"
+
+  applyAttrs :: Widget Name -> State [Markdown.TxtAttr] (Widget Name)
+  applyAttrs w = foldr applyAttr w <$> get
+
+  applyAttr :: Markdown.TxtAttr -> Widget Name -> Widget Name
   applyAttr a = withAttr $ case a of
     Markdown.Strong -> boldAttr
     Markdown.Emphasis -> italicAttr
+    Markdown.Raw f -> rawAttr f
+    Markdown.Code -> highlightAttr
+
   rawAttr = \case
     "entity" -> greenAttr
     "structure" -> redAttr

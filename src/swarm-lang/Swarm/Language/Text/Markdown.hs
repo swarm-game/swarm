@@ -11,12 +11,12 @@
 --
 -- Simple Markdown AST and related utilities.
 --
--- Parameterising 'Document' with the type of
--- inline code and code blocks allows us to
--- inspect and validate Swarm code in descriptions.
+-- Parameterising 'Document' with the type of inline code and code
+-- blocks allows us to inspect and validate Swarm code in
+-- descriptions.
 --
--- See 'Swarm.TUI.View.Util.drawMarkdown' for
--- rendering the descriptions as brick widgets.
+-- See 'Swarm.TUI.View.Util.drawMarkdown' for rendering the
+-- descriptions as brick widgets.
 module Swarm.Language.Text.Markdown (
   -- ** Markdown document model
   Document (..),
@@ -114,8 +114,16 @@ mapP f (Paragraph ns) = Paragraph (map f ns)
 pureP :: Node c -> Paragraph c
 pureP = Paragraph . (: [])
 
--- | Simple text attributes.
-data TxtAttr = Strong | Emphasis
+-- | Text attributes.
+data TxtAttr where
+  -- | Strong, i.e. bold
+  Strong :: TxtAttr
+  -- | Emphasis, i.e. italics
+  Emphasis :: TxtAttr
+  -- | "Raw" text, with an arbitrary annotation.
+  Raw :: String -> TxtAttr
+  -- | Code.
+  Code :: TxtAttr
   deriving (Eq, Show, Ord)
 
 -- | Inline leaf nodes.
@@ -336,13 +344,12 @@ type OutputToken = Token' Output
 
 -- | Tokens in a stream that can be easily converted to text or brick widgets.
 data Token' :: TokenPhase -> Type where
-  -- | Basic text token, with attributes such as bold or italic.
-  TextToken :: Set TxtAttr -> Text -> Token' p
-  -- | "Raw" token, with an arbitrary label.  We use this to
-  --   highlight specific semantic classes (e.g. entities or types).
-  RawToken :: String -> Text -> Token' p
-  -- | A token which is part of some code.
-  CodeToken :: Text -> Token' p
+  -- | Basic text token.
+  TextToken :: Text -> Token' p
+  -- | Zero-width token to indicate that an attribute applies from now until a matching pop.
+  PushAttr :: TxtAttr -> Token' p
+  -- | Zero-width token to indicate that the matching attribute no longer applies.
+  PopAttr :: Token' p
   -- | Line break.
   Newline :: Token' p
   -- | Paragraph break.
@@ -373,9 +380,9 @@ deriving instance Show (Token' p)
 --   considered to be 0.
 tokenWidth :: Token' p -> Int
 tokenWidth = \case
-  TextToken _ t -> T.length t
-  RawToken _ t -> T.length t
-  CodeToken t -> T.length t
+  TextToken t -> T.length t
+  PushAttr _ -> 0
+  PopAttr -> 0
   Newline -> 0
   Para -> 0
   SoftSpace -> 1
@@ -383,12 +390,8 @@ tokenWidth = \case
   Glue ts -> sum (fmap tokenWidth ts)
   EmptyToken -> 0
 
--- | Create a single plain text token.
-plain :: Text -> Token' p
-plain = TextToken mempty
-
-instance GHC.Exts.IsString Token where
-  fromString = plain . T.pack
+instance GHC.Exts.IsString (Token' p) where
+  fromString = TextToken . T.pack
 
 -- | Glue a list of tokens into a single token appropriately.
 glue :: [Token] -> Token
@@ -404,13 +407,14 @@ data Stickiness = StickyL | StickyR | StickyBoth | NotSticky deriving (Eq, Ord, 
 --   tokens on its left or right.
 stickiness :: Token -> Stickiness
 stickiness = \case
-  TextToken _ t
+  TextToken t
     | t `elem` T.words "( [ {" -> StickyR
     | t `elem` T.words ". , ; : ? ! ) ] } - -- /" -> StickyL
     | t `elem` T.words "\" '" -> StickyBoth
     | otherwise -> NotSticky
-  RawToken {} -> NotSticky
-  CodeToken {} -> NotSticky
+  -- make push sticky so it won't be emitted by itself at the end of a line
+  PushAttr _ -> StickyR
+  PopAttr -> StickyL
   Newline -> NotSticky
   Para -> NotSticky
   SoftSpace -> NotSticky
@@ -422,9 +426,9 @@ stickiness = \case
 --   specified length.
 splitTokenAt :: Int -> Token -> (Token, Token)
 splitTokenAt w = \case
-  TextToken attrs t -> over both (mkNE (TextToken attrs)) (T.splitAt w t)
-  RawToken ann t -> over both (mkNE (RawToken ann)) (T.splitAt w t)
-  CodeToken t -> over both (mkNE CodeToken) (T.splitAt w t)
+  TextToken t -> over both mkNE (T.splitAt w t)
+  PushAttr a -> (PushAttr a, EmptyToken)
+  PopAttr -> (PopAttr, EmptyToken)
   Newline -> (Newline, EmptyToken)
   Para -> (Para, EmptyToken)
   SoftSpace -> (SoftSpace, EmptyToken)
@@ -432,9 +436,9 @@ splitTokenAt w = \case
   Glue ts -> over both glue (splitTokenListAt w (NE.toList ts))
   EmptyToken -> (EmptyToken, EmptyToken)
  where
-  mkNE tok t
+  mkNE t
     | T.null t = EmptyToken
-    | otherwise = tok t
+    | otherwise = TextToken t
 
   splitTokenListAt :: Int -> [Token] -> ([Token], [Token])
   splitTokenListAt _ [] = ([], [])
@@ -465,86 +469,58 @@ instance PrettyPrec a => ToStream (Node a) Layout where
     -- cases for Text nodes to recognize spaces and punctuation.
     LeafText a t
       | T.all isSpace t -> [SoftSpace]
-      | otherwise -> [TextToken a t]
-    LeafRaw a t -> map (mkToken (RawToken a) True) (tokenize t)
+      | otherwise -> foldr applyAttr [TextToken t] a
+    LeafRaw a t -> applyAttr (Raw a) . map (mkToken True) . tokenize $ t
     -- Inline code nodes get pretty-printed as a single line, then split
     -- into code tokens separated by soft spaces.
     -- XXX later: don't use tokenize, the pretty-printer should directly emit tokens!
-    LeafCode c -> map (mkToken CodeToken False) . tokenize . prettyTextLine $ c
+    LeafCode c -> applyAttr Code . map (mkToken False) . tokenize . prettyTextLine $ c
     -- Code blocks get pretty-printed onto multiple lines using an
     -- appropriate line width, then split into code tokens with hard
     -- spaces.
-    LeafCodeBlock _i c -> map (mkToken CodeToken True) . tokenize $ maybe (prettyText c) (prettyTextWidth c) mw
+    LeafCodeBlock _i c -> applyAttr Code . map (mkToken True) . tokenize $ maybe (prettyText c) (prettyTextWidth c) mw
    where
-    mkToken tokenClass hard = \case
+    applyAttr attr ts = PushAttr attr : ts ++ [PopAttr]
+    mkToken hard = \case
       "\n" -> Newline
       t
         | T.all isSpace t -> if hard then HardSpace (T.length t) else SoftSpace
-        | otherwise -> tokenClass t
+        | otherwise -> TextToken t
 
 --------------------------------------------------
 -- Token stream normalisation
 
 -- | Final normalisation step on a token stream:
 --     - Get rid of special token types like HardSpace, SoftSpace, Glue, and EmptyToken
---     - Chunk tokens together as much as possible, to cut down on e.g. number of brick widgets generated
+--     - Chunk text tokens together as much as possible, to cut down on e.g. number of brick widgets generated
 normalise :: [Token] -> [OutputToken]
-normalise = mergeTokens . normaliseTokens
+normalise = mergeTokens . concatMap normaliseToken
  where
-  -- First, get rid of layout tokens, converting spaces into the right
-  -- kind of token depending on their neighbors
-  normaliseTokens :: [Token] -> [OutputToken]
-  normaliseTokens = \case
-    [] -> []
-    -- SoftSpace surrounded by CodeTokens or RawTokens turns into the same kind of token
-    t1@(CodeToken {}) : SoftSpace : t2@(CodeToken {}) : ts -> normaliseToken t1 ++ CodeToken " " : normaliseTokens (t2 : ts)
-    t1@(RawToken a1 _) : SoftSpace : t2@(RawToken a2 _) : ts
-      | a1 == a2 -> normaliseToken t1 ++ RawToken a1 " " : normaliseTokens (t2 : ts)
-    -- HardSpace next to CodeToken or RawToken turns into the same kind
-    HardSpace n : t@(CodeToken {}) : ts -> CodeToken (T.replicate n " ") : normaliseTokens (t : ts)
-    HardSpace n : t@(RawToken a _) : ts -> RawToken a (T.replicate n " ") : normaliseTokens (t : ts)
-    t@(CodeToken {}) : HardSpace n : ts -> normaliseToken t ++ normaliseTokens (CodeToken (T.replicate n " ") : ts)
-    t@(RawToken a _) : HardSpace n : ts -> normaliseToken t ++ normaliseTokens (RawToken a (T.replicate n " ") : ts)
-    -- Otherwise, spaces turn into Text tokens
-    SoftSpace : ts -> plain " " : normaliseTokens ts
-    HardSpace n : ts -> plain (T.replicate n " ") : normaliseTokens ts
-    -- Discard empty tokens
-    EmptyToken : ts -> normaliseTokens ts
-    -- Expand glue tokens
-    Glue gs : ts -> normaliseTokens (NE.toList gs ++ ts)
-    t : ts -> normaliseToken t ++ normaliseTokens ts
-
   -- Normalise a single token.
   normaliseToken :: Token -> [OutputToken]
   normaliseToken = \case
-    TextToken a t -> [TextToken a t]
-    RawToken a t -> [RawToken a t]
-    CodeToken t -> [CodeToken t]
+    -- Tokens that are already normalised
+    TextToken t -> [TextToken t]
+    PushAttr a -> [PushAttr a]
+    PopAttr -> [PopAttr]
     Newline -> [Newline]
     Para -> [Para]
-    SoftSpace -> [plain " "]
-    HardSpace n -> [plain (T.replicate n " ")]
-    -- These last two cases shouldn't happen, since we only call
-    -- normaliseToken after expanding Glue tokens and filtering out EmptyTokens in normalise.
+    -- Turn spaces into text tokens.
+    SoftSpace -> [" "]
+    HardSpace n -> [TextToken (T.replicate n " ")]
+    -- Expand glue tokens.
     Glue ts -> concatMap normaliseToken (NE.toList ts)
+    -- Filter out empty tokens.
     EmptyToken -> []
 
-  -- Now, merge as many consecutive tokens as we can.
+  -- Now, merge as many consecutive text tokens as we can.
   mergeTokens :: [OutputToken] -> [OutputToken]
   mergeTokens = \case
     [] -> []
     [t] -> [t]
-    (t1 : t2 : ts)
-      | Just t' <- merge2 t1 t2 -> mergeTokens (t' : ts)
-      | otherwise -> t1 : mergeTokens (t2 : ts)
-
-  -- \| A partial merge operation that attempts to merge two consecutive output tokens of the same type.
-  merge2 :: OutputToken -> OutputToken -> Maybe OutputToken
-  merge2 = \cases
-    (TextToken a1 t1) (TextToken a2 t2) | a1 == a2 -> Just (TextToken a1 (T.append t1 t2))
-    (RawToken a1 t1) (RawToken a2 t2) | a1 == a2 -> Just (RawToken a1 (T.append t1 t2))
-    (CodeToken t1) (CodeToken t2) -> Just (CodeToken (T.append t1 t2))
-    _ _ -> Nothing
+    -- XXX do this in a way that's not quadratic!!!
+    TextToken t1 : TextToken t2 : ts -> mergeTokens (TextToken (T.append t1 t2) : ts)
+    t1 : ts -> t1 : mergeTokens ts
 
 --------------------------------------------------
 -- Paragraph -> token stream conversion + layout
@@ -629,11 +605,11 @@ instance PrettyPrec a => ToStream (Document a) Output where
 
 tokenToText :: OutputToken -> Text
 tokenToText = \case
-  TextToken _ t -> t
-  RawToken _ t -> t
-  CodeToken t -> t
+  TextToken t -> t
   Newline -> "\n"
   Para -> "\n\n"
+  PushAttr _ -> ""
+  PopAttr -> ""
 
 streamToText :: [OutputToken] -> Text
 streamToText = T.concat . map tokenToText
@@ -657,7 +633,7 @@ toTextWidth mw = streamToText . toStream mw
 nodeToMark :: PrettyPrec a => Node a -> Text
 nodeToMark = \case
   LeafText a t -> foldl attr t a
-  LeafRaw _ c -> wrap "`" c
+  LeafRaw _ c -> wrap "`" c --- XXX use the annotation!
   LeafCode c -> wrap "`" (prettyText c)
   LeafCodeBlock f c -> codeBlock f $ prettyText c
  where
@@ -666,6 +642,9 @@ nodeToMark = \case
   attr t a = case a of
     Emphasis -> wrap "_" t
     Strong -> wrap "**" t
+    -- XXX deal with Raw + Code annotations?  They can't actually happen...
+    Raw _ -> t
+    Code -> t
 
 -- | Convert a 'Paragraph' to Markdown format.
 paragraphToMark :: PrettyPrec a => Paragraph a -> Text
