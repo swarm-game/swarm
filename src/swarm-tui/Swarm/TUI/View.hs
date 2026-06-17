@@ -111,7 +111,6 @@ import Swarm.Game.World (Seed)
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Syntax
-import Swarm.Text.Markdown (Document)
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Log
 import Swarm.Pretty (prettyText, prettyTextLine, prettyTextWidth)
@@ -146,6 +145,7 @@ import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Static
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.TUI.View.Util as VU
+import Swarm.Text.Markdown (Document)
 import Swarm.Util
 import Text.Printf
 import Text.Wrap

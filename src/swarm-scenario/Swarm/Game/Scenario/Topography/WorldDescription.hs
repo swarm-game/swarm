@@ -46,8 +46,8 @@ import Swarm.Game.Universe (SubworldName (DefaultRootSubworld))
 import Swarm.Game.World.DSL
 import Swarm.Language.Pipeline (Processable (..))
 import Swarm.Language.Syntax (Phase (Raw), Syntax)
-import Swarm.Text.Markdown (Document, fromText)
 import Swarm.Pretty (prettyString)
+import Swarm.Text.Markdown (Document, fromText)
 import Swarm.Util.Erasable (Erasable (..))
 import Swarm.Util.Yaml
 

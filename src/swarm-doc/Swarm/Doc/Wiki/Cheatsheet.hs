@@ -37,9 +37,9 @@ import Swarm.Language.Capability (Capability)
 import Swarm.Language.Capability qualified as Capability
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
-import Swarm.Text.Markdown as Markdown (docToMark)
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Pretty (prettyText, prettyTextLine)
+import Swarm.Text.Markdown as Markdown (docToMark)
 import Swarm.Util (applyWhen, maximum0, showT)
 
 -- * Types
