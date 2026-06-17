@@ -323,8 +323,6 @@ tokenize t = case T.uncons t of
 -- Document -> token stream conversion
 --------------------------------------------------------------
 
--- XXX: Check #574
-
 -- A Document is intended to have e.g. hierarchical structure
 -- (especially once we add things like links, lists, etc.); for
 -- rendering purposes we want to first convert a structured Document
@@ -479,7 +477,7 @@ instance PrettyPrec a => ToStream (Node a) Layout where
     LeafRaw a t -> applyAttr (Raw a) . map (mkToken True) . tokenize $ t
     -- Inline code nodes get pretty-printed as a single line, then split
     -- into code tokens separated by soft spaces.
-    -- XXX later: don't use tokenize, the pretty-printer should directly emit tokens!
+    -- TODO (#574): don't use tokenize, the pretty-printer should directly emit tokens!
     LeafCode c -> applyAttr Code . map (mkToken False) . tokenize . prettyTextLine $ c
     -- Code blocks get pretty-printed onto multiple lines using an
     -- appropriate line width, then split into code tokens with hard
@@ -639,7 +637,9 @@ toTextWidth mw = streamToText . toStream mw
 nodeToMark :: PrettyPrec a => Node a -> Text
 nodeToMark = \case
   LeafText a t -> foldl attr t a
-  LeafRaw _ c -> wrap "`" c --- XXX use the annotation!
+  LeafRaw a c ->
+    mconcat $
+      wrap "`" c : ["{=" <> T.pack a <> "}" | not (null a)]
   LeafCode c -> wrap "`" (prettyText c)
   LeafCodeBlock f c -> codeBlock f $ prettyText c
  where
@@ -648,7 +648,8 @@ nodeToMark = \case
   attr t a = case a of
     Emphasis -> wrap "_" t
     Strong -> wrap "**" t
-    -- XXX deal with Raw + Code annotations?  They can't actually happen...
+    -- Raw and Code attributes won't actually occur in a LeafText
+    -- node, LeafRaw and LeafCode will be used instead.
     Raw _ -> t
     Code -> t
 
