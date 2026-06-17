@@ -64,6 +64,8 @@ data-files:
   test/saves/*.yaml
   test/standalone-topography/*.png
   test/standalone-topography/*.yaml
+  test/markdown/*.md
+  test/markdown/*.txt
   worlds/*.world
 
 source-repository head
