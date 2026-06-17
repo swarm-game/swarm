@@ -55,7 +55,7 @@ import Swarm.Game.ScenarioInfo (
 import Swarm.Game.World.DSL (loadWorlds)
 import Swarm.Language.Module (moduleTerm)
 import Swarm.Language.Syntax
-import Swarm.Language.Text.Markdown (toText, findCode)
+import Swarm.Language.Text.Markdown (findCode, toText)
 import Swarm.ResourceLoading (flattenCollection)
 import Swarm.Util.Effect (ignoreWarnings)
 import Prelude hiding (Foldable (..))

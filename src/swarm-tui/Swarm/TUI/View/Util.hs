@@ -185,10 +185,10 @@ drawMarkdown d = do
   -- line while keeping track of an attribute stack.
   renderPara :: [Markdown.OutputToken] -> Widget Name
   renderPara =
-    flip evalState [] .
-    fmap vBox .
-    mapM (fmap (hBox . catMaybes) . mapM renderToken) .
-    splitOn [Markdown.Newline]
+    flip evalState []
+      . fmap vBox
+      . mapM (fmap (hBox . catMaybes) . mapM renderToken)
+      . splitOn [Markdown.Newline]
 
   renderToken :: Markdown.OutputToken -> State [Markdown.TxtAttr] (Maybe (Widget Name))
   renderToken = \case
