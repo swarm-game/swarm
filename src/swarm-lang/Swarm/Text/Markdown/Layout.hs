@@ -25,6 +25,7 @@ import Swarm.Util (chopNE, spanMaybe)
 --   Each newline is made into an individual token; other whitespace
 --   are grouped into consecutive equal characters.
 --
+-- >>> :set -XOverloadedStrings
 -- >>> tokenize "Hello   there, \n\nworld!"
 -- ["Hello","   ","there,"," ","\n","\n","world!"]
 tokenize :: Text -> [Text]
