@@ -11,7 +11,7 @@ import Data.Map (Map, (!?))
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
-import Swarm.Language.Text.Markdown (fromTextM, toTextWidth)
+import Swarm.Text.Markdown (fromTextM, toTextWidth)
 import Swarm.Util (acquireAllWithExt)
 import System.FilePath (dropExtension, takeExtension)
 import Test.Tasty (TestTree, testGroup)
