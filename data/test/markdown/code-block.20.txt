@@ -1,23 +1,20 @@
 This is a code
 block:
 
-def opposite: 
-
-    Dir -> Dir 
-  =
- \d.
+def opposite:
+    Dir -> Dir
+  = \d.
   if (d == left) {
 
     right
   } {left}
 end
 
-def x: 
+def x:
     Int ->
     Cmd Unit ->
-    Cmd Unit 
-  = \n.
- \c.
+    Cmd Unit
+  = \n. \c.
   if (n == 0) {} {
 
     c;
@@ -34,10 +31,8 @@ def goTrade =
   pure ()
 end
 
-def fig8half: 
-
-    Dir -> Cmd Unit 
-
+def fig8half:
+    Dir -> Cmd Unit
   = \d.
   x 3 (
     turn d;
@@ -46,9 +41,8 @@ def fig8half:
   goTrade
 end
 
-def fig8: 
-    Dir ->
- Cmd Unit 
+def fig8:
+    Dir -> Cmd Unit
   = \d.
   turn back;
   fig8half (
@@ -67,7 +61,7 @@ def solution =
   x 5 (grab; m2);
   x 2 (
     turn
- left;
+left;
     m2
   );
   m5;

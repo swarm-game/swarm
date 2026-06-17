@@ -1,5 +1,5 @@
 This is a Markdown file. It has some inline
- code and a code block:
+code and a code block:
 
 def main: Cmd Unit =
   move;

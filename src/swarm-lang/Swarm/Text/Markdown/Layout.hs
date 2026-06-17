@@ -88,7 +88,10 @@ instance PrettyPrec a => ToStream (Node a) Layout where
     mkToken hard = \case
       "\n" -> Newline
       t
-        | T.all isSpace t -> if hard then HardSpace (T.length t) else SoftSpace
+        -- Whitespace tokens turn into spaces.  Anything with only 1
+        -- space turns into a SoftSpace.  Longer space tokens can turn
+        -- into HardSpace.
+        | T.all isSpace t -> if T.length t > 1 && hard then HardSpace (T.length t) else SoftSpace
         | otherwise -> TextToken t
 
 ------------------------------------------------------------

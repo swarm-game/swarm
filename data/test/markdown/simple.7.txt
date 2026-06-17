@@ -5,20 +5,19 @@ n file.
 It has
 some
 inline
- code
+code
 and a
 code
 block:
 
 def
- main: 
-
+main:
     Cmd
- Unit =
+Unit =
   move;
   move;
   place
- "rock"
+"rock"
 end
 
 Here is

@@ -1,17 +1,16 @@
 This is a code block:
 
-def opposite: Dir -> Dir 
-  =
- \d.
+def opposite: Dir -> Dir
+  = \d.
   if (d == left) {right} {
 
     left
   }
 end
 
-def x: 
+def x:
     Int -> Cmd Unit ->
-    Cmd Unit 
+    Cmd Unit
   = \n. \c.
   if (n == 0) {} {
     c;
@@ -27,16 +26,14 @@ def goTrade =
   pure ()
 end
 
-def fig8half: Dir -> Cmd Unit 
-
+def fig8half: Dir -> Cmd Unit
   = \d.
   x 3 (turn d; goTrade);
   goTrade
 end
 
-def fig8: Dir -> Cmd Unit 
-  =
- \d.
+def fig8: Dir -> Cmd Unit
+  = \d.
   turn back;
   fig8half (opposite d);
   fig8half d;
