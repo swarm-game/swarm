@@ -509,12 +509,18 @@ library swarm-lang
     Swarm.Language.Syntax.Pretty
     Swarm.Language.Syntax.Util
     Swarm.Language.TDVar
-    Swarm.Language.Text.Markdown
     Swarm.Language.Typecheck
     Swarm.Language.Types
     Swarm.Language.Value
     Swarm.Language.Var
     Swarm.Language.WithType
+    Swarm.Text.Markdown
+    Swarm.Text.Markdown.Document
+    Swarm.Text.Markdown.Layout
+    Swarm.Text.Markdown.Parse
+    Swarm.Text.Markdown.Pretty
+    Swarm.Text.Markdown.Render
+    Swarm.Text.Markdown.Token
 
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm

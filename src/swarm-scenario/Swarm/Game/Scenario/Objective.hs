@@ -51,7 +51,7 @@ import Swarm.Language.JSON (withModuleProvenance)
 import Swarm.Language.Module (Module, ModuleCtx, ModuleImports)
 import Swarm.Language.Pipeline (Processable (..), processSyntax)
 import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (..), SwarmType, Syntax, Unresolvable)
-import Swarm.Language.Text.Markdown qualified as Markdown
+import Swarm.Text.Markdown qualified as Markdown
 import Swarm.Pretty (PrettyPrec)
 import Swarm.Util.Lens (concatFold, makeLensesExcluding, makeLensesNoSigs)
 import Swarm.Util.Yaml (FromJSONE (..), liftE, withObjectE, (..:))

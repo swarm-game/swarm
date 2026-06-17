@@ -89,7 +89,7 @@ import Swarm.Language.Parser.Value (readValue)
 import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
-import Swarm.Language.Text.Markdown qualified as Markdown
+import Swarm.Text.Markdown qualified as Markdown
 import Swarm.Language.Value
 import Swarm.Log
 import Swarm.Pretty (prettyText)

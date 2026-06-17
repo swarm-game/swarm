@@ -141,7 +141,7 @@ import Swarm.Game.Terrain (TerrainType)
 import Swarm.Language.Capability
 import Swarm.Language.Syntax (Phase (Raw), Syntax)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
-import Swarm.Language.Text.Markdown (Document, toText)
+import Swarm.Text.Markdown (Document, toText)
 import Swarm.ResourceLoading (getDataFileNameThrow)
 import Swarm.Util (binTuples, failT, findDup, plural, quote, (?))
 import Swarm.Util.Effect (withThrow)

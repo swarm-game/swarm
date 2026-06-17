@@ -8,7 +8,7 @@ import GHC.Generics (Generic)
 import Swarm.Game.Entity (Entity)
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Language.Syntax (Phase (..), Syntax)
-import Swarm.Language.Text.Markdown (Document)
+import Swarm.Text.Markdown (Document)
 
 data SkeletonScenario = SkeletonScenario
   { version :: Int

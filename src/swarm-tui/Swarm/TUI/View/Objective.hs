@@ -18,8 +18,8 @@ import Data.Map.Strict qualified as M
 import Data.Vector qualified as V
 import Swarm.Game.Scenario.Objective
 import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (..), Syntax, Unresolvable)
-import Swarm.Language.Text.Markdown (Document)
-import Swarm.Language.Text.Markdown qualified as Markdown
+import Swarm.Text.Markdown (Document)
+import Swarm.Text.Markdown qualified as Markdown
 import Swarm.Pretty (PrettyPrec)
 import Swarm.TUI.Model.Dialog.Goal
 import Swarm.TUI.Model.Name

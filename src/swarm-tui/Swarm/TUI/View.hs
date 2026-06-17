@@ -111,7 +111,7 @@ import Swarm.Game.World (Seed)
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Syntax
-import Swarm.Language.Text.Markdown (Document)
+import Swarm.Text.Markdown (Document)
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Log
 import Swarm.Pretty (prettyText, prettyTextLine, prettyTextWidth)

@@ -32,7 +32,7 @@ import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
 import Swarm.Game.Terrain
 import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Syntax, Unresolvable)
-import Swarm.Language.Text.Markdown qualified as Markdown
+import Swarm.Text.Markdown qualified as Markdown
 import Swarm.Language.Types (Polytype)
 import Swarm.Pretty (PrettyPrec, prettyTextLine)
 import Swarm.TUI.Model
