@@ -18,13 +18,13 @@ import Data.Map.Strict qualified as M
 import Data.Vector qualified as V
 import Swarm.Game.Scenario.Objective
 import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (..), Syntax, Unresolvable)
-import Swarm.Text.Markdown (Document)
-import Swarm.Text.Markdown qualified as Markdown
 import Swarm.Pretty (PrettyPrec)
 import Swarm.TUI.Model.Dialog.Goal
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.Util
+import Swarm.Text.Markdown (Document)
+import Swarm.Text.Markdown qualified as Markdown
 import Swarm.Util (applyWhen)
 
 makeListWidget :: GoalTracking -> BL.List Name GoalEntry

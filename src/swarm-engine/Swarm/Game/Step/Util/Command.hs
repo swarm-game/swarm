@@ -59,8 +59,8 @@ import Swarm.Language.Module (Module)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Requirements.Type qualified as R
 import Swarm.Language.Syntax
-import Swarm.Text.Markdown qualified as Markdown
 import Swarm.Log
+import Swarm.Text.Markdown qualified as Markdown
 import Swarm.Util (applyWhen)
 import System.Clock (TimeSpec)
 import Prelude hiding (lookup)

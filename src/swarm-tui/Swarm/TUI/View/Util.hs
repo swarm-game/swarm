@@ -32,7 +32,6 @@ import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
 import Swarm.Game.Terrain
 import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Syntax, Unresolvable)
-import Swarm.Text.Markdown qualified as Markdown
 import Swarm.Language.Types (Polytype)
 import Swarm.Pretty (PrettyPrec, prettyTextLine)
 import Swarm.TUI.Model
@@ -41,6 +40,7 @@ import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
+import Swarm.Text.Markdown qualified as Markdown
 import Swarm.Util (maximum0)
 import Witch (from, into)
 
