@@ -20,6 +20,7 @@ module Swarm.Util (
   showEnum,
   indexWrapNonEmpty,
   chunksOfNE,
+  chopNE,
   rangeNE,
   uniq,
   binTuples,
@@ -35,6 +36,7 @@ module Swarm.Util (
   applyJust,
   unsnocNE,
   applyN,
+  spanMaybe,
 
   -- * Directory utilities
   Encoding (..),
@@ -229,6 +231,14 @@ chunksOfNE n xs
 -- Calling NE.fromList is safe here, since we know n > 0, so
 -- NE.splitAt n will generate a first chunk of length n > 0.
 
+-- | A variant of 'chop' which guarantees to only call the provided
+--   function on nonempty lists.  The behavior is identical to
+--   'Data.List.Split.chop', but its type gives a stronger guarantee.
+chopNE :: (NonEmpty a -> (b, [a])) -> [a] -> [b]
+chopNE f = \case
+  [] -> []
+  a : as -> let (b, as') = f (a :| as) in b : chopNE f as'
+
 -- | Like 'range', except that at least the first index is always
 --   returned, even if the indices are out of order.  For example,
 --   'range (4,0) = []' but 'rangeNE (4,0) = [4]'.
@@ -363,6 +373,14 @@ unsnocNE (x :| xs) = go x xs
 applyN :: Int -> (a -> a) -> a -> a
 applyN 0 _ = id
 applyN n f = applyN (n - 1) f . f
+
+-- | Like span, but with a predicate returning evidence instead of a
+--   Boolean.
+spanMaybe :: (a -> Maybe b) -> [a] -> ([b], [a])
+spanMaybe _ [] = ([], [])
+spanMaybe p as@(a : as') = case p a of
+  Nothing -> ([], as)
+  Just b -> first (b :) (spanMaybe p as')
 
 ------------------------------------------------------------
 -- File I/O + directory processing

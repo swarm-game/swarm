@@ -70,7 +70,7 @@ import Swarm.Language.Phase (ImportPhaseFor)
 import Swarm.Language.Pipeline (processTermNoImports)
 import Swarm.Language.Syntax (Anchor, Phase (Raw), Syntax, Unresolvable)
 import Swarm.Pretty (PrettyPrec (..), prettyText, prettyTextLine, prettyTextWidth)
-import Swarm.Util (showT)
+import Swarm.Util (chopNE, showT, spanMaybe)
 
 ------------------------------------------------------------
 -- Simple Document model
@@ -393,6 +393,12 @@ tokenWidth = \case
 instance GHC.Exts.IsString (Token' p) where
   fromString = TextToken . T.pack
 
+-- | Check if a token is a text token, extracting its text if so.
+getTokenText :: Token' p -> Maybe Text
+getTokenText = \case
+  TextToken t -> Just t
+  _ -> Nothing
+
 -- | Glue a list of tokens into a single token appropriately.
 glue :: [Token] -> Token
 glue [] = EmptyToken
@@ -515,12 +521,12 @@ normalise = mergeTokens . concatMap normaliseToken
 
   -- Now, merge as many consecutive text tokens as we can.
   mergeTokens :: [OutputToken] -> [OutputToken]
-  mergeTokens = \case
-    [] -> []
-    [t] -> [t]
-    -- XXX do this in a way that's not quadratic!!!
-    TextToken t1 : TextToken t2 : ts -> mergeTokens (TextToken (T.append t1 t2) : ts)
-    t1 : ts -> t1 : mergeTokens ts
+  mergeTokens = chopNE nextToken
+
+  nextToken :: NonEmpty OutputToken -> (OutputToken, [OutputToken])
+  nextToken (t :| ts) = case spanMaybe getTokenText (t : ts) of
+    ([], _) -> (t, ts)
+    (txts, rest) -> (TextToken (T.concat txts), rest)
 
 --------------------------------------------------
 -- Paragraph -> token stream conversion + layout
