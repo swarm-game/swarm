@@ -15,8 +15,8 @@
 -- blocks allows us to inspect and validate Swarm code in
 -- descriptions.
 --
--- See 'Swarm.TUI.View.Util.drawMarkdown' for rendering the
--- descriptions as brick widgets.
+-- See 'Swarm.TUI.View.Util.drawMarkdown' for rendering Markdown as
+-- brick widgets.
 module Swarm.Language.Text.Markdown (
   -- ** Markdown document model
   Document (..),
@@ -32,8 +32,10 @@ module Swarm.Language.Text.Markdown (
 
   -- ** Token stream
   Token' (..),
+  TokenPhase (..),
   OutputToken,
   ToStream (..),
+  glueTokens,
   toText,
   toTextWidth,
 
@@ -397,6 +399,9 @@ getTokenText = \case
   TextToken t -> Just t
   _ -> Nothing
 
+--------------------------------------------------
+-- Token gluing
+
 -- | Glue a list of tokens into a single token appropriately.
 glue :: [Token] -> Token
 glue [] = EmptyToken
@@ -404,8 +409,10 @@ glue [t] = t
 glue (t : ts) = Glue (t :| ts)
 
 -- | Some tokens are "sticky" and like to stick to the other tokens to
--- their left or right.
-data Stickiness = StickyL | StickyR | StickyBoth | NotSticky deriving (Eq, Ord, Show)
+--   their left or right, or both.  Neutral tokens are not sticky on
+--   their own, but can have other tokens stick to them.  Nothing can
+--   stick to nonstick tokens.
+data Stickiness = StickyL | StickyR | StickyLR | Neutral | Nonstick deriving (Eq, Ord, Show)
 
 -- | The "stickiness" of a token, i.e. whether it prefers to stick to
 --   tokens on its left or right.
@@ -413,18 +420,57 @@ stickiness :: Token -> Stickiness
 stickiness = \case
   TextToken t
     | t `elem` T.words "( [ {" -> StickyR
-    | t `elem` T.words ". , ; : ? ! ) ] } - -- /" -> StickyL
-    | t `elem` T.words "\" '" -> StickyBoth
-    | otherwise -> NotSticky
+    | t `elem` T.words ". , ; : ? ! ) ] } - -- --- /" -> StickyL
+    | t `elem` T.words "\" '" -> StickyLR
+    | otherwise -> Neutral
   -- make push sticky so it won't be emitted by itself at the end of a line
   PushAttr _ -> StickyR
   PopAttr -> StickyL
-  Newline -> NotSticky
-  Para -> NotSticky
-  SoftSpace -> NotSticky
+  Newline -> Neutral
+  Para -> Neutral
+  -- Soft spaces are nonstick, so that e.g. things sticky in both
+  -- directions (such as quote marks) stick to a nonspace thing next
+  -- to them but not a space.
+  SoftSpace -> Nonstick
   HardSpace {} -> StickyR
-  Glue {} -> NotSticky
-  EmptyToken -> NotSticky
+  Glue {} -> Neutral
+  EmptyToken -> Neutral
+
+-- | Preprocess a token stream by gluing together any sticky tokens.
+glueTokens :: [Token] -> [Token]
+glueTokens = chop (first glue . go1)
+ where
+  -- Get a first token.  If nonstick, just emit it.  Otherwise, start
+  -- looking for sticky tokens: consecutive right-sticky tokens if the
+  -- first token was right-sticky, or left-sticky otherwise.
+  go1, goR, goL :: [Token] -> ([Token], [Token])
+  go1 [] = ([], [])
+  go1 (t : ts)
+    | stickiness t == Nonstick = ([t], ts)
+    | otherwise = first (t :) $ (if stickiness t `elem` [StickyR, StickyLR] then goR else goL) ts
+
+  -- Look for consecutive right-sticky tokens...
+  goR [] = ([], [])
+  goR (t : ts)
+    -- Accumulate right-sticky tokens and keep looking for more
+    | stickiness t `elem` [StickyR, StickyLR] = first (t :) (goR ts)
+    -- Stop if we encounter a nonstick token
+    | stickiness t == Nonstick = ([], t : ts)
+    -- Otherwise, switch to looking for left-sticky tokens
+    | otherwise = first (t :) (goL ts)
+
+  -- ...and then consecutive left-sticky tokens.
+  goL [] = ([], [])
+  goL (t : ts)
+    -- Accumulate left-sticky tokens and keep looking for more
+    | stickiness t == StickyL = first (t :) (goL ts)
+    -- If we see a LR-sticky token, switch back to looking for right-sticky tokens
+    | stickiness t == StickyLR = first (t :) (goR ts)
+    -- Otherwise, stop
+    | otherwise = ([], t : ts)
+
+--------------------------------------------------
+-- Token splitting
 
 -- | Split a token into two, such that the first is no longer than the
 --   specified length.
@@ -542,24 +588,6 @@ instance PrettyPrec a => ToStream (Paragraph a) Output where
       . concatMap (toStream mw)
       . nodes
    where
-    -- Preprocess a token stream by gluing together any sticky tokens.
-    glueTokens :: [Token] -> [Token]
-    glueTokens = chop (first glue . goR)
-
-    -- Look for consecutive right-sticky tokens...
-    goR :: [Token] -> ([Token], [Token])
-    goR [] = ([], [])
-    goR (t : ts)
-      | stickiness t `elem` [StickyR, StickyBoth] = first (t :) (goR ts)
-      -- Followed by any other token...
-      | otherwise = first (t :) (goL ts)
-
-    -- ...and then consecutive left-sticky tokens.
-    goL [] = ([], [])
-    goL (t : ts)
-      | stickiness t `elem` [StickyL, StickyBoth] = first (t :) (goL ts)
-      | otherwise = ([], t : ts)
-
     -- Split a token stream into lines by inserting newline tokens,
     -- and ensure there are no SoftSpace tokens at the beginning or
     -- end of any line.
