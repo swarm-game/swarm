@@ -283,7 +283,8 @@ expectFailScenarios =
 customTimeoutScenarios :: ScenarioTestSet
 customTimeoutScenarios =
   mconcat
-    [ "Tutorials/move" ==> 10
+    [ "Tutorials/give" ==> 5
+    , "Tutorials/move" ==> 10
     , "Tutorials/stock" ==> 3
     , "Tutorials/farming" ==> 5
     , "Demo/Fun/snake" ==> 20
