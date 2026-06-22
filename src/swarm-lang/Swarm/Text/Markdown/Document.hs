@@ -33,11 +33,13 @@ newtype Document c = Document {paragraphs :: [Paragraph c]}
 -- | Markdown paragraphs, consisting of a list of inline leaf nodes.
 --
 --   The idea is that paragraphs do not have line breaks, and so the
---   inline elements follow each other.  In particular inline code can
---   be followed by text without space between them
---   (e.g. @\`logger\`s@).
+--   inline elements follow each other, with spaces represented as
+--   explicit nodes.  In particular, inline code can be followed by
+--   text without space between them (e.g. @\`logger\`s@).
 --
---   'Paragraph's form a 'Monoid' under concatenation.
+--   'Paragraph's form a 'Monoid' under concatenation (where combining
+--   two paragraphs means running them together into a single
+--   paragraph), with the empty paragraph as the identity.
 newtype Paragraph c = Paragraph {nodes :: [Node c]}
   deriving (Eq, Show, Functor, Foldable, Traversable)
   deriving (Semigroup, Monoid) via [Node c]
