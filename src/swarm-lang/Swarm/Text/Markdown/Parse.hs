@@ -71,10 +71,6 @@ instance GHC.Exts.IsString (Paragraph (Syntax Raw)) where
     [] -> mempty
     (p : _) -> p
 
--- | This instance allows us to write a text 'Node' as a string literal.
-instance GHC.Exts.IsString (Node c) where
-  fromString = LeafText mempty . T.pack
-
 -- | Surround some text in double quotes if it is not empty.
 quoteMaybe :: Text -> Text
 quoteMaybe t = if T.null t then t else T.concat ["\"", t, "\""]
