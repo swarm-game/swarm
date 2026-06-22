@@ -7,7 +7,18 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Parsing Documents from Markdown source, with embedded Swarm source.
-module Swarm.Text.Markdown.Parse where
+module Swarm.Text.Markdown.Parse (
+  -- * Commonmark parsing
+  quoteMaybe,
+  fromTextPure,
+
+  -- * Markdown -> Document parsing with Swarm code processing
+  parseSyntax,
+  fromTextE,
+  fromTextM,
+  fromText,
+)
+where
 
 import Commonmark qualified as Mark
 import Commonmark.Extensions qualified as Mark (rawAttributeSpec)

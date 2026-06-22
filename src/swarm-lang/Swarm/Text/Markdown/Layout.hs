@@ -4,7 +4,17 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Converting Documents to token streams + layout.
-module Swarm.Text.Markdown.Layout where
+module Swarm.Text.Markdown.Layout (
+  -- * Utility functions on text
+  tokenize,
+
+  -- * Document -> token stream conversion
+  -- $document
+  ToStream (..),
+
+  -- * Token stream normalisation
+  normalise,
+) where
 
 import Data.Char (isSpace)
 import Data.List (intercalate)
@@ -40,6 +50,7 @@ tokenize t = case T.uncons t of
 -- Document -> token stream conversion
 --------------------------------------------------------------
 
+-- $document
 -- A Document is intended to have e.g. hierarchical structure
 -- (especially once we add things like links, lists, etc.); for
 -- rendering purposes we want to first convert a structured Document

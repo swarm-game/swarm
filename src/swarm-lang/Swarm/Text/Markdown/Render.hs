@@ -7,7 +7,15 @@
 --
 -- For rendering to brick widgets, see
 -- 'Swarm.TUI.View.Util.drawMarkdown'.
-module Swarm.Text.Markdown.Render where
+module Swarm.Text.Markdown.Render (
+  -- * Token stream -> text conversion
+  tokenToText,
+  streamToText,
+
+  -- * Rendering streamable things as text
+  toText,
+  toTextWidth,
+) where
 
 import Data.Text (Text)
 import Data.Text qualified as T

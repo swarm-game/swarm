@@ -5,7 +5,21 @@
 -- Parameterising 'Document' with the type of inline code and code
 -- blocks allows us to inspect and validate Swarm code in
 -- descriptions.
-module Swarm.Text.Markdown.Document where
+module Swarm.Text.Markdown.Document (
+  -- * Simple Document model
+  Document (..),
+  Paragraph (..),
+  mapD,
+  mapP,
+  pureP,
+  TxtAttr (..),
+  Node (..),
+
+  -- * Utilities
+  txt,
+  addTextAttribute,
+  findCode,
+) where
 
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)

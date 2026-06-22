@@ -4,7 +4,27 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Representation of documents + layout as token streams.
-module Swarm.Text.Markdown.Token where
+module Swarm.Text.Markdown.Token (
+  -- * Token types
+  TokenPhase (..),
+  Token,
+  OutputToken,
+  Token' (..),
+
+  -- * Utilities
+  tokenWidth,
+  getTokenText,
+
+  -- * Token gluing
+  Stickiness (..),
+  stickiness,
+  glue,
+  glueTokens,
+
+  -- * Token splitting
+  splitTokenAt,
+)
+where
 
 import Control.Arrow ((***))
 import Control.Lens (both, over)
