@@ -130,6 +130,8 @@ data Name
     Button Button
   | -- | A clickable shortcut in the TUI.
     UIShortcut Text
+  | -- | A clickable link, either to an external URL or a local page.
+    UILink Text
   | -- | A custom widget name, for use in applications built on top of the Swarm library.
     CustomName Text
   deriving (Eq, Ord, Show, Read)

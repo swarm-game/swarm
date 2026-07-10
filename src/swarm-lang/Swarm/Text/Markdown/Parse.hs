@@ -24,6 +24,7 @@ import Commonmark qualified as Mark
 import Commonmark.Extensions qualified as Mark (rawAttributeSpec)
 import Control.Applicative ((<|>))
 import Control.Arrow (left)
+import Control.Monad (guard)
 import Data.Functor.Identity (Identity (..))
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -85,7 +86,7 @@ instance Mark.IsInline (Paragraph Text) where
   escapedChar c = Mark.str $ T.pack ['\\', c]
   emph = mapP $ addTextAttribute Emphasis
   strong = mapP $ addTextAttribute Strong
-  link dest title desc = pureP (txt "[") <> desc <> pureP (txt $ "](" <> dest <> quoteMaybe title <> ")")
+  link dest title desc = pureP $ LeafLink dest (title <$ guard (title /= "")) desc
   image dest title desc = pureP (txt "!") <> Mark.link dest title desc
   code = pureP . LeafCode
   rawInline (Mark.Format f) = pureP . LeafRaw (T.unpack f)
@@ -166,3 +167,4 @@ fromText = either (Document . (: []) . pureP . LeafRaw "") ((mapD . mapP) proces
     LeafCodeBlock b c -> either (LeafRaw "") (LeafCodeBlock b) (parseSyntax c)
     LeafText a b -> LeafText a b
     LeafRaw a b -> LeafRaw a b
+    LeafLink a b c -> LeafLink a b (mapP processNode c)

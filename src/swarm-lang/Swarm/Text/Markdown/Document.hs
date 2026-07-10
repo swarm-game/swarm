@@ -80,6 +80,8 @@ data TxtAttr where
   Raw :: String -> TxtAttr
   -- | Code.
   Code :: TxtAttr
+  -- | A link, consisting of a destination and optional title.
+  Link :: Text -> Maybe Text -> TxtAttr
   deriving (Eq, Show, Ord)
 
 -- | Inline leaf nodes.
@@ -95,6 +97,8 @@ data Node c
     LeafCode c
   | -- | A code block.
     LeafCodeBlock String c
+  | -- | A link: target, optional title, contents.
+    LeafLink Text (Maybe Text) (Paragraph c)
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 --------------------------------------------------

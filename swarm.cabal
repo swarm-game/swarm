@@ -279,6 +279,9 @@ common network
 common nonempty-containers
   build-depends: nonempty-containers >=0.3.4 && <0.3.6
 
+common open-browser
+  build-depends: open-browser >=0.5 && <0.6
+
 common optparse-applicative
   build-depends: optparse-applicative >=0.16 && <0.20
 
@@ -1096,6 +1099,7 @@ library swarm-tui
     murmur3,
     natural-sort,
     nonempty-containers,
+    open-browser,
     palette,
     servant-docs,
     split,

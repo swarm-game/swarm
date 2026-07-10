@@ -205,11 +205,13 @@ drawMarkdown d = do
   applyAttrs w = foldr applyAttr w <$> get
 
   applyAttr :: Markdown.TxtAttr -> Widget Name -> Widget Name
-  applyAttr a = withAttr $ case a of
-    Markdown.Strong -> boldAttr
-    Markdown.Emphasis -> italicAttr
-    Markdown.Raw f -> rawAttr f
-    Markdown.Code -> highlightAttr
+  applyAttr = \case
+    Markdown.Strong -> withAttr boldAttr
+    Markdown.Emphasis -> withAttr italicAttr
+    Markdown.Raw f -> withAttr (rawAttr f)
+    Markdown.Code -> withAttr highlightAttr
+    -- XXX Eventually, put it in a focus ring & allow selecting it.
+    Markdown.Link dest _title -> clickable (UILink dest) . withAttr highlightAttr
 
   rawAttr = \case
     "entity" -> greenAttr
