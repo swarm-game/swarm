@@ -19,11 +19,12 @@ module Swarm.Text.Markdown.Render (
 
 import Data.Text (Text)
 import Data.Text qualified as T
-import Swarm.Text.Markdown.Layout (ToStream (..))
+import Swarm.Pretty (PrettyPrec)
+import Swarm.Text.Markdown.Document (Document)
+import Swarm.Text.Markdown.Layout (documentToStream)
 import Swarm.Text.Markdown.Token (
   OutputToken,
   Token' (..),
-  TokenPhase (Output),
  )
 
 ------------------------------------------------------------
@@ -45,13 +46,11 @@ streamToText = T.concat . map tokenToText
 -- Rendering streamable things as text
 ------------------------------------------------------------
 
--- | Turn anything that can be converted to a token stream (such as
---   'Document') into text, ignoring any formatting.
-toText :: ToStream a Output => a -> Text
+-- | Turn a 'Document' into text, ignoring any formatting.
+toText :: PrettyPrec c => Document c -> Text
 toText = toTextWidth Nothing
 
--- | Turn anything that can be converted to a token stream (such as
---   'Document') into text, ignoring any formatting but wrapping to a
---   specified line width.
-toTextWidth :: ToStream a Output => Maybe Int -> a -> Text
-toTextWidth mw = streamToText . toStream mw
+-- | Turn a 'Document' into text, ignoring any formatting but wrapping
+--   to a specified line width.
+toTextWidth :: PrettyPrec c => Maybe Int -> Document c -> Text
+toTextWidth mw = streamToText . documentToStream mw

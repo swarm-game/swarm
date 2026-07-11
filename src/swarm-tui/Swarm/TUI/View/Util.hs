@@ -175,7 +175,7 @@ drawMarkdown d = do
     let w = ctx ^. availWidthL
 
     -- Compile + layout the parsed Markdown document into a token stream
-    let docStream :: [Markdown.OutputToken] = Markdown.toStream (Just w) d
+    let docStream :: [Markdown.OutputToken] = Markdown.documentToStream (Just w) d
 
     -- Split the stream at paragraph breaks, render each paragraph,
     -- and lay them out with spacing

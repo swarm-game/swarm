@@ -44,7 +44,7 @@ module Swarm.Text.Markdown (
   OutputToken,
 
   -- * Layout/rendering
-  ToStream (..),
+  documentToStream,
   toText,
   toTextWidth,
   docToMark,
@@ -60,7 +60,7 @@ import Swarm.Text.Markdown.Document (
   TxtAttr (..),
   findCode,
  )
-import Swarm.Text.Markdown.Layout (ToStream (..))
+import Swarm.Text.Markdown.Layout (documentToStream)
 import Swarm.Text.Markdown.Parse (fromText, fromTextE, fromTextM)
 import Swarm.Text.Markdown.Pretty (docToMark)
 import Swarm.Text.Markdown.Render (toText, toTextWidth)

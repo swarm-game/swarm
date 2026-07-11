@@ -28,7 +28,7 @@ nodeToMark = \case
       wrap "`" c : ["{=" <> T.pack a <> "}" | not (null a)]
   LeafCode c -> wrap "`" (prettyText c)
   LeafCodeBlock f c -> codeBlock f $ prettyText c
-  LeafLink dest title desc -> between "[" "]" (paragraphToMark desc) <> between "(" ")" (mkTarget dest title)
+  LeafLink dest title desc -> between "[" "]" (foldMap nodeToMark desc) <> between "(" ")" (mkTarget dest title)
  where
   codeBlock f t = wrap "```" $ T.pack f <> "\n" <> t <> "\n"
   mkTarget dest title = dest <> maybe "" ((" " <>) . wrap "\"") title
@@ -45,7 +45,9 @@ nodeToMark = \case
 
 -- | Convert a 'Paragraph' to Markdown format.
 paragraphToMark :: PrettyPrec a => Paragraph a -> Text
-paragraphToMark = foldMap nodeToMark . nodes
+paragraphToMark = \case
+  SimpleParagraph ns -> foldMap nodeToMark ns
+  ListParagraph _ty _sp _ds -> undefined
 
 -- | Convert a 'Document' to Markdown format.
 docToMark :: PrettyPrec a => Document a -> Text
