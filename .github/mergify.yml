@@ -1,10 +1,9 @@
 queue_rules:
   - name: default
     merge_method: squash
-    commit_message_template: |
-      {{ title }} (#{{ number }})
-
-      {{ body }}
+    commit_message_format:
+      title: pr-title
+      body: pr-body
     queue_conditions:
       - or:
         - and:
