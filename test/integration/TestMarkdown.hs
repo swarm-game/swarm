@@ -6,16 +6,15 @@
 -- Test Markdown processing capabilities.
 module TestMarkdown (testMarkdown) where
 
-import Data.Char (isSpace)
 import Data.Map (Map, (!?))
 import Data.Map qualified as M
 import Data.Text (Text)
-import Data.Text qualified as T
 import Swarm.Text.Markdown (fromTextM, toTextWidth)
-import Swarm.Util (acquireAllWithExt)
+import Swarm.Util (acquireAllWithExt, findAllWithExt)
 import System.FilePath (dropExtension, takeExtension)
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (Assertion, assertEqual, testCase)
+import Test.Tasty.Golden (goldenVsString)
+import Witch (Utf8L, via)
 
 -- | Generate test tree to check that the .md files in
 --   @data/test/markdown/@ can be processed and laid out successfully.
@@ -26,30 +25,24 @@ import Test.Tasty.HUnit (Assertion, assertEqual, testCase)
 testMarkdown :: IO TestTree
 testMarkdown = do
   testFiles <- acquireAllWithExt "data/test/markdown" "md"
-  outputFiles <- acquireAllWithExt "data/test/markdown" "txt"
-  let outputMap :: Map String [(Int, Text)]
-      outputMap =
+  goldenFiles <- findAllWithExt "data/test/markdown" "txt"
+  let goldenMap :: Map String [FilePath]
+      goldenMap =
         M.fromListWith
           (++)
-          [ (key, [(width, content)])
-          | (name, content) <- outputFiles
-          , let width = read . drop 1 . takeExtension . dropExtension $ name
+          [ (key, [name])
+          | name <- goldenFiles
           , let key = dropExtension . dropExtension $ name
           ]
-
       checkMarkdown :: (FilePath, Text) -> TestTree
       checkMarkdown (fp, md) =
-        testGroup fp (maybe [] (map (mkMarkdownTest md)) (outputMap !? dropExtension fp))
+        testGroup fp (maybe [] (map (mkMarkdownTest md)) (goldenMap !? dropExtension fp))
 
-      mkMarkdownTest :: Text -> (Int, Text) -> TestTree
-      mkMarkdownTest md (w, golden) =
-        testCase (show w) $ do
-          doc <- fromTextM md
-          assertEqualUpToTrailingWS "Laid-out markdown does not match" golden (toTextWidth (Just w) doc)
+      mkMarkdownTest :: Text -> FilePath -> TestTree
+      mkMarkdownTest md goldenFile =
+        let w = drop 1 . takeExtension . dropExtension $ goldenFile
+         in goldenVsString w goldenFile $ do
+              doc <- fromTextM md
+              pure . via @Utf8L $ toTextWidth (Just (read w)) doc
 
   pure . testGroup "Check markdown processing" $ map checkMarkdown testFiles
-
-assertEqualUpToTrailingWS :: String -> Text -> Text -> Assertion
-assertEqualUpToTrailingWS msg x y = assertEqual msg (trim x) (trim y)
- where
-  trim = T.dropWhileEnd isSpace

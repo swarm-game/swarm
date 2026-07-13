@@ -356,6 +356,9 @@ common tasty-bench
 common tasty-expected-failure
   build-depends: tasty-expected-failure >=0.12 && <0.13
 
+common tasty-golden
+  build-depends: tasty-golden >=2.3 && <2.4
+
 common tasty-hunit
   build-depends: tasty-hunit >=0.10 && <0.11
 
@@ -1379,6 +1382,7 @@ test-suite swarm-integration
     mtl,
     tasty,
     tasty-expected-failure,
+    tasty-golden,
     tasty-hunit,
     text,
     witch,
