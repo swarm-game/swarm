@@ -74,7 +74,7 @@ import Swarm.Language.JSON (parseProgram)
 import Swarm.Language.Module (Module)
 import Swarm.Language.Pipeline (Processable (..), processTerm)
 import Swarm.Language.Syntax (Phase (..), Syntax)
-import Swarm.Language.Text.Markdown (Document)
+import Swarm.Text.Markdown (Document)
 import Swarm.Util.Lens (makeLensesExcluding)
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)

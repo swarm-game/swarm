@@ -61,6 +61,8 @@ data-files:
   test/export/**/*.sw
   test/import/**/*.sw
   test/language-snippets/**/*.sw
+  test/markdown/*.md
+  test/markdown/*.txt
   test/saves/*.yaml
   test/standalone-topography/*.png
   test/standalone-topography/*.yaml
@@ -509,12 +511,18 @@ library swarm-lang
     Swarm.Language.Syntax.Pretty
     Swarm.Language.Syntax.Util
     Swarm.Language.TDVar
-    Swarm.Language.Text.Markdown
     Swarm.Language.Typecheck
     Swarm.Language.Types
     Swarm.Language.Value
     Swarm.Language.Var
     Swarm.Language.WithType
+    Swarm.Text.Markdown
+    Swarm.Text.Markdown.Document
+    Swarm.Text.Markdown.Layout
+    Swarm.Text.Markdown.Parse
+    Swarm.Text.Markdown.Pretty
+    Swarm.Text.Markdown.Render
+    Swarm.Text.Markdown.Token
 
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm
@@ -1381,6 +1389,7 @@ test-suite swarm-integration
     TestEditorFiles
     TestFormat
     TestLoadingErrors
+    TestMarkdown
     TestRecipeCoverage
     TestScenarioParse
     TestScenarioSolutions

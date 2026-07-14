@@ -10,8 +10,10 @@ import Brick.Widgets.Dialog
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
 import Control.Monad.Reader (withReaderT)
+import Control.Monad.State (State, evalState)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
+import Data.List.Split (splitOn)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isJust)
@@ -30,7 +32,6 @@ import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
 import Swarm.Game.Terrain
 import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Syntax, Unresolvable)
-import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Types (Polytype)
 import Swarm.Pretty (PrettyPrec, prettyTextLine)
 import Swarm.TUI.Model
@@ -39,6 +40,7 @@ import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
+import Swarm.Text.Markdown qualified as Markdown
 import Swarm.Util (maximum0)
 import Witch (from, into)
 
@@ -161,7 +163,7 @@ drawType ty = Widget Fixed Fixed $ do
         | otherwise = T.take (w `div` 2 - 2 - 3) renderedTy <> "..."
   render . withAttr infoAttr . padLeftRight 1 . txt $ displayedTy
 
--- | Draw markdown document with simple code/bold/italic attributes.
+-- | Draw a markdown document with simple code, bold, or italic attributes.
 --
 -- TODO: #574 Code blocks should probably be handled separately.
 drawMarkdown ::
@@ -171,16 +173,44 @@ drawMarkdown d = do
   Widget Greedy Fixed $ do
     ctx <- getContext
     let w = ctx ^. availWidthL
-    let docLines = Markdown.chunksOf w . Markdown.toStream <$> Markdown.paragraphs d
-    render . layoutParagraphs $ vBox . map (hBox . map mTxt) <$> docLines
+
+    -- Compile + layout the parsed Markdown document into a token stream
+    let docStream :: [Markdown.OutputToken] = Markdown.toStream (Just w) d
+
+    -- Split the stream at paragraph breaks, render each paragraph,
+    -- and lay them out with spacing
+    render . layoutParagraphs . map renderPara . splitOn [Markdown.Para] $ docStream
  where
-  mTxt = \case
-    Markdown.TextNode as t -> foldr applyAttr (txt t) as
-    Markdown.CodeNode t -> withAttr highlightAttr $ txt t
-    Markdown.RawNode f t -> withAttr (rawAttr f) $ txt t
+  -- To render a paragraph, split on newlines and then render each
+  -- line while keeping track of an attribute stack.
+  renderPara :: [Markdown.OutputToken] -> Widget Name
+  renderPara =
+    flip evalState []
+      . fmap vBox
+      . mapM (fmap (hBox . catMaybes) . mapM renderToken)
+      . splitOn [Markdown.Newline]
+
+  renderToken :: Markdown.OutputToken -> State [Markdown.TxtAttr] (Maybe (Widget Name))
+  renderToken = \case
+    Markdown.TextToken t -> Just <$> applyAttrs (txt t)
+    Markdown.PushAttr a -> Nothing <$ modify (a :)
+    Markdown.PopAttr -> Nothing <$ modify (drop 1)
+    -- These last two cases shouldn't happen, since we split on Para and
+    -- Newline.  Output something that will make it obvious if we ever
+    -- violate that invariant.
+    Markdown.Newline -> pure . Just $ txt "[[NEWLINE]]"
+    Markdown.Para -> pure . Just $ txt "[[PARA]]"
+
+  applyAttrs :: Widget Name -> State [Markdown.TxtAttr] (Widget Name)
+  applyAttrs w = foldr applyAttr w <$> get
+
+  applyAttr :: Markdown.TxtAttr -> Widget Name -> Widget Name
   applyAttr a = withAttr $ case a of
     Markdown.Strong -> boldAttr
     Markdown.Emphasis -> italicAttr
+    Markdown.Raw f -> rawAttr f
+    Markdown.Code -> highlightAttr
+
   rawAttr = \case
     "entity" -> greenAttr
     "structure" -> redAttr
