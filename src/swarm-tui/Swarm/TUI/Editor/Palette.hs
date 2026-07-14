@@ -33,8 +33,8 @@ import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainMap, TerrainType, getTerrainDefaultPaletteChar, terrainByName)
 import Swarm.Game.Universe
 import Swarm.Language.Syntax (Elaborated, eraseRaw)
-import Swarm.Language.Text.Markdown (fromText)
 import Swarm.TUI.Editor.Json (SkeletonScenario (SkeletonScenario))
+import Swarm.Text.Markdown (fromText)
 import Swarm.Util (binTuples, histogram)
 import Swarm.Util.Erasable
 

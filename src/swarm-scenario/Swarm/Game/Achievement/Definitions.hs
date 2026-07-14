@@ -27,7 +27,7 @@ import Data.List.Extra (enumerate)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Swarm.Language.Syntax (Phase (Raw), Syntax)
-import Swarm.Language.Text.Markdown (Document)
+import Swarm.Text.Markdown (Document)
 
 -- | How hard do we expect the achievement to be?
 data ExpectedEffort

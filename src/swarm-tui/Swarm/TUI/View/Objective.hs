@@ -18,13 +18,13 @@ import Data.Map.Strict qualified as M
 import Data.Vector qualified as V
 import Swarm.Game.Scenario.Objective
 import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (..), Syntax, Unresolvable)
-import Swarm.Language.Text.Markdown (Document)
-import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Pretty (PrettyPrec)
 import Swarm.TUI.Model.Dialog.Goal
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.Util
+import Swarm.Text.Markdown (Document)
+import Swarm.Text.Markdown qualified as Markdown
 import Swarm.Util (applyWhen)
 
 makeListWidget :: GoalTracking -> BL.List Name GoalEntry
@@ -104,7 +104,7 @@ drawGoalListItem _isSelected e = case e of
   Header gs -> withAttr boldAttr $ str $ show gs
   Goal gs obj -> getCompletionIcon obj gs <+> titleWidget
    where
-    textSource = obj ^. objectiveTeaser <|> obj ^. objectiveId <|> Just (Markdown.docToText $ obj ^. objectiveGoal)
+    textSource = obj ^. objectiveTeaser <|> obj ^. objectiveId <|> Just (Markdown.toText $ obj ^. objectiveGoal)
     titleWidget = maybe (txt "?") (titleColor . withEllipsis End) textSource
     titleColor = applyWhen (obj ^. objectiveOptional) $ withAttr grayAttr
 
