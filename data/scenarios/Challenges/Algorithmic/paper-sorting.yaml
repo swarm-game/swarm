@@ -35,8 +35,6 @@ robots:
       - strange loop
       - linotype
       - parsley
-      - pigeon coop
-      - origami pigeon
   - name: judge
     system: true
     dir: east

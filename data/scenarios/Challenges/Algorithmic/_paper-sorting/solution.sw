@@ -1,4 +1,19 @@
-import "~swarm/lib/control"
+def ifC: ∀ a. Cmd Bool -> {Cmd a} -> {Cmd a} -> Cmd a
+  = \test. \then. \else.
+  b <- test;
+  if b then else
+end
+
+def while: ∀ a. Cmd Bool -> {Cmd a} -> Cmd Unit
+  = \test. \body.
+  ifC test {force body; while test body} {}
+end
+
+def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {} end
+
+def upTo_ : Int -> Int -> (Int -> Cmd a) -> Cmd Unit = \n. \k. \f.
+  if (n == k) {} {f k; upTo_ n (k+1) f}
+end
 
 def placeAll = \c.
   let p = "paper: " ++ toChar (c + 65) in
