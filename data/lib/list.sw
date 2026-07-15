@@ -46,3 +46,10 @@ def mapM_ : (a -> Cmd b) -> List a -> Cmd Unit = \f. λcase
   (\_. pure ())
   (λmatch \hd. \tl. f hd; mapM_ f tl)
   end;
+
+def reverse : List a -> List a = \xs.
+  let rev : List a -> List a -> List a = \acc. λcase
+    (\_. acc)
+    (λmatch \x. rev (inr (x, acc)))
+  in  rev (inl ()) xs
+end
