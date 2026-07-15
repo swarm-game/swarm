@@ -63,6 +63,8 @@ data Capability
     CProd
   | -- | Capability for working with record types.
     CRecord
+  | -- | Capability for creating literal arrays.
+    CArray
   | -- | Debug capability.
     CDebug
   | -- | Capability to handle recursive types.

@@ -52,6 +52,12 @@ def for_: Int -> (Int -> Cmd a) -> Cmd Unit
   if (n == 0) {} {k n; for_ (n - 1) k}
 end
 
+def upTo_ : Int -> Int -> (Int -> Cmd a) -> Cmd Unit = \n. \k. \f.
+  if (n == k) {} {f k; upTo_ n (k+1) f}
+end
+
+
+
 def intersperse
   = \n. \f2. \f1.
   if (n > 0) {f1; if (n > 1) {f2} {}; intersperse (n - 1) f2 f1} {}

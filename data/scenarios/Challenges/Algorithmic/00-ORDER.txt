@@ -3,3 +3,6 @@ combo-lock.yaml
 dimsum.yaml
 gallery.yaml
 word-search.yaml
+paper-sorting.yaml
+iterate-perm.yaml
+iterate-perm-hard.yaml

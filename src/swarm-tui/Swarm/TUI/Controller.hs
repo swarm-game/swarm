@@ -738,8 +738,8 @@ handleREPLEventTyping m = \case
       ev -> do
         Brick.zoom (scenarioState . uiGameplay . uiREPL . replPromptEditor) $ case ev of
           CharKey c
-            | c `elem` ("([{" :: String) -> insertMatchingPair c
-            | c `elem` (")]}" :: String) -> insertOrMovePast c
+            | c `elem` (")]}|" :: String) -> insertOrMovePast c
+            | c `elem` ("([{|" :: String) -> insertMatchingPair c
             | c == '"' -> do
                 tz <- use editContentsL
                 case TZ.currentChar tz of
@@ -763,14 +763,18 @@ handleREPLEventTyping m = \case
           Key V.KRight -> pure ()
           _ -> Brick.zoom scenarioState $ modify validateREPLForm
 
-insertMatchingPair :: Char -> EventM Name (Editor Text Name) ()
-insertMatchingPair c = modify . applyEdit $ TZ.insertChar c >>> TZ.insertChar (close c) >>> TZ.moveLeft
+insertMatchingPairEdit :: Char -> TZ.TextZipper Text -> TZ.TextZipper Text
+insertMatchingPairEdit c = TZ.insertChar c >>> TZ.insertChar (close c) >>> TZ.moveLeft
  where
   close = \case
     '(' -> ')'
     '[' -> ']'
     '{' -> '}'
+    '|' -> '|'
     _ -> c
+
+insertMatchingPair :: Char -> EventM Name (Editor Text Name) ()
+insertMatchingPair = modify . applyEdit . insertMatchingPairEdit
 
 -- | Insert a character in an editor unless it matches the character
 --   already at the cursor, in which case we just move past it
@@ -780,7 +784,9 @@ insertOrMovePast c = do
   e <- get
   modify . applyEdit $ case TZ.currentChar (e ^. editContentsL) of
     Just c' | c' == c -> TZ.moveRight
-    _ -> TZ.insertChar c
+    _
+      | c == '|' -> insertMatchingPairEdit '|'
+      | otherwise -> TZ.insertChar c
 
 data CompletionType
   = FunctionName

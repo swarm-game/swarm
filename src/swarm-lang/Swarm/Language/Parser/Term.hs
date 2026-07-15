@@ -98,6 +98,7 @@ parseTermAtom2 =
           <*> join (bindTydef <$> many tyVar <*> (symbol "=" *> parseType <* reserved "end"))
           <*> pure Nothing
           <*> (optional (symbol ";") *> (parseTerm <|> (eof $> sNoop)))
+        <|> SArray <$> abrackets (parseTerm `sepBy` symbol ",")
         <|> SRcd <$> brackets (parseRecord (optional (symbol "=" *> parseTerm)))
         <|> TType <$> (symbol "@" *> parseTypeAtom)
         <|> SImportIn

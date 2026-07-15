@@ -127,6 +127,7 @@ pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
     SDelay s -> d s
     SRcd m -> asum . map d . mapMaybe snd $ m
     SProj s1 _ -> d s1
+    SArray ss -> asum . map d $ ss
     SAnnotate s _ -> d s
     SRequirements _ s -> d s
     SParens s -> d s

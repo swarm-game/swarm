@@ -405,6 +405,28 @@
       ```
   properties: [pickable]
   capabilities: ["++"]
+- name: pigeon coop
+  display:
+    attr: wood
+    char: '■'
+  description:
+    - |
+      A series of holes suitable for housing pigeons, or other objects. Like so:
+    - |
+      ```
+      [|1, 2, 3|]
+      ```
+  properties: [pickable]
+  capabilities: [array, indexArray, arraySize]
+- name: origami pigeon
+  display:
+    attr: grey
+    char: 'P'
+  description:
+    - |
+      Unfolding this folded pigeon brings a folder of unfolding possibilities into the fold. More on this unfolding story below the fold.
+  properties: [pickable]
+  capabilities: [unfoldArray, unfoldArrayC]
 - name: caliper
   display:
     attr: silver

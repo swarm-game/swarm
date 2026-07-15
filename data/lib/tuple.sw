@@ -1,5 +1,9 @@
 import "control"
 
+def fst : a * b -> a = λmatch \x. \_. x end
+
+def snd : a * b -> b = λmatch \_. \y. y end
+
 def mapTuple = \f. λmatch \x. \y. (f x, f y) end;
 
 def sumTuples = λmatch \t11. \t12. λmatch \t21. \t22.

@@ -79,6 +79,7 @@ module Swarm.Language.Syntax (
   pattern TDelay,
   pattern TRcd,
   pattern TProj,
+  pattern TArray,
   pattern TAnnotate,
   pattern TSuspend,
   pattern TImportIn,
