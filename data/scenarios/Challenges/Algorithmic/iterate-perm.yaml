@@ -24,6 +24,8 @@ objectives:
         perform the same operation (i.e. taking the letter that is now
         in the first position and moving it to the third position, and
         so on) five more times.
+      - |
+        TIP: check out the `pigeon coop`{=entity} and `origami pigeon`{=entity} devices!
     condition: |
       judge <- robotNamed "judge";
       as judge {
