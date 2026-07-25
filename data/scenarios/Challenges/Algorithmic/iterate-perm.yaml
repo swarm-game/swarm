@@ -5,7 +5,8 @@ description: |
   Repeatedly apply a permutation.
 creative: false
 objectives:
-  - teaser: Sort
+  - id: permute
+    teaser: Permute
     goal:
       - |
         When you went to bed last night, the alphabet was laid out
@@ -28,6 +29,16 @@ objectives:
         TIP: check out the `pigeon coop`{=entity} and `origami pigeon`{=entity} devices!
     condition: |
       judge <- robotNamed "judge";
+      as judge {
+        has "bitcoin"
+      }
+  - teaser: Permute Harder
+    optional: true
+    goal:
+      - |
+        Only FIVE more times?  How about a MILLION more times, amiright?
+    condition: |
+      judge <- robotNamed "judge2";
       as judge {
         has "bitcoin"
       }
@@ -60,9 +71,9 @@ robots:
       invisible: true
     program: |
       perm <- instant {import "_iterate-perm/judge"; setup};
-      import "_iterate-perm/judge"; judge 5 perm
+      import "_iterate-perm/judge"; build {setname "judge2"; judge 1000000 perm}; judge 5 perm
 solution: |
-  import "_iterate-perm/solution-naive"; go 5
+  import "_iterate-perm/solution"; go 5 1000000
 known: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
 entities:
   - name: 'A'
