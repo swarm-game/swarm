@@ -42,10 +42,14 @@ def gotoY : Int -> Cmd Unit = \tgt.
     }
 end;
 def goto : Int -> Int -> Cmd Unit = \x. \y. gotoX x; gotoY y; gotoX x; gotoY y end;
+def ishere : Text -> Cmd Bool = \t.
+  h <- scan down;
+  pure (h == t)
+end
 def spawnfwd : {Cmd Unit} -> Cmd Unit = \c.
    try {
      move;
-     b <- isHere "tree";
+     b <- ishere "tree";
      if b
        { build c; pure () }
        {};

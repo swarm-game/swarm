@@ -1,5 +1,6 @@
 import "~swarm/lib/control"
 import "~swarm/lib/arith"
+import "~swarm/lib/scan"
 
 /**
 Performs a right bitshift of "x" by "n" places
@@ -202,8 +203,8 @@ def getOrdinal : Text -> Cmd Int = \item.
     end;
 
 def checkSolutionSum = \runningSum.
-    maybeItem <- scan down;
-    case maybeItem (\_. pure runningSum) (\item.
+    item <- scan down;
+    if (item == "") {pure runningSum} {
         // The bell is the only other item we can place in this
         // scenario besides the fruits.
         if (item != "bell") {
@@ -212,7 +213,7 @@ def checkSolutionSum = \runningSum.
             move;
             checkSolutionSum $ binaryValue + runningSum;
         } {pure runningSum};
-    );
+    };
     end;
 
 def waitForFirstPlacement =

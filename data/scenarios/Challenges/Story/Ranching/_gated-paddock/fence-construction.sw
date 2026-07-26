@@ -53,13 +53,11 @@ def grabTrees =
 
 
 def harvestIfClover =
-    x <- scan down;
-    case x pure (\y.
-        if (y == "clover") {
-            harvest;
-            pure ();
-        } {};
-    );
+    y <- scan down;
+    if (y == "clover") {
+        harvest;
+        pure ();
+    } {};
     end;
 
 
@@ -163,13 +161,11 @@ def distributeCloverInPaddock =
 
 
 def pickupWool =
-    x <- scan down;
-    case x pure (\y.
-        if (y == "wool") {
-            grab;
-            pure ();
-        } {};
-    );
+    y <- scan down;
+    if (y == "wool") {
+        grab;
+        pure ();
+    } {};
     end;
 
 def sweep2rows =

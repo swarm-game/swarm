@@ -1,4 +1,5 @@
 import "~swarm/lib/control"
+import "~swarm/lib/scan"
 
 def isUnlocked = \e. e == "one" || e == "two" || e == "three" end;
 def unlock = \e.
@@ -11,8 +12,8 @@ end;
 
 def go =
 forever (
-me <- scan down;
-case me (\_. pure ()) (\e.
+e <- scan down;
+if (e == "") {} {
 // if
 //  0. I stand on unlocked X
 //  1. place north of me is NOT empty
@@ -24,13 +25,13 @@ if (isUnlocked e)
 {
     northFullOrAllPlaced <- as self {
       mn <- scan north;
-      case mn (\_.
+      if (mn == "") {
         teleport self (0,-6);
         allPlaced <- ishere "three";
         pure (not allPlaced)
-      ) (\_.
+      } {
         pure true
-      );
+      };
     };
     if northFullOrAllPlaced {
       swap ("blocked " ++ e); pure ()
@@ -45,7 +46,7 @@ if (isUnlocked e)
 //  - unlock X
 {
     mn <- scan north;
-    case mn (\_.
+    if (mn == "") {
       wait 16;
       allPlaced <- as self {
         teleport self (0,-6);
@@ -61,7 +62,7 @@ if (isUnlocked e)
         pure (o1 && o2 && o3)
       };
       if (allPlaced && allSorted) {swap (unlock e); pure ()} {}
-    ) (\_. pure ())
+    } {}
 }
-))
+})
 end

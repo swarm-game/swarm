@@ -1,4 +1,5 @@
 import "~swarm/lib/control"
+import "~swarm/lib/scan"
 
 def pollUntilHas = \item.
     itemInInventory <- has item;

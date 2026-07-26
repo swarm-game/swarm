@@ -125,6 +125,7 @@ objectives:
     goal:
       - Brighten up your hovel with some kitsch.
     condition: |
+      import "~swarm/lib/scan";
       r <- robotnamed "platecheck";
       as base {
         ishere "painted plate";

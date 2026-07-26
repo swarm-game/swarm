@@ -7,6 +7,7 @@ objectives:
       - Move all the numbers (traditionally, "disks") from the left column to the right column.
       - You may only pick up one disk at a time, and you may never place a larger disk on top of a smaller one.
     condition: |
+      import "~swarm/lib/scan"
       teleport self (2,-1);
       x <- ishere "one";
       teleport self (2,-2);

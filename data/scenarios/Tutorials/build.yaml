@@ -21,6 +21,7 @@ objectives:
         for several tries; or, you can always hit **Ctrl+Q** and
         select "Start over".
     condition: |
+      import "~swarm/lib/scan";
       try {
         teleport self (0,-1);
         turn east;

@@ -1,7 +1,7 @@
 version: 1
 name: Test isempty
 description: |
-  Test the `isempty` command.
+  Test the `scan` command as used to implement `isempty`{=snippet}.
 objectives:
   - condition: |
       as base {has "thneed"}
@@ -10,6 +10,7 @@ objectives:
         The goal is to pick up the thing right after the empty
         spot in the row.
 solution: |
+  def isempty = h <- scan down; pure (h == "") end;
   def find_thing =
     e <- isempty;
     move;
@@ -22,6 +23,7 @@ robots:
     dir: east
     devices:
       - scanner
+      - comparator
       - branch predictor
       - grabber
       - strange loop

@@ -22,8 +22,8 @@ objectives:
     condition: |
       try {
         teleport self (32,-16);
-        b <- ishere "flower";
-        pure (not b)
+        h <- scan down;
+        pure (h != "flower")
       } { pure false }
 solution: |
   def x4 = \c. c; c; c; c end;

@@ -1,4 +1,5 @@
 import "~swarm/lib/control"
+import "~swarm/lib/scan"
 
 def x2 = \c. c;c end
 def x4 = \c. x2 c; x2 c end
@@ -11,7 +12,7 @@ def copyWith : Text -> Cmd Unit = \pix.
 end
 
 def copy : Cmd Unit =
-  ifC isEmpty {copyWith "pixel (B)"} {copyWith "pixel (W)"}
+  ifC isempty {copyWith "pixel (B)"} {copyWith "pixel (W)"}
 end
 
 def copyRow = x8 (copy; move) end

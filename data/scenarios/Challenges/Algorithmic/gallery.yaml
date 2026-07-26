@@ -50,8 +50,8 @@ objectives:
         presidents are invariably understocked relative to later ones.
     condition: |
       def ensureMonotonicDecreasing = \itemCount. \prevOrdinal.
-        maybeEntity <- scan down;
-        case maybeEntity (\_. pure $ itemCount == 0) (\item.
+        item <- scan down;
+        if (item == "") {pure $ itemCount == 0} {
             myCount <- count item;
             if (myCount <= prevOrdinal) {
               move;
@@ -59,7 +59,7 @@ objectives:
             } {
               pure false;
             };
-        );
+        };
         end;
 
       def λmatch = \f. \p. match p f end

@@ -5,6 +5,7 @@ description: |
   https://github.com/swarm-game/swarm/issues/504
 objectives:
   - condition: |
+      import "~swarm/lib/scan"
       try {
         create "tree"; place "tree";
         teleport self (5,0);

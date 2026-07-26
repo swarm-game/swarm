@@ -1,4 +1,5 @@
 import "~swarm/lib/control"
+import "~swarm/lib/scan"
 
 def colorFromIndex = \i.
     if (i == 0) {"R"}

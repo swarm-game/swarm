@@ -1,4 +1,5 @@
 import "~swarm/lib/control"
+import "~swarm/lib/scan"
 
 def waitUntilUnblocked =
     x <- blocked;

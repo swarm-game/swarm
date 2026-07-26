@@ -31,7 +31,8 @@ objectives:
     condition: |
       try {
         teleport self (0,3);
-        ishere "Hastur"
+        h <- scan down;
+        pure (h == "Hastur")
       } { pure false }
   - id: fail_to_grab
     teaser: Robot stopped
@@ -48,8 +49,8 @@ objectives:
           r <- robotnumbered 1;
           reprogram r {};
           teleport self (0,3);
-          h <- ishere "Hastur";
-          pure (not h)
+          h <- scan down;
+          pure (h != "Hastur")
         } {
           pure false
         }

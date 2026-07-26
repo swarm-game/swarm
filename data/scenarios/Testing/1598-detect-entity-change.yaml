@@ -28,6 +28,7 @@ objectives:
       - |
         Turn the light blue
     condition: |
+      import "~swarm/lib/scan"
       r <- robotnamed "lockbot";
       as r {ishere "dial (B)"};
 robots:
@@ -50,6 +51,7 @@ robots:
       invisible: true
     dir: [1, 0]
     program: |
+      import "~swarm/lib/scan"
       def doUntilCorrect =
           herenow <- ishere "dial (G)";
           if herenow {

@@ -23,6 +23,7 @@ objectives:
       - |
         Wheat in grass must not regrow
     condition: |
+      import "~swarm/lib/scan"
       observer <- robotnamed "observer";
       as observer {
         ishere "wheat";

@@ -6,6 +6,7 @@ objectives:
   - goal:
       - Push a crate onto the stone pad
     condition: |
+      import "~swarm/lib/scan"
       j <- robotnamed "judge";
       as j {ishere "crate"}
 solution: |

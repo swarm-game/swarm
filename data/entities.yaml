@@ -932,17 +932,16 @@
     - |
       With a scanner device, robots can use the `scan` command to learn about their surroundings.
       Simply give `scan` a direction in which to scan, and information about the scanned item (if any)
-      will be added to the robot's inventory.
+      will be added to the robot's inventory.  In addition, the `scan` command returns the name of the
+      scanned item, or the empty string if no item was found.
     - |
       A scanner also enables `blocked : Cmd Bool`, which returns a boolean value indicating whether the robot's path is blocked
-      (i.e. whether executing a `move` command would fail); `ishere : Text -> Cmd Bool` for checking whether the current cell
-      contains a particular entity; and `isempty : Cmd Bool` for checking whether the current cell is empty of entities.
-      Note that `ishere` and `isempty` do not detect robots, only entities."
+      (i.e. whether executing a `move` command would fail).
     - |
       Finally, robots can use the `upload` command to copy their accumulated knowledge to another nearby robot;
       for example, `upload base`."
   properties: [pickable]
-  capabilities: [scan, blocked, ishere, isempty, upload]
+  capabilities: [scan, blocked, upload]
 - name: olfactometer
   display:
     char: 'N'
@@ -1141,14 +1140,14 @@
     - "A rubber band can tie multiple commands together so that other robots can't execute commands in between them.  It can be used via the `atomic` command. For example, suppose robot A executes the following code:"
     - |
       ```
-      b <- ishere "rock"; if b {grab; pure ()} {}
+      here <- scan down; if (here == "rock") {grab; pure ()} {}
       ```
     - "This seems like a safe way to execute `grab` only when there is a rock to grab.  However, it is actually possible for the `grab` to fail, if some other robot B snatches the rock right after robot A sensed it and before robot A got around to grabbing it on the next game tick."
     - "This will make robot A very sad and it will crash."
     - "To prevent this situation, robot A can wrap the commands in `atomic`, like so:"
     - |
       ```
-      atomic {b <- ishere "rock"; if b {grab; pure ()} {}}
+      atomic {here <- scan down; if (here == "rock") {grab; pure ()} {}}
       ```
   properties: [pickable]
   capabilities: [atomic]

@@ -8,11 +8,11 @@ def getOrdinal : Text -> Cmd Int = \item.
     end;
 
 def getValueHere =
-    maybeItem <- scan down;
-    ordNum <- case maybeItem (\_. pure 0) getOrdinal;
+    item <- scan down;
+    if (item == "") {pure 0} {getOrdinal item}
     end;
 
 def itemIsHere = \item.
-    x <- scan down;
-    case x (\_. pure false) (\found. pure $ found == item);
+    found <- scan down;
+    pure $ found == item;
     end;
