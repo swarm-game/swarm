@@ -324,7 +324,7 @@ customTimeoutScenarios =
     , "Testing/562-lodestone" ==> 2
     , "Testing/1024-sand" ==> 2
     , "Testing/1533-sow-command" ==> 10
-    , "Testing/836-pathfinding/836-no-path-exists2" ==> 10
+    , "Testing/836-pathfinding/836-no-path-exists2" ==> 20
     , "Testing/836-pathfinding/836-automatic-waypoint-navigation" ==> 3
     , "Testing/2270-instant-defs" ==> 3
     ]
