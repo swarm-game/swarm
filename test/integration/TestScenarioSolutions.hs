@@ -326,6 +326,7 @@ customTimeoutScenarios =
     , "Testing/1533-sow-command" ==> 10
     , "Testing/836-pathfinding/836-no-path-exists2" ==> 10
     , "Testing/836-pathfinding/836-automatic-waypoint-navigation" ==> 3
+    , "Testing/2270-instant-defs" ==> 3
     ]
  where
   p ==> n = let p' = normalizePath p in scenarioTest p' (Timed (isTutorial p') (Sec n))
