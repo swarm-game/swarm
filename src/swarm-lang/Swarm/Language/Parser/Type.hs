@@ -83,6 +83,7 @@ parseTyCon :: Parser TyCon
 parseTyCon = do
   choice (map (\b -> TCBase b <$ reservedCS (baseTyName b)) enumerate)
     <|> TCCmd <$ reservedCS "Cmd"
+    <|> TCArray <$ reservedCS "Array"
     <|> TCUser <$> tyName
 
 -- | Close over a recursive type, replacing any bound occurrences

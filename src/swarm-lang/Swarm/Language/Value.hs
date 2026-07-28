@@ -46,6 +46,8 @@ import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Graphics.Vty.Input.Events qualified as V
+import Swarm.Language.Array (SwarmArray)
+import Swarm.Language.Array qualified as A
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Key (KeyCombo, mkKeyCombo, prettyKeyCombo)
@@ -134,6 +136,8 @@ data Value where
   -- | A special value used to represent runtime type information
   --   passed to ad-hoc polymorphic functions.
   VType :: Type -> Value
+  -- | An array value.
+  VArray :: SwarmArray Value -> Value
   deriving (Eq, Generic, Hashable)
 
 -- For the lack of Show and Eq instances, see Note [Env Show and Eq
@@ -276,6 +280,7 @@ valueToTerm = \case
   VExc -> TConst Undefined
   VBlackhole -> TConst Undefined
   VType ty -> TType ty
+  VArray arr -> TArray (map valueToTerm . A.toList $ arr)
 
 ------------------------------------------------------------
 -- Default values

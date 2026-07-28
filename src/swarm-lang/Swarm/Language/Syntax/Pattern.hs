@@ -26,6 +26,7 @@ module Swarm.Language.Syntax.Pattern (
   pattern TDelay,
   pattern TRcd,
   pattern TProj,
+  pattern TArray,
   pattern TAnnotate,
   pattern TSuspend,
   pattern TImportIn,
@@ -127,6 +128,12 @@ pattern TRcd m <- SRcd ((map . second . fmap) _sTerm -> m)
 pattern TProj :: (SwarmType phase ~ ()) => Term phase -> Var -> Term phase
 pattern TProj t x = SProj (RTerm t) x
 
+-- | Match an array literal without annotations.
+pattern TArray :: (SwarmType phase ~ ()) => [Term phase] -> Term phase
+pattern TArray ts <- SArray (map _sTerm -> ts)
+  where
+    TArray ts = SArray (map RTerm ts)
+
 -- | Match a TAnnotate without annotations.
 pattern TAnnotate :: (SwarmType phase ~ ()) => Term phase -> RawPolytype -> Term phase
 pattern TAnnotate t pt = SAnnotate (RTerm t) pt
@@ -149,4 +156,4 @@ pattern TParens t = SParens (RTerm t)
 
 -- COMPLETE pragma tells GHC using this set of patterns is complete for Term
 
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequire, TStock, TRequirements, TVar, TPair, TLam, TApp, TLet, TTydef, TBind, TDelay, TRcd, TProj, TAnnotate, TSuspend, TImportIn, TExportIn, TParens #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequire, TStock, TRequirements, TVar, TPair, TLam, TApp, TLet, TTydef, TBind, TDelay, TRcd, TProj, TArray, TAnnotate, TSuspend, TImportIn, TExportIn, TParens #-}

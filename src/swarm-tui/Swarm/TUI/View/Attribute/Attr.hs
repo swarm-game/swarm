@@ -89,6 +89,7 @@ mkBrickColor = \case
     Blue -> V.blue
     BrightYellow -> V.brightYellow
     Yellow -> V.yellow
+    Grey -> V.rgbColor (100 :: Int) 100 100
 
 -- | A mapping from the defined attribute names to TUI attributes.
 swarmAttrMap :: AttrMap

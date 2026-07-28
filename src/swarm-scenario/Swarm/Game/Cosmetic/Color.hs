@@ -19,6 +19,7 @@ data NamedColor
   | Blue
   | BrightYellow
   | Yellow
+  | Grey
   deriving (Show)
 
 -- | 8-bit color
@@ -44,6 +45,7 @@ namedToTriple = \case
   Blue -> RGB 18 72 139
   BrightYellow -> RGB 233 173 12
   Yellow -> RGB 162 115 76
+  Grey -> RGB 100 100 100
 
 -- | High-fidelity color representation for rendering
 -- outside of the TUI.
