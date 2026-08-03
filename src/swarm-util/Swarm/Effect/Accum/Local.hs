@@ -13,9 +13,9 @@ data Accum (w :: Type) :: Effect
 type instance DispatchOf (Accum w) = Static NoSideEffects
 newtype instance StaticRep (Accum w) = Accum w
 
-runAccum :: (HasCallStack, Monoid w) => Eff (Accum w : es) a -> Eff es (w, a)
-runAccum m = do
-  (a, Accum w) <- runStaticRep (Accum mempty) m
+runAccum :: (HasCallStack, Monoid w) => w -> Eff (Accum w : es) a -> Eff es (w, a)
+runAccum w0 m = do
+  (a, Accum w) <- runStaticRep (Accum w0) m
   pure (w, a)
 
 add :: (HasCallStack, Accum w :> es, Monoid w) => w -> Eff es ()
