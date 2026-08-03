@@ -182,6 +182,12 @@ common directory
 common dotgen
   build-depends: dotgen >=0.4 && <0.5
 
+common effectful-core
+  build-depends: effectful-core >=2.6.0.0 && <2.7
+
+common effectful
+  build-depends: effectful >=2.6.0.0 && <2.7
+
 common either
   build-depends: either >=5.0 && <5.1
 
@@ -436,6 +442,7 @@ library swarm-lang
     data-fix,
     deriving-compat,
     directory,
+    effectful-core,
     extra,
     free,
     fused-effects,
@@ -945,6 +952,7 @@ library swarm-util
     containers,
     data-fix,
     directory,
+    effectful-core,
     either,
     ekg-core,
     extra,
