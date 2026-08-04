@@ -13,10 +13,9 @@ module Swarm.Language.Syntax.Import.Resolve (
 )
 where
 
-import Control.Algebra (Has)
-import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Throw (Throw)
 import Data.Text (Text)
+import Effectful
+import Effectful.Error.Static
 import Swarm.Failure (AssetData (Script), SystemFailure)
 import Swarm.Language.Syntax.Import.Internal
 import Swarm.ResourceLoading (getDataDirThrow)
@@ -43,10 +42,10 @@ unresolveImportLoc :: Unresolvable phase => ImportLoc phase -> ImportLoc Raw
 unresolveImportLoc (ImportLoc d f) = ImportLoc (unresolveImportDir d) f
 
 -- | Resolve an import directory, turning it into an absolute path.
-resolveImportDir :: (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) => ImportDir Raw -> m (ImportDir Resolved)
+resolveImportDir :: (Error SystemFailure :> es, IOE :> es) => ImportDir Raw -> Eff es (ImportDir Resolved)
 resolveImportDir (ImportDir a p) = case a of
-  Local n -> mkAbsolute . reverse . drop n . reverse . splitDirectories <$> sendIO getCurrentDirectory
-  Home -> mkAbsolute . splitDirectories <$> sendIO getHomeDirectory
+  Local n -> mkAbsolute . reverse . drop n . reverse . splitDirectories <$> liftIO getCurrentDirectory
+  Home -> mkAbsolute . splitDirectories <$> liftIO getHomeDirectory
   Swarm -> mkAbsolute . splitDirectories <$> getDataDirThrow Script ""
   Web t -> pure $ ImportDir (Web_ t) p
   Root -> pure $ ImportDir Root_ p
@@ -64,14 +63,14 @@ resolveImportDir (ImportDir a p) = case a of
 --   resource exists without checking; all other locations will
 --   actually be checked.  This means, for example, that web imports
 --   must have an `.sw` extension fully written out.
-doesLocationExist :: (Has (Lift IO) sig m) => ImportLoc Resolved -> m Bool
+doesLocationExist :: IOE :> es => ImportLoc Resolved -> Eff es Bool
 doesLocationExist loc = case locToPath loc of
   URL _ -> pure True
-  LocalPath fp -> sendIO $ doesFileExist fp
+  LocalPath fp -> liftIO $ doesFileExist fp
 
 -- | Resolve an import location, by turning the path into an absolute
 --   path, and optionally adding a .sw suffix to the file name.
-resolveImportLoc :: (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) => ImportLoc Raw -> m (ImportLoc Resolved)
+resolveImportLoc :: (Error SystemFailure :> es, IOE :> es) => ImportLoc Raw -> Eff es (ImportLoc Resolved)
 resolveImportLoc (ImportLoc d f) = do
   d' <- resolveImportDir d
   let loc' = ImportLoc d' f

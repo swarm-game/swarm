@@ -958,7 +958,6 @@ library swarm-util
     extra,
     filepath,
     free,
-    fused-effects,
     hashable,
     lens,
     megaparsec,
