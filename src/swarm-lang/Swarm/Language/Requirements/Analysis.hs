@@ -13,15 +13,13 @@ module Swarm.Language.Requirements.Analysis (
   requirements,
 ) where
 
-import Control.Algebra (Has, run)
-import Control.Carrier.Accum.Strict (execAccum)
-import Control.Carrier.Reader (runReader)
-import Control.Carrier.Throw.Either (runThrow)
-import Control.Effect.Accum (Accum, add)
-import Control.Effect.Reader (Reader, ask, local)
 import Control.Monad (when)
 import Data.Fix (Fix (..))
 import Data.Foldable (forM_)
+import Effectful
+import Effectful.Error.Static
+import Effectful.Reader.Static
+import Swarm.Effect.Accum.Local
 import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Phase
@@ -47,15 +45,15 @@ import Swarm.Util (applyWhen)
 --   for a description of a more correct approach.
 requirements :: TDCtx -> ReqCtx -> Term Resolved -> Requirements
 requirements tdCtx ctx =
-  run . execAccum mempty . runReader tdCtx . runReader ctx . (add (singletonCap CPower) *>) . go
+  runPureEff . execAccum mempty . runReader tdCtx . runReader ctx . (add (singletonCap CPower) *>) . go
  where
   go ::
-    ( Has (Accum Requirements) sig m
-    , Has (Reader ReqCtx) sig m
-    , Has (Reader TDCtx) sig m
+    ( Accum Requirements :> es
+    , Reader ReqCtx :> es
+    , Reader TDCtx :> es
     ) =>
     Term Resolved ->
-    m ()
+    Eff es ()
   go = \case
     -- Some primitive literals that don't require any special
     -- capability.
@@ -169,15 +167,15 @@ requirements tdCtx ctx =
     TParens t -> go t
 
 polytypeRequirements ::
-  (Has (Accum Requirements) sig m, Has (Reader TDCtx) sig m) =>
+  (Accum Requirements :> es, Reader TDCtx :> es) =>
   Poly q Type ->
-  m ()
+  Eff es ()
 polytypeRequirements = typeRequirements . ptBody
 
 typeRequirements ::
-  (Has (Accum Requirements) sig m, Has (Reader TDCtx) sig m) =>
+  (Accum Requirements :> es, Reader TDCtx :> es) =>
   Type ->
-  m ()
+  Eff es ()
 typeRequirements = go
  where
   go (Fix tyF) = goF tyF
@@ -186,7 +184,7 @@ typeRequirements = go
     TyVarF _ _ -> pure ()
     TyConF (TCUser u) tys -> do
       mapM_ go tys
-      res <- runThrow @ExpandTydefErr (expandTydef u tys)
+      res <- runErrorNoCallStack @ExpandTydefErr (expandTydef u tys)
       case res of
         -- If the user tycon is undefined, just return 0 requirements.
         -- This is not really correct---it should be some kind of

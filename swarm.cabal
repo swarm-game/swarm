@@ -445,7 +445,6 @@ library swarm-lang
     effectful-core,
     extra,
     free,
-    fused-effects,
     generic-data,
     hashable,
     http-conduit,

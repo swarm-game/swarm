@@ -24,11 +24,6 @@ module Swarm.Language.Pipeline (
   processSyntax,
 ) where
 
-import Control.Algebra (Has)
-import Control.Carrier.Lift (sendIO)
-import Control.Effect.Error (Error, throwError)
-import Control.Effect.Lift (Lift)
-import Control.Effect.Throw (Throw, liftEither)
 import Control.Lens ((^.))
 import Control.Monad (forM_, (<=<))
 import Data.Map.Ordered qualified as OM
@@ -36,6 +31,8 @@ import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Time.Clock (getCurrentTime)
+import Effectful
+import Effectful.Error.Static
 import Swarm.Failure (SystemFailure (..))
 import Swarm.Language.Cache
 import Swarm.Language.Elaborate
@@ -46,7 +43,7 @@ import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Value (Env, emptyEnv, envReqs, envTydefs, envTypes)
-import Swarm.Util.Effect (withError, withThrow)
+import Swarm.Util.Effect (liftEither, withError)
 import Swarm.Util.GlobalCache (freezeCache, insertCached)
 
 -- | Given raw 'Text' representing swarm-lang source code:
@@ -63,7 +60,7 @@ import Swarm.Util.GlobalCache (freezeCache, insertCached)
 --   cache, so they do not have to be reloaded + rechecked the next
 --   time they are used.
 processSource ::
-  (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
+  (IOE :> es, Error SystemFailure :> es) =>
   -- | File path where the source code was obtained, relative to which
   --   imports should be interpreted.  If Nothing, use the current
   --   working directory.
@@ -73,17 +70,17 @@ processSource ::
   Maybe Env ->
   -- | Text of the source code
   Text ->
-  m (Module Elaborated)
+  Eff es (Module Elaborated)
 processSource prov menv txt = do
-  mt <- withThrow CanNotParseMegaparsec . liftEither $ readTerm' defaultParserConfig txt
+  mt <- withError CanNotParseMegaparsec . liftEither $ readTerm' defaultParserConfig txt
   case mt of
     Nothing -> pure emptyModule
     Just t -> processTerm prov txt menv t
 
 -- | Like 'processSource', but start with an already-parsed raw AST.
 processTerm ::
-  forall sig m.
-  (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) =>
+  forall es.
+  (IOE :> es, Error SystemFailure :> es) =>
   -- | File path where the source code was obtained, relative to which
   --   imports should be interpreted.  If Nothing, use the current
   --   working directory.
@@ -95,7 +92,7 @@ processTerm ::
   Maybe Env ->
   -- | Raw AST.
   Syntax Raw ->
-  m (Module Elaborated)
+  Eff es (Module Elaborated)
 processTerm prov txt menv tm = do
   let e = fromMaybe emptyEnv menv
 
@@ -108,13 +105,13 @@ processTerm prov txt menv tm = do
 
   -- Typecheck + elaborate each import that wasn't in the global cache
   forM_ (OM.assocs srcMapRes) $ \(loc, m) -> do
-    modCache <- sendIO $ freezeCache moduleCache
+    modCache <- liftIO $ freezeCache moduleCache
     mTy <- withError (typeErrToSystemFailure "") $ inferModule modCache m
     let mElab = elaborateModule mTy
-    sendIO $ insertCached moduleCache loc mElab
+    liftIO $ insertCached moduleCache loc mElab
 
   -- Now typecheck + elaborate the top-level term
-  modCache <- sendIO $ freezeCache moduleCache
+  modCache <- liftIO $ freezeCache moduleCache
   tmTy <-
     withError (typeErrToSystemFailure txt) $
       inferTop
@@ -129,7 +126,7 @@ processTerm prov txt menv tm = do
   -- Probably not really important, since this module (not being
   -- loaded via an import location) won't go in the module cache.  But
   -- we might as well.
-  time <- sendIO getCurrentTime
+  time <- liftIO getCurrentTime
 
   -- Package up elaborated term as a Module.  Note that we put an
   -- empty context in the resulting Module, which is not really
@@ -145,8 +142,8 @@ processTerm prov txt menv tm = do
 --   loaded (and hence would require IO).  If any imports are
 --   encountered, throw an error.
 processTermNoImports ::
-  forall sig m.
-  (Has (Error SystemFailure) sig m) =>
+  forall es.
+  (Error SystemFailure :> es) =>
   -- | Text of the source code, used to generate error messages
   Text ->
   -- | Raw AST.
@@ -154,7 +151,7 @@ processTermNoImports ::
   -- | Possible Env to use while typechecking.  If Nothing, use a
   --   default empty Env.
   Maybe Env ->
-  m (Module Elaborated)
+  Eff es (Module Elaborated)
 processTermNoImports txt tm menv = do
   let e = fromMaybe emptyEnv menv
   tmRes <- resolve' tm
@@ -180,14 +177,14 @@ typeErrToSystemFailure s cte@(CTE loc _ _) = DoesNotTypecheck loc (prettyTypeErr
 
 -- | Require a term to be non-empty, throwing an error about the term
 --   consisting only of whitespace otherwise.
-requireNonNothing :: Has (Throw SystemFailure) sig m => Maybe t -> m t
+requireNonNothing :: Error SystemFailure :> es => Maybe t -> Eff es t
 requireNonNothing = maybe (throwError EmptyTerm) pure
 
 -- | Extract the term contained in a module, requiring it to be
 --   non-empty, and throwing an error about the term consisting only
 --   of whitespace otherwise.  Appropriate for use with the output of
 --   'processTerm'.
-requireNonEmptyTerm :: Has (Throw SystemFailure) sig m => Module phase -> m (Syntax phase)
+requireNonEmptyTerm :: Error SystemFailure :> es => Module phase -> Eff es (Syntax phase)
 requireNonEmptyTerm = requireNonNothing . moduleTerm
 
 ------------------------------------------------------------
@@ -195,7 +192,7 @@ requireNonEmptyTerm = requireNonNothing . moduleTerm
 ------------------------------------------------------------
 
 class Processable t where
-  process :: (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) => t Raw -> m (t Elaborated)
+  process :: (IOE :> es, Error SystemFailure :> es) => t Raw -> Eff es (t Elaborated)
 
 instance Processable Module where
   process = \case
@@ -208,5 +205,5 @@ instance Processable Module where
 
 -- | Process syntax, but deliberately throw away information about
 --   imports.  Used e.g. for processing code embedded in markdown.
-processSyntax :: (Has (Lift IO) sig m, Has (Error SystemFailure) sig m) => Syntax Raw -> m (Syntax Elaborated)
+processSyntax :: (IOE :> es, Error SystemFailure :> es) => Syntax Raw -> Eff es (Syntax Elaborated)
 processSyntax = (requireNonNothing . moduleTerm) <=< processTerm Nothing "" Nothing

@@ -48,13 +48,7 @@ module Swarm.Language.Typecheck (
 ) where
 
 import Control.Arrow ((***))
-import Control.Carrier.Reader (ReaderC, runReader)
-import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Category ((>>>))
-import Control.Effect.Catch (Catch, catchError)
-import Control.Effect.Error (Error)
-import Control.Effect.Reader
-import Control.Effect.Throw
 import Control.Lens (view, (^.))
 import Control.Lens.Indexed (itraverse)
 import Control.Monad (forM, forM_, void, when, (>=>))
@@ -71,6 +65,9 @@ import Data.Set qualified as S
 import Data.Strict.Tuple (Pair (..))
 import Data.Text (Text)
 import Data.Text qualified as T
+import Effectful
+import Effectful.Error.Static
+import Effectful.Reader.Static
 import Prettyprinter
 import Swarm.Effect.Unify (Unification, UnificationError)
 import Swarm.Effect.Unify qualified as U
@@ -132,11 +129,11 @@ instance PrettyPrec LocatedTCFrame where
 type TCStack = [LocatedTCFrame]
 
 -- | Push a frame on the typechecking stack.
-withFrame :: Has (Reader TCStack) sig m => SrcLoc -> TCFrame -> m a -> m a
+withFrame :: (Reader TCStack :> es) => SrcLoc -> TCFrame -> Eff es a -> Eff es a
 withFrame l f = local (LocatedTCFrame l f :)
 
 -- | Locally pop a frame from the typechecking stack.
-popFrame :: Has (Reader TCStack) sig m => m a -> m a
+popFrame :: Reader TCStack :> es => Eff es a -> Eff es a
 popFrame = local @TCStack pop
  where
   pop (_ : fs) = fs
@@ -203,32 +200,33 @@ getJoin (Join j) = (j Expected, j Actual)
 --   unification variables and ensuring that no bound unification
 --   variables remain.
 finalizeInferred ::
-  ( Has Unification sig m
-  , Has (Reader UCtx) sig m
-  , Has (Throw ContextualTypeErr) sig m
+  ( Unification :> es
+  , Reader UCtx :> es
+  , Error ContextualTypeErr :> es
   ) =>
   Syntax Inferred ->
-  m (Syntax Typed)
+  Eff es (Syntax Typed)
 finalizeInferred =
   applyBindings >=> traverseSyntax ((fmap fromU . generalize) >=> checkPredicative) pure
 
 -- | Ensure there are no remaining unification variables, which can happen
 --   in the case of impredicative polymorphism.  See #351.
-checkPredicative :: Has (Throw ContextualTypeErr) sig m => Maybe a -> m a
+checkPredicative :: Error ContextualTypeErr :> es => Maybe a -> Eff es a
 checkPredicative = maybe (throwError (mkRawTypeErr Impredicative)) pure
 
 -- | Run a top-level inference computation, either throwing a
 --   'ContextualTypeErr' or returning a fully resolved 'Syntax Typed'.
 runTC ::
-  Has (Throw ContextualTypeErr) sig m =>
+  Error ContextualTypeErr :> es =>
   TCtx ->
   ReqCtx ->
   TDCtx ->
   TVCtx ->
   ModuleCache ->
-  (ReaderC UCtx (ReaderC TCStack (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx (ReaderC ModuleCache m)))))))
+  Eff
+    (Reader UCtx : Reader TCStack : U.Unification : Reader ReqCtx : Reader TDCtx : Reader TVCtx : Reader ModuleCache : es)
     (Syntax Inferred) ->
-  m (Syntax Typed)
+  Eff es (Syntax Typed)
 runTC ctx reqCtx tdctx tvCtx modCache =
   (>>= finalizeInferred)
     >>> runReader (toU ctx)
@@ -241,8 +239,8 @@ runTC ctx reqCtx tdctx tvCtx modCache =
     >>> reportUnificationError
 
 reportUnificationError ::
-  Has (Throw ContextualTypeErr) sig m =>
-  m (Either UnificationError a) -> m a
+  Error ContextualTypeErr :> es =>
+  Eff es (Either UnificationError a) -> Eff es a
 reportUnificationError = (>>= either (throwError . mkRawTypeErr . UnificationErr) pure)
 
 -- | Look up a variable in the ambient type context, either throwing
@@ -250,15 +248,15 @@ reportUnificationError = (>>= either (throwError . mkRawTypeErr . UnificationErr
 --   associated 'UPolytype' with fresh unification variables via
 --   'instantiate'.
 lookup ::
-  ( Has (Throw ContextualTypeErr) sig m
-  , Has (Reader TCStack) sig m
-  , Has (Reader UCtx) sig m
-  , Has (Reader TVCtx) sig m
-  , Has Unification sig m
+  ( Error ContextualTypeErr :> es
+  , Reader TCStack :> es
+  , Reader UCtx :> es
+  , Reader TVCtx :> es
+  , Unification :> es
   ) =>
   SrcLoc ->
   Var ->
-  m UType
+  Eff es UType
 lookup loc x = do
   ctx <- ask @UCtx
   maybe (throwTypeErr loc $ UnboundVar x) instantiate (Ctx.lookup x ctx)
@@ -266,14 +264,12 @@ lookup loc x = do
 -- | Catch any thrown type errors and re-throw them with an added source
 --   location.
 addLocToTypeErr ::
-  ( Has (Throw ContextualTypeErr) sig m
-  , Has (Catch ContextualTypeErr) sig m
-  ) =>
+  (Error ContextualTypeErr :> es) =>
   SrcLoc ->
-  m a ->
-  m a
+  Eff es a ->
+  Eff es a
 addLocToTypeErr l m =
-  m `catchError` \case
+  m `catchError` \_ -> \case
     CTE NoLoc stk te -> throwError $ CTE l stk te
     cte -> throwError cte
 
@@ -283,7 +279,7 @@ addLocToTypeErr l m =
 
 -- | A class for getting the free unification variables of a thing.
 class FreeUVars a where
-  freeUVars :: Has Unification sig m => a -> m (Set IntVar)
+  freeUVars :: Unification :> es => a -> Eff es (Set IntVar)
 
 -- | We can get the free unification variables of a 'UType'.
 instance FreeUVars UType where
@@ -298,7 +294,7 @@ instance FreeUVars UCtx where
   freeUVars = fmap S.unions . traverse freeUVars . M.elems . unCtx
 
 -- | Generate a fresh unification variable.
-fresh :: Has Unification sig m => m UType
+fresh :: Unification :> es => Eff es UType
 fresh = Free.Pure <$> U.freshIntVar
 
 -- | Perform a substitution over a 'UType', substituting for both type
@@ -316,14 +312,14 @@ substU m =
 
 -- | Make sure none of the given skolem variables have escaped.
 noSkolems ::
-  ( Has Unification sig m
-  , Has (Reader TCStack) sig m
-  , Has (Throw ContextualTypeErr) sig m
+  ( Unification :> es
+  , Reader TCStack :> es
+  , Error ContextualTypeErr :> es
   ) =>
   SrcLoc ->
   [Var] ->
   UPolytype ->
-  m ()
+  Eff es ()
 noSkolems l skolems (unPoly -> (xs, upty)) = do
   upty' <- applyBindings upty
   let tyvs =
@@ -351,13 +347,13 @@ noSkolems l skolems (unPoly -> (xs, upty)) = do
 --   If we know the actual term @t@ which is supposed to have these
 --   types, we can use it to generate better error messages.
 unify ::
-  ( Has Unification sig m
-  , Has (Throw ContextualTypeErr) sig m
-  , Has (Reader TCStack) sig m
+  ( Unification :> es
+  , Error ContextualTypeErr :> es
+  , Reader TCStack :> es
   ) =>
   Maybe (Syntax Resolved) ->
   TypeJoin ->
-  m UType
+  Eff es UType
 unify ms j = do
   res <- expected U.=:= actual
   case res of
@@ -372,7 +368,7 @@ unify ms j = do
 --   unification variables in it and to which we can usefully apply
 --   'applyBindings'.
 class HasBindings u where
-  applyBindings :: Has Unification sig m => u -> m u
+  applyBindings :: Unification :> es => u -> Eff es u
 
 instance (HasBindings u, HasBindings v) => HasBindings (u, v) where
   applyBindings (u, v) = (,) <$> applyBindings u <*> applyBindings v
@@ -417,7 +413,7 @@ instance HasBindings (Module Inferred) where
 -- | To 'instantiate' a 'UPolytype', we generate a fresh unification
 --   variable for each variable bound by the `Forall`, and then
 --   substitute them throughout the type.
-instantiate :: (Has Unification sig m, Has (Reader TVCtx) sig m) => UPolytype -> m UType
+instantiate :: (Unification :> es, Reader TVCtx :> es) => UPolytype -> Eff es UType
 instantiate (unPoly -> (xs, uty)) = do
   xs' <- traverse (const fresh) xs
   boundSubst <- ask @TVCtx
@@ -432,7 +428,7 @@ instantiate (unPoly -> (xs, uty)) = do
 --
 --   Returns a context mapping from instantiated type variables to generated
 --   Skolem variables, along with the substituted type.
-skolemize :: (Has Unification sig m, Has (Reader TVCtx) sig m) => UPolytype -> m (Ctx Var UType, UType)
+skolemize :: (Unification :> es, Reader TVCtx :> es) => UPolytype -> Eff es (Ctx Var UType, UType)
 skolemize (unPoly -> (xs, uty)) = do
   skolemNames <- forM xs $ \x -> do
     s <- mkVarName "s" <$> U.freshIntVar
@@ -448,7 +444,7 @@ skolemize (unPoly -> (xs, uty)) = do
 --
 --   Pick nice type variable names instead of reusing whatever fresh
 --   names happened to be used for the free variables.
-generalize :: (Has Unification sig m, Has (Reader UCtx) sig m) => UType -> m UPolytype
+generalize :: (Unification :> es, Reader UCtx :> es) => UType -> Eff es UPolytype
 generalize uty = do
   uty' <- applyBindings uty
   ctx <- ask @UCtx
@@ -703,27 +699,27 @@ mkTypeErr = CTE
 
 -- | Throw a 'ContextualTypeErr'.
 throwTypeErr ::
-  ( Has (Throw ContextualTypeErr) sig m
-  , Has (Reader TCStack) sig m
+  ( Error ContextualTypeErr :> es
+  , Reader TCStack :> es
   ) =>
   SrcLoc ->
   TypeErr ->
-  m a
+  Eff es a
 throwTypeErr l te = do
   stk <- ask @TCStack
   throwError $ mkTypeErr l stk te
 
 -- | Adapt some other error type to a 'ContextualTypeErr'.
 adaptToTypeErr ::
-  ( Has (Throw ContextualTypeErr) sig m
-  , Has (Reader TCStack) sig m
+  ( Error ContextualTypeErr :> es
+  , Reader TCStack :> es
   ) =>
   SrcLoc ->
   (e -> TypeErr) ->
-  ThrowC e m a ->
-  m a
+  Eff (Error e : es) a ->
+  Eff es a
 adaptToTypeErr l adapt m = do
-  res <- runThrow m
+  res <- runErrorNoCallStack m
   case res of
     Left e -> throwTypeErr l (adapt e)
     Right a -> return a
@@ -763,15 +759,15 @@ prettySrcLoc code (SrcLoc loc s e) =
 --   term which is supposed to have that type, for use in error
 --   messages.
 decomposeTyConApp1 ::
-  ( Has Unification sig m
-  , Has (Throw ContextualTypeErr) sig m
-  , Has (Reader TDCtx) sig m
-  , Has (Reader TCStack) sig m
+  ( Unification :> es
+  , Error ContextualTypeErr :> es
+  , Reader TDCtx :> es
+  , Reader TCStack :> es
   ) =>
   TyCon ->
   Syntax Resolved ->
   Sourced UType ->
-  m UType
+  Eff es UType
 decomposeTyConApp1 c t (src, UTyConApp (TCUser u) as) = do
   ty2 <- adaptToTypeErr NoLoc (UnboundType . getUnexpanded) $ expandTydef u as
   decomposeTyConApp1 c t (src, ty2)
@@ -784,14 +780,14 @@ decomposeTyConApp1 c t ty = do
 
 decomposeCmdTy
   , decomposeDelayTy ::
-    ( Has Unification sig m
-    , Has (Throw ContextualTypeErr) sig m
-    , Has (Reader TDCtx) sig m
-    , Has (Reader TCStack) sig m
+    ( Unification :> es
+    , Error ContextualTypeErr :> es
+    , Reader TDCtx :> es
+    , Reader TCStack :> es
     ) =>
     Syntax Resolved ->
     Sourced UType ->
-    m UType
+    Eff es UType
 decomposeCmdTy = decomposeTyConApp1 TCCmd
 decomposeDelayTy = decomposeTyConApp1 TCDelay
 
@@ -809,13 +805,13 @@ decomposeDelayTy = decomposeTyConApp1 TCDelay
 --   @decompose...Ty@ functions work, because we can't solve for record
 --   types via unification.
 decomposeRcdTy ::
-  ( Has (Reader TDCtx) sig m
-  , Has (Reader TCStack) sig m
-  , Has (Throw ContextualTypeErr) sig m
+  ( Reader TDCtx :> es
+  , Reader TCStack :> es
+  , Error ContextualTypeErr :> es
   ) =>
   Maybe (Syntax Resolved) ->
   UType ->
-  m (Maybe (Map Var UType))
+  Eff es (Maybe (Map Var UType))
 decomposeRcdTy ms = \case
   ty@(UTyConApp tc as) -> case tc of
     -- User-defined type: expand it
@@ -835,15 +831,15 @@ decomposeRcdTy ms = \case
 --   given type constructor to two type arguments.  Also take the term
 --   which is supposed to have that type, for use in error messages.
 decomposeTyConApp2 ::
-  ( Has Unification sig m
-  , Has (Throw ContextualTypeErr) sig m
-  , Has (Reader TDCtx) sig m
-  , Has (Reader TCStack) sig m
+  ( Unification :> es
+  , Error ContextualTypeErr :> es
+  , Reader TDCtx :> es
+  , Reader TCStack :> es
   ) =>
   TyCon ->
   Syntax Resolved ->
   Sourced UType ->
-  m (UType, UType)
+  Eff es (UType, UType)
 decomposeTyConApp2 c t (src, UTyConApp (TCUser u) as) = do
   ty2 <- adaptToTypeErr NoLoc (UnboundType . getUnexpanded) $ expandTydef u as
   decomposeTyConApp2 c t (src, ty2)
@@ -857,14 +853,14 @@ decomposeTyConApp2 c t ty = do
 
 decomposeFunTy
   , decomposeProdTy ::
-    ( Has Unification sig m
-    , Has (Throw ContextualTypeErr) sig m
-    , Has (Reader TDCtx) sig m
-    , Has (Reader TCStack) sig m
+    ( Unification :> es
+    , Error ContextualTypeErr :> es
+    , Reader TDCtx :> es
+    , Reader TCStack :> es
     ) =>
     Syntax Resolved ->
     Sourced UType ->
-    m (UType, UType)
+    Eff es (UType, UType)
 decomposeFunTy = decomposeTyConApp2 TCFun
 decomposeProdTy = decomposeTyConApp2 TCProd
 
@@ -885,26 +881,26 @@ type ModuleCache = ImportLoc Import.Resolved -> Maybe (Module Elaborated)
 --   term, return fully type-annotated versions of the recursive
 --   imports and the term itself.
 inferTop ::
-  Has (Error ContextualTypeErr) sig m =>
+  Error ContextualTypeErr :> es =>
   TCtx ->
   ReqCtx ->
   TDCtx ->
   ModuleCache ->
   Syntax Resolved ->
-  m (Syntax Typed)
+  Eff es (Syntax Typed)
 inferTop ctx reqCtx tdCtx modCache =
   runTC ctx reqCtx tdCtx Ctx.empty modCache . infer
 
 -- | Top-level type checking function.
 checkTop ::
-  Has (Error ContextualTypeErr) sig m =>
+  Error ContextualTypeErr :> es =>
   TCtx ->
   ReqCtx ->
   TDCtx ->
   ModuleCache ->
   Syntax Resolved ->
   Type ->
-  m (Syntax Typed)
+  Eff es (Syntax Typed)
 checkTop ctx reqCtx tdCtx modCache t =
   runTC ctx reqCtx tdCtx Ctx.empty modCache
     . check t
@@ -913,7 +909,7 @@ checkTop ctx reqCtx tdCtx modCache t =
 -- | Collect up the names and types of any top-level definitions into
 --   a context.
 collectExports :: ModuleCache -> Syntax Typed -> ModuleExports TCtx
-collectExports modCache = run . runReader (mempty @(ModuleExports TCtx)) . go
+collectExports modCache = runPureEff . runReader (mempty @(ModuleExports TCtx)) . go
  where
   -- The Reader keeps a context of things currently in scope.  Having
   -- it called 'ModuleExports' is perhaps confusing, because it
@@ -921,7 +917,7 @@ collectExports modCache = run . runReader (mempty @(ModuleExports TCtx)) . go
   -- that are in scope.  But the type we need is the same.  Returns a
   -- 'ModuleExports TCtx' listing everything (both defs and tydefs)
   -- that should be exported.
-  go :: Has (Reader (ModuleExports TCtx)) sig m => Syntax Typed -> m (ModuleExports TCtx)
+  go :: Reader (ModuleExports TCtx) :> es => Syntax Typed -> Eff es (ModuleExports TCtx)
   go = \case
     Syntax _ (SLet LSDef _ x _ _ _ body t) _ _ -> do
       let addThing = addValueExport (locVal x) (body ^. sType)
@@ -949,10 +945,10 @@ collectExports modCache = run . runReader (mempty @(ModuleExports TCtx)) . go
 --   annotating the term itself, and (2) collecting up the types of
 --   all exported top-level definitions into a context.
 inferModule ::
-  Has (Error ContextualTypeErr) sig m =>
+  (Error ContextualTypeErr :> es) =>
   ModuleCache ->
   Module Resolved ->
-  m (Module Typed)
+  Eff es (Module Typed)
 inferModule modCache (Module ms _ imps timps time prov) = do
   -- Infer the type of the term
   mt <- traverse (inferTop mempty mempty emptyTDCtx modCache) ms
@@ -979,17 +975,17 @@ inferModule modCache (Module ms _ imps timps time prov) = do
 --   sure that we call processType on every type embedded in the term
 --   being checked.
 infer ::
-  ( Has (Reader UCtx) sig m
-  , Has (Reader ReqCtx) sig m
-  , Has (Reader TDCtx) sig m
-  , Has (Reader TVCtx) sig m
-  , Has (Reader ModuleCache) sig m
-  , Has (Reader TCStack) sig m
-  , Has Unification sig m
-  , Has (Error ContextualTypeErr) sig m
+  ( Reader UCtx :> es
+  , Reader ReqCtx :> es
+  , Reader TDCtx :> es
+  , Reader TVCtx :> es
+  , Reader ModuleCache :> es
+  , Reader TCStack :> es
+  , Unification :> es
+  , Error ContextualTypeErr :> es
   ) =>
   Syntax Resolved ->
-  m (Syntax Inferred)
+  Eff es (Syntax Inferred)
 infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- Primitives, i.e. things for which we immediately know the only
   -- possible correct type, and knowing an expected type would provide
@@ -1210,7 +1206,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
 
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype
-inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
+inferConst c = runPureEff . runReader @TVCtx Ctx.empty . quantify $ case c of
   Wait -> [tyQ| Int -> Cmd Unit |]
   Noop -> [tyQ| Cmd Unit |]
   Selfdestruct -> [tyQ| Cmd Unit |]
@@ -1334,18 +1330,18 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
 --   We try to stay in checking mode as far as possible, decomposing
 --   the expected type as we go and pushing it through the recursion.
 check ::
-  ( Has (Reader UCtx) sig m
-  , Has (Reader ReqCtx) sig m
-  , Has (Reader TDCtx) sig m
-  , Has (Reader TVCtx) sig m
-  , Has (Reader TCStack) sig m
-  , Has Unification sig m
-  , Has (Error ContextualTypeErr) sig m
-  , Has (Reader ModuleCache) sig m
+  ( Reader UCtx :> es
+  , Reader ReqCtx :> es
+  , Reader TDCtx :> es
+  , Reader TVCtx :> es
+  , Reader TCStack :> es
+  , Unification :> es
+  , Error ContextualTypeErr :> es
+  , Reader ModuleCache :> es
   ) =>
   Syntax Resolved ->
   UType ->
-  m (Syntax Inferred)
+  Eff es (Syntax Inferred)
 check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   -- Once we're typechecking, we don't need to keep around explicit
   -- parens any more
@@ -1578,13 +1574,13 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
 --   (move; move)@ is invalid, since that would allow robots to move
 --   twice as fast as usual by doing both actions in one tick.
 validAtomic ::
-  ( Has (Reader UCtx) sig m
-  , Has (Reader TCStack) sig m
-  , Has Unification sig m
-  , Has (Throw ContextualTypeErr) sig m
+  ( Reader UCtx :> es
+  , Reader TCStack :> es
+  , Unification :> es
+  , Error ContextualTypeErr :> es
   ) =>
   Syntax Resolved ->
-  m ()
+  Eff es ()
 validAtomic s@(RSyntax l t) = do
   n <- analyzeAtomic S.empty s
   when (n > 1) $ throwTypeErr l $ InvalidAtomic (TooManyTicks n) t
@@ -1593,14 +1589,14 @@ validAtomic s@(RSyntax l t) = do
 --   atomic blocks and no references to external variables, and count
 --   how many tangible commands it will execute.
 analyzeAtomic ::
-  ( Has (Reader UCtx) sig m
-  , Has (Reader TCStack) sig m
-  , Has Unification sig m
-  , Has (Throw ContextualTypeErr) sig m
+  ( Reader UCtx :> es
+  , Reader TCStack :> es
+  , Unification :> es
+  , Error ContextualTypeErr :> es
   ) =>
   Set Var ->
   Syntax Resolved ->
-  m Int
+  Eff es Int
 analyzeAtomic locals (Syntax l t _ _) = case t of
   -- Literals, primitives, etc. that are fine and don't require a tick
   -- to evaluate
@@ -1644,13 +1640,13 @@ analyzeAtomic locals (Syntax l t _ _) = case t of
   SRcd m -> sum <$> traverse analyzeField m
    where
     analyzeField ::
-      ( Has (Reader UCtx) sig m
-      , Has (Reader TCStack) sig m
-      , Has Unification sig m
-      , Has (Throw ContextualTypeErr) sig m
+      ( Reader UCtx :> es
+      , Reader TCStack :> es
+      , Unification :> es
+      , Error ContextualTypeErr :> es
       ) =>
       (LocVar, Maybe (Syntax Resolved)) ->
-      m Int
+      Eff es Int
     analyzeField (Loc _ x, Nothing) = analyzeAtomic locals (Syntax NoLoc (TVar x) mempty ())
     analyzeField (_, Just s) = analyzeAtomic locals s
   SProj {} -> return 0
@@ -1724,15 +1720,15 @@ isSimpleUType = \case
 -- | Try to generate a default value of a given type, throwing a type
 --   error if the type is unsupported.
 generateDefaultValue ::
-  ( Has (Reader UCtx) sig m
-  , Has (Reader TCStack) sig m
-  , Has (Reader TDCtx) sig m
-  , Has Unification sig m
-  , Has (Throw ContextualTypeErr) sig m
+  ( Reader UCtx :> es
+  , Reader TCStack :> es
+  , Reader TDCtx :> es
+  , Unification :> es
+  , Error ContextualTypeErr :> es
   ) =>
   SrcLoc ->
   Type ->
-  m Value
+  Eff es Value
 generateDefaultValue l ty = do
   tdCtx <- ask @TDCtx
   maybe (throwTypeErr l $ InvalidDefault ty) pure $ defaultValue tdCtx ty

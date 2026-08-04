@@ -17,10 +17,6 @@
 -- repeated values.
 module Swarm.Language.Context where
 
-import Control.Algebra (Has, run)
-import Control.Carrier.State.Strict (execState)
-import Control.Effect.Reader (Reader, ask, local)
-import Control.Effect.State (State, get, modify)
 import Control.Lens.Empty (AsEmpty (..))
 import Control.Lens.Prism (prism)
 import Control.Monad (unless)
@@ -34,6 +30,9 @@ import Data.Map qualified as M
 import Data.Semigroup (Sum (..))
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Effectful
+import Effectful.Reader.Static
+import Effectful.State.Static.Local
 import GHC.Generics (Generic)
 import Swarm.Pretty (PrettyPrec (..))
 import Swarm.Util (failT, showT)
@@ -246,7 +245,7 @@ lookup :: Ord v => v -> Ctx v t -> Maybe t
 lookup x = M.lookup x . unCtx
 
 -- | Look up a variable in a context in an ambient Reader effect.
-lookupR :: (Ord v, Has (Reader (Ctx v t)) sig m) => v -> m (Maybe t)
+lookupR :: (Ord v, Reader (Ctx v t) :> es) => v -> Eff es (Maybe t)
 lookupR x = lookup x <$> ask
 
 -- | Delete a variable from a context.
@@ -289,12 +288,12 @@ union :: (Ord v, Hashable v, Hashable t) => Ctx v t -> Ctx v t -> Ctx v t
 union ctx1 ctx2 = rollCtx $ CtxUnion ctx1 ctx2
 
 -- | Locally extend the context with an additional binding.
-withBinding :: (Has (Reader (Ctx v t)) sig m, Ord v, Hashable v, Hashable t) => v -> t -> m a -> m a
+withBinding :: (Reader (Ctx v t) :> es, Ord v, Hashable v, Hashable t) => v -> t -> Eff es a -> Eff es a
 withBinding x ty = local (addBinding x ty)
 
 -- | Locally extend the context with an additional context of
 --   bindings.
-withBindings :: (Has (Reader (Ctx v t)) sig m, Ord v, Hashable v, Hashable t) => Ctx v t -> m a -> m a
+withBindings :: (Reader (Ctx v t) :> es, Ord v, Hashable v, Hashable t) => Ctx v t -> Eff es a -> Eff es a
 withBindings ctx = local (`union` ctx)
 
 ------------------------------------------------------------
@@ -313,7 +312,7 @@ getCtx h m = ctxFromTree . CtxTree h <$> M.lookup h m
 -- | Turn a context into a context map containing every subtree of its
 --   structure.
 toCtxMap :: Ord v => Ctx v t -> CtxMap CtxTree v t
-toCtxMap (Ctx m s) = run $ execState M.empty (buildCtxMap m s)
+toCtxMap (Ctx m s) = runPureEff $ execState M.empty (buildCtxMap m s)
 
 -- | Build a context map by keeping track of the incrementally built
 --   map in a state effect, and traverse the given context structure
@@ -321,11 +320,11 @@ toCtxMap (Ctx m s) = run $ execState M.empty (buildCtxMap m s)
 --   recursing further whenever we see a hash that is already in the
 --   map.
 buildCtxMap ::
-  forall v t m sig.
-  (Ord v, Has (State (CtxMap CtxTree v t)) sig m) =>
+  forall v t es.
+  (Ord v, State (CtxMap CtxTree v t) :> es) =>
   Map v t ->
   CtxTree v t ->
-  m ()
+  Eff es ()
 buildCtxMap m (CtxTree h s) = do
   cm <- get @(CtxMap CtxTree v t)
   unless (h `M.member` cm) $ do

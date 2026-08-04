@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -9,39 +10,41 @@
 -- 'Unification' effects.
 module Swarm.Effect.Unify where
 
-import Control.Algebra
-import Data.Kind (Type)
 import Data.Set (Set)
+import Effectful
+import Effectful.Dispatch.Dynamic
 import Prettyprinter
 import Swarm.Language.Types hiding (Type)
 import Swarm.Pretty (PrettyPrec (..), ppr, reportBug)
 
 -- | Data type representing available unification operations.
-data Unification (m :: Type -> Type) k where
+data Unification :: Effect where
   Unify :: UType -> UType -> Unification m (Either UnificationError UType)
   ApplyBindings :: UType -> Unification m UType
   FreshIntVar :: Unification m IntVar
   FreeUVars :: UType -> Unification m (Set IntVar)
 
+type instance DispatchOf Unification = Dynamic
+
 -- | Unify two types, returning a type equal to both, or a 'UnificationError' if
 --   the types definitely do not unify.
-(=:=) :: Has Unification sig m => UType -> UType -> m (Either UnificationError UType)
+(=:=) :: Unification :> es => UType -> UType -> Eff es (Either UnificationError UType)
 t1 =:= t2 = send (Unify t1 t2)
 
 -- | Substitute for all the unification variables that are currently
 --   bound.  It is guaranteed that any unification variables remaining
 --   in the result are not currently bound, /i.e./ we have learned no
 --   information about them.
-applyBindings :: Has Unification sig m => UType -> m UType
+applyBindings :: Unification :> es => UType -> Eff es UType
 applyBindings = send . ApplyBindings
 
 -- | Compute the set of free unification variables of a type (after
 --   substituting away any which are already bound).
-freeUVars :: Has Unification sig m => UType -> m (Set IntVar)
+freeUVars :: Unification :> es => UType -> Eff es (Set IntVar)
 freeUVars = send . FreeUVars
 
 -- | Generate a fresh unification variable.
-freshIntVar :: Has Unification sig m => m IntVar
+freshIntVar :: Unification :> es => Eff es IntVar
 freshIntVar = send FreshIntVar
 
 -- | An error that occurred while running the unifier.

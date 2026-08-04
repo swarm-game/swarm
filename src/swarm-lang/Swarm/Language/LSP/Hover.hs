@@ -14,7 +14,6 @@ module Swarm.Language.LSP.Hover (
 )
 where
 
-import Control.Carrier.Error.Either (run, runError)
 import Control.Lens ((^.))
 import Data.Graph
 import Data.List.NonEmpty (NonEmpty (..))
@@ -22,6 +21,8 @@ import Data.Maybe (isNothing)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Utf16.Rope.Mixed qualified as R
+import Effectful
+import Effectful.Error.Static
 import Language.LSP.Protocol.Types qualified as J
 import Language.LSP.VFS
 import Swarm.Failure (SystemFailure)
@@ -49,7 +50,7 @@ showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
     R.charLength . fst $ R.charSplitAtPosition (lspToRopePosition p) myRope
 
   genHoverInfo stx =
-    case fmap moduleTerm (run (runError @SystemFailure (processTermNoImports content stx Nothing))) of
+    case fmap moduleTerm (runPureEff (runErrorNoCallStack @SystemFailure (processTermNoImports content stx Nothing))) of
       Right (Just pt) ->
         let found = narrowToPosition pt $ fromIntegral absolutePos
             finalPos = posToRange myRope (found ^. sLoc)

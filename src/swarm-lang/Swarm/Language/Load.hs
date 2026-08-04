@@ -17,12 +17,6 @@ module Swarm.Language.Load (
 )
 where
 
-import Control.Algebra (Has)
-import Control.Carrier.Accum.Strict (AccumC (..), runAccum)
-import Control.Carrier.State.Strict (evalState, runState)
-import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.State (State, get, modify)
-import Control.Effect.Throw (Throw, throwError)
 import Control.Lens ((?~))
 import Control.Monad (forM_, when)
 import Data.Function ((&))
@@ -34,7 +28,11 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text.Encoding qualified as T
 import Data.Time.Clock
+import Effectful
+import Effectful.Error.Static
+import Effectful.State.Static.Local
 import Network.HTTP.Simple (getResponseBody, httpBS, parseRequest)
+import Swarm.Effect.Accum.Local
 import Swarm.Failure (Asset (..), AssetData (..), Entry (..), LoadingFailure (..), SystemFailure (..))
 import Swarm.Language.Cache
 import Swarm.Language.Module
@@ -122,14 +120,14 @@ type LocalModules = Set ResolvedLoc
 --
 --   See Note [Module loading] for an overview.
 resolve ::
-  (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) =>
-  -- | Provenance of the source, and location relative to which
+  (IOE :> es, Error SystemFailure :> es) =>
+  -- \| Provenance of the source, and location relative to which
   --   imports should be interpreted.  If Nothing, use the current
   --   working directory.
   Maybe FilePath ->
   -- | Raw syntax to be resolved.
   Syntax Raw ->
-  m (SourceMap Resolved, (LocalModules, Syntax Resolved))
+  Eff es (SourceMap Resolved, (LocalModules, Syntax Resolved))
 resolve prov s = do
   -- First, remove any stale module cache entries, to make sure we get
   -- the most up-to-date versions of everything.
@@ -141,10 +139,7 @@ resolve prov s = do
       Just fp -> case runParser parseImportLocationRaw (into @Text fp) of
         Left _ -> currentDir
         Right (loc, _) -> importDir loc
-
-  (resMap, (impSet, s')) <-
-    evalState emptyImportSet . runState emptySourceMap . resolveImports cur $ s
-
+  ((impSet, s'), resMap) <- evalState emptyImportSet . runState emptySourceMap . resolveImports cur $ s
   -- Check for cycles in the resulting import graph
   checkImportCycles resMap
 
@@ -153,7 +148,7 @@ resolve prov s = do
 -- | Like 'resolve', but without requiring any I/O, throwing an error
 --   if any 'import' statements are encountered.
 resolve' ::
-  (Has (Throw SystemFailure) sig m) => Syntax Raw -> m (Syntax Resolved)
+  (Error SystemFailure :> es) => Syntax Raw -> Eff es (Syntax Resolved)
 resolve' = traverseSyntax pure (throwError . DisallowedImport)
 
 -- | Do a DFS through the module cache, removing any stale modules.  A
@@ -165,19 +160,19 @@ resolve' = traverseSyntax pure (throwError . DisallowedImport)
 --   context of a global visited set---so cullRoot does nothing when
 --   called on a module that has already been visited.  Hence this is
 --   still O(n) in the size of the module cache.
-cullModuleCache :: (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) => m ()
-cullModuleCache = evalState emptyImportSet $ mapM_ cullRoot =<< sendIO (GC.cacheKeys moduleCache)
+cullModuleCache :: (IOE :> es, Error SystemFailure :> es) => Eff es ()
+cullModuleCache = evalState emptyImportSet $ mapM_ cullRoot =<< liftIO (GC.cacheKeys moduleCache)
 
 -- | DFS to recursively cull stale modules from the module cache starting
 --   from a particular root, traversing the given root and all its
 --   transitive dependencies (which have not already been visited).
 --   Returns True if the root was culled.
-cullRoot :: (Has (Lift IO) sig m, Has (State VisitedModules) sig m) => ResolvedLoc -> m Bool
+cullRoot :: (IOE :> es, State VisitedModules :> es) => ResolvedLoc -> Eff es Bool
 cullRoot loc =
   S.member loc <$> get @VisitedModules >>= \case
     -- Root has already been visited: check if it is still in the
     -- cache to see if it was culled.
-    True -> isNothing <$> sendIO (GC.lookupCached moduleCache loc)
+    True -> isNothing <$> liftIO (GC.lookupCached moduleCache loc)
     -- Root has not been visited before.
     False -> do
       -- Add the root to the visited set.
@@ -186,7 +181,7 @@ cullRoot loc =
       -- Now look it up in the module cache --- in particular, we need
       -- to know its immediate imports so we can recursively cull
       -- them.
-      res <- sendIO (GC.lookupCached moduleCache loc)
+      res <- liftIO (GC.lookupCached moduleCache loc)
       case res of
         -- (The Nothing case cannot actually happen, since cullRoot
         -- will only be called on things that started out in the
@@ -200,7 +195,7 @@ cullRoot loc =
           -- We should cull the root if it is outdated OR any of its deps were culled.
           let shouldCull = depsCulled || outdated
           -- Cull the root if needed.
-          when shouldCull $ sendIO (GC.deleteCached moduleCache loc)
+          when shouldCull $ liftIO (GC.deleteCached moduleCache loc)
           -- Report whether the root was culled.
           pure shouldCull
 
@@ -213,9 +208,9 @@ cullRoot loc =
 --   replace the one in the module cache once we finish typechecking +
 --   elaborating it.
 checkImportCycles ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  (IOE :> es, Error SystemFailure :> es) =>
   SourceMap Resolved ->
-  m ()
+  Eff es ()
 checkImportCycles srcMap = do
   -- Find cycles in the module graph, starting from any newly loaded
   -- modules.  If any cycles were created by the newly loaded modules
@@ -229,7 +224,7 @@ checkImportCycles srcMap = do
   neighbors loc = case OM.lookup loc srcMap of
     Just m -> pure . S.toList $ moduleImports m
     Nothing -> do
-      mm <- sendIO $ GC.lookupCached moduleCache loc
+      mm <- liftIO $ GC.lookupCached moduleCache loc
       pure $ maybe [] (S.toList . moduleImports) mm
 
 -- | Given a parent directory relative to which any local imports
@@ -250,14 +245,14 @@ checkImportCycles srcMap = do
 --
 --   See Note [Module loading] for an overview.
 resolveImports ::
-  ( Has (Throw SystemFailure) sig m
-  , Has (State (SourceMap Resolved)) sig m
-  , Has (State VisitedModules) sig m
-  , Has (Lift IO) sig m
+  ( Error SystemFailure :> es
+  , State (SourceMap Resolved) :> es
+  , State VisitedModules :> es
+  , IOE :> es
   ) =>
   ImportDir Import.Resolved ->
   Syntax Raw ->
-  m (LocalModules, Syntax Resolved)
+  Eff es (LocalModules, Syntax Resolved)
 resolveImports parent = runAccum emptyImportSet . traverseSyntax pure (resolveImport parent)
 
 -- | Given a parent directory relative to which any local imports
@@ -267,30 +262,25 @@ resolveImports parent = runAccum emptyImportSet . traverseSyntax pure (resolveIm
 --   keeping track of all imports seen in a given module.
 --
 -- See Note [Module loading] for an overview.
---
--- #### WARNING [#2729](https://github.com/swarm-game/swarm/issues/2729):
--- Note that 'AccumC' is "popped" here. It only passes information
--- to 'resolveImport' and it /must not/ be added to the effect stack.
--- Otherwise the monad transformers keep adding up with each transitive import
--- and the IO operations at the bottom of the stack slow to a crawl.
 resolveImport ::
-  forall sig m.
-  ( Has (Throw SystemFailure) sig m
-  , Has (State (SourceMap Resolved)) sig m
-  , Has (State VisitedModules) sig m
-  , Has (Lift IO) sig m
+  forall es.
+  ( Error SystemFailure :> es
+  , State (SourceMap Resolved) :> es
+  , State VisitedModules :> es
+  , Accum LocalModules :> es
+  , IOE :> es
   ) =>
   ImportDir Import.Resolved ->
   ImportLoc Import.Raw ->
-  AccumC LocalModules m ResolvedLoc
-resolveImport parent loc = AccumC $ \w -> do
+  Eff es ResolvedLoc
+resolveImport parent loc = do
   -- Compute the canonicalized location for the import, and record it
   canonicalLoc <- resolveImportLoc (unresolveImportDir parent <//> loc)
 
   -- Accumulate the resolved import location; this is used in
   -- 'resolveImports' to collect the set of all imports of a given
   -- module.
-  let w' = S.insert canonicalLoc w
+  add @LocalModules (S.singleton canonicalLoc)
 
   -- Check whether the module needs to be loaded (either because it is
   -- not in the cache, or the version on disk is newer than the
@@ -299,7 +289,7 @@ resolveImport parent loc = AccumC $ \w -> do
 
   -- If it does, import it and stick it in the ambient SourceMap.
   when needsLoad $ importModule canonicalLoc
-  pure (w', canonicalLoc)
+  pure canonicalLoc
 
 -- | Load a module from a specific import location, i.e. from disk or
 --   over the network, as well as recursively loading any modules it
@@ -307,13 +297,13 @@ resolveImport parent loc = AccumC $ \w -> do
 --
 --   See Note [Module loading] for an overview.
 importModule ::
-  ( Has (Throw SystemFailure) sig m
-  , Has (State (SourceMap Resolved)) sig m
-  , Has (State VisitedModules) sig m
-  , Has (Lift IO) sig m
+  ( Error SystemFailure :> es
+  , State (SourceMap Resolved) :> es
+  , State VisitedModules :> es
+  , IOE :> es
   ) =>
   ResolvedLoc ->
-  m ()
+  Eff es ()
 importModule canonicalLoc =
   -- First check whether we have already seen this module.
   S.member canonicalLoc <$> get @VisitedModules >>= \case
@@ -352,7 +342,7 @@ importModule canonicalLoc =
 --   module cache until later, when they are typechecked and
 --   elaborated); but modules that got skipped because they are cached
 --   will only be in the module cache and not the SourceMap.
-collectTransitiveImports :: Has (Lift IO) sig m => SourceMap Resolved -> Set ResolvedLoc -> m (Set ResolvedLoc)
+collectTransitiveImports :: IOE :> es => SourceMap Resolved -> Set ResolvedLoc -> Eff es (Set ResolvedLoc)
 collectTransitiveImports srcMap imps = do
   let maybeTransImports ::
         (ModuleImports phase ~ Set ResolvedLoc) =>
@@ -365,7 +355,7 @@ collectTransitiveImports srcMap imps = do
           [ fmap maybeTransImports . GC.lookupCached moduleCache
           , pure . maybeTransImports . flip OM.lookup srcMap
           ]
-  timps <- fmap S.unions . traverse (sendIO . getTransImports) $ S.toList imps
+  timps <- fmap S.unions . traverse (liftIO . getTransImports) $ S.toList imps
   pure (imps `S.union` timps)
 
 -- | Validate the source code of the import to ensure that it contains
@@ -374,17 +364,17 @@ collectTransitiveImports srcMap imps = do
 --   other words, imports must be pure so we can get away with only
 --   evaluating them once.
 validateImport ::
-  forall sig m.
-  (Has (Throw SystemFailure) sig m) =>
+  forall es.
+  Error SystemFailure :> es =>
   ResolvedLoc ->
   Module Resolved ->
-  m ()
+  Eff es ()
 validateImport loc = maybe (pure ()) validate . moduleTerm
  where
-  validate :: Syntax Resolved -> m ()
+  validate :: Syntax Resolved -> Eff es ()
   validate = validateTerm . _sTerm
 
-  validateTerm :: Term Resolved -> m ()
+  validateTerm :: Term Resolved -> Eff es ()
   validateTerm = \case
     SLet LSDef _ _ _ _ _ _ t -> validate t
     SImportIn _ _ t -> validate t
@@ -398,9 +388,9 @@ validateImport loc = maybe (pure ()) validate . moduleTerm
 --   either over the network or on disk.  Return the term as well as
 --   the time it was last modified, if there is one.
 readLoc ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  (Error SystemFailure :> es, IOE :> es) =>
   ResolvedLoc ->
-  m (Maybe (Syntax Raw), Maybe UTCTime)
+  Eff es (Maybe (Syntax Raw), Maybe UTCTime)
 readLoc loc = do
   -- Try to read the file from network/disk, depending on the anchor
   (src, mtime) <- case importAnchor loc of
@@ -413,21 +403,21 @@ readLoc loc = do
   pure (syn, mtime)
  where
   path = locToFilePath loc
-  badImport :: Has (Throw SystemFailure) sig m => LoadingFailure -> m a
+  badImport :: Error SystemFailure :> es => LoadingFailure -> Eff es a
   badImport = throwError . AssetNotLoaded (Data Script) path
-  withBadImport :: Has (Throw SystemFailure) sig m => (e -> LoadingFailure) -> Either e a -> m a
+  withBadImport :: Error SystemFailure :> es => (e -> LoadingFailure) -> Either e a -> Eff es a
   withBadImport f = either (badImport . f) pure
   readFromDisk = do
-    mcontent <- sendIO (readFileMayT SystemLocale path)
+    mcontent <- liftIO (readFileMayT SystemLocale path)
     content <- maybe (badImport (DoesNotExist File)) pure mcontent
-    mt <- sendIO $ getModificationTimeMay path
+    mt <- liftIO $ getModificationTimeMay path
     pure (content, mt)
   readFromNet = do
     -- Try to parse the URL
     req <- parseRequest (into @String path) & withBadImport (BadURL . showT)
     -- Send HTTP request
-    resp <- sendIO $ httpBS req
+    resp <- liftIO $ httpBS req
     -- Try to decode the response
     content <- T.decodeUtf8' (getResponseBody resp) & withBadImport CanNotDecodeUTF8
-    time <- sendIO getCurrentTime
+    time <- liftIO getCurrentTime
     pure (content, Just time)

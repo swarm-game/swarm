@@ -134,11 +134,6 @@ module Swarm.Language.Types (
   WithU (..),
 ) where
 
-import Control.Algebra (Has, run)
-import Control.Carrier.Reader (runReader)
-import Control.Carrier.Throw.Either (runThrow)
-import Control.Effect.Reader (Reader, ask, local)
-import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (Plated (..), makeLenses, rewriteM, view)
 import Control.Monad.Free
 import Data.Aeson (FromJSON (..), FromJSON1 (..), ToJSON (..), ToJSON1 (..), genericLiftParseJSON, genericLiftToJSON, genericParseJSON, genericToJSON)
@@ -161,6 +156,9 @@ import Data.Set qualified as S
 import Data.String (IsString (..))
 import Data.Text (Text)
 import Data.Text qualified as T
+import Effectful
+import Effectful.Error.Static
+import Effectful.Reader.Static
 import GHC.Generics (Generic, Generic1)
 import Prettyprinter (align, braces, brackets, concatWith, flatAlt, hsep, pretty, punctuate, softline, (<+>))
 import Swarm.Language.Context (Ctx)
@@ -807,9 +805,9 @@ type TVCtx = Ctx Var UType
 
 -- | Implicitly quantify any otherwise unbound type variables.
 quantify ::
-  (Has (Reader TVCtx) sig m, Typical ty) =>
+  (Reader TVCtx :> es, Typical ty) =>
   Poly 'Unquantified ty ->
-  m (Poly 'Quantified ty)
+  Eff es (Poly 'Quantified ty)
 quantify (Forall xs ty) = do
   inScope <- ask @TVCtx
   -- Look at all variables which occur in the type but are not
@@ -823,7 +821,7 @@ quantify (Forall xs ty) = do
 -- | Absolute implicit quantification, i.e. assume there are no type
 --   variables in scope.
 absQuantify :: Typical t => Poly 'Unquantified t -> Poly 'Quantified t
-absQuantify = run . runReader @TVCtx Ctx.empty . quantify
+absQuantify = runPureEff . runReader @TVCtx Ctx.empty . quantify
 
 ------------------------------------------------------------
 -- Type definitions
@@ -875,7 +873,7 @@ lookupTD :: TDVar -> TDCtx -> Maybe TydefInfo
 lookupTD x = Ctx.lookup x . getTDCtx
 
 -- | Look up a variable in an ambient type definition context.
-lookupTDR :: Has (Reader TDCtx) sig m => TDVar -> m (Maybe TydefInfo)
+lookupTDR :: (Reader TDCtx :> es) => TDVar -> Eff es (Maybe TydefInfo)
 lookupTDR x = lookupTD x <$> ask
 
 -- | Add a binding of a variable name to a type definition, giving it
@@ -889,7 +887,7 @@ addBindingTD v info (TDCtx tdCtx tdVersions) =
 
 -- | Locally extend the ambient type definition context with an
 --   additional binding, via 'addBindingTD'.
-withBindingTD :: Has (Reader TDCtx) sig m => TDVar -> TydefInfo -> m a -> m a
+withBindingTD :: Reader TDCtx :> es => TDVar -> TydefInfo -> Eff es a -> Eff es a
 withBindingTD v info = local (addBindingTD v info)
 
 -- | Locally extend the ambient type definition context with
@@ -898,7 +896,7 @@ withBindingTD v info = local (addBindingTD v info)
 --   Unlike `withBindingTD`, we assume that this does not result in
 --   any shadowing within the same module, so we can simply union the
 --   contexts.
-withBindingsTD :: Has (Reader TDCtx) sig m => TDCtx -> m a -> m a
+withBindingsTD :: Reader TDCtx :> es => TDCtx -> Eff es a -> Eff es a
 withBindingsTD tdCtx = local (`unionTDCtx` tdCtx)
 
 -- | Restrict the second 'TDCtx' to only variables contained in the
@@ -909,7 +907,7 @@ restrictTD (TDCtx r _) (TDCtx c m) = TDCtx (Ctx.restrict r c) m
 -- | Given the name of a variable representing a user-defined type,
 --   fill in the version + importloc of the variable of that name
 --   currently in scope.
-resolveUserTy :: Has (Reader TDCtx) sig m => Text -> m TDVar
+resolveUserTy :: Reader TDCtx :> es => Text -> Eff es TDVar
 resolveUserTy x = do
   tdCtx <- ask
   case M.lookup x (getTDResolved tdCtx) of
@@ -931,13 +929,13 @@ newtype ExpandTydefErr = UnexpandedUserType {getUnexpanded :: TDVar}
 --   However, if T does not exist, we throw an error containing its
 --   name.
 expandTydef ::
-  ( Has (Reader TDCtx) sig m
-  , Has (Throw ExpandTydefErr) sig m
+  ( Reader TDCtx :> es
+  , Error ExpandTydefErr :> es
   , Typical t
   ) =>
   TDVar ->
   [t] ->
-  m t
+  Eff es t
 expandTydef userTyCon tys = do
   mtydefInfo <- lookupTDR userTyCon
   case mtydefInfo of
@@ -947,9 +945,9 @@ expandTydef userTyCon tys = do
 -- | Expand *all* applications of user-defined type constructors
 --   everywhere in a type.
 expandTydefs ::
-  (Has (Reader TDCtx) sig m, Has (Throw ExpandTydefErr) sig m, Typical t, Plated t) =>
+  (Reader TDCtx :> es, Error ExpandTydefErr :> es, Typical t, Plated t) =>
   t ->
-  m t
+  Eff es t
 expandTydefs = rewriteM expand
  where
   -- expand :: t -> m (Maybe t)
@@ -1008,12 +1006,12 @@ tcArity tydefs =
 --   of the type is neither @rec@ nor an application of a defined type
 --   alias.
 whnfType :: TDCtx -> Type -> Type
-whnfType tdCtx = run . runReader tdCtx . go
+whnfType tdCtx = runPureEff . runReader tdCtx . go
  where
-  go :: Has (Reader TDCtx) sig m => Type -> m Type
+  go :: Reader TDCtx :> es => Type -> Eff es Type
   go = \case
     TyUser u tys -> do
-      res <- runThrow @ExpandTydefErr (expandTydef u tys)
+      res <- runErrorNoCallStack @ExpandTydefErr (expandTydef u tys)
       case res of
         Left _ -> pure $ TyUser u tys
         Right expTy -> go expTy

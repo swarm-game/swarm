@@ -7,7 +7,6 @@
 -- See the docs/EDITORS.md to learn how to use it.
 module Swarm.Language.LSP where
 
-import Control.Carrier.Error.Either (runError)
 import Control.Lens (to, (^.))
 import Control.Monad (void)
 import Control.Monad.IO.Class
@@ -16,6 +15,8 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as Text
+import Effectful
+import Effectful.Error.Static
 import Language.LSP.Diagnostics
 import Language.LSP.Protocol.Lens qualified as LSP
 import Language.LSP.Protocol.Message (TResponseError (TResponseError))
@@ -87,7 +88,7 @@ validateSwarmCode doc version content = do
   flushDiagnosticsBySource 0 (Just diagnosticSourcePrefix)
 
   let provenance = fmap LSP.fromNormalizedFilePath . LSP.uriToNormalizedFilePath $ doc
-  res <- liftIO . runError $ processSource provenance Nothing content
+  res <- liftIO . runEff . runErrorNoCallStack $ processSource provenance Nothing content
   let (errors, warnings) = case moduleTerm <$> res of
         Right Nothing -> ([], [])
         Right (Just term) -> ([], unusedWarnings)

@@ -5,11 +5,11 @@
 -- implementations of unification.
 module Swarm.Effect.Unify.Common where
 
-import Control.Algebra
-import Control.Effect.State (State, get)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
+import Effectful
+import Effectful.State.Static.Local
 import Prelude hiding (lookup)
 
 ------------------------------------------------------------
@@ -53,5 +53,5 @@ lookup :: Ord n => n -> Subst n a -> Maybe a
 lookup x (Subst m) = M.lookup x m
 
 -- | Look up a name in a substitution stored in a state effect.
-lookupS :: (Ord n, Has (State (Subst n a)) sig m) => n -> m (Maybe a)
+lookupS :: (Ord n, State (Subst n a) :> es) => n -> Eff es (Maybe a)
 lookupS x = lookup x <$> get

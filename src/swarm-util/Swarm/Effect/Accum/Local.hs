@@ -31,3 +31,6 @@ look = do
 
 looks :: (HasCallStack, Accum w :> es, Monoid w) => (w -> a) -> Eff es a
 looks f = f <$> look
+
+execAccum :: Monoid w => w -> Eff (Accum w : es) a -> Eff es w
+execAccum w0 m = fmap fst (runAccum w0 m)
