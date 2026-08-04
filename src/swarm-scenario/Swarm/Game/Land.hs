@@ -11,10 +11,9 @@ module Swarm.Game.Land (
   loadEntitiesAndTerrain,
 ) where
 
-import Control.Algebra (Has)
-import Control.Effect.Lift (Lift)
-import Control.Effect.Throw (Throw)
 import Control.Lens (makeLenses)
+import Effectful
+import Effectful.Error.Static
 import GHC.Generics (Generic)
 import Swarm.Failure (SystemFailure)
 import Swarm.Game.Entity
@@ -36,7 +35,7 @@ instance Monoid TerrainEntityMaps where
   mempty = TerrainEntityMaps mempty mempty
 
 loadEntitiesAndTerrain ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  m TerrainEntityMaps
+  (Error SystemFailure :> es, IOE :> es) =>
+  Eff es TerrainEntityMaps
 loadEntitiesAndTerrain =
   TerrainEntityMaps <$> loadTerrain <*> loadEntities

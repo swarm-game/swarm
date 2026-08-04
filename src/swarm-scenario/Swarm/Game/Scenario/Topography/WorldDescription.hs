@@ -6,8 +6,6 @@
 module Swarm.Game.Scenario.Topography.WorldDescription where
 
 import Control.Arrow ((&&&))
-import Control.Carrier.Reader (runReader)
-import Control.Carrier.Throw.Either
 import Control.Monad (forM)
 import Data.Coerce
 import Data.Functor.Identity
@@ -15,6 +13,9 @@ import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Yaml as Y
+import Effectful
+import Effectful.Error.Static
+import Effectful.Reader.Static
 import Swarm.Game.Cosmetic.Display (defaultEntityDisplay)
 import Swarm.Game.Entity (Entity, EntityProperty (Known), mkEntity)
 import Swarm.Game.Land
@@ -147,7 +148,7 @@ instance FromJSONE (WorldParseDependencies Raw) (WorldDescription Raw) where
       mwexp <- v .:? "dsl"
       worldProg <- forM mwexp $ \wexp -> do
         let checkResult =
-              run . runThrow @CheckErr . runReader worldMap . runReader tem $
+              runPureEff . runErrorNoCallStack @CheckErr . runReader worldMap . runReader tem $
                 check CNil (TTyWorld TTyCell) wexp
         either (fail . prettyString) return checkResult
 

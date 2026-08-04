@@ -59,9 +59,6 @@ module Swarm.Game.Scenario (
 
 import Control.Applicative ((<|>))
 import Control.Arrow ((&&&))
-import Control.Carrier.Throw.Either (runThrow)
-import Control.Effect.Error
-import Control.Effect.Lift (Lift, sendIO)
 import Control.Lens hiding (from, (.=), (<.>))
 import Control.Monad (filterM, forM_, unless, (<=<))
 import Data.Aeson
@@ -74,6 +71,8 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import Effectful
+import Effectful.Error.Static
 import GHC.Generics (Generic)
 import Swarm.Failure
 import Swarm.Game.Cosmetic.Assignment (worldAttributes)
@@ -111,7 +110,7 @@ import Swarm.Pretty (prettyText)
 import Swarm.ResourceLoading (getDataFileNameThrow)
 import Swarm.Text.Markdown (Document)
 import Swarm.Util (binTuples, commaList, failT, quote)
-import Swarm.Util.Effect (ignoreWarnings, throwToMaybe, withThrow)
+import Swarm.Util.Effect (errorToMaybe, ignoreWarnings, liftEither, withError)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
@@ -408,7 +407,7 @@ instance FromJSONE ScenarioInputs (Scenario Raw) where
 
       return $ Scenario metadata playInfo landscape
    where
-    runValidation f = case run . runThrow $ f of
+    runValidation f = case runPureEff . runErrorNoCallStack $ f of
       Right x -> return x
       Left x -> failT [prettyText @LoadingFailure x]
 
@@ -420,23 +419,23 @@ instance Processable Scenario where
 -- * Loading scenarios
 
 getScenarioPath ::
-  (Has (Lift IO) sig m) =>
+  (IOE :> es) =>
   FilePath ->
-  m (Maybe FilePath)
+  Eff es (Maybe FilePath)
 getScenarioPath scenario = do
-  libScenario <- throwToMaybe @SystemFailure $ getDataFileNameThrow Scenarios $ "scenarios" </> scenario
-  libScenarioExt <- throwToMaybe @SystemFailure $ getDataFileNameThrow Scenarios $ "scenarios" </> scenario <.> "yaml"
+  libScenario <- errorToMaybe @SystemFailure $ getDataFileNameThrow Scenarios $ "scenarios" </> scenario
+  libScenarioExt <- errorToMaybe @SystemFailure $ getDataFileNameThrow Scenarios $ "scenarios" </> scenario <.> "yaml"
   let candidates = catMaybes [Just scenario, libScenarioExt, libScenario]
-  listToMaybe <$> sendIO (filterM doesFileExist candidates)
+  listToMaybe <$> liftIO (filterM doesFileExist candidates)
 
 -- | Load a scenario with a given name from disk, given an entity map
 --   to use.  This function is used if a specific scenario is
 --   requested on the command line.
 loadScenario ::
-  (Has (Error SystemFailure) sig m, Has (Lift IO) sig m) =>
+  (Error SystemFailure :> es, IOE :> es) =>
   FilePath ->
   ScenarioInputs ->
-  m (Scenario Elaborated, FilePath)
+  Eff es (Scenario Elaborated, FilePath)
 loadScenario scenario scenarioInputs = do
   mfileName <- getScenarioPath scenario
   fileName <- maybe (throwError $ ScenarioNotFound scenario) return mfileName
@@ -444,13 +443,13 @@ loadScenario scenario scenarioInputs = do
 
 -- | Load a scenario from a file.
 loadScenarioFile ::
-  (Has (Error SystemFailure) sig m, Has (Lift IO) sig m) =>
+  (Error SystemFailure :> es, IOE :> es) =>
   ScenarioInputs ->
   FilePath ->
-  m (Scenario Elaborated)
+  Eff es (Scenario Elaborated)
 loadScenarioFile scenarioInputs fileName = do
   raw <-
-    withThrow adaptError . (liftEither <=< sendIO) $
+    withError adaptError . (liftEither <=< liftIO) $
       decodeFileEitherE scenarioInputs fileName
   process raw
  where
@@ -462,9 +461,9 @@ loadScenarioFile scenarioInputs fileName = do
 --   documentation generation, scenario world rendering, etc.), not as
 --   part of the normal game code path.
 loadStandaloneScenario ::
-  (Has (Error SystemFailure) sig m, Has (Lift IO) sig m) =>
+  (Error SystemFailure :> es, IOE :> es) =>
   FilePath ->
-  m (Scenario Elaborated, GameStateInputs)
+  Eff es (Scenario Elaborated, GameStateInputs)
 loadStandaloneScenario fp = do
   tem <- loadEntitiesAndTerrain
   worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds tem

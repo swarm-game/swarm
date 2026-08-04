@@ -16,18 +16,16 @@ module Swarm.Game.World.Render (
 
 import Codec.Picture
 import Control.Applicative ((<|>))
-import Control.Carrier.Error.Either (runError)
-import Control.Effect.Error
-import Control.Effect.Lift (Lift, sendIO)
 import Control.Lens (view, (^.))
 import Control.Monad.Extra (guarded)
 import Control.Monad.Logger
-import Control.Monad.Trans (MonadIO)
 import Data.Aeson
 import Data.Aeson.Types (Parser)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.Tuple.Extra (both)
+import Effectful
+import Effectful.Error.Static
 import GHC.Generics (Generic)
 import Linear (V2 (..))
 import Swarm.Failure (SystemFailure, simpleErrorHandle)
@@ -153,22 +151,22 @@ getDisplayGrid vc sLandscape ls maybeSize =
   firstScenarioWorld = NE.head $ view scenarioWorlds sLandscape
 
 getRenderableGridFromPath ::
-  (Has (Error SystemFailure) sig m, Has (Lift IO) sig m) =>
+  (Error SystemFailure :> es, IOE :> es) =>
   RenderOpts ->
   FilePath ->
-  m (ThumbnailRenderContext Elaborated)
+  Eff es (ThumbnailRenderContext Elaborated)
 getRenderableGridFromPath (RenderOpts ctx _ _ _) fp = do
   (myScenario, _gsi) <- loadStandaloneScenario fp
   getRenderableGrid ctx myScenario
 
 getRenderableGrid ::
-  Has (Lift IO) sig m =>
+  IOE :> es =>
   RenderComputationContext ->
   Scenario Elaborated ->
-  m (ThumbnailRenderContext Elaborated)
+  Eff es (ThumbnailRenderContext Elaborated)
 getRenderableGrid (RenderComputationContext maybeSeed maybeSize) myScenario = do
   let sLandscape = myScenario ^. scenarioLandscape
-  theSeed <- sendIO $ arbitrateSeed maybeSeed sLandscape
+  theSeed <- liftIO $ arbitrateSeed maybeSeed sLandscape
 
   let worldTuples = buildWorldTuples sLandscape
       myLandscape = mkLandscape sLandscape worldTuples theSeed
@@ -225,9 +223,9 @@ renderImageHandleFailure opts result =
 
 renderScenarioPng :: RenderOpts -> FilePath -> IO ()
 renderScenarioPng opts fp = do
-  result <- runError $ getRenderableGridFromPath opts fp
+  result <- runEff . runErrorNoCallStack $ getRenderableGridFromPath opts fp
   img <- runStderrLoggingT $ renderImageHandleFailure opts result
   writePng (outputFilepath opts) img
 
 printScenarioMap :: [String] -> IO ()
-printScenarioMap = sendIO . mapM_ putStrLn
+printScenarioMap = liftIO . mapM_ putStrLn

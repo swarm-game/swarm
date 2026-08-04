@@ -18,6 +18,7 @@ module Swarm.Failure (
   OrderFileWarning (..),
 ) where
 
+import Control.Monad ((<=<))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
@@ -96,8 +97,8 @@ data SystemFailure
 ------------------------------------------------------------
 -- Basic error handling
 
-simpleErrorHandle :: Eff '[Error SystemFailure] a -> IO a
-simpleErrorHandle = either (fail . prettyString) pure . runPureEff . runErrorNoCallStack
+simpleErrorHandle :: Eff '[Error SystemFailure, IOE] a -> IO a
+simpleErrorHandle = either (fail . prettyString) pure <=< (runEff . runErrorNoCallStack)
 
 ------------------------------------------------------------
 -- Pretty-printing

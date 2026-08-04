@@ -97,12 +97,8 @@ module Swarm.Game.Entity (
   difference,
 ) where
 
-import Control.Algebra (Has)
 import Control.Applicative ((<|>))
 import Control.Arrow ((&&&))
-import Control.Carrier.Throw.Either (liftEither)
-import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (Getter, Lens', lens, to, view, (^.))
 import Control.Monad (forM_, unless, (<=<))
 import Data.Bifunctor (first)
@@ -127,6 +123,8 @@ import Data.Set qualified as Set (fromList, member, null)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
+import Effectful
+import Effectful.Error.Static
 import GHC.Generics (Generic)
 import Swarm.Failure
 import Swarm.Game.Cosmetic.Assignment (worldAttributes)
@@ -144,7 +142,7 @@ import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.ResourceLoading (getDataFileNameThrow)
 import Swarm.Text.Markdown (Document, toText)
 import Swarm.Util (binTuples, failT, findDup, plural, quote, (?))
-import Swarm.Util.Effect (withThrow)
+import Swarm.Util.Effect (liftEither, withError)
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
@@ -520,7 +518,7 @@ devicesForCap :: Capability -> EntityMap -> [Entity]
 devicesForCap cap = maybe [] (NE.toList . NE.map device) . M.lookup cap . getMap . entitiesByCap
 
 -- | Validates references to 'Display' attributes
-validateEntityAttrRefs :: Has (Throw LoadingFailure) sig m => Set Attribute -> [Entity] -> m ()
+validateEntityAttrRefs :: Error LoadingFailure :> es => Set Attribute -> [Entity] -> Eff es ()
 validateEntityAttrRefs validAttrs es =
   forM_ namedEntities $ \(eName, ent) ->
     case ent ^. entityDisplay . displayAttr of
@@ -542,7 +540,7 @@ validateEntityAttrRefs validAttrs es =
 -- | Build an 'EntityMap' from a list of entities.  The idea is that
 --   this will be called once at startup, when loading the entities
 --   from a file; see 'loadEntities'.
-buildEntityMap :: Has (Throw LoadingFailure) sig m => [Entity] -> m EntityMap
+buildEntityMap :: Error LoadingFailure :> es => [Entity] -> Eff es EntityMap
 buildEntityMap es = do
   forM_ (findDup $ map fst namedEntities) $
     throwError . Duplicate Entities
@@ -638,18 +636,18 @@ instance ToJSON Entity where
 -- | Load entities from a data file called @entities.yaml@, producing
 --   either an 'EntityMap' or a parse error.
 loadEntities ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  m EntityMap
+  (Error SystemFailure :> es, IOE :> es) =>
+  Eff es EntityMap
 loadEntities = do
   let entityFile = "entities.yaml"
       entityFailure = AssetNotLoaded (Data Entities) entityFile
   fileName <- getDataFileNameThrow Entities entityFile
   decoded <-
-    withThrow (entityFailure . CanNotParseYaml) . (liftEither <=< sendIO) $
+    withError (entityFailure . CanNotParseYaml) . (liftEither <=< liftIO) $
       decodeFileEither fileName
 
-  withThrow entityFailure $ validateEntityAttrRefs (M.keysSet worldAttributes) decoded
-  withThrow entityFailure $ buildEntityMap decoded
+  withError entityFailure $ validateEntityAttrRefs (M.keysSet worldAttributes) decoded
+  withError entityFailure $ buildEntityMap decoded
 
 ------------------------------------------------------------
 -- Entity lenses

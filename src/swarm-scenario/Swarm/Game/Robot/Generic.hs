@@ -177,8 +177,8 @@ makeLensesExcluding ['_robotCapabilities, '_equippedDevices, '_robotLog, '_robot
 --
 -- However, in many cases (for example, in "Swarm.Game.Step.Const")
 -- lenses are used to access a field of an ambient state of type
--- @Robot Instantiated@, tracked via a fused-effects State effect.
--- Since fused-effects tries to determine the targeted effect via the
+-- @Robot Instantiated@, tracked via an effectful State effect.
+-- Since effectful tries to determine the targeted effect via the
 -- type of the state, a generic lens does not work very well,
 -- resulting in a type ambiguity error, and requiring a type
 -- annotation to fix the type of the targeted state.  Hence, for

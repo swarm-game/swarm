@@ -17,10 +17,7 @@ module Swarm.Game.Terrain (
   validateTerrainAttrRefs,
 ) where
 
-import Control.Algebra (Has)
 import Control.Arrow (first, (&&&))
-import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Throw (Throw, liftEither, throwError)
 import Control.Monad (forM, unless, (<=<))
 import Data.Char (toUpper)
 import Data.Hashable (Hashable)
@@ -34,12 +31,14 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Tuple (swap)
 import Data.Yaml
+import Effectful
+import Effectful.Error.Static
 import GHC.Generics (Generic)
 import Swarm.Failure
 import Swarm.Game.Cosmetic.Attribute
 import Swarm.ResourceLoading (getDataFileNameThrow)
 import Swarm.Util (enumeratedMap, quote)
-import Swarm.Util.Effect (withThrow)
+import Swarm.Util.Effect (liftEither, withError)
 
 data TerrainType = BlankT | TerrainType Text
   deriving (Eq, Ord, Show, Generic, ToJSON, Hashable)
@@ -128,7 +127,7 @@ mkTerrainMap items =
   byIndex = enumeratedMap blankTerrainIndex items
 
 -- | Validates references to 'Display' attributes
-validateTerrainAttrRefs :: Has (Throw LoadingFailure) sig m => Set Attribute -> [TerrainItem] -> m [TerrainObj]
+validateTerrainAttrRefs :: Error LoadingFailure :> es => Set Attribute -> [TerrainItem] -> Eff es [TerrainObj]
 validateTerrainAttrRefs validAttrs rawTerrains =
   forM rawTerrains $ \(TerrainItem n a d) -> do
     unless (Set.member (AWorld a) validAttrs)
@@ -147,12 +146,12 @@ validateTerrainAttrRefs validAttrs rawTerrains =
 -- | Load terrain from a data file called @terrains.yaml@, producing
 --   either an 'TerrainMap' or a parse error.
 loadTerrain ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  m TerrainMap
+  (Error SystemFailure :> es, IOE :> es) =>
+  Eff es TerrainMap
 loadTerrain = do
   fileName <- getDataFileNameThrow Terrain terrainFile
   decoded <-
-    withThrow (terrainFailure . CanNotParseYaml) . (liftEither <=< sendIO) $
+    withError (terrainFailure . CanNotParseYaml) . (liftEither <=< liftIO) $
       decodeFileEither fileName
 
   let terrainObjs = promoteTerrainObjects decoded

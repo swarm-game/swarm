@@ -14,9 +14,6 @@
 --   https://byorgey.wordpress.com/2023/07/13/compiling-to-intrinsically-typed-combinators/
 module Swarm.Game.World.DSL.Typecheck where
 
-import Control.Algebra (Has)
-import Control.Effect.Reader (Reader, ask)
-import Control.Effect.Throw (Throw, throwError)
 import Data.Foldable (Foldable (..))
 import Data.Foldable qualified as F
 import Data.Functor.Const qualified as F
@@ -28,6 +25,9 @@ import Data.Map qualified as M
 import Data.Semigroup (Last (..))
 import Data.Text (Text)
 import Data.Type.Equality (TestEquality (..), type (:~:) (Refl))
+import Effectful
+import Effectful.Error.Static
+import Effectful.Reader.Static
 import Prettyprinter
 import Swarm.Game.Entity (lookupEntityName)
 import Swarm.Game.Land
@@ -361,44 +361,44 @@ instance PrettyPrec (TTy ty) where
 -- | Check that a particular type has an 'GHC.Classes.Eq' instance, and run a
 --   computation in a context provided with an 'GHC.Classes.Eq' constraint. The
 --   other @checkX@ functions are similar.
-checkEq :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Eq ty, NotFun ty) => m a) -> m a
+checkEq :: (Error CheckErr :> es) => TTy ty -> ((Eq ty, NotFun ty) => Eff es a) -> Eff es a
 checkEq (TTyBase BBool) a = a
 checkEq (TTyBase BInt) a = a
 checkEq (TTyBase BFloat) a = a
-checkEq ty _ = throwError $ NoInstance "Eq" ty
+checkEq ty _ = throwError_ $ NoInstance "Eq" ty
 
-checkOrd :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Ord ty, NotFun ty) => m a) -> m a
+checkOrd :: (Error CheckErr :> es) => TTy ty -> ((Ord ty, NotFun ty) => Eff es a) -> Eff es a
 checkOrd (TTyBase BBool) a = a
 checkOrd (TTyBase BInt) a = a
 checkOrd (TTyBase BFloat) a = a
-checkOrd ty _ = throwError $ NoInstance "Ord" ty
+checkOrd ty _ = throwError_ $ NoInstance "Ord" ty
 
-checkNum :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Num ty, NotFun ty) => m a) -> m a
+checkNum :: (Error CheckErr :> es) => TTy ty -> ((Num ty, NotFun ty) => Eff es a) -> Eff es a
 checkNum (TTyBase BInt) a = a
 checkNum (TTyBase BFloat) a = a
-checkNum ty _ = throwError $ NoInstance "Num" ty
+checkNum ty _ = throwError_ $ NoInstance "Num" ty
 
-checkIntegral :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Integral ty, NotFun ty) => m a) -> m a
+checkIntegral :: (Error CheckErr :> es) => TTy ty -> ((Integral ty, NotFun ty) => Eff es a) -> Eff es a
 checkIntegral (TTyBase BInt) a = a
-checkIntegral ty _ = throwError $ NoInstance "Integral" ty
+checkIntegral ty _ = throwError_ $ NoInstance "Integral" ty
 
-checkEmpty :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Empty ty, NotFun ty) => m a) -> m a
+checkEmpty :: (Error CheckErr :> es) => TTy ty -> ((Empty ty, NotFun ty) => Eff es a) -> Eff es a
 checkEmpty (TTyBase BCell) a = a
-checkEmpty ty _ = throwError $ NoInstance "Empty" ty
+checkEmpty ty _ = throwError_ $ NoInstance "Empty" ty
 
-checkOver :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Over ty, NotFun ty) => m a) -> m a
+checkOver :: (Error CheckErr :> es) => TTy ty -> ((Over ty, NotFun ty) => Eff es a) -> Eff es a
 checkOver (TTyBase BBool) a = a
 checkOver (TTyBase BInt) a = a
 checkOver (TTyBase BFloat) a = a
 checkOver (TTyBase BCell) a = a
-checkOver ty _ = throwError $ NoInstance "Over" ty
+checkOver ty _ = throwError_ $ NoInstance "Over" ty
 
-checkNotFun :: (Has (Throw CheckErr) sig m) => TTy ty -> (NotFun ty => m a) -> m a
+checkNotFun :: (Error CheckErr :> es) => TTy ty -> (NotFun ty => Eff es a) -> Eff es a
 checkNotFun (TTyBase BBool) a = a
 checkNotFun (TTyBase BInt) a = a
 checkNotFun (TTyBase BFloat) a = a
 checkNotFun (TTyBase BCell) a = a
-checkNotFun ty _ = throwError $ NoInstance "NotFun" ty
+checkNotFun ty _ = throwError_ $ NoInstance "NotFun" ty
 
 ------------------------------------------------------------
 -- Existential wrappers
@@ -433,8 +433,8 @@ data Ctx :: [Type] -> Type where
 
 -- | Look up a variable name in the context, returning a type-indexed
 --   de Bruijn index.
-lookup :: (Has (Throw CheckErr) sig m) => Text -> Ctx g -> m (Some (Idx g))
-lookup x CNil = throwError $ Unbound x
+lookup :: (Error CheckErr :> es) => Text -> Ctx g -> Eff es (Some (Idx g))
+lookup x CNil = throwError_ $ Unbound x
 lookup x (CCons y ty ctx)
   | x == y = return $ Some ty VZ
   | otherwise = mapSome VS <$> lookup x ctx
@@ -445,19 +445,19 @@ lookup x (CCons y ty ctx)
 --   @3@ has type @World Int@, we will get back a suitably lifted
 --   value (/i.e./ @const 3@).
 check ::
-  ( Has (Throw CheckErr) sig m
-  , Has (Reader TerrainEntityMaps) sig m
-  , Has (Reader WorldMap) sig m
+  ( Error CheckErr :> es
+  , Reader TerrainEntityMaps :> es
+  , Reader WorldMap :> es
   ) =>
   Ctx g ->
   TTy t ->
   WExp ->
-  m (TTerm g t)
+  Eff es (TTerm g t)
 check e ty t = do
   t1 <- infer e t
   Some ty' t' <- apply (Some (ty :->: ty) (embed I)) t1
   case testEquality ty ty' of
-    Nothing -> throwError $ BadType t1 ty
+    Nothing -> throwError_ $ BadType t1 ty
     Just Refl -> return t'
 
 -- | Get the underlying base type of a term which either has a base
@@ -473,7 +473,7 @@ getBaseType (Some ty _) = SomeTy ty
 --   const); (2) if a function of type (T1 -> T2 -> ... -> Tn) is
 --   applied to any arguments of type (World Ti), the function will be
 --   lifted to (World T1 -> World T2 -> ... -> World Tn).
-apply :: (Has (Throw CheckErr) sig m) => Some (TTerm g) -> Some (TTerm g) -> m (Some (TTerm g))
+apply :: (Error CheckErr :> es) => Some (TTerm g) -> Some (TTerm g) -> Eff es (Some (TTerm g))
 -- Normal function application
 apply (Some (ty11 :->: ty12) t1) (Some ty2 t2)
   | Just Refl <- testEquality ty11 ty2 = return $ Some ty12 (t1 $$ t2)
@@ -491,9 +491,9 @@ apply (Some (TTyWorld (ty11 :->: ty12)) t1) (Some ty2 t2)
 -- World (S -> T) applied to (World S)
 apply (Some (TTyWorld (ty11 :->: ty12)) t1) (Some (TTyWorld ty2) t2)
   | Just Refl <- testEquality ty11 ty2 = return $ Some (TTyWorld ty12) (S .$$ t1 $$ t2)
-apply t1 t2 = throwError $ ApplyErr t1 t2
+apply t1 t2 = throwError_ $ ApplyErr t1 t2
 
-applyTo :: (Has (Throw CheckErr) sig m) => Some (TTerm g) -> Some (TTerm g) -> m (Some (TTerm g))
+applyTo :: (Error CheckErr :> es) => Some (TTerm g) -> Some (TTerm g) -> Eff es (Some (TTerm g))
 applyTo = flip apply
 
 -- | Infer the type of an operator: turn a raw operator into a
@@ -507,7 +507,7 @@ applyTo = flip apply
 --   that is just a coincidence; in general one can easily imagine
 --   operators that are polymorphic in more than one type variable,
 --   and we may wish to add such in the future.
-inferOp :: (Has (Throw CheckErr) sig m) => [SomeTy] -> Op -> m (Some (TTerm g))
+inferOp :: (Error CheckErr :> es) => [SomeTy] -> Op -> Eff es (Some (TTerm g))
 inferOp _ Not = return $ Some (TTyBool :->: TTyBool) (embed CNot)
 inferOp [SomeTy tyA] Neg = Some (tyA :->: tyA) <$> checkNum tyA (return $ embed CNeg)
 inferOp _ And = return $ Some (TTyBool :->: TTyBool :->: TTyBool) (embed CAnd)
@@ -519,7 +519,7 @@ inferOp [SomeTy tyA] Mul = Some (tyA :->: tyA :->: tyA) <$> checkNum tyA (return
 inferOp [SomeTy tyA] Div = case tyA of
   TTyBase BInt -> return $ Some (tyA :->: tyA :->: tyA) (embed CIDiv)
   TTyBase BFloat -> return $ Some (tyA :->: tyA :->: tyA) (embed CDiv)
-  _ -> throwError $ BadDivType tyA
+  _ -> throwError_ $ BadDivType tyA
 inferOp [SomeTy tyA] Mod = Some (tyA :->: tyA :->: tyA) <$> checkIntegral tyA (return $ embed CMod)
 inferOp [SomeTy tyA] Eq = Some (tyA :->: tyA :->: TTyBool) <$> checkEq tyA (return $ embed CEq)
 inferOp [SomeTy tyA] Neq = Some (tyA :->: tyA :->: TTyBool) <$> checkEq tyA (return $ embed CNeq)
@@ -533,7 +533,7 @@ inferOp [SomeTy tyA] Mask = Some (TTyWorld TTyBool :->: TTyWorld tyA :->: TTyWor
 inferOp [SomeTy tyA] Overlay = Some (tyA :->: tyA :->: tyA) <$> checkOver tyA (return $ embed COver)
 inferOp [SomeTy tyA] IMap = Some (TTyWorld TTyInt :->: TTyWorld TTyInt :->: TTyWorld tyA :->: TTyWorld tyA) <$> checkNotFun tyA (return $ embed CIMap)
 -- In theory, this last case should never happen.
-inferOp tys op = throwError $ BadInferOp tys op
+inferOp tys op = throwError_ $ BadInferOp tys op
 
 -- | Given a raw operator and the terms the operator is applied to,
 --   select which types should be supplied as the type arguments to
@@ -558,28 +558,28 @@ typeArgsFor _ _ = []
 -- | Typecheck the application of an operator to some terms, returning
 --   a typed, elaborated version of the application.
 applyOp ::
-  ( Has (Throw CheckErr) sig m
-  , Has (Reader TerrainEntityMaps) sig m
-  , Has (Reader WorldMap) sig m
+  ( Error CheckErr :> es
+  , Reader TerrainEntityMaps :> es
+  , Reader WorldMap :> es
   ) =>
   Ctx g ->
   Op ->
   [WExp] ->
-  m (Some (TTerm g))
+  Eff es (Some (TTerm g))
 applyOp ctx op ts = do
   tts <- mapM (infer ctx) ts
   foldl (\r -> (r >>=) . applyTo) (inferOp (typeArgsFor op tts) op) tts
 
 -- | Infer the type of a term, and elaborate along the way.
 infer ::
-  forall sig m g.
-  ( Has (Throw CheckErr) sig m
-  , Has (Reader TerrainEntityMaps) sig m
-  , Has (Reader WorldMap) sig m
+  forall es g.
+  ( Error CheckErr :> es
+  , Reader TerrainEntityMaps :> es
+  , Reader WorldMap :> es
   ) =>
   Ctx g ->
   WExp ->
-  m (Some (TTerm g))
+  Eff es (Some (TTerm g))
 infer _ (WInt i) = return $ Some (TTyBase BInt) (embed (CLit i))
 infer _ (WFloat f) = return $ Some (TTyBase BFloat) (embed (CLit f))
 infer _ (WBool b) = return $ Some (TTyBase BBool) (embed (CLit b))
@@ -597,17 +597,17 @@ infer _ctx (WImport key) = do
   worldMap <- ask @WorldMap
   case M.lookup key worldMap of
     Just (Some ty t) -> return (Some ty (weaken @g t))
-    Nothing -> throwError $ UnknownImport key
+    Nothing -> throwError_ $ UnknownImport key
 
 -- | Try to resolve a 'RawCellVal'---containing only 'Text' names for
 --   terrain, entities, and robots---into a real 'CellVal' with
 --   references to actual terrain, entities, and robots.
 resolveCell ::
-  ( Has (Throw CheckErr) sig m
-  , Has (Reader TerrainEntityMaps) sig m
+  ( Error CheckErr :> es
+  , Reader TerrainEntityMaps :> es
   ) =>
   RawCellVal ->
-  m CellVal
+  Eff es CellVal
 resolveCell items = do
   cellVals <- mapM resolveCellItem items
   return $ foldl' (<!>) empty cellVals
@@ -615,28 +615,28 @@ resolveCell items = do
 -- | Try to resolve one cell item name into an actual item (terrain,
 -- entity, robot, etc.).
 resolveCellItem ::
-  forall sig m.
-  ( Has (Throw CheckErr) sig m
-  , Has (Reader TerrainEntityMaps) sig m
+  forall es.
+  ( Error CheckErr :> es
+  , Reader TerrainEntityMaps :> es
   ) =>
   (Maybe CellTag, Text) ->
-  m CellVal
+  Eff es CellVal
 resolveCellItem (mCellTag, item) = case mCellTag of
   Just cellTag -> do
     -- The item was tagged specifically, like {terrain: dirt} or {entity: water}
-    resolverByTag cellTag item ??? throwError (NotAThing item cellTag)
+    resolverByTag cellTag item ??? throwError_ (NotAThing item cellTag)
   Nothing -> do
     -- The item was not tagged; try resolving in all possible ways and choose
     -- the first that works
     maybeCells <- mapM (`resolverByTag` item) (enumerate @CellTag)
     case F.asum maybeCells of
-      Nothing -> throwError $ NotAnything item
+      Nothing -> throwError_ $ NotAnything item
       Just cell -> return cell
  where
   mkTerrain t = CellVal t mempty mempty
   mkEntity e = CellVal mempty (EJust (Last e)) mempty
 
-  resolverByTag :: CellTag -> Text -> m (Maybe CellVal)
+  resolverByTag :: CellTag -> Text -> Eff es (Maybe CellVal)
   resolverByTag = \case
     CellTerrain -> \tName -> do
       TerrainEntityMaps tm _em <- ask @TerrainEntityMaps
@@ -652,14 +652,14 @@ resolveCellItem (mCellTag, item) = case mCellTag of
 -- | Infer the type of a let expression, and elaborate into a series
 --   of lambda applications.
 inferLet ::
-  ( Has (Throw CheckErr) sig m
-  , Has (Reader TerrainEntityMaps) sig m
-  , Has (Reader WorldMap) sig m
+  ( Error CheckErr :> es
+  , Reader TerrainEntityMaps :> es
+  , Reader WorldMap :> es
   ) =>
   Ctx g ->
   [(Var, WExp)] ->
   WExp ->
-  m (Some (TTerm g))
+  Eff es (Some (TTerm g))
 inferLet ctx [] body = infer ctx body
 inferLet ctx ((x, e) : xs) body = do
   e'@(Some ty1 _) <- infer ctx e
@@ -669,13 +669,13 @@ inferLet ctx ((x, e) : xs) body = do
 -- | Infer the type of an @overlay@ expression, and elaborate into a
 --   chain of @<>@ (over) operations.
 inferOverlay ::
-  ( Has (Throw CheckErr) sig m
-  , Has (Reader TerrainEntityMaps) sig m
-  , Has (Reader WorldMap) sig m
+  ( Error CheckErr :> es
+  , Reader TerrainEntityMaps :> es
+  , Reader WorldMap :> es
   ) =>
   Ctx g ->
   NE.NonEmpty WExp ->
-  m (Some (TTerm g))
+  Eff es (Some (TTerm g))
 inferOverlay ctx es = case NE.uncons es of
   -- @overlay [e] = e@
   (e, Nothing) -> infer ctx e
