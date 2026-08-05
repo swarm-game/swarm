@@ -12,16 +12,13 @@ module Swarm.TUI.Model.KeyBindings (
 
 import Brick
 import Brick.Keybindings as BK
-import Control.Carrier.Lift (runM)
-import Control.Carrier.Throw.Either (runThrow)
-import Control.Effect.Accum
-import Control.Effect.Lift
-import Control.Effect.Throw
 import Control.Lens hiding (from, (<.>))
 import Data.Bifunctor (second)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Effectful
+import Effectful.Error.Static
 import Swarm.Failure (Asset (..), LoadingFailure (..), SystemFailure (..))
 import Swarm.Pretty (prettyText)
 import Swarm.ResourceLoading (getSwarmConfigIniFile)
@@ -32,21 +29,21 @@ import Swarm.TUI.Model.Event (SwarmEvent, defaultSwarmBindings, swarmEvents)
 -- See Note [how Swarm event handlers work]
 
 loadKeybindingConfig ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  m [(SwarmEvent, BindingState)]
+  (Error SystemFailure :> es, IOE :> es) =>
+  Eff es [(SwarmEvent, BindingState)]
 loadKeybindingConfig = do
-  (iniExists, ini) <- sendIO $ getSwarmConfigIniFile False
+  (iniExists, ini) <- liftIO $ getSwarmConfigIniFile False
   if not iniExists
     then return []
     else do
-      loadedCustomBindings <- sendIO $ keybindingsFromFile swarmEvents "keybindings" ini
+      loadedCustomBindings <- liftIO $ keybindingsFromFile swarmEvents "keybindings" ini
       case loadedCustomBindings of
         Left e -> throwError $ AssetNotLoaded Keybindings ini (SystemFailure . CustomFailure $ T.pack e)
         Right bs -> pure $ fromMaybe [] bs
 
 initKeyHandlingState ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  m KeyEventHandlingState
+  (Error SystemFailure :> es, IOE :> es) =>
+  Eff es KeyEventHandlingState
 initKeyHandlingState = do
   customBindings <- loadKeybindingConfig
   let cfg = newKeyConfig swarmEvents defaultSwarmBindings customBindings
@@ -58,7 +55,7 @@ data KeybindingPrint = MarkdownPrint | TextPrint | IniPrint
 
 showKeybindings :: KeybindingPrint -> IO Text
 showKeybindings kPrint = do
-  bindings <- runM $ runThrow @SystemFailure initKeyHandlingState
+  bindings <- runEff $ runErrorNoCallStack @SystemFailure initKeyHandlingState
   pure $ case bindings of
     Left e -> prettyText e
     Right bs -> showTable kPrint (bs ^. keyConfig) keySections

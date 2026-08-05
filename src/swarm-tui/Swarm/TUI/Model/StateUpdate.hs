@@ -26,17 +26,9 @@ import Brick.BChan (BChan, newBChan)
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Arrow ((&&&))
-import Control.Carrier.Accum.Strict (runAccum)
-import Control.Carrier.State.Strict (State, execState)
-import Control.Effect.Accum
-import Control.Effect.Error (Error)
-import Control.Effect.Lens qualified as EL
-import Control.Effect.Lift
-import Control.Effect.Throw
-import Control.Lens hiding (from, (<.>))
+import Control.Lens
 import Control.Monad (unless, void)
 import Control.Monad.Except (ExceptT (..))
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execStateT)
 import Data.Bifunctor (first)
 import Data.Foldable qualified as F
@@ -52,6 +44,10 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (getZonedTime)
 import Data.Yaml (decodeFileEither, prettyPrintParseException)
+import Effectful
+import Effectful.Error.Static
+import Effectful.State.Static.Local
+import Swarm.Effect.Accum.Local
 import Swarm.Failure (SystemFailure (..))
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Persistence
@@ -107,6 +103,7 @@ import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.Util
 import Swarm.Util.Effect (asExceptT, withError)
+import Swarm.Util.Lens qualified as EL
 import System.Clock
 
 -- | The resolution at which the animation manager checks animations for updates, in milliseconds
@@ -115,10 +112,10 @@ animMgrTickDuration = 33
 
 -- | Initialize the 'AppState' from scratch.
 initAppState ::
-  (Has (Error SystemFailure) sig m, Has (Lift IO) sig m) =>
+  (Error SystemFailure :> es, IOE :> es) =>
   AppOpts ->
   Maybe (BChan AppEvent) ->
-  m AppState
+  Eff es AppState
 initAppState opts mChan = do
   persistentState <- initPersistentState opts
   constructAppState persistentState opts mChan
@@ -157,9 +154,9 @@ data PersistentState
 --   function so that in the integration test suite we can call this
 --   once and reuse the resulting states for all tests.
 initPersistentState ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  (Error SystemFailure :> es, IOE :> es) =>
   AppOpts ->
-  m PersistentState
+  Eff es PersistentState
 initPersistentState opts@(AppOpts {..}) = do
   (warnings :: Seq SystemFailure, PersistentState initRS initUI initKs initProg) <- runAccum mempty $ do
     rs <- initRuntimeState $ mkRuntimeOptions opts
@@ -198,20 +195,20 @@ getScenarioInfoFromPath ss path =
 -- | Construct an 'AppState' from an already-loaded 'RuntimeState' and
 --   'UIState', given the 'AppOpts' the app was started with.
 constructAppState ::
-  ( Has (Error SystemFailure) sig m
-  , Has (Lift IO) sig m
+  ( Error SystemFailure :> es
+  , IOE :> es
   ) =>
   PersistentState ->
   AppOpts ->
   Maybe (BChan AppEvent) ->
-  m AppState
+  Eff es AppState
 constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mChan = do
-  historyT <- sendIO $ readFileMayT UTF8 =<< getSwarmHistoryPath False
+  historyT <- liftIO $ readFileMayT UTF8 =<< getSwarmHistoryPath False
   let mkREPLSubmission msg = REPLHistItem (REPLEntry Submitted) msg (TickNumber $ -1)
   let history = maybe [] (map mkREPLSubmission . T.lines) historyT
-  startTime <- sendIO $ getTime Monotonic
-  chan <- sendIO $ maybe initTestChan pure mChan
-  animMgr <- sendIO $ startAnimationManager animMgrTickDuration chan PopupEvent
+  startTime <- liftIO $ getTime Monotonic
+  chan <- liftIO $ maybe initTestChan pure mChan
+  animMgr <- liftIO $ startAnimationManager animMgrTickDuration chan PopupEvent
 
   let gsc = rs ^. stdGameConfigInputs
       gs = initGameState gsc
@@ -246,7 +243,7 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mCha
 
       let si = getScenarioInfoFromPath (progState ^. scenarios) path
 
-      sendIO $
+      liftIO $
         execStateT
           (startGameWithSeed (ScenarioWith scenario si) $ LaunchParams (pure userSeed) (pure codeToRun))
           appStateWithReplay
@@ -296,15 +293,15 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mCha
       }
 
 startGameWithReplay ::
-  ( Has (Throw SystemFailure) sig m
-  , Has (Lift IO) sig m
-  , Has (State AppState) sig m
+  ( Error SystemFailure :> es
+  , IOE :> es
+  , State AppState :> es
   ) =>
   FilePath ->
-  m ()
+  Eff es ()
 startGameWithReplay historySave = do
   runtimeState . eventLog EL.%= logEvent SystemLog Info "Replay" ("FILE: " <> T.pack (show historySave))
-  sendIO (decodeFileEither historySave) >>= \case
+  liftIO (decodeFileEither historySave) >>= \case
     Left err -> throwError . CustomFailure . T.pack $ "Error parsing file: " <> prettyPrintParseException err
     Right repl -> do
       runtimeState . eventLog EL.%= logEvent SystemLog Info "Replay" ("PARSED: " <> T.pack (show repl))
@@ -416,21 +413,47 @@ setUIGameplay ::
   UIGameplay
 setUIGameplay gs curTime isAutoplaying siPair@(ScenarioWith scenario _) uig =
   uig
-    & uiDialogs . uiGoal .~ emptyGoalDisplay
-    & uiIsAutoPlay .~ isAutoplaying
-    & uiFocusRing .~ initFocusRing
-    & uiInventory . uiInventorySearch .~ Nothing
-    & uiInventory . uiInventoryList .~ Nothing
-    & uiInventory . uiInventorySort .~ defaultSortOptions
-    & uiInventory . uiShowZero .~ True
-    & uiTiming . uiShowFPS .~ False
-    & uiREPL .~ initREPLState replMode (uig ^. uiREPL . replHistory)
-    & uiREPL . replHistory %~ restartREPLHistory
-    & scenarioRef ?~ siPair
-    & uiTiming . lastFrameTime .~ curTime
-    & uiWorldEditor . EM.entityPaintList %~ BL.listReplace entityList Nothing
-    & uiWorldEditor . EM.editingBounds . EM.boundsRect %~ setNewBounds
-    & uiDialogs . uiStructure
+    & uiDialogs
+      . uiGoal
+      .~ emptyGoalDisplay
+    & uiIsAutoPlay
+      .~ isAutoplaying
+    & uiFocusRing
+      .~ initFocusRing
+    & uiInventory
+      . uiInventorySearch
+      .~ Nothing
+    & uiInventory
+      . uiInventoryList
+      .~ Nothing
+    & uiInventory
+      . uiInventorySort
+      .~ defaultSortOptions
+    & uiInventory
+      . uiShowZero
+      .~ True
+    & uiTiming
+      . uiShowFPS
+      .~ False
+    & uiREPL
+      .~ initREPLState replMode (uig ^. uiREPL . replHistory)
+    & uiREPL
+      . replHistory
+      %~ restartREPLHistory
+    & scenarioRef
+      ?~ siPair
+    & uiTiming
+      . lastFrameTime
+      .~ curTime
+    & uiWorldEditor
+      . EM.entityPaintList
+      %~ BL.listReplace entityList Nothing
+    & uiWorldEditor
+      . EM.editingBounds
+      . EM.boundsRect
+      %~ setNewBounds
+    & uiDialogs
+      . uiStructure
       .~ StructureDisplay
         (SR.makeListWidget . M.elems $ gs ^. landscape . recognizerAutomatons . originalStructureDefinitions)
         (focusSetCurrent (StructureWidgets StructuresList) $ focusRing $ map StructureWidgets enumerate)
@@ -456,7 +479,8 @@ scenarioToUIState ::
 scenarioToUIState siPair u = do
   return $
     u
-      & uiPlaying .~ True
+      & uiPlaying
+        .~ True
       & uiAttrMap
         .~ applyAttrMappings
           ( map (first toAttrName . toAttrPair) $

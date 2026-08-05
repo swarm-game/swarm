@@ -48,8 +48,8 @@ ignoreWarnings = evalAccum mempty
 --   constraint into an @ExceptT@ computation.  This is mostly a stub
 --   to convert from one style to the other while we are in the middle
 --   of incrementally converting.  Eventually this should not be needed.
-asExceptT :: Eff (Error e : es) a -> ExceptT e (Eff es) a
-asExceptT m = ExceptT $ runErrorNoCallStack m
+asExceptT :: Eff [Error e, IOE] a -> ExceptT e IO a
+asExceptT = ExceptT . (runEff . runErrorNoCallStack)
 
 -- | Log a single failure as a warning.
 warn :: (Accum (Seq w) :> es) => w -> Eff es ()

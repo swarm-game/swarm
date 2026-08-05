@@ -23,12 +23,12 @@ module Swarm.TUI.Model.UI (
 
 import Brick (AttrMap)
 import Brick.Focus
-import Control.Effect.Accum
-import Control.Effect.Lift
 import Control.Lens hiding (from, (<.>))
 import Data.List.Extra (enumerate)
 import Data.Sequence (Seq)
 import Data.Set (Set)
+import Effectful
+import Swarm.Effect.Accum.Local
 import Swarm.Failure (SystemFailure)
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep
@@ -100,13 +100,13 @@ data UIInitOptions = UIInitOptions
 --   it involves reading a REPL history file, getting the current
 --   time, and loading text files from the data directory.
 initUIState ::
-  ( Has (Accum (Seq SystemFailure)) sig m
-  , Has (Lift IO) sig m
+  ( Accum (Seq SystemFailure) :> es
+  , IOE :> es
   ) =>
   UIInitOptions ->
-  m UIState
+  Eff es UIState
 initUIState UIInitOptions {..} = do
-  launchConfigPanel <- sendIO initConfigPanel
+  launchConfigPanel <- liftIO initConfigPanel
   return
     UIState
       { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu

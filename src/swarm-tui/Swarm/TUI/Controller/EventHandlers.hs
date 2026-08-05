@@ -46,11 +46,11 @@ module Swarm.TUI.Controller.EventHandlers (
 
 import Brick hiding (on)
 import Brick.Keybindings as BK
-import Control.Effect.Accum
-import Control.Effect.Throw
 import Data.List (sortOn)
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
+import Effectful
+import Effectful.Error.Static
 import Swarm.Failure (SystemFailure (..))
 import Swarm.TUI.Controller.EventHandlers.Frame (runFrameUI, runGameTickUI, ticksPerFrameCap)
 import Swarm.TUI.Controller.EventHandlers.Main (adjustTPS, hideRobots, isRunning, mainEventHandlers, runSingleTick, showCESKDebug, toggleDiscoveryNotificationModal, toggleMessagesModal, toggleREPLVisibility, viewGoal, whenRunningAppState, whenRunningPlayState)
@@ -80,9 +80,9 @@ import Swarm.Util (parens, squote)
 -- Fails if any key events have conflict within one dispatcher or when a main dispatcher
 -- has conflict with one of the subdispatchers.
 createKeyDispatchers ::
-  (Has (Throw SystemFailure) sig m) =>
+  (Error SystemFailure :> es) =>
   KeyConfig SwarmEvent ->
-  m SwarmKeyDispatchers
+  Eff es SwarmKeyDispatchers
 createKeyDispatchers config = do
   mainGameDispatcher <- buildDispatcher mainEventHandlers
   let buildSubMainDispatcher = buildSubDispatcher "Main game events" mainGameDispatcher
