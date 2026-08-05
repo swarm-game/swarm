@@ -229,21 +229,21 @@ zoomWithIO l f = do
   l .= sInner'
   return a
 
--- | Modifies the game state using a fused-effect state action.
+-- | Modifies the game state using an effectful state action.
 zoomGameStateFromAppState ::
   (MonadState AppState m, MonadIO m) =>
   Eff [State GameState, ModuleCache, Metric, Time, IOE] a ->
   m a
 zoomGameStateFromAppState = zoomWithIO $ playState . scenarioState . gameState
 
--- | Modifies the game state using a fused-effect state action.
+-- | Modifies the game state using an effectful state action.
 zoomGameStateFromScenarioState ::
   (MonadState ScenarioState m, MonadIO m) =>
   Eff [State GameState, ModuleCache, Metric, Time, IOE] a ->
   m a
 zoomGameStateFromScenarioState = zoomWithIO gameState
 
--- | Modifies the game state using a fused-effect state action.
+-- | Modifies the game state using an effectful state action.
 zoomGameStateFromPlayState ::
   (MonadState PlayState m, MonadIO m) =>
   Eff [State GameState, Cache (ImportLoc Import.Resolved) (Module Elaborated), Metric, Time, IOE] a ->
