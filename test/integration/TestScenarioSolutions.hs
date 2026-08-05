@@ -6,11 +6,9 @@
 -- Test provided scenario solutions.
 module TestScenarioSolutions (noScenarioOverlap, testScenarioSolutions) where
 
-import Control.Carrier.Error.Either (runError)
-import Control.Carrier.Lift (runM)
 import Control.Lens (Ixed (ix), at, to, view, (&), (.~), (^.), (^..), (^?), (^?!))
 import Control.Monad (unless, when)
-import Control.Monad.State (execStateT)
+import Control.Monad.State.Strict (execStateT)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (Foldable (toList), find)
 import Data.Function (on)
@@ -23,6 +21,8 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
+import Effectful
+import Effectful.Error.Static
 import Swarm.Failure (SystemFailure)
 import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
 import Swarm.Game.CESK (initMachine)
@@ -173,7 +173,7 @@ testSolution :: PersistentState -> ScenarioTestConfig -> TestTree
 testSolution ps (ScenarioTestConfig s p shouldCheckBadErrors verify) = maybeExpectFail . testCase p $ do
   cleanStore <- Metrics.newStore
   out <-
-    runM . runError @SystemFailure $
+    runEff . runErrorNoCallStack @SystemFailure $
       constructAppState
         (resetMetrics cleanStore ps)
         (defaultAppOpts {userScenario = Just p})

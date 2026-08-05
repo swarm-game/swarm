@@ -1380,7 +1380,6 @@ test-suite swarm-integration
     effectful-core,
     ekg-core,
     filepath,
-    fused-effects,
     lens,
     mtl,
     tasty,
