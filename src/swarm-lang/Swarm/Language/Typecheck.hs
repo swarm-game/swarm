@@ -222,12 +222,12 @@ runTC ::
   ReqCtx ->
   TDCtx ->
   TVCtx ->
-  ModuleCache ->
+  ModuleCacheLookup ->
   Eff
-    (Reader UCtx : Reader TCStack : U.Unification : Reader ReqCtx : Reader TDCtx : Reader TVCtx : Reader ModuleCache : es)
+    (Reader UCtx : Reader TCStack : U.Unification : Reader ReqCtx : Reader TDCtx : Reader TVCtx : Reader ModuleCacheLookup : es)
     (Syntax Inferred) ->
   Eff es (Syntax Typed)
-runTC ctx reqCtx tdctx tvCtx modCache =
+runTC ctx reqCtx tdctx tvCtx modCacheLookup =
   (>>= finalizeInferred)
     >>> runReader (toU ctx)
     >>> runReader []
@@ -235,7 +235,7 @@ runTC ctx reqCtx tdctx tvCtx modCache =
     >>> runReader reqCtx
     >>> runReader tdctx
     >>> runReader tvCtx
-    >>> runReader modCache
+    >>> runReader modCacheLookup
     >>> reportUnificationError
 
 reportUnificationError ::
@@ -873,7 +873,7 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 --   However, accessing the global module cache requires IO.
 --   Therefore, we pass a snapshot of the global cache to typechecking
 --   as a parameter.
-type ModuleCache = ImportLoc Import.Resolved -> Maybe (Module Elaborated)
+type ModuleCacheLookup = ImportLoc Import.Resolved -> Maybe (Module Elaborated)
 
 -- | Top-level type inference: given a context of variable types +
 --   requirements, type synonyms, a map of recursive imports that need
@@ -885,11 +885,11 @@ inferTop ::
   TCtx ->
   ReqCtx ->
   TDCtx ->
-  ModuleCache ->
+  ModuleCacheLookup ->
   Syntax Resolved ->
   Eff es (Syntax Typed)
-inferTop ctx reqCtx tdCtx modCache =
-  runTC ctx reqCtx tdCtx Ctx.empty modCache . infer
+inferTop ctx reqCtx tdCtx modCacheLookup =
+  runTC ctx reqCtx tdCtx Ctx.empty modCacheLookup . infer
 
 -- | Top-level type checking function.
 checkTop ::
@@ -897,19 +897,19 @@ checkTop ::
   TCtx ->
   ReqCtx ->
   TDCtx ->
-  ModuleCache ->
+  ModuleCacheLookup ->
   Syntax Resolved ->
   Type ->
   Eff es (Syntax Typed)
-checkTop ctx reqCtx tdCtx modCache t =
-  runTC ctx reqCtx tdCtx Ctx.empty modCache
+checkTop ctx reqCtx tdCtx modCacheLookup t =
+  runTC ctx reqCtx tdCtx Ctx.empty modCacheLookup
     . check t
     . toU
 
 -- | Collect up the names and types of any top-level definitions into
 --   a context.
-collectExports :: ModuleCache -> Syntax Typed -> ModuleExports TCtx
-collectExports modCache = runPureEff . runReader (mempty @(ModuleExports TCtx)) . go
+collectExports :: ModuleCacheLookup -> Syntax Typed -> ModuleExports TCtx
+collectExports modCacheLookup = runPureEff . runReader (mempty @(ModuleExports TCtx)) . go
  where
   -- The Reader keeps a context of things currently in scope.  Having
   -- it called 'ModuleExports' is perhaps confusing, because it
@@ -932,7 +932,7 @@ collectExports modCache = runPureEff . runReader (mempty @(ModuleExports TCtx)) 
       -- definitely a bug, but one that would have been caught earlier
       -- during typechecking, so we just replace a failed lookup with
       -- an empty export context.
-      let modexps = maybe mempty moduleCtx $ modCache loc
+      let modexps = maybe mempty moduleCtx $ modCacheLookup loc
       local (modexps <>) $ (case e of ReExport -> (modexps <>); _ -> id) <$> go t
     -- If a single name is re-exported, look it up in the current
     -- context and add it to the output.
@@ -946,14 +946,14 @@ collectExports modCache = runPureEff . runReader (mempty @(ModuleExports TCtx)) 
 --   all exported top-level definitions into a context.
 inferModule ::
   (Error ContextualTypeErr :> es) =>
-  ModuleCache ->
+  ModuleCacheLookup ->
   Module Resolved ->
   Eff es (Module Typed)
-inferModule modCache (Module ms _ imps timps time prov) = do
+inferModule modCacheLookup (Module ms _ imps timps time prov) = do
   -- Infer the type of the term
-  mt <- traverse (inferTop mempty mempty emptyTDCtx modCache) ms
+  mt <- traverse (inferTop mempty mempty emptyTDCtx modCacheLookup) ms
 
-  let ctx = maybe mempty (collectExports modCache) mt
+  let ctx = maybe mempty (collectExports modCacheLookup) mt
   pure $ Module mt ctx imps timps time prov
 
 -- | Infer the type of a term, returning a type-annotated term.
@@ -979,7 +979,7 @@ infer ::
   , Reader ReqCtx :> es
   , Reader TDCtx :> es
   , Reader TVCtx :> es
-  , Reader ModuleCache :> es
+  , Reader ModuleCacheLookup :> es
   , Reader TCStack :> es
   , Unification :> es
   , Error ContextualTypeErr :> es
@@ -1178,8 +1178,8 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- typecheck modules in topological order, any dependencies will
   -- already be in the global module cache.
   SImportIn ex loc t1 -> do
-    modCache <- ask @ModuleCache
-    ModuleExports mCtx mTDCtx <- case modCache loc of
+    modCacheLookup <- ask @ModuleCacheLookup
+    ModuleExports mCtx mTDCtx <- case modCacheLookup loc of
       -- If it's not in the global module cache, that's a bug!  We
       -- ensure that we process modules in topological order, so any
       -- dependencies should have already been typechecked,
@@ -1337,7 +1337,7 @@ check ::
   , Reader TCStack :> es
   , Unification :> es
   , Error ContextualTypeErr :> es
-  , Reader ModuleCache :> es
+  , Reader ModuleCacheLookup :> es
   ) =>
   Syntax Resolved ->
   UType ->
