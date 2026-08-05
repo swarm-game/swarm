@@ -33,13 +33,11 @@ module Swarm.Web (
 
 import Commonmark qualified as Mark (commonmark, renderHtml)
 import Control.Arrow (left)
-import Control.Carrier.Error.Either (runError)
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Concurrent.MVar
 import Control.Exception (Exception (displayException), IOException, catch, throwIO)
 import Control.Lens
 import Control.Monad (void)
-import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (ToJSON)
 import Data.ByteString.Lazy (ByteString)
 import Data.Foldable (toList)
@@ -55,6 +53,8 @@ import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Tree (Tree (Node), drawTree)
+import Effectful hiding ((:>))
+import Effectful.Error.Static
 import Network.HTTP.Types (ok200)
 import Network.Wai (responseLBS)
 import Network.Wai qualified
@@ -268,7 +268,7 @@ recogFoundHandler appStateRef = do
 
 codeRenderHandler :: Text -> Handler Text
 codeRenderHandler contents = do
-  res <- liftIO . runError @SystemFailure $ requireNonEmptyTerm =<< processSource Nothing Nothing contents
+  res <- liftIO . runEff . runErrorNoCallStack @SystemFailure $ requireNonEmptyTerm =<< processSource Nothing Nothing contents
   pure $ case res of
     Right t ->
       into @Text . drawTree . fmap (T.unpack . prettyTextLine) . para Node $ t
