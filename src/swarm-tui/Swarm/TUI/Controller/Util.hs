@@ -35,7 +35,7 @@ import Swarm.Game.Step (finishGameTick)
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
-import Swarm.Language.Cache (moduleCache)
+import Swarm.Language.Cache (ModuleCache, moduleCache)
 import Swarm.Language.Capability (Capability (CDebug))
 import Swarm.Language.Module (Module, moduleTerm)
 import Swarm.Language.Pipeline (processSource)
@@ -218,12 +218,10 @@ resetViewport n = do
   vScrollToBeginning n
   hScrollToBeginning n
 
--- type ModuleCacheIOC = CacheIOC (ImportLoc Import.Resolved) (Module Elaborated)
-
 zoomWithIO ::
   (MonadState so m, MonadIO m) =>
   Lens' so si ->
-  Eff [State si, Cache (ImportLoc Import.Resolved) (Module Elaborated), Metric, Time, IOE] a ->
+  Eff [State si, ModuleCache, Metric, Time, IOE] a ->
   m a
 zoomWithIO l f = do
   sInner <- use l
@@ -234,14 +232,14 @@ zoomWithIO l f = do
 -- | Modifies the game state using a fused-effect state action.
 zoomGameStateFromAppState ::
   (MonadState AppState m, MonadIO m) =>
-  Eff [State GameState, Cache (ImportLoc Import.Resolved) (Module Elaborated), Metric, Time, IOE] a ->
+  Eff [State GameState, ModuleCache, Metric, Time, IOE] a ->
   m a
 zoomGameStateFromAppState = zoomWithIO $ playState . scenarioState . gameState
 
 -- | Modifies the game state using a fused-effect state action.
 zoomGameStateFromScenarioState ::
   (MonadState ScenarioState m, MonadIO m) =>
-  Eff [State GameState, Cache (ImportLoc Import.Resolved) (Module Elaborated), Metric, Time, IOE] a ->
+  Eff [State GameState, ModuleCache, Metric, Time, IOE] a ->
   m a
 zoomGameStateFromScenarioState = zoomWithIO gameState
 

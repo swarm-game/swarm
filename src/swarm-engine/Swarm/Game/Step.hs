@@ -45,7 +45,7 @@ import Effectful.Error.Static qualified as E
 import Effectful.State.Static.Local
 import Linear (zero)
 import Prettyprinter (pretty)
-import Swarm.Effect as Effect (Cache, Metric, Time, getNow)
+import Swarm.Effect as Effect (Metric, Time, getNow)
 import Swarm.Effect qualified as Effect
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
@@ -67,11 +67,11 @@ import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
 import Swarm.Game.Tick
+import Swarm.Language.Cache (ModuleCache)
 import Swarm.Language.Capability
 import Swarm.Language.Module (Module, moduleCtx, moduleTerm)
 import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
-import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Language.Value
 import Swarm.Language.WithType (WithType (..))
 import Swarm.Log
@@ -88,7 +88,7 @@ type HasGameStepState es =
   ( State GameState :> es
   , Effect.Time :> es
   , Effect.Metric :> es
-  , Effect.Cache (ImportLoc Import.Resolved) (Module Elaborated) :> es
+  , ModuleCache :> es
   )
 
 -- | The main function to do one game tick.
@@ -475,7 +475,7 @@ evaluateCESK cesk = do
 
 runCESK ::
   ( HasRobotStepState es
-  , Cache (ImportLoc Import.Resolved) (Module Elaborated) :> es
+  , ModuleCache :> es
   ) =>
   CESK ->
   Eff es Value
@@ -940,7 +940,7 @@ stepCESK cesk = case cesk of
 -- already requires "God" capability.
 runChildProg ::
   ( HasRobotStepState es
-  , Cache (ImportLoc Import.Resolved) (Module Elaborated) :> es
+  , ModuleCache :> es
   ) =>
   Store ->
   Robot Instantiated ->

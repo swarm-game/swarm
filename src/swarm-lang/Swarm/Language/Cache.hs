@@ -8,6 +8,7 @@
 -- not changed.
 module Swarm.Language.Cache (
   moduleCache,
+  ModuleCache,
   moduleNeedsLoad,
   moduleOutdated,
   module GC,
@@ -15,6 +16,7 @@ module Swarm.Language.Cache (
 where
 
 import Effectful
+import Swarm.Effect.Cache
 import Swarm.Language.Module (Module (moduleTimestamp))
 import Swarm.Language.Syntax (Phase (Elaborated))
 import Swarm.Language.Syntax.Import hiding (ImportPhase (..))
@@ -23,6 +25,8 @@ import Swarm.Util.GlobalCache (GlobalCache)
 import Swarm.Util.GlobalCache qualified as GC
 import System.Directory (getModificationTime)
 import System.IO.Unsafe (unsafePerformIO)
+
+type ModuleCache = Cache (ImportLoc Import.Resolved) (Module Elaborated)
 
 -- | A global cache for fully parsed, typechecked, + elaborated
 --   modules, to avoid reloading the same module from disk repeatedly.
