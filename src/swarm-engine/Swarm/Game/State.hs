@@ -80,13 +80,7 @@ module Swarm.Game.State (
   module Robots,
 ) where
 
-import Control.Carrier.Error.Either (runError)
-import Control.Carrier.State.Lazy qualified as Fused
-import Control.Effect.Lens
-import Control.Effect.Lift
-import Control.Effect.State (State)
-import Control.Effect.Throw
-import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
+import Control.Lens hiding (Const, use, uses, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad (forM, forM_, join)
 import Data.Aeson (ToJSON)
 import Data.Digest.Pure.SHA (sha1, showDigest)
@@ -103,6 +97,10 @@ import Data.Text (Text)
 import Data.Text qualified as T (drop, take)
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
+import Effectful
+import Effectful.Error.Static
+import Effectful.Error.Static qualified as E
+import Effectful.State.Static.Local
 import Swarm.Effect qualified as Effect
 import Swarm.Failure
 import Swarm.Game.CESK (Store, emptyStore, store, suspendedEnv)
@@ -133,7 +131,7 @@ import Swarm.Language.Value (Env)
 import Swarm.Log
 import Swarm.Util (Encoding (..), applyWhen, readFileMayT, uniq)
 import Swarm.Util.Effect ((???))
-import Swarm.Util.Lens (makeLensesNoSigs)
+import Swarm.Util.Lens
 
 newtype Sha1 = Sha1 String
   deriving newtype (Show, Eq, Ord, ToJSON)
@@ -158,12 +156,12 @@ getRunCodePath (CodeToRun solutionSource _) = case solutionSource of
   PlayerAuthored fp _ -> Just fp
 
 parseCodeFile ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  (E.Error SystemFailure :> es, IOE :> es) =>
   FilePath ->
-  m CodeToRun
+  Eff es CodeToRun
 parseCodeFile filepath = do
-  contents <- sendIO (readFileMayT SystemLocale filepath) ??? throwError (AssetNotLoaded (Data Script) filepath (DoesNotExist File))
-  res <- sendIO . runError $ processSource (Just filepath) Nothing contents
+  contents <- liftIO (readFileMayT SystemLocale filepath) ??? throwError (AssetNotLoaded (Data Script) filepath (DoesNotExist File))
+  res <- liftIO . runEff . runErrorNoCallStack $ processSource (Just filepath) Nothing contents
   m <- either (throwError @SystemFailure) pure res
   pt <- requireNonEmptyTerm m
   let srcLoc = pt ^. sLoc
@@ -335,17 +333,17 @@ gameMetrics :: Lens' GameState (Maybe GameMetrics)
 ------------------------------------------------------------
 
 -- | Set a flag telling the UI that the world needs to be completely redrawn.
-flagCompleteRedraw :: (Has (State GameState) sig m) => m ()
+flagCompleteRedraw :: (State GameState :> es) => Eff es ()
 flagCompleteRedraw = redraw %= redrawWorld
 
 -- | Mark a certain cell as dirty, so the UI knows that it needs to be
 --   redrawn.
-markDirty :: (Has (State GameState) sig m) => Cosmic Location -> m ()
+markDirty :: (State GameState :> es) => Cosmic Location -> Eff es ()
 markDirty c = redraw %= markDirtyCell c
 
 -- | Delete a robot from the robot map, and flag its former location
 --   to be redrawn.
-deleteRobotAndFlag :: Has (State GameState) sig m => RID -> m ()
+deleteRobotAndFlag :: State GameState :> es => RID -> Eff es ()
 deleteRobotAndFlag rid = do
   mloc <- zoomRobots $ deleteRobot rid
   forM_ mloc markDirty
@@ -475,7 +473,7 @@ getRadioRange maybeBaseRobot maybeTargetRobot =
   (minRadius, maxRadius) = over both (gain baseInv . gain focInv) (16, 64)
 
 -- | Clear the 'robotLogUpdated' flag of the focused robot.
-clearFocusedRobotLogUpdated :: (Has (State Robots) sig m) => m ()
+clearFocusedRobotLogUpdated :: (State Robots :> es) => Eff es ()
 clearFocusedRobotLogUpdated = do
   n <- use focusedRobotID
   robotMap . ix n . robotLogUpdated .= False
@@ -484,7 +482,7 @@ maxMessageQueueSize :: Int
 maxMessageQueueSize = 1000
 
 -- | Add a message to the message queue.
-emitMessage :: (Has (State GameState) sig m) => LogEntry -> m ()
+emitMessage :: (State GameState :> es) => LogEntry -> Eff es ()
 emitMessage msg = messageInfo . messageQueue %= (|> msg) . dropLastIfLong
  where
   tooLong s = Seq.length s >= maxMessageQueueSize
@@ -528,16 +526,16 @@ initGameState gsc =
 
 -- | Get the entity (if any) at a given location.
 entityAt ::
-  (Has (State GameState) sig m, Has Effect.Metric sig m, Has Effect.Time sig m) =>
+  (State GameState :> es, Effect.Metric :> es, Effect.Time :> es) =>
   Cosmic Location ->
-  m (Maybe Entity)
+  Eff es (Maybe Entity)
 entityAt (Cosmic subworldName loc) =
   join <$> zoomWorld subworldName (\wm -> W.lookupEntityM @Int wm (locToCoords loc))
 
 contentAt ::
-  (Has (State GameState) sig m, Has Effect.Metric sig m, Has Effect.Time sig m) =>
+  (State GameState :> es, Effect.Metric :> es, Effect.Time :> es) =>
   Cosmic Location ->
-  m (TerrainType, Maybe Entity)
+  Eff es (TerrainType, Maybe Entity)
 contentAt (Cosmic subworldName loc) = do
   tm <- use $ landscape . terrainAndEntities . terrainMap
   val <- zoomWorld subworldName $ \wm -> do
@@ -549,27 +547,27 @@ contentAt (Cosmic subworldName loc) = do
 -- | Perform an action requiring a 'Robots' state component in a
 --   larger context with a 'GameState'.
 zoomRobots ::
-  (Has (State GameState) sig m) =>
-  Fused.StateC Robots Identity b ->
-  m b
+  (State GameState :> es) =>
+  Eff '[State Robots] b ->
+  Eff es b
 zoomRobots n = do
   ri <- use robotInfo
   do
-    let (ri', a) = run $ Fused.runState ri n
+    let (a, ri') = runPureEff $ runState ri n
     robotInfo .= ri'
     return a
 
 -- | Perform an action requiring a 'W.World' state component in a
 --   larger context with a 'GameState'.
 zoomWorld ::
-  (Has (State GameState) sig m) =>
+  (State GameState :> es) =>
   SubworldName ->
-  (Maybe W.WorldMetrics -> Fused.StateC (W.World Int Entity) m b) ->
-  m (Maybe b)
+  (Maybe W.WorldMetrics -> Eff (State (W.World Int Entity) : es) b) ->
+  Eff es (Maybe b)
 zoomWorld swName f = do
   mw <- use $ landscape . multiWorld
   wMetric <- use $ landscape . worldMetrics
   forM (M.lookup swName mw) $ \w -> do
-    (w', a) <- Fused.runState w $ f wMetric
+    (a, w') <- runState w $ f wMetric
     landscape . multiWorld %= M.insert swName w'
     return a

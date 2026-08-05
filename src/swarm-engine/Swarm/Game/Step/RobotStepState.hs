@@ -9,8 +9,9 @@
 -- import cycle.
 module Swarm.Game.Step.RobotStepState where
 
-import Control.Carrier.State.Lazy
-import Control.Effect.Error
+import Effectful
+import Effectful.Error.Static
+import Effectful.State.Static.Local
 import Swarm.Effect qualified as Effect
 import Swarm.Game.Exception
 import Swarm.Game.Robot
@@ -21,10 +22,10 @@ import Swarm.Language.Syntax (Phase (Instantiated))
 --
 -- They can also throw exception of our custom type, which is handled elsewhere.
 -- Because of that the constraint is only 'Throw', but not 'Catch'/'Error'.
-type HasRobotStepState sig m =
-  ( Has (State GameState) sig m
-  , Has (State (Robot Instantiated)) sig m
-  , Has (Throw Exn) sig m
-  , Has Effect.Metric sig m
-  , Has Effect.Time sig m
+type HasRobotStepState es =
+  ( State GameState :> es
+  , State (Robot Instantiated) :> es
+  , Error Exn :> es
+  , Effect.Metric :> es
+  , Effect.Time :> es
   )

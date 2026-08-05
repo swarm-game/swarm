@@ -8,11 +8,11 @@
 module Swarm.Game.Achievement.Persistence where
 
 import Control.Arrow (left)
-import Control.Effect.Accum
-import Control.Effect.Lift
 import Control.Monad (forM_)
 import Data.Sequence (Seq)
 import Data.Yaml qualified as Y
+import Effectful
+import Swarm.Effect.Accum.Local
 import Swarm.Failure
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
@@ -24,20 +24,20 @@ import System.FilePath ((</>))
 -- | Load saved info about achievements from XDG data directory.
 --   Returns a list of attained achievements.
 loadAchievementsInfo ::
-  (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
-  m [Attainment]
+  (Accum (Seq SystemFailure) :> es, IOE :> es) =>
+  Eff es [Attainment]
 loadAchievementsInfo = do
-  savedAchievementsPath <- sendIO $ getSwarmAchievementsPath False
-  doesParentExist <- sendIO $ doesDirectoryExist savedAchievementsPath
+  savedAchievementsPath <- liftIO $ getSwarmAchievementsPath False
+  doesParentExist <- liftIO $ doesDirectoryExist savedAchievementsPath
   if doesParentExist
     then do
-      contents <- sendIO $ listDirectory savedAchievementsPath
+      contents <- liftIO $ listDirectory savedAchievementsPath
       forMW contents $ \p -> do
         let fullPath = savedAchievementsPath </> p
-        isFile <- sendIO $ doesFileExist fullPath
+        isFile <- liftIO $ doesFileExist fullPath
         if isFile
           then do
-            eitherDecodedFile <- sendIO (Y.decodeFileEither fullPath)
+            eitherDecodedFile <- liftIO (Y.decodeFileEither fullPath)
             return $ left (AssetNotLoaded Achievement p . CanNotParseYaml) eitherDecodedFile
           else return . Left $ AssetNotLoaded Achievement p (EntryNot File)
     else do

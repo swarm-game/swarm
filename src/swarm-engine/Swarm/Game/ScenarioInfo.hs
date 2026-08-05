@@ -34,16 +34,8 @@ module Swarm.Game.ScenarioInfo (
   saveScenarioInfo,
 ) where
 
-import Control.Algebra (Has)
-import Control.Carrier.Error.Either (runError)
-import Control.Carrier.Lift (runM)
-import Control.Carrier.Throw.Either (runThrow)
-import Control.Effect.Accum (Accum)
-import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Throw (Throw, liftEither)
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (void, (<=<))
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Either.Extra (fromRight')
 import Data.List (intercalate, isPrefixOf, stripPrefix)
 import Data.Map.Ordered qualified as OM
@@ -51,12 +43,15 @@ import Data.Maybe (isJust)
 import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Yaml as Y
+import Effectful
+import Effectful.Error.Static
+import Swarm.Effect.Accum.Local
 import Swarm.Failure
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Status
 import Swarm.ResourceLoading
-import Swarm.Util.Effect (warn, withThrow)
+import Swarm.Util.Effect (liftEither, warn, withError)
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist)
 import System.FilePath (pathSeparator, splitDirectories, takeExtensions, (-<.>), (</>))
 
@@ -100,7 +95,7 @@ normalizeScenarioPath col p =
         then return path
         else liftIO $ do
           canonPath <- canonicalizePath path
-          eitherDataDir <- runM . runThrow @SystemFailure $ getDataDirThrow Scenarios "." -- no way we got this far without data directory
+          eitherDataDir <- runEff . runErrorNoCallStack @SystemFailure $ getDataDirThrow Scenarios "." -- no way we got this far without data directory
           d <- canonicalizePath $ fromRight' eitherDataDir
           let n =
                 stripPrefix (d </> "scenarios") canonPath
@@ -113,12 +108,12 @@ normalizeScenarioPath col p =
 
 -- | Load all the scenarios from the scenarios data directory.
 loadScenarios ::
-  (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
+  (Accum (Seq SystemFailure) :> es, IOE :> es) =>
   ScenarioInputs ->
   Bool ->
-  m (ScenarioCollection ScenarioInfo)
+  Eff es (ScenarioCollection ScenarioInfo)
 loadScenarios scenarioInputs loadTestScenarios = do
-  res <- runThrow @SystemFailure $ getDataDirThrow Scenarios "scenarios"
+  res <- runErrorNoCallStack @SystemFailure $ getDataDirThrow Scenarios "scenarios"
   case res of
     Left err -> warn err >> pure emptyCollection
     Right dataDir -> loadCollection (scenarioCollectionConfig scenarioInputs loadTestScenarios) dataDir
@@ -149,9 +144,9 @@ scenarioCollectionConfig scenarioInputs loadTestScenarios =
 -- | Load a single scenario from a path, returning either a loading
 --   error, or a scenario along with a list of warnings.
 loadScenarioItem :: ScenarioInputs -> FilePath -> IO (Either SystemFailure ([SystemFailure], ScenarioWith ScenarioInfo))
-loadScenarioItem scenarioInputs path = runError @SystemFailure $ do
+loadScenarioItem scenarioInputs path = runEff . runErrorNoCallStack @SystemFailure $ do
   s <- loadScenarioFile scenarioInputs path
-  eitherSi <- runThrow @SystemFailure (loadScenarioInfo path)
+  eitherSi <- runErrorNoCallStack @SystemFailure (loadScenarioInfo path)
   case eitherSi of
     Right si -> pure ([], ScenarioWith s si)
     Left warning -> pure ([warning], ScenarioWith s $ ScenarioInfo path NotStarted)
@@ -162,21 +157,21 @@ scenarioPathToSavePath path swarmData = swarmData </> Data.List.intercalate "_" 
 
 -- | Load saved info about played scenario from XDG data directory.
 loadScenarioInfo ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  (Error SystemFailure :> es, IOE :> es) =>
   FilePath ->
-  m ScenarioInfo
+  Eff es ScenarioInfo
 loadScenarioInfo p = do
-  path <- sendIO $ normalizeScenarioPath (Collection OM.empty) p
-  infoPath <- sendIO $ scenarioPathToSavePath path <$> getSwarmSavePath False
-  hasInfo <- sendIO $ doesFileExist infoPath
+  path <- liftIO $ normalizeScenarioPath (Collection OM.empty) p
+  infoPath <- liftIO $ scenarioPathToSavePath path <$> getSwarmSavePath False
+  hasInfo <- liftIO $ doesFileExist infoPath
   if not hasInfo
     then do
       return $
         ScenarioInfo path NotStarted
     else do
       si <-
-        withThrow (AssetNotLoaded (Data Scenarios) infoPath . CanNotParseYaml)
-          . (liftEither <=< sendIO)
+        withError (AssetNotLoaded (Data Scenarios) infoPath . CanNotParseYaml)
+          . (liftEither <=< liftIO)
           $ decodeFileEither infoPath
       -- We overwrite the (void) path that was saved inside the yaml file, so that there
       -- is only a single authoritative path "key": the original scenario path.

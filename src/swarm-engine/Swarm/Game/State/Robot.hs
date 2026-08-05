@@ -51,10 +51,7 @@ module Swarm.Game.State.Robot (
 ) where
 
 import Control.Arrow (Arrow ((&&&)))
-import Control.Effect.Lens
-import Control.Effect.State (State)
-import Control.Effect.Throw (Has)
-import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=), (<>=))
+import Control.Lens hiding (Const, use, uses, (%=), (+=), (.=), (<+=), (<<.=), (<>=))
 import Control.Monad (forM_, void)
 import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
@@ -65,6 +62,8 @@ import Data.Maybe (mapMaybe)
 import Data.MonoidMap (MonoidMap)
 import Data.MonoidMap qualified as MM
 import Data.Set qualified as S
+import Effectful
+import Effectful.State.Static.Local
 import Swarm.Game.CESK (CESK (Waiting))
 import Swarm.Game.Location
 import Swarm.Game.Robot
@@ -78,6 +77,7 @@ import Swarm.Game.Tick
 import Swarm.Game.Universe as U
 import Swarm.Language.Syntax (Phase (..))
 import Swarm.Util ((<+=), (<<.=), (<>=))
+import Swarm.Util.Lens
 
 -- | The names of the robots that are currently not sleeping.
 activeRobots :: Getter Robots IntSet
@@ -129,11 +129,11 @@ viewCenterRule = lens getter setter
 --   First, generate a unique ID number for it.  Then, add it to the
 --   main robot map, the active robot set, and to to the index of
 --   robots by location.
-addTRobot :: (Has (State Robots) sig m) => CESK -> Robot Elaborated -> m ()
+addTRobot :: (State Robots :> es) => CESK -> Robot Elaborated -> Eff es ()
 addTRobot m r = void $ addTRobot' m r
 
 -- | Like addTRobot, but return the newly instantiated robot.
-addTRobot' :: (Has (State Robots) sig m) => CESK -> Robot Elaborated -> m (Robot Instantiated)
+addTRobot' :: (State Robots :> es) => CESK -> Robot Elaborated -> Eff es (Robot Instantiated)
 addTRobot' initialMachine r = do
   rid <- robotNaming . gensym <+= 1
   let newRobot = instantiateRobot (Just initialMachine) rid r
@@ -143,7 +143,7 @@ addTRobot' initialMachine r = do
 -- | Add a robot to the game state, adding it to the main robot map,
 --   the active robot set, and to to the index of robots by
 --   location.
-addRobot :: (Has (State Robots) sig m) => Robot Instantiated -> m ()
+addRobot :: (State Robots :> es) => Robot Instantiated -> Eff es ()
 addRobot r = do
   robotMap %= IM.insert rid r
   addRobotToLocation rid $ r ^. robotLocation
@@ -152,24 +152,24 @@ addRobot r = do
   rid = r ^. robotID
 
 -- | Helper function for updating the "robotsByLocation" bookkeeping
-addRobotToLocation :: (Has (State Robots) sig m) => RID -> Cosmic Location -> m ()
+addRobotToLocation :: (State Robots :> es) => RID -> Cosmic Location -> Eff es ()
 addRobotToLocation rid rLoc =
   robotsByLocation
     %= MM.adjust (MM.adjust (IS.insert rid) (rLoc ^. planar)) (rLoc ^. subworld)
 
 -- | Takes a robot out of the 'activeRobots' set and puts it in the 'waitingRobots'
 --   queue.
-sleepUntil :: (Has (State Robots) sig m) => RID -> TickNumber -> m ()
+sleepUntil :: (State Robots :> es) => RID -> TickNumber -> Eff es ()
 sleepUntil rid time = do
   Internal.activeRobots %= IS.delete rid
   Internal.waitingRobots %= MM.adjust (rid :) time
 
 -- | Takes a robot out of the 'activeRobots' set.
-sleepForever :: (Has (State Robots) sig m) => RID -> m ()
+sleepForever :: (State Robots :> es) => RID -> Eff es ()
 sleepForever rid = Internal.activeRobots %= IS.delete rid
 
 -- | Adds a robot to the 'activeRobots' set.
-activateRobot :: (Has (State Robots) sig m) => RID -> m ()
+activateRobot :: (State Robots :> es) => RID -> Eff es ()
 activateRobot rid = Internal.activeRobots %= IS.insert rid
 
 -- | Removes robots whose wake up time matches the current game ticks count
@@ -184,7 +184,7 @@ activateRobot rid = Internal.activeRobots %= IS.insert rid
 -- * 'robotsWatching'
 -- * 'waitingRobots'
 -- * 'activeRobots'
-wakeUpRobotsDoneSleeping :: (Has (State Robots) sig m) => TickNumber -> m ()
+wakeUpRobotsDoneSleeping :: (State Robots :> es) => TickNumber -> Eff es ()
 wakeUpRobotsDoneSleeping time = do
   robotIdSet <- IM.keysSet <$> use robotMap
   wakeableRIDsSet <- IS.fromList . MM.get time <$> use Internal.waitingRobots
@@ -202,9 +202,9 @@ wakeUpRobotsDoneSleeping time = do
 -- | Clear the "watch" state of all of the
 -- awakened robots
 clearWatchingRobots ::
-  (Has (State Robots) sig m) =>
+  (State Robots :> es) =>
   IntSet ->
-  m ()
+  Eff es ()
 clearWatchingRobots rids = do
   robotsWatching %= MM.map (`IS.difference` rids)
 
@@ -213,7 +213,7 @@ clearWatchingRobots rids = do
 --
 -- NOTE: Clearing 'TickNumber' map entries from 'Internal.waitingRobots'
 -- upon wakeup is handled by 'wakeUpRobotsDoneSleeping'
-wakeWatchingRobots :: (Has (State Robots) sig m) => RID -> TickNumber -> Cosmic Location -> m ()
+wakeWatchingRobots :: (State Robots :> es) => RID -> TickNumber -> Cosmic Location -> Eff es ()
 wakeWatchingRobots myID currentTick loc = do
   waitingMap <- use waitingRobots
   rMap <- use robotMap
@@ -276,7 +276,7 @@ wakeWatchingRobots myID currentTick loc = do
         Waiting _ c -> Waiting newWakeTime c
         x -> x
 
-deleteRobot :: (Has (State Robots) sig m) => RID -> m (Maybe (Cosmic Location))
+deleteRobot :: (State Robots :> es) => RID -> Eff es (Maybe (Cosmic Location))
 deleteRobot rn = do
   Internal.activeRobots %= IS.delete rn
   mrobot <- robotMap . at rn <<.= Nothing
@@ -290,10 +290,10 @@ deleteRobot rn = do
 -- empty set at every location any robot has ever
 -- visited!
 removeRobotFromLocationMap ::
-  (Has (State Robots) sig m) =>
+  (State Robots :> es) =>
   Cosmic Location ->
   RID ->
-  m ()
+  Eff es ()
 removeRobotFromLocationMap (Cosmic oldSubworld oldPlanar) rid =
   robotsByLocation
     %= MM.adjust (MM.adjust (IS.delete rid) oldPlanar) oldSubworld

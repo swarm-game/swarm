@@ -7,9 +7,6 @@
 -- Utilities for implementing robot commands.
 module Swarm.Game.Step.Util where
 
-import Control.Carrier.State.Lazy
-import Control.Effect.Error
-import Control.Effect.Lens
 import Control.Monad (forM_, guard, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Maybe (MaybeT (..), hoistMaybe, runMaybeT)
@@ -18,6 +15,9 @@ import Data.IntMap qualified as IM
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
+import Effectful
+import Effectful.Error.Static
+import Effectful.State.Static.Local
 import Linear (zero)
 import Swarm.Game.Device
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
@@ -43,16 +43,17 @@ import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction (Direction)
 import Swarm.ResourceLoading (NameGenerator (..))
 import Swarm.Util hiding (both)
+import Swarm.Util.Lens
 import System.Random (UniformRange, uniformR)
 import Prelude hiding (lookup)
 
-deriveHeading :: HasRobotStepState sig m => Direction -> m Heading
+deriveHeading :: HasRobotStepState es => Direction -> Eff es Heading
 deriveHeading d = do
   orient <- use robotOrientation
   when (isCardinal d) $ hasCapabilityFor COrient $ TDir d
   return $ applyTurn d $ orient ? zero
 
-lookInDirection :: HasRobotStepState sig m => Direction -> m (Cosmic Location, Maybe Entity)
+lookInDirection :: HasRobotStepState es => Direction -> Eff es (Cosmic Location, Maybe Entity)
 lookInDirection d = do
   newHeading <- deriveHeading d
   loc <- use robotLocation
@@ -62,10 +63,10 @@ lookInDirection d = do
 -- | Modify the entity (if any) at a given location, and mark the cell
 --   dirty (i.e. needing to be redrawn) if anything changes.
 updateEntityAt ::
-  HasRobotStepState sig m =>
+  HasRobotStepState es =>
   Cosmic Location ->
   (Maybe Entity -> Maybe Entity) ->
-  m ()
+  Eff es ()
 updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
   someChange <-
     zoomWorld subworldName $ \wMetric ->
@@ -90,13 +91,13 @@ updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
 
 -- | Exempts the robot from various command constraints
 -- when it is either a system robot or playing in creative mode
-isPrivilegedBot :: (Has (State GameState) sig m, Has (State (Robot Instantiated)) sig m) => m Bool
+isPrivilegedBot :: (State GameState :> es, State (Robot Instantiated) :> es) => Eff es Bool
 isPrivilegedBot = (||) <$> use systemRobot <*> use creativeMode
 
 -- | Test whether the current robot has a given capability (either
 --   because it has a device which gives it that capability, or it is a
 --   system robot, or we are in creative mode).
-hasCapability :: (Has (State (Robot Instantiated)) sig m, Has (State GameState) sig m) => Capability -> m Bool
+hasCapability :: (State (Robot Instantiated) :> es, State GameState :> es) => Capability -> Eff es Bool
 hasCapability cap = do
   isPrivileged <- isPrivilegedBot
   caps <- use robotCapabilities
@@ -105,17 +106,17 @@ hasCapability cap = do
 -- | Ensure that either a robot has a given capability, OR we are in creative
 --   mode.
 hasCapabilityFor ::
-  (Has (State (Robot Instantiated)) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) => Capability -> Term Resolved -> m ()
+  (State (Robot Instantiated) :> es, State GameState :> es, Error Exn :> es) => Capability -> Term Resolved -> Eff es ()
 hasCapabilityFor cap term = do
   h <- hasCapability cap
   h `holdsOr` Incapable FixByEquip (R.singletonCap cap) term
 
 -- * Exceptions
 
-holdsOrFail' :: (Has (Throw Exn) sig m) => Const -> Bool -> [Text] -> m ()
+holdsOrFail' :: (Error Exn :> es) => Const -> Bool -> [Text] -> Eff es ()
 holdsOrFail' c a ts = a `holdsOr` cmdExn c ts
 
-isJustOrFail' :: (Has (Throw Exn) sig m) => Const -> Maybe a -> [Text] -> m a
+isJustOrFail' :: (Error Exn :> es) => Const -> Maybe a -> [Text] -> Eff es a
 isJustOrFail' c a ts = a `isJustOr` cmdExn c ts
 
 -- | Create an exception about a command failing.
@@ -126,7 +127,7 @@ cmdExn c parts = CmdFailed c (T.unwords parts) Nothing
 
 -- | Generate a uniformly random number using the random generator in
 --   the game state.
-uniform :: (Has (State GameState) sig m, UniformRange a) => (a, a) -> m a
+uniform :: (State GameState :> es, UniformRange a) => (a, a) -> Eff es a
 uniform bnds = do
   rand <- use $ randomness . randGen
   let (n, g) = uniformR bnds rand
@@ -137,7 +138,7 @@ uniform bnds = do
 --   the values randomly (using the random generator in the game
 --   state), with the probability of each being proportional to its
 --   weight.  Return @Nothing@ if the list is empty.
-weightedChoice :: Has (State GameState) sig m => (a -> Integer) -> [a] -> m (Maybe a)
+weightedChoice :: State GameState :> es => (a -> Integer) -> [a] -> Eff es (Maybe a)
 weightedChoice weight as = do
   r <- uniform (0, total - 1)
   return $ go r as
@@ -152,7 +153,7 @@ weightedChoice weight as = do
     w = weight x
 
 -- | Generate a random robot name in the form @adjective_name@.
-randomName :: Has (State GameState) sig m => m Text
+randomName :: State GameState :> es => Eff es Text
 randomName = do
   NameGenerator adjs names <- use $ robotInfo . robotNaming . nameGenerator
   i <- uniform (bounds adjs)
@@ -165,9 +166,9 @@ randomName = do
 --   failure, with no special checks for system robots (see also
 --   'checkMoveFailure').
 checkMoveFailureUnprivileged ::
-  HasRobotStepState sig m =>
+  HasRobotStepState es =>
   Cosmic Location ->
-  m (Maybe MoveFailureMode)
+  Eff es (Maybe MoveFailureMode)
 checkMoveFailureUnprivileged nextLoc = do
   me <- entityAt nextLoc
   wc <- use walkabilityContext
@@ -177,7 +178,7 @@ checkMoveFailureUnprivileged nextLoc = do
 --   failure.  Note that system robots have unrestricted movement and
 --   never fail, but non-system robots have restricted movement even
 --   in creative mode.
-checkMoveFailure :: HasRobotStepState sig m => Cosmic Location -> m (Maybe MoveFailureMode)
+checkMoveFailure :: HasRobotStepState es => Cosmic Location -> Eff es (Maybe MoveFailureMode)
 checkMoveFailure nextLoc = do
   systemRob <- use systemRobot
   runMaybeT $ do

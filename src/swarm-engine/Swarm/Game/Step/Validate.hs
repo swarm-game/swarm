@@ -9,11 +9,14 @@
 -- can be used by /e.g./ integration tests.
 module Swarm.Game.Step.Validate where
 
-import Control.Lens (use, (^.))
-import Control.Monad.State (StateT, gets)
+import Control.Lens ((^.))
+import Control.Monad.State.Strict qualified as S
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
-import Swarm.Effect (runCacheIO, runMetricIO, runTimeIO)
+import Effectful
+import Effectful.State.Static.Local
+import Effectful.State.Static.Local qualified as E
+import Swarm.Effect
 import Swarm.Game.Robot.Concrete (robotLog)
 import Swarm.Game.State (GameState, messageInfo, robotInfo, winCondition)
 import Swarm.Game.State.Robot (robotMap)
@@ -21,20 +24,37 @@ import Swarm.Game.State.Substate (WinCondition (..), WinStatus (..), messageQueu
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Tick (TickNumber)
 import Swarm.Language.Cache (moduleCache)
+import Swarm.Language.Module (Module)
+import Swarm.Language.Syntax (Phase (Elaborated))
+import Swarm.Language.Syntax.Import
 import Swarm.Log (logToText)
+import Swarm.Util.Lens
 
 -- | Keep stepping a 'GameState' until completion, returning the
 --   number of ticks taken if successful, or any bad error messages
 --   encountered.
-playUntilWin :: StateT GameState IO (Either (NE.NonEmpty T.Text) TickNumber)
+playUntilWin :: S.StateT GameState IO (Either (NE.NonEmpty T.Text) TickNumber)
 playUntilWin = do
+  gs <- S.get
+  (result, gs') <- liftIO . runEff . runCacheIO moduleCache . runMetricIO . runTimeIO . E.runState gs $ playUntilWin'
+  S.put gs'
+  pure result
+
+playUntilWin' ::
+  ( State GameState :> es
+  , Cache (ImportLoc Resolved) (Module Elaborated) :> es
+  , Metric :> es
+  , Time :> es
+  ) =>
+  Eff es (Either (NE.NonEmpty T.Text) TickNumber)
+playUntilWin' = do
   w <- use winCondition
   b <- gets badErrorsInLogs
   case NE.nonEmpty b of
-    Just badErrs -> return $ Left badErrs
+    Just badErrs -> pure $ Left badErrs
     Nothing -> case w of
-      WinConditions (Won _ ts) _ -> return $ Right ts
-      _ -> runCacheIO moduleCache (runMetricIO (runTimeIO gameTick)) >> playUntilWin
+      WinConditions (Won _ ts) _ -> pure $ Right ts
+      _ -> gameTick >> playUntilWin'
 
 -- | Extract any bad error messages from robot logs or the global
 --   message queue, where "bad" errors are either fatal errors or

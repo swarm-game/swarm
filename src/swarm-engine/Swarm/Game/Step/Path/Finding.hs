@@ -25,7 +25,6 @@
 -- distance to prevent programming errors from irrecoverably freezing the game.
 module Swarm.Game.Step.Path.Finding where
 
-import Control.Effect.Lens as Fused
 import Control.Lens ((^.))
 import Control.Monad (filterM, guard)
 import Control.Monad.Trans.Class (lift)
@@ -35,6 +34,7 @@ import Data.HashSet (HashSet)
 import Data.HashSet qualified as HashSet
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty ((:|)))
+import Effectful
 import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.Robot
@@ -50,6 +50,7 @@ import Swarm.Game.Universe
 import Swarm.Game.World (locToCoords, lookupCosmicEntity)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
+import Swarm.Util.Lens
 
 -- | Swarm command arguments are converted to idiomatic Haskell
 -- types before invoking this function, and conversely the callsite
@@ -63,10 +64,10 @@ import Swarm.Language.Syntax.Direction
 --
 -- See "Swarm.Game.Step.Path.Cache" for caching details.
 pathCommand ::
-  forall sig m.
-  HasRobotStepState sig m =>
+  forall es.
+  HasRobotStepState es =>
   PathfindingParameters (Cosmic Location) ->
-  m (Maybe (Direction, Int))
+  Eff es (Maybe (Direction, Int))
 pathCommand parms = do
   currentWalkabilityContext <- use walkabilityContext
 
@@ -93,7 +94,7 @@ pathCommand parms = do
   mkResult p = (nextDir p, length p)
   PathfindingParameters maybeDistanceLimit (Cosmic currentSubworld robotLoc) target = parms
 
-  computePath :: m (Maybe [Location])
+  computePath :: Eff es (Maybe [Location])
   computePath =
     aStarM
       (neighborFunc withinDistanceLimit . Cosmic currentSubworld)
@@ -118,7 +119,7 @@ pathCommand parms = do
   neighborFunc ::
     (Location -> Bool) ->
     Cosmic Location ->
-    m (HashSet Location)
+    Eff es (HashSet Location)
   neighborFunc isWithinRange loc = do
     locs <- filterM isWalkableLoc neighborLocs
     return $ HashSet.fromList $ map (view planar) locs
@@ -143,11 +144,11 @@ pathCommand parms = do
     LocationTarget gLoc -> manhattan gLoc
     EntityTarget _eName -> const 0
 
-  goalReachedFunc :: Location -> m Bool
+  goalReachedFunc :: Location -> Eff es Bool
   goalReachedFunc loc = case target of
     LocationTarget gLoc -> return $ loc == gLoc
     EntityTarget eName -> do
-      worlds <- Fused.use $ landscape . multiWorld
+      worlds <- use $ landscape . multiWorld
       let me = lookupCosmicEntity (Cosmic currentSubworld $ locToCoords loc) worlds
       return $ (view entityName <$> me) == Just eName
 

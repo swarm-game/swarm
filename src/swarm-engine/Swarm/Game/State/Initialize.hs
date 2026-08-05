@@ -10,9 +10,7 @@ module Swarm.Game.State.Initialize (
 ) where
 
 import Control.Arrow (Arrow ((&&&)))
-import Control.Carrier.State.Strict qualified as Fused
-import Control.Effect.Lens (view)
-import Control.Lens hiding (view)
+import Control.Lens
 import Data.Hashable (Hashable)
 import Data.IntMap qualified as IM
 import Data.List (partition)
@@ -24,6 +22,8 @@ import Data.Maybe (isNothing)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Tuple.Extra (dupe)
+import Effectful
+import Effectful.State.Static.Local
 import Swarm.Effect qualified as Effect
 import Swarm.Game.CESK (finalValue, initMachine)
 import Swarm.Game.Device (getCapabilitySet, getMap)
@@ -74,11 +74,11 @@ scenarioToGameState si (LaunchParams (Identity userSeed) (Identity toRun)) prevG
   -- set up game state
   let gs = pureScenarioToGameState si theSeed now toRun (Just gMetric) (Just wMetric) (rs ^. stdGameConfigInputs)
   -- then initialize structure recognition (needs IO because of the metrics)
-  (gs', recognition) <- runEffects gs $ initializeRecognition entityAt (land ^. scenarioStructures)
+  (recognition, gs') <- (runEff . runEffects gs) $ initializeRecognition entityAt (land ^. scenarioStructures)
   return $ gs' & discovery . structureRecognition .~ recognition
  where
   land = si ^. getScenario . scenarioLandscape
-  runEffects gs = Fused.runState gs . Effect.runMetricIO . Effect.runTimeIO
+  runEffects gs = runState gs . Effect.runMetricIO . Effect.runTimeIO
 
 -- | This initialises the 'GameState' without running metrics.
 scenarioToGameStateForTests ::
@@ -94,8 +94,8 @@ scenarioToGameStateForTests si theSeed now toRun gsc =
  where
   gs = pureScenarioToGameState si theSeed now toRun Nothing Nothing gsc
   structures = si ^. getScenario . scenarioLandscape . scenarioStructures
-  (gs', recognition) = runPureEffects $ initializeRecognition entityAt structures
-  runPureEffects = Fused.run . Fused.runState gs . Effect.runFakeMetric . Effect.runFakeTime 0 (read "2026-01-01 00:00:00 UTC")
+  (recognition, gs') = runPureEffects $ initializeRecognition entityAt structures
+  runPureEffects = runPureEff . runState gs . Effect.runFakeMetric . Effect.runFakeTime 0 (read "2026-01-01 00:00:00 UTC")
 
 -- | Initialize the GameState record for current scenario.
 pureScenarioToGameState ::
