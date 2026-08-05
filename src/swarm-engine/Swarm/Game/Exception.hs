@@ -148,7 +148,9 @@ formatIncapableFix = \case
 -- >>> incapableError cs t = putStr . unpack $ formatIncapable @Raw m FixByEquip cs t
 --
 -- >>> incapableError (R.singletonCap CGod) (TConst As)
---
+-- Thou shalt not utter such blasphemy:
+--   'as'
+--   If God in troth thou wantest to play, try thou a Creative game.
 -- >>> incapableError (R.singletonCap $ CExecute Appear) (TConst Appear)
 -- You do not have the device(s) required for:
 --   'appear'
