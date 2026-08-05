@@ -5,16 +5,17 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Main where
 
-import Control.Carrier.Accum.Strict (runAccum)
 import Control.Lens (view, (&), (.~))
 import Control.Monad (replicateM_)
-import Control.Monad.State (evalStateT, execStateT)
 import Data.Map qualified as M
 import Data.Sequence (Seq)
 import Data.Text qualified as T
 import Data.Tuple.Extra (dupe)
+import Effectful
+import Effectful.State.Static.Local
 import ImportChain
 import Swarm.Effect (runCacheIO, runMetricIO, runTimeIO)
+import Swarm.Effect.Accum.Local
 import Swarm.Failure (SystemFailure, simpleErrorHandle)
 import Swarm.Game.CESK (initMachine)
 import Swarm.Game.Cosmetic.Display (defaultRobotDisplay)
@@ -153,16 +154,17 @@ mkGameState prog robotMaker numRobots = do
     (scenario, _gsi) <- loadStandaloneScenario "classic"
     return $ scenarioToGameStateForTests (ScenarioWith scenario Nothing) 0 0 Nothing $ view stdGameConfigInputs initRS
 
-  execStateT
-    (zoomRobots $ mapM_ (addTRobot $ initMachine prog) robots)
-    ( gs
-        & creativeMode .~ True
-        & landscape . multiWorld .~ M.singleton DefaultRootSubworld (newWorld (WF $ const (blankTerrainIndex, ENothing)))
-    )
+  runEff $
+    execState
+      ( gs
+          & creativeMode .~ True
+          & landscape . multiWorld .~ M.singleton DefaultRootSubworld (newWorld (WF $ const (blankTerrainIndex, ENothing)))
+      )
+      (zoomRobots $ mapM_ (addTRobot $ initMachine prog) robots)
 
 -- | Runs numGameTicks ticks of the game.
 runGame :: Int -> GameState -> IO ()
-runGame numGameTicks = evalStateT (replicateM_ numGameTicks . runCacheIO moduleCache . runMetricIO $ runTimeIO gameTick)
+runGame numGameTicks gs = runEff . evalState gs $ (replicateM_ numGameTicks . runCacheIO moduleCache . runMetricIO $ runTimeIO gameTick)
 
 main :: IO ()
 main = do

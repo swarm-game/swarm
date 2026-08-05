@@ -1474,10 +1474,9 @@ benchmark benchmark
     stan-config, common, ghc2024-extensions,
     base,
     containers,
+    effectful-core,
     extra,
-    fused-effects,
     lens,
-    mtl,
     tasty-bench,
     text,
 
