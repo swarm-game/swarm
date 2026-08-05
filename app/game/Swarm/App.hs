@@ -26,18 +26,17 @@ module Swarm.App (
 
 import Brick
 import Brick.BChan
-import Control.Carrier.Error.Either (runError)
-import Control.Carrier.Lift (runM)
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Exception (bracket, try)
 import Control.Lens (Setter', view, (%~), (?~), (^.))
 import Control.Monad (forever, void, when)
-import Control.Monad.IO.Class (liftIO)
 import Data.IORef (IORef, modifyIORef, newIORef, readIORef, writeIORef)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
+import Effectful
+import Effectful.Error.Static
 import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
 import Graphics.Vty qualified as V
 import Graphics.Vty.CrossPlatform qualified as V
@@ -93,7 +92,7 @@ appMain :: AppOpts -> IO ()
 appMain AppOpts {version = True} = showVersion
 appMain opts = do
   chan <- createChannel
-  res <- runM . runError $ initAppState opts (Just chan)
+  res <- runEff . runErrorNoCallStack $ initAppState opts (Just chan)
   case res of
     Left err -> do
       T.hPutStrLn stderr (prettyText @SystemFailure err)
@@ -138,7 +137,7 @@ demoWeb = do
   let demoPort = 8080
   chan <- createChannel
   res <-
-    runM . runError $ initAppState (defaultAppOpts {userScenario = demoScenario}) (Just chan)
+    runEff . runErrorNoCallStack $ initAppState (defaultAppOpts {userScenario = demoScenario}) (Just chan)
   case res of
     Left err -> T.putStrLn (prettyText @SystemFailure err)
     Right s -> do

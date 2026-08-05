@@ -3,10 +3,11 @@
 -- | High score records
 module TestScoring where
 
-import Control.Carrier.Error.Either (runError)
 import Data.Semigroup (Sum (..))
 import Data.Time.Calendar.OrdinalDate
 import Data.Time.LocalTime
+import Effectful
+import Effectful.Error.Static
 import Swarm.Failure (SystemFailure)
 import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.CodeSize
@@ -81,7 +82,7 @@ compareASTMetric :: (Eq m, Monoid m, Show m) => String -> (Syntax Elaborated -> 
 compareASTMetric desc measure expected path = testCase (unwords [desc, path]) $ do
   let filePath = baseTestPath </> path
   contents <- readFileMayT UTF8 filePath ??? assertFailure "Can't read file!"
-  src <- runError @SystemFailure $ processSource (Just filePath) Nothing contents
+  src <- runEff . runErrorNoCallStack @SystemFailure $ processSource (Just filePath) Nothing contents
   t <- either (assertFailure . prettyString) pure src
   size <- transitiveMetric measure t
   assertEqual "incorrect metric" expected size
