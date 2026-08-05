@@ -7,7 +7,7 @@
 -- Facilities for running a game state until completion, checking for
 -- any errors encountered.  This is not used for normal gameplay but
 -- can be used by /e.g./ integration tests.
-module Swarm.Game.Step.Validate where
+module Swarm.Game.Step.Validate (playUntilWin, badErrorsInLogs) where
 
 import Control.Lens ((^.))
 import Control.Monad.State.Strict qualified as S

@@ -413,47 +413,21 @@ setUIGameplay ::
   UIGameplay
 setUIGameplay gs curTime isAutoplaying siPair@(ScenarioWith scenario _) uig =
   uig
-    & uiDialogs
-      . uiGoal
-      .~ emptyGoalDisplay
-    & uiIsAutoPlay
-      .~ isAutoplaying
-    & uiFocusRing
-      .~ initFocusRing
-    & uiInventory
-      . uiInventorySearch
-      .~ Nothing
-    & uiInventory
-      . uiInventoryList
-      .~ Nothing
-    & uiInventory
-      . uiInventorySort
-      .~ defaultSortOptions
-    & uiInventory
-      . uiShowZero
-      .~ True
-    & uiTiming
-      . uiShowFPS
-      .~ False
-    & uiREPL
-      .~ initREPLState replMode (uig ^. uiREPL . replHistory)
-    & uiREPL
-      . replHistory
-      %~ restartREPLHistory
-    & scenarioRef
-      ?~ siPair
-    & uiTiming
-      . lastFrameTime
-      .~ curTime
-    & uiWorldEditor
-      . EM.entityPaintList
-      %~ BL.listReplace entityList Nothing
-    & uiWorldEditor
-      . EM.editingBounds
-      . EM.boundsRect
-      %~ setNewBounds
-    & uiDialogs
-      . uiStructure
+    & uiDialogs . uiGoal .~ emptyGoalDisplay
+    & uiIsAutoPlay .~ isAutoplaying
+    & uiFocusRing .~ initFocusRing
+    & uiInventory . uiInventorySearch .~ Nothing
+    & uiInventory . uiInventoryList .~ Nothing
+    & uiInventory . uiInventorySort .~ defaultSortOptions
+    & uiInventory . uiShowZero .~ True
+    & uiTiming . uiShowFPS .~ False
+    & uiREPL .~ initREPLState replMode (uig ^. uiREPL . replHistory)
+    & uiREPL . replHistory %~ restartREPLHistory
+    & scenarioRef ?~ siPair
+    & uiTiming . lastFrameTime .~ curTime
+    & uiWorldEditor . EM.entityPaintList %~ BL.listReplace entityList Nothing
+    & uiWorldEditor . EM.editingBounds . EM.boundsRect %~ setNewBounds
+    & uiDialogs . uiStructure
       .~ StructureDisplay
         (SR.makeListWidget . M.elems $ gs ^. landscape . recognizerAutomatons . originalStructureDefinitions)
         (focusSetCurrent (StructureWidgets StructuresList) $ focusRing $ map StructureWidgets enumerate)
