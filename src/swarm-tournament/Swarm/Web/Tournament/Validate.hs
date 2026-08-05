@@ -7,13 +7,9 @@
 module Swarm.Web.Tournament.Validate where
 
 import Control.Arrow (left)
-import Control.Carrier.Accum.Strict (evalAccum)
-import Control.Carrier.Error.Either (runError)
-import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens
 import Control.Monad (unless)
-import Control.Monad.IO.Class (liftIO)
-import Control.Monad.State (evalStateT)
+import Control.Monad.State.Strict (evalStateT)
 import Control.Monad.Trans.Except
 import Data.ByteString.Lazy qualified as LBS
 import Data.Either.Extra (maybeToEither)
@@ -21,7 +17,10 @@ import Data.Sequence (Seq)
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8')
 import Data.Yaml (decodeEither', parseEither)
+import Effectful
+import Effectful.Error.Static
 import Servant.Multipart
+import Swarm.Effect.Accum.Local
 import Swarm.Failure (SystemFailure)
 import Swarm.Game.CESK (continue)
 import Swarm.Game.Robot.Concrete (machine)
@@ -130,7 +129,7 @@ validateSubmittedSolution (CommonValidationArgs solnTimeout persistenceArgs) sce
         . decodeUtf8'
         . LBS.toStrict
         $ fileContent file
-    res <- liftIO . runError @SystemFailure $ processSource Nothing Nothing solText
+    res <- liftIO . runEff . runErrorNoCallStack @SystemFailure $ processSource Nothing Nothing solText
     soln <- withExceptT (SolutionParseError . prettyText) . except $ res
     gs <- withExceptT ScenarioRetrievalFailure $ do
       scenarioContent <-
@@ -162,7 +161,8 @@ initScenarioObjectWithEnv content = do
   scenarioInputs <-
     withExceptT (ScenarioEnvironmentFailure . ContextInitializationFailure)
       . ExceptT
-      . runThrow
+      . runEff
+      . runErrorNoCallStack
       $ evalAccum (mempty :: Seq SystemFailure) initScenarioInputs
 
   initScenarioObject scenarioInputs content
@@ -177,7 +177,7 @@ initScenarioObject scenarioInputs content = do
     withExceptT ScenarioParseFailure $
       except $
         parseEither (parseJSONE' Nothing scenarioInputs) rawYaml
-  res <- runError @SystemFailure $ process (rawScenario :: Scenario Raw)
+  res <- liftIO . runEff . runErrorNoCallStack @SystemFailure $ process (rawScenario :: Scenario Raw)
   withExceptT (ScenarioParseFailure . prettyString) (except res)
 
 gamestateFromScenarioText ::
@@ -187,7 +187,8 @@ gamestateFromScenarioText content = do
   rs <-
     withExceptT (ScenarioEnvironmentFailure . ContextInitializationFailure)
       . ExceptT
-      . runThrow
+      . runEff
+      . runErrorNoCallStack
       . evalAccum (mempty :: Seq SystemFailure)
       . initRuntimeState
       $ RuntimeOptions
