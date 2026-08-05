@@ -1318,7 +1318,6 @@ test-suite swarm-unit
     data-fix,
     effectful-core,
     filepath,
-    fused-effects,
     hashable,
     lens,
     megaparsec,
