@@ -11,7 +11,6 @@ module Swarm.Doc.Wiki.Cheatsheet (
   makeWikiPage,
 ) where
 
-import Effectful
 import Control.Lens (view, (^.))
 import Data.Foldable (find, toList)
 import Data.List (transpose)
@@ -22,6 +21,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
+import Effectful
 import Swarm.Doc.Schema.Render
 import Swarm.Doc.Util
 import Swarm.Doc.Wiki.Matrix
