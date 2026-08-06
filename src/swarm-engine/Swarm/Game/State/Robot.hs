@@ -76,7 +76,6 @@ import Swarm.Game.State.ViewCenter.Internal qualified as VCInternal
 import Swarm.Game.Tick
 import Swarm.Game.Universe as U
 import Swarm.Language.Syntax (Phase (..))
-import Swarm.Util ((<+=), (<<.=), (<>=))
 import Swarm.Util.Lens
 
 -- | The names of the robots that are currently not sleeping.

@@ -121,7 +121,7 @@ type LocalModules = Set ResolvedLoc
 --   See Note [Module loading] for an overview.
 resolve ::
   (IOE :> es, Error SystemFailure :> es) =>
-  -- \| Provenance of the source, and location relative to which
+  -- | Provenance of the source, and location relative to which
   --   imports should be interpreted.  If Nothing, use the current
   --   working directory.
   Maybe FilePath ->

@@ -13,6 +13,11 @@ module Swarm.Util.Lens (
   use,
   uses,
   (%=),
+  (%%=),
+  (<%=),
+  (<+=),
+  (<<.=),
+  (<>=),
 ) where
 
 import Control.Lens (
@@ -34,6 +39,7 @@ import Control.Lens (
  )
 
 import Control.Lens qualified as L
+import Data.List.NonEmpty qualified as NE
 import Effectful
 import Effectful.State.Static.Local
 import Language.Haskell.TH (DecsQ)
@@ -90,3 +96,34 @@ l %= f = modify (L.over l f)
 -- | Modify the target(s) of the given 'Lens' by adding a value
 (+=) :: (State s :> es, Num a) => L.ASetter' s a -> a -> Eff es ()
 l += v = modify (l L.+~ v)
+
+------------------------------------------------------------
+-- Effectful Lens utilities
+
+infix 4 %%=, <+=, <%=, <<.=, <>=
+
+(<+=) :: (State s :> es, Num a) => L.LensLike' ((,) a) s a -> a -> Eff es a
+l <+= a = l <%= (+ a)
+{-# INLINE (<+=) #-}
+
+(<%=) :: State s :> es => L.LensLike' ((,) a) s a -> (a -> a) -> Eff es a
+l <%= f = l %%= (\b -> (b, b)) . f
+{-# INLINE (<%=) #-}
+
+(%%=) :: State s :> es => L.Over p ((,) r) s s a b -> p a (r, b) -> Eff es r
+l %%= f = state (l f)
+{-# INLINE (%%=) #-}
+
+(<<.=) :: State s :> es => L.LensLike ((,) a) s s a b -> b -> Eff es a
+l <<.= b = l %%= (,b)
+{-# INLINE (<<.=) #-}
+
+(<>=) :: (State s :> es, Semigroup a) => L.ASetter' s a -> a -> Eff es ()
+l <>= a = modify (l L.<>~ a)
+{-# INLINE (<>=) #-}
+
+------------------------------------------------------------
+-- Other lens utilities
+
+_NonEmpty :: Lens' (NE.NonEmpty a) (a, [a])
+_NonEmpty = L.lens (\(x NE.:| xs) -> (x, xs)) (const (uncurry (NE.:|)))

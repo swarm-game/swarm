@@ -113,7 +113,7 @@ import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Popup (startPopupAnimation)
 import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Robot.Type
-import Swarm.Util hiding (both, (<<.=))
+import Swarm.Util hiding (both)
 
 -- | The top-level event handler for the TUI.
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()

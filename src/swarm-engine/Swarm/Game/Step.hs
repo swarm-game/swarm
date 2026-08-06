@@ -365,7 +365,7 @@ hypotheticalWinCheck ws oc = do
     Unwinnable _ -> grantAchievement LoseScenario
     _ -> return ()
 
-  queue <- messageInfo . announcementQueue Swarm.Util.<%= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
+  queue <- messageInfo . announcementQueue Swarm.Util.Lens.<%= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
   shouldPause <- use $ temporal . pauseOnObjective
 
   let gameFinished = newWinState /= Ongoing

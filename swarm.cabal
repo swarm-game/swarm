@@ -185,9 +185,6 @@ common dotgen
 common effectful-core
   build-depends: effectful-core >=2.6.0.0 && <2.7
 
-common effectful
-  build-depends: effectful >=2.6.0.0 && <2.7
-
 common either
   build-depends: either >=5.0 && <5.1
 

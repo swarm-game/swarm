@@ -17,8 +17,6 @@ import Witherable
 
 -- | Transform an @Error e1@ constraint into a @Error e2@ constraint,
 --   by supplying an adapter function of type @(e1 -> e2)@.
--- withError :: HasCallStack => (e1 -> e2) -> Eff (Error e : es) a -> Eff es a
--- withError f = runErrorNoCallStackWith (throwError_ . f)
 withError :: (HasCallStack, Error e' :> es) => (e -> e') -> Eff (Error e : es) a -> Eff es a
 withError f = runErrorNoCallStackWith (throwError_ . f)
 

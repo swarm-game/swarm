@@ -78,21 +78,13 @@ module Swarm.Util (
   -- * Template Haskell utilities
   liftText,
 
-  -- * Lens utilities
-  (%%=),
-  (<%=),
-  (<+=),
-  (<<.=),
-  (<>=),
-  _NonEmpty,
-
   -- * Set utilities
   removeSupersets,
   smallHittingSet,
 ) where
 
 import Control.Arrow ((***))
-import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<&>), (<>~))
+import Control.Lens ((<&>))
 import Control.Monad (filterM, unless)
 import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum, toLower)
@@ -121,7 +113,6 @@ import Data.Time.Clock
 import Data.Yaml
 import Effectful
 import Effectful.Error.Static
-import Effectful.State.Static.Local
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax (lift)
 import NLP.Minimorph.English qualified as MM
@@ -136,7 +127,6 @@ import Witherable (wither)
 import Prelude hiding (Foldable (..), readFile, writeFile)
 
 infixr 1 ?
-infix 4 %%=, <+=, <%=, <<.=, <>=
 
 -- | A convenient infix flipped version of 'fromMaybe': @Just a ? b =
 --   a@, and @Nothing ? b = b@. It can also be chained, as in @x ? y ?
@@ -622,35 +612,6 @@ Failure b `isSuccessOr` f = throwError_ (f b)
 -- See https://stackoverflow.com/questions/38143464/cant-find-inerface-file-declaration-for-variable
 liftText :: T.Text -> Q Exp
 liftText txt = AppE (VarE 'T.pack) <$> lift (T.unpack txt)
-
-------------------------------------------------------------
--- Effectful Lens utilities
-
-(<+=) :: (State s :> es, Num a) => LensLike' ((,) a) s a -> a -> Eff es a
-l <+= a = l <%= (+ a)
-{-# INLINE (<+=) #-}
-
-(<%=) :: State s :> es => LensLike' ((,) a) s a -> (a -> a) -> Eff es a
-l <%= f = l %%= (\b -> (b, b)) . f
-{-# INLINE (<%=) #-}
-
-(%%=) :: State s :> es => Over p ((,) r) s s a b -> p a (r, b) -> Eff es r
-l %%= f = state (l f)
-{-# INLINE (%%=) #-}
-
-(<<.=) :: State s :> es => LensLike ((,) a) s s a b -> b -> Eff es a
-l <<.= b = l %%= (,b)
-{-# INLINE (<<.=) #-}
-
-(<>=) :: (State s :> es, Semigroup a) => ASetter' s a -> a -> Eff es ()
-l <>= a = modify (l <>~ a)
-{-# INLINE (<>=) #-}
-
-------------------------------------------------------------
--- Other lens utilities
-
-_NonEmpty :: Lens' (NonEmpty a) (a, [a])
-_NonEmpty = lens (\(x :| xs) -> (x, xs)) (const (uncurry (:|)))
 
 ------------------------------------------------------------
 -- Some set utilities
