@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
@@ -23,12 +24,6 @@ module Swarm.ResourceLoading.Collection (
   loadCollection,
 ) where
 
-import Control.Algebra (Has)
-import Control.Carrier.Error.Either (runError)
-import Control.Effect.Accum (Accum, add)
-import Control.Effect.Error (Error)
-import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Throw (throwError)
 import Control.Lens (Ixed (..), Traversal', makePrisms)
 import Control.Monad (filterM, forM_, when)
 import Data.Either (partitionEithers)
@@ -41,6 +36,9 @@ import Data.Map.Ordered qualified as OM
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
+import Effectful
+import Effectful.Error.Static
+import Swarm.Effect.Accum.Local
 import Swarm.Failure (
   OrderFileWarning (DanglingFiles, MissingFiles, NoOrderFile),
   SystemFailure (OrderFileWarning),
@@ -139,15 +137,15 @@ data CollectionConfig a = CollectionConfig
 -- | Recursively load a collection from a specified folder.  Mutually
 --   recursive with 'loadCollectionItem'.
 loadCollection ::
-  forall sig m a.
-  (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
+  forall es a.
+  (Accum (Seq SystemFailure) :> es, IOE :> es) =>
   CollectionConfig a ->
   FilePath ->
-  m (Collection a)
+  Eff es (Collection a)
 loadCollection cfg dir = do
-  itemPaths <- sendIO $ filterM (shouldLoad cfg dir) =<< listDirectory dir
+  itemPaths <- liftIO $ filterM (shouldLoad cfg dir) =<< listDirectory dir
   cMap <- loadItems itemPaths
-  sendIO (readOrderFile orderFile) >>= \case
+  liftIO (readOrderFile orderFile) >>= \case
     Nothing -> loadUnorderedCollection cMap
     Just order -> loadOrderedCollection order cMap
  where
@@ -158,27 +156,27 @@ loadCollection cfg dir = do
 
   -- The function for individual directory items either warns about SystemFailure,
   -- or has thrown SystemFailure. The following code just adds that thrown failure to others.
-  loadItems :: [FilePath] -> m (Map FilePath (CollectionItem a))
+  loadItems :: [FilePath] -> Eff es (Map FilePath (CollectionItem a))
   loadItems items = do
-    let loadItem f = runError @SystemFailure $ (f,) <$> loadCollectionItem cfg (dir </> f)
+    let loadItem f = runErrorNoCallStack @SystemFailure $ (f,) <$> loadCollectionItem cfg (dir </> f)
     (itemFailures, okItems) <- partitionEithers <$> mapM loadItem items
     add (Seq.fromList itemFailures)
     return $ M.fromList okItems
 
   -- Load a collection with items sorted alphabetically by file path, and
   -- optionally warn that the ORDER file is missing.
-  loadUnorderedCollection :: Map FilePath (CollectionItem a) -> m (Collection a)
+  loadUnorderedCollection :: Map FilePath (CollectionItem a) -> Eff es (Collection a)
   loadUnorderedCollection collectionItemMap = do
     when (warnUnordered cfg) (warn $ OrderFileWarning orderFileShortPath NoOrderFile)
     pure . Collection $ OM.fromMap collectionItemMap
 
   -- Load an ordered collection, and warn if the ORDER file does not
   -- match the directory contents.
-  loadOrderedCollection :: [String] -> Map FilePath (CollectionItem a) -> m (Collection a)
+  loadOrderedCollection :: [String] -> Map FilePath (CollectionItem a) -> Eff es (Collection a)
   loadOrderedCollection order collectionItemMap = do
     let missing = M.keys collectionItemMap \\ order
         (notPresent, loaded) = OM.lookupInOrder collectionItemMap order
-    dangling <- filterM (sendIO . shouldLoad cfg dir) notPresent
+    dangling <- filterM (liftIO . shouldLoad cfg dir) notPresent
     forM_ (NE.nonEmpty missing) (warn . OrderFileWarning orderFileShortPath . MissingFiles)
     forM_ (NE.nonEmpty dangling) (warn . OrderFileWarning orderFileShortPath . DanglingFiles)
 
@@ -187,20 +185,20 @@ loadCollection cfg dir = do
 -- | Load a collection item from the given path: either a leaf item,
 --   or a subcollection.
 loadCollectionItem ::
-  ( Has (Error SystemFailure) sig m
-  , Has (Accum (Seq SystemFailure)) sig m
-  , Has (Lift IO) sig m
+  ( Error SystemFailure :> es
+  , Accum (Seq SystemFailure) :> es
+  , IOE :> es
   ) =>
   CollectionConfig a ->
   FilePath ->
-  m (CollectionItem a)
+  Eff es (CollectionItem a)
 loadCollectionItem cfg path = do
-  isDir <- sendIO $ doesDirectoryExist path
+  isDir <- liftIO $ doesDirectoryExist path
   let collectionName = into @Text . takeBaseName $ path
   case isDir of
     True -> SubCollection collectionName <$> loadCollection cfg path
     False -> do
-      eitherItem <- sendIO $ loadItem cfg path
+      eitherItem <- liftIO $ loadItem cfg path
       case eitherItem of
         Right (ws, item) -> mapM_ warn ws >> pure (Single item)
         Left loadFailure -> throwError loadFailure

@@ -37,13 +37,11 @@ import Brick.Widgets.List (handleListEvent, listElements)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.TabularList.Grid qualified as BG
 import Control.Applicative ((<|>))
-import Control.Carrier.Error.Either (run, runError)
 import Control.Category ((>>>))
 import Control.Lens as Lens
 import Control.Monad (forM_, unless, void, when)
 import Control.Monad.Extra (whenJust)
-import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.State (MonadState, execState)
+import Control.Monad.State (MonadState)
 import Data.List (find)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -57,6 +55,9 @@ import Data.Text.IO qualified as T
 import Data.Text.Zipper qualified as TZ
 import Data.Text.Zipper.Generic.Words qualified as TZ
 import Data.Vector qualified as V
+import Effectful
+import Effectful.Error.Static
+import Effectful.State.Static.Local qualified as E
 import Graphics.Vty qualified as V
 import Swarm.Failure (SystemFailure (..))
 import Swarm.Game.Achievement.Definitions
@@ -112,7 +113,7 @@ import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Popup (startPopupAnimation)
 import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Robot.Type
-import Swarm.Util hiding (both, (<<.=))
+import Swarm.Util hiding (both)
 
 -- | The top-level event handler for the TUI.
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -613,7 +614,7 @@ runInputHandler kc = do
           store = s ^. gameState . baseStore
           handlerCESK = Out (VKey kc) store [FApp handler, FExec, FSuspend env]
       gameState . baseRobot . machine .= handlerCESK
-      gameState %= execState (zoomRobots $ activateRobot 0)
+      gameState %= runPureEff . flip E.execState (zoomRobots $ activateRobot 0)
 
 -- | Handle a user "piloting" input event for the REPL.
 --
@@ -900,7 +901,7 @@ validateREPLForm s =
                   -- but don't signal an error.  Any imports will
                   -- be properly resolved and checked when the
                   -- user hits enter.
-                  let res = run . runError @SystemFailure $ processTermNoImports uinput theTerm (Just env)
+                  let res = runPureEff . runErrorNoCallStack @SystemFailure $ processTermNoImports uinput theTerm (Just env)
                    in case res of
                         Right (moduleTerm -> Just t) -> (Just (t ^. sType), Right ())
                         Left (DoesNotTypecheck loc _) -> (Nothing, Left loc)

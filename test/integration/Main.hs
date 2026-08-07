@@ -7,12 +7,11 @@
 -- Swarm integration tests
 module Main where
 
-import Control.Carrier.Error.Either (runError)
-import Control.Carrier.Lift (runM)
-import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens ((&), (.~), (^.))
 import Data.Set qualified as S
 import Data.Yaml (decodeFileEither, prettyPrintParseException)
+import Effectful
+import Effectful.Error.Static
 import Swarm.Failure (SystemFailure)
 import Swarm.Game.Scenario (gsiScenarioInputs)
 import Swarm.Game.Scenario.Scoring.GenericMetrics (Metric (..), Progress (..))
@@ -43,7 +42,7 @@ main = do
   scenarioPrograms <- findAllWithExt "data/scenarios" "sw"
   PersistentState rs ui key progState <- do
     let testingOptions = defaultAppOpts {debugOptions = S.singleton LoadTestingScenarios}
-    out <- runM . runThrow @SystemFailure $ initPersistentState testingOptions
+    out <- runEff . runErrorNoCallStack @SystemFailure $ initPersistentState testingOptions
     either (assertFailure . prettyString) return out
   let scenarioInputs = gsiScenarioInputs $ initState $ rs ^. stdGameConfigInputs
       rs' = rs & eventLog .~ mempty
@@ -76,7 +75,7 @@ exampleTest :: FilePath -> TestTree
 exampleTest path =
   testCase ("processTerm for contents of " ++ show path) $ do
     content <- readFileMayT UTF8 path ??? assertFailure "Can't read file!"
-    res <- runError @SystemFailure (processSource (Just path) Nothing content >>= requireNonEmptyTerm)
+    res <- (runEff . runErrorNoCallStack @SystemFailure) (processSource (Just path) Nothing content >>= requireNonEmptyTerm)
     either (assertFailure . prettyString) (const $ pure ()) res
 
 ------------------------------------------------------------

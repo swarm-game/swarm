@@ -15,31 +15,24 @@
 -- references.
 module Swarm.Effect.Unify.Fast where
 
-import Control.Algebra
-import Control.Applicative (Alternative)
-import Control.Carrier.Accum.Strict (AccumC, runAccum)
-import Control.Carrier.Reader (ReaderC, runReader)
-import Control.Carrier.State.Strict (StateC, evalState)
-import Control.Carrier.Throw.Either (ThrowC, runThrow)
-import Control.Category ((>>>))
-import Control.Effect.Accum (Accum, add)
-import Control.Effect.Reader (Reader, ask, local)
-import Control.Effect.State (State, get, gets, modify)
-import Control.Effect.Throw (Throw, throwError)
 import Control.Monad (zipWithM)
 import Control.Monad.Free
-import Control.Monad.Trans (MonadIO)
 import Data.Function (on)
-import Data.Functor.Identity
 import Data.Map qualified as M
 import Data.Map.Merge.Lazy qualified as M
 import Data.Monoid (First (..))
 import Data.Set (Set)
 import Data.Set qualified as S
+import Effectful
+import Effectful.Dispatch.Dynamic
+import Effectful.Error.Static
+import Effectful.Reader.Static
+import Effectful.State.Static.Local
+import Swarm.Effect.Accum.Local
 import Swarm.Effect.Unify
 import Swarm.Effect.Unify.Common
 import Swarm.Language.Types hiding (Type)
-import Swarm.Util.Effect (withThrow)
+import Swarm.Util.Effect (withError)
 import Prelude hiding (lookup)
 
 ------------------------------------------------------------
@@ -70,7 +63,7 @@ import Prelude hiding (lookup)
 --   We also do a lazy occurs-check during substitution application,
 --   so we need the ability to throw a unification error.
 class Substitutes n b a where
-  subst :: Has (Throw UnificationError) sig m => Subst n b -> a -> m a
+  subst :: Error UnificationError :> es => Subst n b -> a -> Eff es a
 
 -- | We can perform substitution on terms built up as the free monad
 --   over a structure functor @f@.
@@ -86,8 +79,8 @@ instance Substitutes IntVar UType UType where
       throwError $
         Infinite x (snd (runSubst (go $ Pure x)))
    where
-    runSubst :: ReaderC (Set IntVar) (AccumC (First IntVar) Identity) a -> (First IntVar, a)
-    runSubst = run . runAccum (First Nothing) . runReader S.empty
+    runSubst :: Eff [Reader (Set IntVar), Accum (First IntVar)] a -> (First IntVar, a)
+    runSubst = runPureEff . runAccum (First Nothing) . runReader S.empty
 
     -- A version of substitution that recurses through the term,
     -- keeping track of unification variables seen along the current
@@ -95,9 +88,9 @@ instance Substitutes IntVar UType UType where
     -- returns it unchanged but notes the first such variable that was
     -- encountered.
     go ::
-      (Has (Reader (Set IntVar)) sig m, Has (Accum (First IntVar)) sig m) =>
+      (Reader (Set IntVar) :> es, Accum (First IntVar) :> es) =>
       UType ->
-      m UType
+      Eff es UType
     go (Pure x) = case lookup x s of
       Nothing -> pure $ Pure x
       Just t -> do
@@ -107,7 +100,7 @@ instance Substitutes IntVar UType UType where
           False -> local (S.insert x) $ go t
     go (Free t) = Free <$> goF t
 
-    goF :: (Has (Reader (Set IntVar)) sig m, Has (Accum (First IntVar)) sig m) => TypeF UType -> m (TypeF UType)
+    goF :: (Reader (Set IntVar) :> es, Accum (First IntVar) :> es) => TypeF UType -> Eff es (TypeF UType)
     goF (TyConF c ts) = TyConF c <$> mapM go ts
     goF t@(TyVarF {}) = pure t
     goF (TyRcdF m) = TyRcdF <$> mapM go m
@@ -115,43 +108,11 @@ instance Substitutes IntVar UType UType where
     goF t@(TyRecVarF _) = pure t
 
 ------------------------------------------------------------
--- Carrier type
-
--- | Carrier type for unification: we maintain a current substitution,
---   a counter for generating fresh unification variables, and can
---   throw unification errors.
-newtype UnificationC m a = UnificationC
-  { unUnificationC ::
-      StateC
-        (Set (UType, UType))
-        ( StateC
-            (Subst IntVar UType)
-            ( StateC
-                FreshVarCounter
-                (ThrowC UnificationError m)
-            )
-        )
-        a
-  }
-  deriving newtype (Functor, Applicative, Alternative, Monad, MonadIO)
+-- Unification Handler
 
 -- | Counter for generating fresh unification variables.
 newtype FreshVarCounter = FreshVarCounter {getFreshVarCounter :: Int}
   deriving (Eq, Ord, Enum)
-
--- | Run a 'Unification' effect via the 'UnificationC' carrier.  Note
---   that we also require an ambient @Reader 'TDCtx'@ effect, so unification
---   will be sure to pick up whatever type aliases happen to be in scope.
-runUnification ::
-  (Algebra sig m, Has (Reader TDCtx) sig m) =>
-  UnificationC m a ->
-  m (Either UnificationError a)
-runUnification =
-  unUnificationC
-    >>> evalState S.empty
-    >>> evalState idS
-    >>> evalState (FreshVarCounter 0)
-    >>> runThrow
 
 ------------------------------------------------------------
 -- Unification
@@ -174,25 +135,24 @@ runUnification =
 -- Peyton Jones et al. show how to do it correctly: when unifying x = y and
 -- x is not mapped in the substitution, we must also look up y.
 
--- | Implementation of the 'Unification' effect in terms of the
---   'UnificationC' carrier.
-instance
-  (Algebra sig m, Has (Reader TDCtx) sig m) =>
-  Algebra (Unification :+: sig) (UnificationC m)
-  where
-  alg hdl sig ctx = UnificationC $ case sig of
-    L (Unify t1 t2) -> (<$ ctx) <$> runThrow (unify t1 t2)
-    L (ApplyBindings t) -> do
-      s <- get @(Subst IntVar UType)
-      (<$ ctx) <$> subst s t
-    L FreshIntVar -> do
-      v <- IntVar <$> gets getFreshVarCounter
-      modify @FreshVarCounter succ
-      return $ v <$ ctx
-    L (FreeUVars t) -> do
-      s <- get @(Subst IntVar UType)
-      (<$ ctx) . fuvs <$> subst s t
-    R other -> alg (unUnificationC . hdl) (R (R (R (R other)))) ctx
+-- | Run a 'Unification' effect.  Note
+--   that we also require an ambient @Reader 'TDCtx'@ effect, so unification
+--   will be sure to pick up whatever type aliases happen to be in scope.
+--   To run this effect, we maintain a current substitution, a counter for generating
+--   fresh unification variables, and can throw unification errors.
+runUnification :: Reader TDCtx :> es => Eff (Unification : es) a -> Eff es (Either UnificationError a)
+runUnification = reinterpret (runErrorNoCallStack . evalState (FreshVarCounter 0) . evalState (idS :: Subst IntVar UType) . evalState (S.empty :: Set (UType, UType))) $ \_ -> \case
+  Unify t1 t2 -> runErrorNoCallStack (unify t1 t2)
+  ApplyBindings t -> do
+    s <- get @(Subst IntVar UType)
+    subst s t
+  FreshIntVar -> do
+    v <- IntVar <$> gets getFreshVarCounter
+    modify @FreshVarCounter succ
+    pure v
+  FreeUVars t -> do
+    s <- get @(Subst IntVar UType)
+    fuvs <$> subst s t
 
 -- | Unify two types, returning a unified type equal to both.  Note
 --   that for efficiency we /don't/ do an occurs check here, but
@@ -225,14 +185,14 @@ instance
 --         { back to the starting pair, return success }
 --   @
 unify ::
-  ( Has (Throw UnificationError) sig m
-  , Has (Reader TDCtx) sig m
-  , Has (State (Subst IntVar UType)) sig m
-  , Has (State (Set (UType, UType))) sig m
+  ( Error UnificationError :> es
+  , Reader TDCtx :> es
+  , State (Subst IntVar UType) :> es
+  , State (Set (UType, UType)) :> es
   ) =>
   UType ->
   UType ->
-  m UType
+  Eff es UType
 unify ty1 ty2 = do
   seen <- get @(Set (UType, UType))
   case S.member (ty1, ty2) seen of
@@ -251,7 +211,7 @@ unify ty1 ty2 = do
         (_, UTyRec x ty) -> unify ty1 (unfoldRec x ty)
         (UTyUser x1 tys, _) -> do
           ty1' <-
-            withThrow
+            withError
               (\(UnexpandedUserType _) -> UndefinedUserType (UTyUser x1 tys))
               (expandTydef x1 tys)
           unify ty1' ty2
@@ -262,14 +222,14 @@ unify ty1 ty2 = do
 --   substitution with another term.  If the other term is also a
 --   variable, we must look it up as well to see if it is bound.
 unifyVar ::
-  ( Has (Throw UnificationError) sig m
-  , Has (Reader TDCtx) sig m
-  , Has (State (Subst IntVar UType)) sig m
-  , Has (State (Set (UType, UType))) sig m
+  ( Error UnificationError :> es
+  , Reader TDCtx :> es
+  , State (Subst IntVar UType) :> es
+  , State (Set (UType, UType)) :> es
   ) =>
   IntVar ->
   UType ->
-  m UType
+  Eff es UType
 unifyVar x (Pure y) = do
   myv <- lookupS y
   case myv of
@@ -291,14 +251,14 @@ unifyVar x t = modify (insert x t) >> pure t
 --   have the same top-level constructor and recurse on their
 --   contents.
 unifyF ::
-  ( Has (Throw UnificationError) sig m
-  , Has (Reader TDCtx) sig m
-  , Has (State (Subst IntVar UType)) sig m
-  , Has (State (Set (UType, UType))) sig m
+  ( Error UnificationError :> es
+  , Reader TDCtx :> es
+  , State (Subst IntVar UType) :> es
+  , State (Set (UType, UType)) :> es
   ) =>
   TypeF UType ->
   TypeF UType ->
-  m (TypeF UType)
+  Eff es (TypeF UType)
 unifyF t1 t2 = case (t1, t2) of
   -- Recursive types are always expanded in 'unify', these first four cases
   -- should never happen.

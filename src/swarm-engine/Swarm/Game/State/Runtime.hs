@@ -26,13 +26,13 @@ module Swarm.Game.State.Runtime (
 )
 where
 
-import Control.Effect.Accum
-import Control.Effect.Lift
-import Control.Effect.Throw
 import Control.Lens
 import Data.Map (Map)
 import Data.Sequence (Seq)
 import Data.Text (Text)
+import Effectful
+import Effectful.Error.Static
+import Swarm.Effect.Accum.Local
 import Swarm.Failure (SystemFailure)
 import Swarm.Game.Land
 import Swarm.Game.Recipe (loadRecipes)
@@ -55,34 +55,34 @@ data RuntimeState = RuntimeState
   }
 
 initScenarioInputs ::
-  ( Has (Throw SystemFailure) sig m
-  , Has (Accum (Seq SystemFailure)) sig m
-  , Has (Lift IO) sig m
+  ( Error SystemFailure :> es
+  , Accum (Seq SystemFailure) :> es
+  , IOE :> es
   ) =>
-  m ScenarioInputs
+  Eff es ScenarioInputs
 initScenarioInputs = do
   tem <- loadEntitiesAndTerrain
   worlds <- loadWorlds tem
   return $ ScenarioInputs worlds tem
 
 initGameStateInputs ::
-  ( Has (Throw SystemFailure) sig m
-  , Has (Accum (Seq SystemFailure)) sig m
-  , Has (Lift IO) sig m
+  ( Error SystemFailure :> es
+  , Accum (Seq SystemFailure) :> es
+  , IOE :> es
   ) =>
-  m GameStateInputs
+  Eff es GameStateInputs
 initGameStateInputs = do
   scenarioInputs <- initScenarioInputs
   recipes <- loadRecipes $ initEntityTerrain scenarioInputs ^. entityMap
   return $ GameStateInputs scenarioInputs recipes
 
 initGameStateConfig ::
-  ( Has (Throw SystemFailure) sig m
-  , Has (Accum (Seq SystemFailure)) sig m
-  , Has (Lift IO) sig m
+  ( Error SystemFailure :> es
+  , Accum (Seq SystemFailure) :> es
+  , IOE :> es
   ) =>
   RuntimeOptions ->
-  m GameStateConfig
+  Eff es GameStateConfig
 initGameStateConfig RuntimeOptions {..} = do
   initAppDataMap <- readAppData
   nameParts <- initNameGenerator initAppDataMap
@@ -98,15 +98,15 @@ data RuntimeOptions = RuntimeOptions
   deriving (Eq, Show)
 
 initRuntimeState ::
-  ( Has (Throw SystemFailure) sig m
-  , Has (Accum (Seq SystemFailure)) sig m
-  , Has (Lift IO) sig m
+  ( Error SystemFailure :> es
+  , Accum (Seq SystemFailure) :> es
+  , IOE :> es
   ) =>
   RuntimeOptions ->
-  m RuntimeState
+  Eff es RuntimeState
 initRuntimeState opts = do
-  store <- sendIO Metrics.newStore
-  sendIO $ Metrics.registerGcMetrics store
+  store <- liftIO Metrics.newStore
+  liftIO $ Metrics.registerGcMetrics store
   gsc <- initGameStateConfig opts
   return $
     RuntimeState

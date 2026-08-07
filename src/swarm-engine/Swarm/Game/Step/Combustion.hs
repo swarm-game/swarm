@@ -14,12 +14,12 @@
 -- well as to initiate the delayed combustion of its neighbors.
 module Swarm.Game.Step.Combustion where
 
-import Control.Carrier.State.Lazy
-import Control.Effect.Lens
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (forM_, when)
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
+import Effectful
+import Effectful.State.Static.Local
 import Linear (zero)
 import Swarm.Effect as Effect (Metric, Time, getNow)
 import Swarm.Game.CESK (initMachine)
@@ -43,10 +43,11 @@ import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction (Direction)
 import Swarm.Text.Markdown qualified as Markdown
 import Swarm.Util hiding (both)
+import Swarm.Util.Lens
 import System.Clock (TimeSpec)
 import Prelude hiding (lookup)
 
-igniteCommand :: HasRobotStepState sig m => Const -> Direction -> m ()
+igniteCommand :: HasRobotStepState es => Const -> Direction -> Eff es ()
 igniteCommand c d = do
   (loc, me) <- lookInDirection d
   -- Ensure there is an entity here.
@@ -84,12 +85,12 @@ igniteCommand c d = do
 --   entity; propagating the fire to neighbors is handled upstream,
 --   within the 'Swarm.Language.Syntax.Ignite' command.
 addCombustionBot ::
-  Has (State GameState) sig m =>
+  State GameState :> es =>
   Entity ->
   Combustibility ->
   TimeSpec ->
   Cosmic Location ->
-  m Integer
+  Eff es Integer
 addCombustionBot inputEntity combustibility ts loc = do
   em <- use $ landscape . terrainAndEntities . entityMap
   let botInventory = fromMaybe [] $ do
@@ -171,12 +172,12 @@ combustionProgram combustionDuration (Combustibility _ _ _ maybeCombustionProduc
 --   on that particular neighbor entity's combustion /rate/, but also
 --   on the @sourceDuration@ time that the current entity will burn.
 igniteNeighbor ::
-  (Has (State GameState) sig m, Has Effect.Metric sig m, Has Effect.Time sig m) =>
+  (State GameState :> es, Effect.Metric :> es, Effect.Time :> es) =>
   TimeSpec ->
   Integer ->
   Integer ->
   Cosmic Location ->
-  m ()
+  Eff es ()
 igniteNeighbor creationTime warmup sourceDuration loc = do
   maybeEnt <- entityAt loc
   forM_ maybeEnt igniteEntity
@@ -202,12 +203,12 @@ igniteNeighbor creationTime warmup sourceDuration loc = do
 --   Its sole purpose is to delay the 'Swarm.Language.Syntax.Ignite' command for a neighbor
 --   that has been a priori determined that it shall be ignited.
 addIgnitionBot ::
-  Has (State Robots) sig m =>
+  State Robots :> es =>
   Integer ->
   Entity ->
   TimeSpec ->
   Cosmic Location ->
-  m ()
+  Eff es ()
 addIgnitionBot ignitionDelay inputEntity ts loc =
   addTRobot (initMachine (ignitionProgram ignitionDelay)) $
     mkRobot

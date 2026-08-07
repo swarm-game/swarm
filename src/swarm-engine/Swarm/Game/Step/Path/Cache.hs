@@ -30,8 +30,6 @@ module Swarm.Game.Step.Path.Cache (
 ) where
 
 import Control.Arrow (left, (&&&))
-import Control.Carrier.State.Lazy
-import Control.Effect.Lens
 import Control.Lens ((^.))
 import Control.Monad (unless)
 import Data.Either.Extra (maybeToEither)
@@ -40,6 +38,8 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Tuple.Extra (both)
+import Effectful
+import Effectful.State.Static.Local
 import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.Robot
@@ -53,15 +53,16 @@ import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util.Inspect (robotWithID)
 import Swarm.Game.Universe (Cosmic (..), SubworldName)
 import Swarm.Util (prependList, tails1)
+import Swarm.Util.Lens
 import Swarm.Util.RingBuffer qualified as RB
 
 -- | Fetch the previously computed shortest path from the cache.
 -- Log success or the reason it failed.
 retrieveCachedPath ::
-  HasRobotStepState sig m =>
+  HasRobotStepState es =>
   WalkabilityContext ->
   PathfindingParameters (Cosmic Location) ->
-  m (Either CacheRetreivalInapplicability [Location])
+  Eff es (Either CacheRetreivalInapplicability [Location])
 retrieveCachedPath currentWalkabilityContext newParms = do
   pcr <- use $ pathCaching . pathCachingRobots
   rid <- use robotID
@@ -69,7 +70,8 @@ retrieveCachedPath currentWalkabilityContext newParms = do
       myEntry :: CacheRetrievalAttempt
       myEntry = either RecomputationRequired (const Success) eitherCachedPath
 
-  pathCaching . pathCachingLog
+  pathCaching
+    . pathCachingLog
     %= RB.insert (CacheLogEntry rid $ RetrievalAttempt myEntry)
 
   return eitherCachedPath
@@ -107,12 +109,12 @@ retrieveCachedPath currentWalkabilityContext newParms = do
 
 -- | Store a newly computed shortest path in the cache.
 recordCache ::
-  HasRobotStepState sig m =>
+  HasRobotStepState es =>
   PathfindingParameters SubworldName ->
   WalkabilityContext ->
   -- | includes robot starting position
   NonEmpty Location ->
-  m ()
+  Eff es ()
 recordCache parms wc pathLocs = do
   rid <- use robotID
   pathCaching . pathCachingRobots %= IM.insert rid newCache
@@ -210,11 +212,11 @@ truncatePath origPath entityLoc oldCache =
 -- check whether a shortest-path previously computed for a
 -- given robot is still valid or can be updated.
 revalidatePathCache ::
-  (Has (State GameState) sig m) =>
+  (State GameState :> es) =>
   Cosmic Location ->
   CellModification Entity ->
   (RID, PathfindingCache) ->
-  m ()
+  Eff es ()
 revalidatePathCache entityLoc entityModification (rid, pc) = do
   maybeRobot <- robotWithID rid
   let (logEntry, updateFunc) = getCacheUpdate $ checkPath maybeRobot

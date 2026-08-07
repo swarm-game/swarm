@@ -24,12 +24,13 @@ import Commonmark qualified as Mark
 import Commonmark.Extensions qualified as Mark (rawAttributeSpec)
 import Control.Applicative ((<|>))
 import Control.Arrow (left)
-import Control.Carrier.Error.Either (runError)
 import Data.Functor.Identity (Identity (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Vector (toList)
 import Data.Yaml
+import Effectful
+import Effectful.Error.Static
 import GHC.Exts qualified (IsList (..), IsString (..))
 import Swarm.Failure (SystemFailure)
 import Swarm.Language.Parser (readTerm)
@@ -120,7 +121,7 @@ parseSyntax s = case readTerm s of
   Left e -> Left e
   Right Nothing -> Left "empty code"
   -- Just run the typechecker etc. to make sure the term typechecks
-  Right (Just t) -> case runError @SystemFailure (processTermNoImports s t Nothing) of
+  Right (Just t) -> case runPureEff . runErrorNoCallStack @SystemFailure $ processTermNoImports s t Nothing of
     -- If typechecking produces an error, just pretty-print the error message.
     Left e -> Left (prettyText @SystemFailure e)
     -- ...but if it does, we throw away the type-annotated +

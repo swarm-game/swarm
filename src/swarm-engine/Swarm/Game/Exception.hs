@@ -136,22 +136,21 @@ formatIncapableFix = \case
 --   on how to fix it.
 --
 -- >>> import Data.Either (fromRight)
--- >>> import Control.Carrier.Throw.Either (runThrow)
--- >>> import Control.Algebra (run)
+-- >>> import Effectful.Error.Static
+-- >>> import Effectful
 -- >>> import Swarm.Failure (LoadingFailure)
 -- >>> import Swarm.Language.Phase (Raw)
 -- >>> import qualified Data.Set as S
 -- >>> :set -XTypeApplications
 -- >>> w = mkEntity (defaultEntityDisplay 'l') "magic wand" mempty mempty (S.singleton $ CExecute Appear)
 -- >>> r = mkEntity (defaultEntityDisplay 'o') "the one ring" mempty mempty (S.singleton $ CExecute Appear)
--- >>> m = fromRight mempty . run . runThrow @LoadingFailure $ buildEntityMap [w,r]
+-- >>> m = fromRight mempty . runPureEff . runErrorNoCallStack @LoadingFailure $ buildEntityMap [w,r]
 -- >>> incapableError cs t = putStr . unpack $ formatIncapable @Raw m FixByEquip cs t
 --
 -- >>> incapableError (R.singletonCap CGod) (TConst As)
 -- Thou shalt not utter such blasphemy:
 --   'as'
 --   If God in troth thou wantest to play, try thou a Creative game.
---
 -- >>> incapableError (R.singletonCap $ CExecute Appear) (TConst Appear)
 -- You do not have the device(s) required for:
 --   'appear'

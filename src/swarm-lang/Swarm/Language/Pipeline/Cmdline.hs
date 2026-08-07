@@ -6,9 +6,9 @@
 -- Parsing + typechecking swarm-lang code at the command line.
 module Swarm.Language.Pipeline.Cmdline where
 
-import Control.Carrier.Error.Either (runError)
-import Control.Carrier.Lift (runM)
 import Data.Text.IO qualified as T
+import Effectful
+import Effectful.Error.Static
 import Swarm.Failure (SystemFailure)
 import Swarm.Language.Pipeline (processSource)
 import Swarm.Pretty (prettyText)
@@ -26,7 +26,7 @@ checkSwarmIO (CheckConfig input) = do
   case mcontent of
     Nothing -> T.hPutStrLn stderr $ "Could not read from " <> prettyText input
     Just content -> do
-      res <- runM . runError @SystemFailure $ processSource (inputSourceToMaybe input) Nothing content
+      res <- runEff . runErrorNoCallStack @SystemFailure $ processSource (inputSourceToMaybe input) Nothing content
       case res of
         Right _ -> T.putStrLn "OK."
         Left err -> do

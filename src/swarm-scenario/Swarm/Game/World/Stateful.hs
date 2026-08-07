@@ -23,12 +23,13 @@ module Swarm.Game.World.Stateful (
   loadRegionM,
 ) where
 
-import Control.Algebra (Has)
-import Control.Effect.State (State, get, state)
 import Control.Monad (unless, void)
 import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
 import Data.Map.Strict qualified as M
+import Data.Tuple (swap)
+import Effectful
+import Effectful.State.Static.Local
 import Swarm.Effect qualified as Effect
 import Swarm.Game.Entity (Entity)
 import Swarm.Game.Scenario.Topography.Modify
@@ -37,11 +38,12 @@ import Swarm.Game.World.Metrics
 import Swarm.Game.World.Pure
 import Swarm.Game.World.Tile
 
-type HasWorldStateEffect t e sig m =
+type HasWorldStateEffect t e es =
   ( IArray U.UArray t
-  , Has (State (World t e)) sig m
-  , Has Effect.Metric sig m
-  , Has Effect.Time sig m
+  , State (World t e) :> es
+  , Effect.Metric :> es
+  , Effect.Metric :> es
+  , Effect.Time :> es
   )
 
 -- | Look up tile and entity on coordinates in the world state.
@@ -50,11 +52,11 @@ type HasWorldStateEffect t e sig m =
 -- and logs how long that took to metrics. So the loading has
 -- to be strict but the result is looked up lazily.
 lookupContentM ::
-  forall t e sig m.
-  HasWorldStateEffect t e sig m =>
+  forall t e es.
+  HasWorldStateEffect t e es =>
   Maybe WorldMetrics ->
   Coords ->
-  m (t, Maybe e)
+  Eff es (t, Maybe e)
 lookupContentM wm c = do
   loadCellM @t @e wm c
   w <- get @(World t e)
@@ -64,56 +66,56 @@ lookupContentM wm c = do
 --   containing the given coordinates if it is not already loaded,
 --   then looks up the terrain value.
 lookupTerrainM ::
-  forall t e sig m.
-  HasWorldStateEffect t e sig m =>
+  forall t e es.
+  HasWorldStateEffect t e es =>
   Maybe WorldMetrics ->
   Coords ->
-  m t
+  Eff es t
 lookupTerrainM wm c = fst <$> lookupContentM @t @e wm c
 
 -- | A stateful variant of 'lookupEntity', which first loads the tile
 --   containing the given coordinates if it is not already loaded,
 --   then looks up the terrain value.
 lookupEntityM ::
-  forall t e sig m.
-  HasWorldStateEffect t e sig m =>
+  forall t e es.
+  HasWorldStateEffect t e es =>
   Maybe WorldMetrics ->
   Coords ->
-  m (Maybe e)
+  Eff es (Maybe e)
 lookupEntityM wm c = snd <$> lookupContentM @t @e wm c
 
 -- | A stateful variant of 'update', which also ensures the tile
 --   containing the given coordinates is loaded.
 updateM ::
-  forall t sig m.
-  HasWorldStateEffect t Entity sig m =>
+  forall t es.
+  HasWorldStateEffect t Entity es =>
   Maybe WorldMetrics ->
   Coords ->
   (Maybe Entity -> Maybe Entity) ->
-  m (CellUpdate Entity)
+  Eff es (CellUpdate Entity)
 updateM wm c g = do
   loadCellM @t @Entity wm c
-  state @(World t Entity) $ update c g
+  state @(World t Entity) $ swap . update c g
 
 loadCellM ::
-  forall t e sig m.
-  HasWorldStateEffect t e sig m =>
+  forall t e es.
+  HasWorldStateEffect t e es =>
   Maybe WorldMetrics ->
   Coords ->
-  m ()
+  Eff es ()
 loadCellM wm c = loadRegionM @t @e wm (c, c)
 
 loadRegionM ::
-  forall t e sig m.
-  HasWorldStateEffect t e sig m =>
+  forall t e es.
+  HasWorldStateEffect t e es =>
   Maybe WorldMetrics ->
   (Coords, Coords) ->
-  m ()
+  Eff es ()
 loadRegionM wm = updateMetric . state @(World t e) . loadRegion'
  where
-  loadRegion' :: (Coords, Coords) -> World t e -> (World t e, [TileCoords])
-  loadRegion' cc ow = let (nw, ts) = loadRegion cc ow in nw.tileCache `seq` (nw, ts)
-  updateMetric :: m [TileCoords] -> m ()
+  loadRegion' :: (Coords, Coords) -> World t e -> ([TileCoords], World t e)
+  loadRegion' cc ow = let (nw, ts) = loadRegion cc ow in nw.tileCache `seq` (ts, nw)
+  updateMetric :: Eff es [TileCoords] -> Eff es ()
   updateMetric m = case wm of
     Nothing -> void m
     Just wMetrics -> do

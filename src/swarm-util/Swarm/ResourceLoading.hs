@@ -40,9 +40,6 @@ module Swarm.ResourceLoading (
   loadCollection,
 ) where
 
-import Control.Algebra (Has)
-import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Throw (Throw, liftEither, throwError)
 import Control.Exception (catch)
 import Control.Exception.Base (IOException)
 import Control.Monad (forM, guard, when, (<=<))
@@ -53,6 +50,8 @@ import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Effectful
+import Effectful.Error.Static
 import Paths_swarm (getDataDir)
 import Swarm.Failure (
   Asset (Data),
@@ -63,7 +62,7 @@ import Swarm.Failure (
  )
 import Swarm.ResourceLoading.Collection
 import Swarm.Util (Encoding (UTF8), readFileMayT)
-import Swarm.Util.Effect ((???))
+import Swarm.Util.Effect (liftEither, (???))
 import System.Directory (
   XdgDirectory (..),
   createDirectoryIfMissing,
@@ -90,22 +89,22 @@ data NameGenerator = NameGenerator
 
 -- | Ensure that a given directory exists, wrapping it in 'Just' if it
 --   does exist and yielding 'Nothing' otherwise.
-guardDir :: Has (Lift IO) sig m => FilePath -> m (Maybe FilePath)
+guardDir :: IOE :> es => FilePath -> Eff es (Maybe FilePath)
 guardDir dir = do
-  ex <- sendIO $ doesDirectoryExist dir
+  ex <- liftIO $ doesDirectoryExist dir
   pure $ guard ex $> dir
 
 -- | Get subdirectory from swarm data directory.  Return Nothing if
 --   not found. This will first look in Cabal generated path and then
 --   try a @data@ directory in 'XdgData' path.
-getDataDirSafe :: Has (Lift IO) sig m => FilePath -> m (Maybe FilePath)
+getDataDirSafe :: IOE :> es => FilePath -> Eff es (Maybe FilePath)
 getDataDirSafe p = do
   md <- tryDir getDataDir
   case md of
     Nothing -> tryDir (getSwarmXdgDataSubdir False "data")
     Just d -> pure (Just d)
  where
-  tryDir m = sendIO m >>= guardDir . normalise . (</> p)
+  tryDir m = liftIO m >>= guardDir . normalise . (</> p)
 
 -- | Get subdirectory from swarm data directory; throw an error if not
 --   found. This will first look in Cabal generated path and then
@@ -115,10 +114,10 @@ getDataDirSafe p = do
 --   preferred, but when the players install a binary they need to
 --   extract the `data` archive to the XDG directory.
 getDataDirThrow ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  (Error SystemFailure :> es, IOE :> es) =>
   AssetData ->
   FilePath ->
-  m FilePath
+  Eff es FilePath
 getDataDirThrow asset p = do
   getDataDirSafe p
     ??? throwError (AssetNotLoaded (Data asset) p $ DoesNotExist Directory)
@@ -127,14 +126,14 @@ getDataDirThrow asset p = do
 --
 -- See the note in 'getDataDirSafe'.
 getDataFileNameThrow ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  (Error SystemFailure :> es, IOE :> es) =>
   AssetData ->
   FilePath ->
-  m FilePath
+  Eff es FilePath
 getDataFileNameThrow asset name = do
   d <- getDataDirThrow asset "."
   let fp = d </> name
-  fe <- sendIO $ doesFileExist fp
+  fe <- liftIO $ doesFileExist fp
   if fe
     then return fp
     else throwError $ AssetNotLoaded (Data asset) fp $ DoesNotExist File
@@ -180,20 +179,20 @@ getSwarmAchievementsPath createDirs = getSwarmXdgDataSubdir createDirs "achievem
 
 -- | Read all the @.txt@ files in the @data/@ directory.
 readAppData ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  m (Map Text Text)
+  (Error SystemFailure :> es, IOE :> es) =>
+  Eff es (Map Text Text)
 readAppData = do
   d <- getDataDirThrow AppAsset "."
   dirMembers :: [FilePath] <-
-    (liftEither <=< sendIO) $
+    (liftEither <=< liftIO) $
       (pure <$> listDirectory d) `catch` \(e :: IOException) ->
         return . Left . AssetNotLoaded (Data AppAsset) d . SystemFailure . CustomFailure . T.pack $ show e
   let fs = filter ((== ".txt") . takeExtension) dirMembers
 
-  filesList <- sendIO $ forM fs (\f -> (into @Text (dropExtension f),) <$> readFileMayT UTF8 (d </> f))
+  filesList <- liftIO $ forM fs (\f -> (into @Text (dropExtension f),) <$> readFileMayT UTF8 (d </> f))
   return $ M.fromList . mapMaybe sequenceA $ filesList
 
-initNameGenerator :: Has (Throw SystemFailure) sig m => Map Text Text -> m NameGenerator
+initNameGenerator :: Error SystemFailure :> es => Map Text Text -> Eff es NameGenerator
 initNameGenerator appDataMap = do
   adjs <- getDataLines "adjectives"
   names <- getDataLines "names"

@@ -36,6 +36,7 @@ import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding (decodeUtf8, decodeUtf8', encodeUtf8)
 import Data.Yaml (decodeEither', defaultEncodeOptions, encodeWith)
 import Database.SQLite.Simple (withConnection)
+import Effectful qualified as E
 import GHC.Generics (Generic)
 import Network.HTTP.Client qualified as HC
 import Network.HTTP.Client.TLS (tlsManagerSettings)
@@ -272,7 +273,7 @@ renderThumbnail (AppData _ _ persistenceLayer _) scenarioSha1 = do
           <$> (getContent . scenarioStorage) persistenceLayer scenarioSha1
 
     s <- withExceptT RetrievedInstantiationFailure $ initScenarioObjectWithEnv doc
-    g <- getRenderableGrid (RenderComputationContext Nothing Nothing) s
+    g <- liftIO . E.runEff . getRenderableGrid (RenderComputationContext Nothing Nothing) $ s
     return $ ImageRGBA8 $ renderImage g
 
 listScenarios :: Handler [TournamentGame]

@@ -78,23 +78,13 @@ module Swarm.Util (
   -- * Template Haskell utilities
   liftText,
 
-  -- * Lens utilities
-  (%%=),
-  (<%=),
-  (<+=),
-  (<<.=),
-  (<>=),
-  _NonEmpty,
-
   -- * Set utilities
   removeSupersets,
   smallHittingSet,
 ) where
 
 import Control.Arrow ((***))
-import Control.Carrier.Throw.Either
-import Control.Effect.State (State, modify, state)
-import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<&>), (<>~))
+import Control.Lens ((<&>))
 import Control.Monad (filterM, unless)
 import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum, toLower)
@@ -120,8 +110,9 @@ import Data.Text (Text, toUpper)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Time.Clock
-import Data.Tuple (swap)
 import Data.Yaml
+import Effectful
+import Effectful.Error.Static
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax (lift)
 import NLP.Minimorph.English qualified as MM
@@ -136,7 +127,6 @@ import Witherable (wither)
 import Prelude hiding (Foldable (..), readFile, writeFile)
 
 infixr 1 ?
-infix 4 %%=, <+=, <%=, <<.=, <>=
 
 -- | A convenient infix flipped version of 'fromMaybe': @Just a ? b =
 --   a@, and @Nothing ? b = b@. It can also be chained, as in @x ? y ?
@@ -596,25 +586,25 @@ deriving instance ToJSON TimeSpec
 -- Validation utilities
 
 -- | Require that a Boolean value is @True@, or throw an exception.
-holdsOr :: Has (Throw e) sig m => Bool -> e -> m ()
-holdsOr b e = unless b $ throwError e
+holdsOr :: (HasCallStack, Error e :> es) => Bool -> e -> Eff es ()
+holdsOr b e = unless b $ throwError_ e
 
 -- | Require that a 'Maybe' value is 'Just', or throw an exception.
-isJustOr :: Has (Throw e) sig m => Maybe a -> e -> m a
+isJustOr :: (HasCallStack, Error e :> es) => Maybe a -> e -> Eff es a
 Just a `isJustOr` _ = return a
-Nothing `isJustOr` e = throwError e
+Nothing `isJustOr` e = throwError_ e
 
 -- | Require that an 'Either' value is 'Right', or throw an exception
 --   based on the value in the 'Left'.
-isRightOr :: Has (Throw e) sig m => Either b a -> (b -> e) -> m a
+isRightOr :: (HasCallStack, Error e :> es) => Either b a -> (b -> e) -> Eff es a
 Right a `isRightOr` _ = return a
-Left b `isRightOr` f = throwError (f b)
+Left b `isRightOr` f = throwError_ (f b)
 
 -- | Require that a 'Validation' value is 'Success', or throw an exception
 --   based on the value in the 'Failure'.
-isSuccessOr :: Has (Throw e) sig m => Validation b a -> (b -> e) -> m a
+isSuccessOr :: (HasCallStack, Error e :> es) => Validation b a -> (b -> e) -> Eff es a
 Success a `isSuccessOr` _ = return a
-Failure b `isSuccessOr` f = throwError (f b)
+Failure b `isSuccessOr` f = throwError_ (f b)
 
 ------------------------------------------------------------
 -- Template Haskell utilities
@@ -622,35 +612,6 @@ Failure b `isSuccessOr` f = throwError (f b)
 -- See https://stackoverflow.com/questions/38143464/cant-find-inerface-file-declaration-for-variable
 liftText :: T.Text -> Q Exp
 liftText txt = AppE (VarE 'T.pack) <$> lift (T.unpack txt)
-
-------------------------------------------------------------
--- Fused-Effects Lens utilities
-
-(<+=) :: (Has (State s) sig m, Num a) => LensLike' ((,) a) s a -> a -> m a
-l <+= a = l <%= (+ a)
-{-# INLINE (<+=) #-}
-
-(<%=) :: (Has (State s) sig m) => LensLike' ((,) a) s a -> (a -> a) -> m a
-l <%= f = l %%= (\b -> (b, b)) . f
-{-# INLINE (<%=) #-}
-
-(%%=) :: (Has (State s) sig m) => Over p ((,) r) s s a b -> p a (r, b) -> m r
-l %%= f = state (swap . l f)
-{-# INLINE (%%=) #-}
-
-(<<.=) :: (Has (State s) sig m) => LensLike ((,) a) s s a b -> b -> m a
-l <<.= b = l %%= (,b)
-{-# INLINE (<<.=) #-}
-
-(<>=) :: (Has (State s) sig m, Semigroup a) => ASetter' s a -> a -> m ()
-l <>= a = modify (l <>~ a)
-{-# INLINE (<>=) #-}
-
-------------------------------------------------------------
--- Other lens utilities
-
-_NonEmpty :: Lens' (NonEmpty a) (a, [a])
-_NonEmpty = lens (\(x :| xs) -> (x, xs)) (const (uncurry (:|)))
 
 ------------------------------------------------------------
 -- Some set utilities

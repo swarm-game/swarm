@@ -9,13 +9,14 @@
 -- of the proper type.
 module Swarm.Language.Parser.Value (readValue) where
 
-import Control.Carrier.Error.Either (run, runError)
 import Control.Lens ((^.))
 import Data.Bifunctor (first)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Map.Strict qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
+import Effectful
+import Effectful.Error.Static
 import Swarm.Failure (SystemFailure)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Key (parseKeyComboFull)
@@ -50,10 +51,10 @@ readValue ty txt = do
   s <- eitherToMaybe $ readNonemptyTerm txt'
   -- Resolve the resulting term, but fail if any imports are
   -- encountered; we can't read those anyway.
-  sResolved <- eitherToMaybe . run . runError @SystemFailure $ resolve' s
+  sResolved <- eitherToMaybe . runPureEff . runError @SystemFailure $ resolve' s
   -- Now, make sure the resolved term typechecks at the given type.
   _ <-
-    eitherToMaybe . runError @ContextualTypeErr $
+    eitherToMaybe . runPureEff . runErrorNoCallStack @ContextualTypeErr $
       checkTop Ctx.empty Ctx.empty emptyTDCtx (const Nothing) sResolved ty
   -- Finally, turn the term into a value.
   toValue $ s ^. sTerm

@@ -10,10 +10,6 @@
 -- Helper functions for "Swarm.Game.Step.Const" commands
 module Swarm.Game.Step.Util.Command where
 
-import Control.Carrier.State.Lazy
-import Control.Carrier.Throw.Either (ThrowC, runThrow)
-import Control.Effect.Error
-import Control.Effect.Lens
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (forM_, unless, when)
 import Data.IntSet qualified as IS
@@ -27,6 +23,9 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Tuple (swap)
+import Effectful
+import Effectful.Error.Static
+import Effectful.State.Static.Local
 import Linear (zero)
 import Swarm.Effect.Time (Time, getZonedTime)
 import Swarm.Game.Achievement.Attainment
@@ -62,6 +61,7 @@ import Swarm.Language.Syntax
 import Swarm.Log
 import Swarm.Text.Markdown qualified as Markdown
 import Swarm.Util (applyWhen)
+import Swarm.Util.Lens
 import System.Clock (TimeSpec)
 import Prelude hiding (lookup)
 
@@ -90,12 +90,12 @@ data GrabbingCmd
 -- robot's inventory, we must be careful that it is executed exactly
 -- once per command.
 ensureCanExecute ::
-  ( Has (State (Robot Instantiated)) sig m
-  , Has (State GameState) sig m
-  , Has (Throw Exn) sig m
+  ( State (Robot Instantiated) :> es
+  , State GameState :> es
+  , Error Exn :> es
   ) =>
   Const ->
-  m ()
+  Eff es ()
 ensureCanExecute c =
   gets @(Robot Instantiated) (constCapsFor c) >>= mapM_ \cap -> do
     isPrivileged <- isPrivilegedBot
@@ -110,13 +110,13 @@ ensureCanExecute c =
         Just rawCosts -> payExerciseCost c rawCosts
 
 payExerciseCost ::
-  ( Has (State (Robot Instantiated)) sig m
-  , Has (State GameState) sig m
-  , Has (Throw Exn) sig m
+  ( State (Robot Instantiated) :> es
+  , State GameState :> es
+  , Error Exn :> es
   ) =>
   Const ->
   NE.NonEmpty (DeviceUseCost Entity EntityName) ->
-  m ()
+  Eff es ()
 payExerciseCost c rawCosts = do
   em <- use $ landscape . terrainAndEntities . entityMap
   let eitherCosts = (traverse . traverse) (lookupEntityE $ entitiesByName em) rawCosts
@@ -145,7 +145,7 @@ payExerciseCost c rawCosts = do
 
 -- | Clear watches that are out of range
 purgeFarAwayWatches ::
-  HasRobotStepState sig m => m ()
+  HasRobotStepState es => Eff es ()
 purgeFarAwayWatches = do
   privileged <- isPrivilegedBot
   myLoc <- use robotLocation
@@ -171,11 +171,11 @@ verbedGrabbingCmd = \case
 --   of a robot.
 -- Also implements teleportation by portals.
 updateRobotLocation ::
-  forall sig m.
-  (HasRobotStepState sig m) =>
+  forall es.
+  (HasRobotStepState es) =>
   Cosmic Location ->
   Cosmic Location ->
-  m ()
+  Eff es ()
 updateRobotLocation oldLoc newLoc
   | oldLoc == newLoc = return ()
   | otherwise = do
@@ -192,7 +192,7 @@ updateRobotLocation oldLoc newLoc
       markDirty oldLoc
       markDirty newLoc
  where
-  applyPortal :: Cosmic Location -> m (Cosmic Location)
+  applyPortal :: Cosmic Location -> Eff es (Cosmic Location)
   applyPortal loc = do
     lms <- use $ landscape . worldNavigation
     let maybePortalInfo = M.lookup loc $ portals lms
@@ -205,10 +205,10 @@ updateRobotLocation oldLoc newLoc
 -- | Execute a stateful action on a target robot --- whether the
 --   current one or another.
 onTarget ::
-  HasRobotStepState sig m =>
+  HasRobotStepState es =>
   RID ->
-  (forall sig' m'. HasRobotStepState sig' m' => m' ()) ->
-  m ()
+  (forall es'. HasRobotStepState es' => Eff es' ()) ->
+  Eff es ()
 onTarget rid act = do
   myID <- use robotID
   case myID == rid of
@@ -224,9 +224,9 @@ onTarget rid act = do
 -- | Enforces validity of the robot's privileged status to receive
 -- an achievement.
 grantAchievementForRobot ::
-  HasRobotStepState sig m =>
+  HasRobotStepState es =>
   GameplayAchievement ->
-  m ()
+  Eff es ()
 grantAchievementForRobot a = do
   sys <- use systemRobot
   let isValidRobotType = not sys || robotTypeRequired == ValidForSystemRobot
@@ -236,9 +236,9 @@ grantAchievementForRobot a = do
   ValidityConditions robotTypeRequired _ = getValidityRequirements a
 
 checkGameModeAchievementValidity ::
-  Has (State GameState) sig m =>
+  State GameState :> es =>
   GameplayAchievement ->
-  m Bool
+  Eff es Bool
 checkGameModeAchievementValidity a = do
   creative <- use creativeMode
   return $ not creative || gameplayModeRequired == ValidInCreativeMode
@@ -248,9 +248,9 @@ checkGameModeAchievementValidity a = do
 -- | NOTE: When possible, one should use the
 -- 'grantAchievementForRobot' function instead of this one.
 grantAchievement ::
-  (Has (State GameState) sig m, Has Time sig m) =>
+  (State GameState :> es, Time :> es) =>
   GameplayAchievement ->
-  m ()
+  Eff es ()
 grantAchievement a = do
   isGameModeValid <- checkGameModeAchievementValidity a
   when isGameModeValid $ do
@@ -289,7 +289,7 @@ isNearbyOrExempt privileged myLoc otherLoc =
 ------------------------------------------------------------
 
 -- | Update the global list of discovered entities, and check for new recipes.
-updateDiscoveredEntities :: (HasRobotStepState sig m) => Entity -> m ()
+updateDiscoveredEntities :: (HasRobotStepState es) => Entity -> Eff es ()
 updateDiscoveredEntities e = do
   allDiscovered <- use $ discovery . allDiscoveredEntities
   unless (E.contains0plus e allDiscovered) $ do
@@ -306,7 +306,7 @@ updateDiscoveredEntities e = do
 -- * For each usable recipe, we do a linear search through the list of known recipes to see if we already know it.
 --   This is a little more troubling, since it's quadratic in the number of recipes.
 --   But it probably doesn't really make that much difference until we get up to thousands of recipes.
-updateAvailableRecipes :: Has (State GameState) sig m => (Inventory, Inventory) -> Entity -> m ()
+updateAvailableRecipes :: State GameState :> es => (Inventory, Inventory) -> Entity -> Eff es ()
 updateAvailableRecipes invs e = do
   allInRecipes <- use $ recipesInfo . recipesIn
   let entityRecipes = recipesFor allInRecipes e
@@ -317,7 +317,7 @@ updateAvailableRecipes invs e = do
   discovery . availableRecipes %= mappend (Notifications newCount (newCount > 0) newRecipes)
   updateAvailableCommands e
 
-updateAvailableCommands :: Has (State GameState) sig m => Entity -> m ()
+updateAvailableCommands :: State GameState :> es => Entity -> Eff es ()
 updateAvailableCommands e = do
   let newCaps = getMap $ e ^. entityCapabilities
       keepConsts = \case
@@ -334,9 +334,9 @@ updateAvailableCommands e = do
 ------------------------------------------------------------
 
 addWatchedLocation ::
-  HasRobotStepState sig m =>
+  HasRobotStepState es =>
   Cosmic Location ->
-  m ()
+  Eff es ()
 addWatchedLocation loc = do
   rid <- use robotID
   robotInfo . robotsWatching %= MM.adjust (IS.insert rid) loc
@@ -353,11 +353,11 @@ addWatchedLocation loc = do
 --   entities will be copied/created, that is, no entities will be
 --   removed from the parent robot.
 provisionChild ::
-  (HasRobotStepState sig m) =>
+  (HasRobotStepState es) =>
   RID ->
   Inventory ->
   Inventory ->
-  m ()
+  Eff es ()
 provisionChild childID toEquip toGive = do
   -- Equip and give devices to child
   zoomRobots $ do
@@ -378,32 +378,32 @@ cmdExnWithAchievement :: Const -> [Text] -> GameplayAchievement -> Exn
 cmdExnWithAchievement c parts a = CmdFailed c (T.unwords parts) $ Just a
 
 -- | Raise an exception about a command failing with a formatted error message.
-raise :: (Has (Throw Exn) sig m) => Const -> [Text] -> m a
+raise :: (Error Exn :> es) => Const -> [Text] -> Eff es a
 raise c parts = throwError (cmdExn c parts)
 
 -- | Run a subcomputation that might throw an exception in a context
 --   where we are returning a CESK machine; any exception will be
 --   turned into an 'Up' state.
-withExceptions :: Monad m => Store -> Cont -> ThrowC Exn m CESK -> m CESK
+withExceptions :: Store -> Cont -> Eff (Error Exn : es) CESK -> Eff es CESK
 withExceptions s k m = do
-  res <- runThrow m
+  res <- runErrorNoCallStack m
   case res of
     Left exn -> return $ Up exn s k
     Right a -> return a
 
 -- | Print some text via the robot's log.
-traceLog :: (Has (State GameState) sig m, Has (State (Robot Instantiated)) sig m) => RobotLogSource -> Severity -> Text -> m LogEntry
+traceLog :: (State GameState :> es, State (Robot Instantiated) :> es) => RobotLogSource -> Severity -> Text -> Eff es LogEntry
 traceLog source sev msg = do
   m <- createLogEntry source sev msg
   robotLog %= (Seq.|> m)
   return m
 
 updateWorldAndRobots ::
-  (HasRobotStepState sig m) =>
+  (HasRobotStepState es) =>
   Const ->
   [WorldUpdate Entity] ->
   [RobotUpdate] ->
-  m ()
+  Eff es ()
 updateWorldAndRobots cmd wf rf = do
   mapM_ (updateWorld cmd) wf
   applyRobotUpdates rf
@@ -423,11 +423,11 @@ formatDevices = T.intercalate " or " . map (^. entityName) . S.toList
 --   This is the more generic version used both for (recorded) said
 --   messages and normal logs.
 createLogEntry ::
-  (Has (State GameState) sig m, Has (State (Robot Instantiated)) sig m) =>
+  (State GameState :> es, State (Robot Instantiated) :> es) =>
   RobotLogSource ->
   Severity ->
   Text ->
-  m LogEntry
+  Eff es LogEntry
 createLogEntry source sev msg = do
   rid <- use robotID
   rn <- use robotName
@@ -437,10 +437,10 @@ createLogEntry source sev msg = do
 
 -- | replace some entity in the world with another entity
 updateWorld ::
-  HasRobotStepState sig m =>
+  HasRobotStepState es =>
   Const ->
   WorldUpdate Entity ->
-  m ()
+  Eff es ()
 updateWorld c (ReplaceEntity loc eThen down) = do
   w <- use $ landscape . multiWorld
   let eNow = W.lookupCosmicEntity (fmap locToCoords loc) w
@@ -451,9 +451,9 @@ updateWorld c (ReplaceEntity loc eThen down) = do
     else updateEntityAt loc $ const down
 
 applyRobotUpdates ::
-  (Has (State GameState) sig m, Has (State (Robot Instantiated)) sig m) =>
+  (State GameState :> es, State (Robot Instantiated) :> es) =>
   [RobotUpdate] ->
-  m ()
+  Eff es ()
 applyRobotUpdates =
   mapM_ \case
     AddEntity c e -> robotInventory %= E.insertCount c e
@@ -463,14 +463,14 @@ applyRobotUpdates =
 --   and add it to the world.  It has low priority and will be covered
 --   by placed entities.
 addSeedBot ::
-  Has (State GameState) sig m =>
+  State GameState :> es =>
   Entity ->
   TickRange ->
   Integer ->
   Integer ->
   Cosmic Location ->
   TimeSpec ->
-  m ()
+  Eff es ()
 addSeedBot e TickRange {tickRangeMin = minT, tickRangeMax = maxT} seedlingCount seedlingRadius loc ts =
   zoomRobots
     . addTRobot (initMachine seedProg)
@@ -565,7 +565,7 @@ seedProgram minTime randTime seedlingCount seedlingRadius thing =
 
 -- | Create an "asphyxiation robot" to monitor time with "life support
 --   system" unequipped.
-addAsphyxiateBot :: Has (State GameState) sig m => TimeSpec -> Cosmic Location -> m ()
+addAsphyxiateBot :: State GameState :> es => TimeSpec -> Cosmic Location -> Eff es ()
 addAsphyxiateBot ts loc =
   zoomRobots . addTRobot (initMachine asphyxiateProg) $
     mkRobot

@@ -8,7 +8,6 @@
 module TestLanguagePipeline where
 
 import Control.Arrow ((&&&))
-import Control.Carrier.Error.Either (runError)
 import Control.Lens (toListOf)
 import Control.Lens.Plated (universe)
 import Data.Aeson (eitherDecode, encode)
@@ -16,6 +15,8 @@ import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
+import Effectful
+import Effectful.Error.Static
 import Swarm.Failure (SystemFailure)
 import Swarm.Language.JSON ()
 import Swarm.Language.Module (Module, moduleTerm)
@@ -867,7 +868,7 @@ testLanguagePipeline =
 
   processCompare :: (Text -> Text -> Bool) -> Text -> Text -> Assertion
   processCompare cmp code expect =
-    runError @SystemFailure (processSource Nothing Nothing code) >>= \case
+    (runEff . runErrorNoCallStack @SystemFailure) (processSource Nothing Nothing code) >>= \case
       Left e
         | not (T.null expect) && cmp expect (prettyText e) -> pure ()
         | otherwise ->

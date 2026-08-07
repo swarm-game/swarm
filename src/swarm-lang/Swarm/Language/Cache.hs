@@ -8,14 +8,15 @@
 -- not changed.
 module Swarm.Language.Cache (
   moduleCache,
+  ModuleCache,
   moduleNeedsLoad,
   moduleOutdated,
   module GC,
 )
 where
 
-import Control.Algebra (Has)
-import Control.Effect.Lift (Lift, sendIO)
+import Effectful
+import Swarm.Effect.Cache
 import Swarm.Language.Module (Module (moduleTimestamp))
 import Swarm.Language.Syntax (Phase (Elaborated))
 import Swarm.Language.Syntax.Import hiding (ImportPhase (..))
@@ -25,6 +26,8 @@ import Swarm.Util.GlobalCache qualified as GC
 import System.Directory (getModificationTime)
 import System.IO.Unsafe (unsafePerformIO)
 
+type ModuleCache = Cache (ImportLoc Import.Resolved) (Module Elaborated)
+
 -- | A global cache for fully parsed, typechecked, + elaborated
 --   modules, to avoid reloading the same module from disk repeatedly.
 moduleCache :: GlobalCache (ImportLoc Import.Resolved) (Module Elaborated)
@@ -33,9 +36,9 @@ moduleCache = unsafePerformIO GC.newGlobalCache
 
 -- | Check whether a module needs to be loaded, /i.e./ either it is
 --   not in the cache, or the cache entry is outdated.
-moduleNeedsLoad :: (Has (Lift IO) sig m) => ImportLoc Import.Resolved -> m Bool
+moduleNeedsLoad :: IOE :> es => ImportLoc Import.Resolved -> Eff es Bool
 moduleNeedsLoad loc = do
-  cached <- sendIO $ GC.lookupCached moduleCache loc
+  cached <- liftIO $ GC.lookupCached moduleCache loc
   maybe (pure True) (moduleOutdated loc) cached
 
 -- | Check whether a module is outdated and needs to be reloaded +
@@ -49,7 +52,7 @@ moduleNeedsLoad loc = do
 --   those loaded from local files.  If you want to pick up a change
 --   to a module imported from a URL, you can restart the entire app
 --   to clear the cache.
-moduleOutdated :: (Has (Lift IO) sig m) => ImportLoc Import.Resolved -> Module phase -> m Bool
+moduleOutdated :: IOE :> es => ImportLoc Import.Resolved -> Module phase -> Eff es Bool
 moduleOutdated cloc (moduleTimestamp -> mt) = case locToPath cloc of
   -- URLs are never outdated
   URL {} -> pure False
@@ -58,5 +61,5 @@ moduleOutdated cloc (moduleTimestamp -> mt) = case locToPath cloc of
   LocalPath f ->
     maybe
       (pure True) -- Modules without a timestamp are always outdated
-      (\t -> (t <) <$> sendIO (getModificationTime f))
+      (\t -> (t <) <$> liftIO (getModificationTime f))
       mt

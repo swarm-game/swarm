@@ -14,22 +14,18 @@
 -- testing/comparison.
 module Swarm.Effect.Unify.Naive where
 
-import Control.Algebra
-import Control.Applicative (Alternative)
-import Control.Carrier.State.Strict (StateC, evalState)
-import Control.Carrier.Throw.Either (ThrowC, runThrow)
-import Control.Category ((>>>))
-import Control.Effect.State (get, gets, modify)
-import Control.Effect.Throw (Throw, throwError)
 import Control.Monad (zipWithM)
 import Control.Monad.Free
-import Control.Monad.Trans (MonadIO)
 import Data.Function (on)
 import Data.Map ((!?))
 import Data.Map qualified as M
 import Data.Map.Merge.Lazy qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
+import Effectful
+import Effectful.Dispatch.Dynamic
+import Effectful.Error.Static
+import Effectful.State.Static.Local
 import Swarm.Effect.Unify
 import Swarm.Effect.Unify.Common
 import Swarm.Language.Types hiding (Type)
@@ -65,69 +61,42 @@ instance (Show n, Ord n, Functor f) => Substitutes n (Free f n) (Free f n) where
 compose :: (Ord n, Substitutes n a a, Foldable t) => t (Subst n a) -> Subst n a
 compose = foldr (@@) idS
 
-------------------------------------------------------------
--- Carrier type
-
--- Note: this carrier type and the runUnification function are
--- identical between this module and Swarm.Effect.Unify.Fast, but it
--- seemed best to duplicate it, so we can modify the carriers
--- independently in the future if we want.
-
--- | Carrier type for unification: we maintain a current substitution,
---   a counter for generating fresh unification variables, and can
---   throw unification errors.
-newtype UnificationC m a = UnificationC
-  { unUnificationC ::
-      StateC (Subst IntVar UType) (StateC FreshVarCounter (ThrowC UnificationError m)) a
-  }
-  deriving newtype (Functor, Applicative, Alternative, Monad, MonadIO)
-
 -- | Counter for generating fresh unification variables.
 newtype FreshVarCounter = FreshVarCounter {getFreshVarCounter :: Int}
   deriving (Eq, Ord, Enum)
 
--- | Run a 'Unification' effect via the 'UnificationC' carrier.
-runUnification :: Algebra sig m => UnificationC m a -> m (Either UnificationError a)
-runUnification =
-  unUnificationC >>> evalState idS >>> evalState (FreshVarCounter 0) >>> runThrow
-
-------------------------------------------------------------
--- Unification
-
--- | Naive implementation of the 'Unification' effect in terms of the
---   'UnificationC' carrier.
+-- | Naive handler of the 'Unification' effect.
 --
 --   We maintain an invariant on the current @Subst@ that map keys
 --   never show up in any of the values.  For example, we could have
 --   @{x -> a+5, y -> 5}@ but not @{x -> a+y, y -> 5}@.
-instance Algebra sig m => Algebra (Unification :+: sig) (UnificationC m) where
-  alg hdl sig ctx = UnificationC $ case sig of
-    L (Unify t1 t2) -> do
-      s1 <- get @(Subst IntVar UType)
-      let t1' = subst s1 t1
-          t2' = subst s1 t2
-      s2 <- unify t1' t2'
-      modify (s2 @@)
-      return $ Right (subst s2 t1') <$ ctx
-    L (ApplyBindings t) -> do
-      s <- get @(Subst IntVar UType)
-      return $ subst s t <$ ctx
-    L FreshIntVar -> do
-      v <- IntVar <$> gets getFreshVarCounter
-      modify @FreshVarCounter succ
-      return $ v <$ ctx
-    L (FreeUVars t) -> do
-      s <- get @(Subst IntVar UType)
-      return $ fuvs (subst s t) <$ ctx
-    R other -> alg (unUnificationC . hdl) (R (R (R other))) ctx
+runUnification :: Eff (Unification : es) a -> Eff es (Either UnificationError a)
+runUnification = reinterpret (runErrorNoCallStack . evalState (FreshVarCounter 0) . evalState (idS :: Subst IntVar UType)) $ \_ -> \case
+  Unify t1 t2 -> do
+    s1 <- get @(Subst IntVar UType)
+    let t1' = subst s1 t1
+        t2' = subst s1 t2
+    s2 <- unify t1' t2'
+    modify (s2 @@)
+    pure $ Right (subst s2 t1')
+  ApplyBindings t -> do
+    s <- get @(Subst IntVar UType)
+    pure $ subst s t
+  FreshIntVar -> do
+    v <- IntVar <$> gets getFreshVarCounter
+    modify @FreshVarCounter succ
+    pure v
+  FreeUVars t -> do
+    s <- get @(Subst IntVar UType)
+    pure $ fuvs (subst s t)
 
 -- | Unify two types and return the mgu, i.e. the smallest
 --   substitution which makes them equal.
 unify ::
-  Has (Throw UnificationError) sig m =>
+  Error UnificationError :> es =>
   UType ->
   UType ->
-  m (Subst IntVar UType)
+  Eff es (Subst IntVar UType)
 unify ty1 ty2 = case (ty1, ty2) of
   (Pure x, Pure y)
     | x == y -> return idS
@@ -143,10 +112,10 @@ unify ty1 ty2 = case (ty1, ty2) of
 -- | Unify two non-variable terms and return an mgu, i.e. the smallest
 --   substitution which makes them equal.
 unifyF ::
-  Has (Throw UnificationError) sig m =>
+  Error UnificationError :> es =>
   TypeF UType ->
   TypeF UType ->
-  m (Subst IntVar UType)
+  Eff es (Subst IntVar UType)
 unifyF t1 t2 = case (t1, t2) of
   (TyConF c1 ts1, TyConF c2 ts2) -> case c1 == c2 of
     True -> compose <$> zipWithM unify ts1 ts2

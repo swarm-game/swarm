@@ -18,7 +18,6 @@ module Swarm.Failure (
   OrderFileWarning (..),
 ) where
 
-import Control.Carrier.Error.Either (ErrorC (..), runError)
 import Control.Monad ((<=<))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -27,6 +26,8 @@ import Data.Text qualified as T
 import Data.Text.Encoding.Error qualified as T
 import Data.Void
 import Data.Yaml (ParseException, prettyPrintParseException)
+import Effectful
+import Effectful.Error.Static
 import Prettyprinter (Pretty (pretty), nest, squotes, vcat, (<+>))
 import Swarm.Language.Syntax.Import (ImportLoc, ImportPhase (..))
 import Swarm.Language.Syntax.Loc (SrcLoc)
@@ -96,8 +97,8 @@ data SystemFailure
 ------------------------------------------------------------
 -- Basic error handling
 
-simpleErrorHandle :: ErrorC SystemFailure IO a -> IO a
-simpleErrorHandle = either (fail . prettyString) pure <=< runError
+simpleErrorHandle :: Eff '[Error SystemFailure, IOE] a -> IO a
+simpleErrorHandle = either (fail . prettyString) pure <=< (runEff . runErrorNoCallStack)
 
 ------------------------------------------------------------
 -- Pretty-printing

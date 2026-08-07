@@ -11,16 +11,17 @@ module Swarm.TUI.Launch.Model where
 import Brick.Focus qualified as Focus
 import Brick.Widgets.Edit
 import Brick.Widgets.FileBrowser qualified as FB
-import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens (makeLenses)
 import Data.Functor.Identity (Identity (Identity))
 import Data.Text (Text)
+import Effectful
+import Effectful.Error.Static
 import Swarm.Failure (SystemFailure)
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (LaunchParams), ScenarioInfo, ScenarioWith, SerializableLaunchParams)
 import Swarm.Game.State (LaunchParams, ValidatedLaunchParams, getRunCodePath, parseCodeFile)
 import Swarm.Pretty (prettyText)
 import Swarm.TUI.Model.Name
-import Swarm.Util.Effect (withThrow)
+import Swarm.Util.Effect (withError)
 
 -- | Use this to store error messages
 -- on individual fields
@@ -33,7 +34,7 @@ toSerializableParams (LaunchParams seedValue (Identity codeToRun)) =
 fromSerializableParams :: SerializableLaunchParams -> IO EditingLaunchParams
 fromSerializableParams (LaunchParams (Identity maybeSeedValue) (Identity maybeCodePath)) = do
   eitherCode <-
-    runThrow . withThrow (prettyText @SystemFailure) $
+    runEff . runErrorNoCallStack . withError (prettyText @SystemFailure) $
       traverse parseCodeFile maybeCodePath
   return $ LaunchParams (Right maybeSeedValue) eitherCode
 

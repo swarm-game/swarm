@@ -11,7 +11,6 @@ module Swarm.Doc.Wiki.Cheatsheet (
   makeWikiPage,
 ) where
 
-import Control.Effect.Lift
 import Control.Lens (view, (^.))
 import Data.Foldable (find, toList)
 import Data.List (transpose)
@@ -22,6 +21,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
+import Effectful
 import Swarm.Doc.Schema.Render
 import Swarm.Doc.Util
 import Swarm.Doc.Wiki.Matrix
@@ -68,17 +68,17 @@ makeWikiPage address s = case s of
     Left x -> T.putStrLn x
   Capabilities -> simpleErrorHandle $ do
     entities <- loadEntities
-    sendIO $ T.putStrLn $ capabilityPage address entities
+    liftIO $ T.putStrLn $ capabilityPage address entities
   Entities -> simpleErrorHandle $ do
     entities <- loadEntities
-    sendIO $ T.putStrLn $ entitiesPage address (Map.elems $ entitiesByName entities)
+    liftIO $ T.putStrLn $ entitiesPage address (Map.elems $ entitiesByName entities)
   Terrain -> simpleErrorHandle $ do
     terrains <- loadTerrain
-    sendIO . T.putStrLn . T.unlines . map showT . Map.elems $ terrainByName terrains
+    liftIO . T.putStrLn . T.unlines . map showT . Map.elems $ terrainByName terrains
   Recipes -> simpleErrorHandle $ do
     entities <- loadEntities
     recipes <- loadRecipes entities
-    sendIO $ T.putStrLn $ recipePage address recipes
+    liftIO $ T.putStrLn $ recipePage address recipes
   Scenario -> genScenarioSchemaDocs
 
 -- ----------------------------------------------------------------------------

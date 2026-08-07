@@ -7,12 +7,12 @@
 -- Arithmetic and Comparison commands
 module Swarm.Game.Step.Arithmetic where
 
-import Control.Carrier.State.Lazy
-import Control.Effect.Error
 import Control.Monad (zipWithM)
 import Data.Function (on)
 import Data.Map qualified as M
 import Data.Text qualified as T
+import Effectful
+import Effectful.Error.Static
 import Swarm.Game.Exception
 import Swarm.Game.Step.Util
 import Swarm.Language.Syntax
@@ -26,7 +26,7 @@ import Prelude hiding (lookup)
 
 -- | Evaluate the application of a comparison operator.  Returns
 --   @Nothing@ if the application does not make sense.
-evalCmp :: Has (Throw Exn) sig m => Const -> Value -> Value -> m Bool
+evalCmp :: Error Exn :> es => Const -> Value -> Value -> Eff es Bool
 evalCmp c v1 v2 = decideCmp c $ compareValues v1 v2
  where
   decideCmp = \case
@@ -40,7 +40,7 @@ evalCmp c v1 v2 = decideCmp c $ compareValues v1 v2
 
 -- | Compare two values, returning an 'Ordering' if they can be
 --   compared, or @Nothing@ if they cannot.
-compareValues :: Has (Throw Exn) sig m => Value -> Value -> m Ordering
+compareValues :: Error Exn :> es => Value -> Value -> Eff es Ordering
 compareValues = \cases
   VUnit VUnit -> return EQ
   (VInt n1) (VInt n2) -> return (compare n1 n2)
@@ -80,7 +80,7 @@ incomparable = \case
 
 -- | Values with different types were compared; this should not be
 --   possible since the type system should catch it.
-incompatCmpErr :: Has (Throw Exn) sig m => Value -> Value -> m a
+incompatCmpErr :: Error Exn :> es => Value -> Value -> Eff es a
 incompatCmpErr v1 v2 =
   throwError $
     Fatal $
@@ -88,7 +88,7 @@ incompatCmpErr v1 v2 =
 
 -- | Values were compared of a type which cannot be compared
 --   (e.g. functions, etc.).
-incomparableErr :: Has (Throw Exn) sig m => Value -> Value -> m a
+incomparableErr :: Error Exn :> es => Value -> Value -> Eff es a
 incomparableErr v1 v2 =
   throwError $
     cmdExn
@@ -102,7 +102,7 @@ incomparableErr v1 v2 =
 -- | Evaluate the application of an arithmetic operator, returning
 --   an exception in the case of a failing operation, or in case we
 --   incorrectly use it on a bad 'Const' in the library.
-evalArith :: Has (Throw Exn) sig m => Const -> Integer -> Integer -> m Integer
+evalArith :: Error Exn :> es => Const -> Integer -> Integer -> Eff es Integer
 evalArith = \case
   Add -> ok (+)
   Sub -> ok (-)
@@ -115,12 +115,12 @@ evalArith = \case
 
 -- | Perform an integer division, but return @Nothing@ for division by
 --   zero.
-safeDiv :: Has (Throw Exn) sig m => Integer -> Integer -> m Integer
+safeDiv :: Error Exn :> es => Integer -> Integer -> Eff es Integer
 safeDiv _ 0 = throwError $ cmdExn Div $ pure "Division by zero"
 safeDiv a b = return $ a `div` b
 
 -- | Perform exponentiation, but return @Nothing@ if the power is negative.
-safeExp :: Has (Throw Exn) sig m => Integer -> Integer -> m Integer
+safeExp :: Error Exn :> es => Integer -> Integer -> Eff es Integer
 safeExp a b
   | b < 0 = throwError $ cmdExn Exp $ pure "Negative exponent"
   | otherwise = return $ a ^ b

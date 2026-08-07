@@ -10,9 +10,6 @@
 module Swarm.Game.Step.Const where
 
 import Control.Arrow ((&&&))
-import Control.Carrier.State.Lazy
-import Control.Effect.Error
-import Control.Effect.Lens
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (filterM, forM, forM_, guard, unless, when)
 import Data.Bifunctor (second)
@@ -41,6 +38,9 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Tuple (swap)
+import Effectful hiding (raise)
+import Effectful.Error.Static
+import Effectful.State.Static.Local
 import Linear (V2 (..), perp, zero)
 import Swarm.Effect as Effect (Time, getNow)
 import Swarm.Game.Achievement.Definitions
@@ -94,7 +94,7 @@ import Swarm.Log
 import Swarm.Pretty (prettyText)
 import Swarm.Text.Markdown qualified as Markdown
 import Swarm.Util hiding (both)
-import Swarm.Util.Lens (inherit)
+import Swarm.Util.Lens
 import Text.Megaparsec (runParser)
 import Witch (From (from), into)
 import Prelude hiding (lookup)
@@ -115,15 +115,15 @@ data GrabRemoval = DeferRemoval | PerformRemoval
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
 execConst ::
-  HasRobotStepState sig m =>
+  HasRobotStepState es =>
   -- | Need to pass this function as an argument to avoid module import cycle
   -- The supplied function invokes 'runCESK', which lives in "Swarm.Game.Step".
-  (Store -> Robot Instantiated -> Value -> m Value) ->
+  (Store -> Robot Instantiated -> Value -> Eff es Value) ->
   Const ->
   [Value] ->
   Store ->
   Cont ->
-  m CESK
+  Eff es CESK
 execConst runChildProg c vs s k = do
   -- First, ensure the robot is capable of executing/evaluating this constant.
   ensureCanExecute c
@@ -803,7 +803,7 @@ execConst runChildProg c vs s k = do
         -- current robot will be inserted into the robot set, so it needs the log
         m <- traceLog Said Info msg
         emitMessage m
-        let addToRobotLog :: (Has (State GameState) sgn m) => Robot Instantiated -> m ()
+        let addToRobotLog :: (State GameState :> es) => Robot Instantiated -> Eff es ()
             addToRobotLog r = evalState r $ do
               hasLog <- hasCapability $ CExecute Log
               hasListen <- hasCapability $ CExecute Listen
@@ -1404,7 +1404,7 @@ execConst runChildProg c vs s k = do
       DRelative (DPlanar DBack) -> "behind"
       _ -> directionSyntax d <> " of"
 
-  goAtomic :: HasRobotStepState sig m => m CESK
+  goAtomic :: HasRobotStepState es => Eff es CESK
   goAtomic = case vs of
     -- To execute an atomic block, set the runningAtomic flag,
     -- push an FFinishAtomic frame so that we unset the flag when done, and
@@ -1418,7 +1418,7 @@ execConst runChildProg c vs s k = do
   isEntityNamed :: T.Text -> Entity -> Bool
   isEntityNamed n e = ((==) `on` T.toLower) (e ^. entityName) n
 
-  badConst :: HasRobotStepState sig m => m a
+  badConst :: HasRobotStepState es => Eff es a
   badConst = throwError $ Fatal badConstMsg
 
   badConstMsg :: Text
@@ -1429,13 +1429,13 @@ execConst runChildProg c vs s k = do
       ]
 
   doResonate ::
-    HasRobotStepState sig m =>
+    HasRobotStepState es =>
     (Maybe Entity -> Bool) ->
     Integer ->
     Integer ->
     Integer ->
     Integer ->
-    m CESK
+    Eff es CESK
   doResonate p x1 y1 x2 y2 = do
     loc <- use robotLocation
     let offsets = rectCells x1 y1 x2 y2
@@ -1457,9 +1457,9 @@ execConst runChildProg c vs s k = do
     (yMin, yMax) = sortPair (y1, y2)
 
   findNearest ::
-    HasRobotStepState sig m =>
+    HasRobotStepState es =>
     Text ->
-    m (Maybe (Int32, V2 Int32))
+    Eff es (Maybe (Int32, V2 Int32))
   findNearest name = do
     loc <- use robotLocation
     let f = fmap (maybe False $ isEntityNamed name) . entityAt . offsetBy loc . snd
@@ -1477,12 +1477,12 @@ execConst runChildProg c vs s k = do
       f d x = map (d,) . take 4 . iterate perp $ V2 x (d - x)
 
   finishCookingRecipe ::
-    HasRobotStepState sig m =>
+    HasRobotStepState es =>
     Recipe e ->
     Value ->
     [WorldUpdate Entity] ->
     [RobotUpdate] ->
-    m CESK
+    Eff es CESK
   finishCookingRecipe r v wf rf =
     if remTime <= 0
       then do
@@ -1495,13 +1495,13 @@ execConst runChildProg c vs s k = do
    where
     remTime = r ^. recipeTime
 
-  ensureEquipped :: HasRobotStepState sig m => Text -> m Entity
+  ensureEquipped :: HasRobotStepState es => Text -> Eff es Entity
   ensureEquipped itemName = do
     inst <- use equippedDevices
     listToMaybe (lookupByName itemName inst)
       `isJustOrFail` ["You don't have", indefinite itemName, "equipped."]
 
-  ensureItem :: HasRobotStepState sig m => Text -> Text -> m Entity
+  ensureItem :: HasRobotStepState es => Text -> Text -> Eff es Entity
   ensureItem itemName action = do
     -- First, make sure we know about the entity.
     inv <- use robotInventory
@@ -1535,7 +1535,7 @@ execConst runChildProg c vs s k = do
   -- equipped, and the inventory that should be transferred from
   -- parent to child.
   checkRequirements ::
-    HasRobotStepState sig m =>
+    HasRobotStepState es =>
     Env ->
     Inventory ->
     Inventory ->
@@ -1543,7 +1543,7 @@ execConst runChildProg c vs s k = do
     Term Resolved ->
     Text ->
     IncapableFix ->
-    m (Set Entity, Inventory)
+    Eff es (Set Entity, Inventory)
   checkRequirements e parentInventory childInventory childDevices cmd subject fixI = do
     let reqCtx = e ^. envReqs
         tdCtx = e ^. envTydefs
@@ -1669,9 +1669,9 @@ execConst runChildProg c vs s k = do
   -- base we actually throw an exception, so we do not return to the
   -- original call site.
   destroyIfNotBase ::
-    HasRobotStepState sig m =>
+    HasRobotStepState es =>
     (Bool -> Maybe GameplayAchievement) ->
-    m ()
+    Eff es ()
   destroyIfNotBase mAch = do
     rid <- use robotID
     holdsOrFailWithAchievement
@@ -1685,7 +1685,7 @@ execConst runChildProg c vs s k = do
   -- Try to move the current robot once cell in a specific direction,
   -- checking for and applying any relevant effects (e.g. throwing an
   -- exception if blocked, drowning in water, etc.)
-  moveInDirection :: HasRobotStepState sig m => Heading -> m CESK
+  moveInDirection :: HasRobotStepState es => Heading -> Eff es CESK
   moveInDirection orientation = do
     -- Figure out where we're going
     loc <- use robotLocation
@@ -1699,10 +1699,10 @@ execConst runChildProg c vs s k = do
   -- Given a possible movement failure, apply a movement failure
   -- handler to generate the appropriate effect.
   applyMoveFailureEffect ::
-    HasRobotStepState sig m =>
+    HasRobotStepState es =>
     Maybe MoveFailureMode ->
     MoveFailureHandler ->
-    m ()
+    Eff es ()
   applyMoveFailureEffect maybeFailure failureHandler =
     forM_ maybeFailure $ \failureMode -> case failureHandler failureMode of
       IgnoreFail -> return ()
@@ -1720,15 +1720,15 @@ execConst runChildProg c vs s k = do
   -- Check whether there is any failure in moving to the given
   -- location, and apply the corresponding effect if so.
   checkMoveAhead ::
-    HasRobotStepState sig m =>
+    HasRobotStepState es =>
     Cosmic Location ->
     MoveFailureHandler ->
-    m ()
+    Eff es ()
   checkMoveAhead nextLoc failureHandler = do
     maybeFailure <- checkMoveFailure nextLoc
     applyMoveFailureEffect maybeFailure failureHandler
 
-  getRobotWithinTouch :: HasRobotStepState sig m => RID -> m (Robot Instantiated)
+  getRobotWithinTouch :: HasRobotStepState es => RID -> Eff es (Robot Instantiated)
   getRobotWithinTouch rid = do
     cid <- use robotID
     if cid == rid
@@ -1746,15 +1746,15 @@ execConst runChildProg c vs s k = do
           `holdsOrFail` ["The robot with ID", from (show rid), "is not close enough."]
         return other
 
-  holdsOrFail :: (Has (Throw Exn) sig m) => Bool -> [Text] -> m ()
+  holdsOrFail :: (Error Exn :> es) => Bool -> [Text] -> Eff es ()
   holdsOrFail = holdsOrFail' c
 
-  holdsOrFailWithAchievement :: (Has (Throw Exn) sig m) => Bool -> [Text] -> Maybe GameplayAchievement -> m ()
+  holdsOrFailWithAchievement :: (Error Exn :> es) => Bool -> [Text] -> Maybe GameplayAchievement -> Eff es ()
   holdsOrFailWithAchievement a ts mAch = case mAch of
     Nothing -> holdsOrFail a ts
     Just ach -> a `holdsOr` cmdExnWithAchievement c ts ach
 
-  isJustOrFail :: (Has (Throw Exn) sig m) => Maybe a -> [Text] -> m a
+  isJustOrFail :: (Error Exn :> es) => Maybe a -> [Text] -> Eff es a
   isJustOrFail = isJustOrFail' c
 
   returnEvalCmp = case vs of
@@ -1765,7 +1765,7 @@ execConst runChildProg c vs s k = do
     _ -> badConst
 
   -- Make sure the robot has the thing in its inventory
-  hasInInventoryOrFail :: HasRobotStepState sig m => Text -> m Entity
+  hasInInventoryOrFail :: HasRobotStepState es => Text -> Eff es Entity
   hasInInventoryOrFail eName = do
     inv <- use robotInventory
     e <-
@@ -1780,11 +1780,11 @@ execConst runChildProg c vs s k = do
   mkReturn x = Out (asValue x) s k
 
   doPlantSeed ::
-    (HasRobotStepState sig m, Has Effect.Time sig m) =>
+    (HasRobotStepState es, Effect.Time :> es) =>
     TerrainType ->
     Cosmic Location ->
     Entity ->
-    m ()
+    Eff es ()
   doPlantSeed terrainHere loc e = do
     when ((e `hasProperty` Growable) && isAllowedInBiome terrainHere e) $ do
       let Growth maybeMaturesTo maybeSpread growthTime =
@@ -1819,7 +1819,7 @@ execConst runChildProg c vs s k = do
   -- The code for grab and harvest is almost identical, hence factored
   -- out here.
   -- Optionally defer removal from the world, for the case of the Swap command.
-  doGrab :: (HasRobotStepState sig m, Has Effect.Time sig m) => GrabbingCmd -> GrabRemoval -> m Entity
+  doGrab :: (HasRobotStepState es, Effect.Time :> es) => GrabbingCmd -> GrabRemoval -> Eff es Entity
   doGrab cmd removalDeferral = do
     let verb = verbGrabbingCmd cmd
         verbed = verbedGrabbingCmd cmd

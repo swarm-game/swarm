@@ -7,10 +7,22 @@ module Swarm.Util.Lens (
   makeLensesExcluding,
   inherit,
   concatFold,
+  view,
+  (+=),
+  (.=),
+  use,
+  uses,
+  (%=),
+  (%%=),
+  (<%=),
+  (<+=),
+  (<<.=),
+  (<>=),
 ) where
 
 import Control.Lens (
   Fold,
+  Getting,
   Lens',
   folding,
   generateSignatures,
@@ -18,12 +30,17 @@ import Control.Lens (
   lensRules,
   makeLensesWith,
   mapped,
+  view,
   (%~),
   (&),
   (.~),
   (^.),
   (^..),
  )
+
+import Control.Lens qualified as L
+import Effectful
+import Effectful.State.Static.Local
 import Language.Haskell.TH (DecsQ)
 import Language.Haskell.TH.Syntax (Name)
 
@@ -56,3 +73,50 @@ inherit field parent child = child & field .~ (parent ^. field)
 --   elements from both.
 concatFold :: Fold s a -> Fold s a -> Fold s a
 concatFold f1 f2 = folding (\s -> (s ^.. f1) ++ (s ^.. f2))
+
+-- | Get the target of a 'Lens' or @Getter
+use :: State s :> es => Getting a s a -> Eff es a
+use l = gets (L.view l)
+
+-- | Variant of use that applies the given function to the target
+uses :: State s :> es => Getting a s a -> (a -> b) -> Eff es b
+uses l f = f <$> gets (L.view l)
+
+infixr 4 .=, %=, +=
+
+-- | Replace the target of the given 'Lens' (or all the targets of a @Setter@ or 'Traversal') in the current monadic state
+(.=) :: State s :> es => L.ASetter s s a b -> b -> Eff es ()
+l .= b = modify (L.set l b)
+
+-- | Map over the target of the given 'Lens' (or all the targets of a @Setter@ or 'Traversal') in the current monadic state
+(%=) :: State s :> es => L.ASetter s s a b -> (a -> b) -> Eff es ()
+l %= f = modify (L.over l f)
+
+-- | Modify the target(s) of the given 'Lens' by adding a value
+(+=) :: (State s :> es, Num a) => L.ASetter' s a -> a -> Eff es ()
+l += v = modify (l L.+~ v)
+
+------------------------------------------------------------
+-- Effectful Lens utilities
+
+infix 4 %%=, <+=, <%=, <<.=, <>=
+
+(<+=) :: (State s :> es, Num a) => L.LensLike' ((,) a) s a -> a -> Eff es a
+l <+= a = l <%= (+ a)
+{-# INLINE (<+=) #-}
+
+(<%=) :: State s :> es => L.LensLike' ((,) a) s a -> (a -> a) -> Eff es a
+l <%= f = l %%= (\b -> (b, b)) . f
+{-# INLINE (<%=) #-}
+
+(%%=) :: State s :> es => L.Over p ((,) r) s s a b -> p a (r, b) -> Eff es r
+l %%= f = state (l f)
+{-# INLINE (%%=) #-}
+
+(<<.=) :: State s :> es => L.LensLike ((,) a) s s a b -> b -> Eff es a
+l <<.= b = l %%= (,b)
+{-# INLINE (<<.=) #-}
+
+(<>=) :: (State s :> es, Semigroup a) => L.ASetter' s a -> a -> Eff es ()
+l <>= a = modify (l L.<>~ a)
+{-# INLINE (<>=) #-}

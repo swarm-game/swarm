@@ -1,60 +1,56 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- fused-effect utilities for Swarm.
+-- effectful utilities for Swarm.
 module Swarm.Util.Effect where
 
-import Control.Algebra
-import Control.Carrier.Accum.Strict
-import Control.Carrier.Error.Either (ErrorC (..), runError)
-import Control.Carrier.Throw.Either (ThrowC (..), runThrow)
-import Control.Effect.Error
 import Control.Monad ((>=>))
 import Control.Monad.State (MonadState, get, put)
-import Control.Monad.Trans.Except (ExceptT)
+import Control.Monad.Trans.Except (ExceptT (..))
 import Data.Either.Extra (eitherToMaybe)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
+import Effectful
+import Effectful.Error.Static
+import Swarm.Effect.Accum.Local
 import Witherable
-
--- | Transform a @Throw e1@ constraint into a @Throw e2@ constraint,
---   by supplying an adapter function of type @(e1 -> e2)@.
-withThrow :: (Has (Throw e2) sig m) => (e1 -> e2) -> ThrowC e1 m a -> m a
-withThrow f = runThrow >=> either (throwError . f) return
 
 -- | Transform an @Error e1@ constraint into a @Error e2@ constraint,
 --   by supplying an adapter function of type @(e1 -> e2)@.
-withError :: (Has (Error e2) sig m) => (e1 -> e2) -> ErrorC e1 m a -> m a
-withError f = runError >=> either (throwError . f) return
+withError :: (HasCallStack, Error e' :> es) => (e -> e') -> Eff (Error e : es) a -> Eff es a
+withError f = runErrorNoCallStackWith (throwError_ . f)
 
 -- | Transform a @Throw e@ constraint into a concrete @Maybe@,
 --   discarding the error.
-throwToMaybe :: forall e m a. Functor m => ThrowC e m a -> m (Maybe a)
-throwToMaybe = fmap eitherToMaybe . runThrow
+errorToMaybe :: (HasCallStack) => Eff (Error e : es) a -> Eff es (Maybe a)
+errorToMaybe = fmap eitherToMaybe . runErrorNoCallStack
+
+liftEither :: (HasCallStack, Error e :> es) => Either e a -> Eff es a
+liftEither = either throwError_ pure
 
 -- | Transform a @Throw e@ constraint into a concrete @Maybe@,
 --   logging any error as a warning.
-throwToWarning :: (Has (Accum (Seq e)) sig m) => ThrowC e m a -> m (Maybe a)
+throwToWarning :: (Accum (Seq e) :> es) => Eff (Error e : es) a -> Eff es (Maybe a)
 throwToWarning m = do
-  res <- runThrow m
+  res <- runErrorNoCallStack m
   case res of
     Left err -> warn err >> return Nothing
     Right a -> return (Just a)
 
 -- | Run a computation with an @Accum@ effect (typically accumulating
 --   a list of warnings), ignoring the accumulated value.
-ignoreWarnings :: forall e m a. (Monoid e, Functor m) => AccumC e m a -> m a
+ignoreWarnings :: (Monoid e) => Eff (Accum e : es) a -> Eff es a
 ignoreWarnings = evalAccum mempty
 
--- | Convert a fused-effects style computation using an @Error e@
+-- | Convert a effectful style computation using an @Error e@
 --   constraint into an @ExceptT@ computation.  This is mostly a stub
 --   to convert from one style to the other while we are in the middle
 --   of incrementally converting.  Eventually this should not be needed.
-asExceptT :: ErrorC e m a -> ExceptT e m a
-asExceptT (ErrorC m) = m
+asExceptT :: Eff [Error e, IOE] a -> ExceptT e IO a
+asExceptT = ExceptT . (runEff . runErrorNoCallStack)
 
 -- | Log a single failure as a warning.
-warn :: Has (Accum (Seq w)) sig m => w -> m ()
+warn :: (Accum (Seq w) :> es) => w -> Eff es ()
 warn = add . Seq.singleton
 
 -- | A version of 'traverse'/'mapM' that also accumulates warnings.
@@ -63,10 +59,10 @@ warn = add . Seq.singleton
 --   because it also needs to have a notion of "filtering".
 --   'Witherable' provides exactly the right abstraction.
 traverseW ::
-  (Has (Accum (Seq w)) sig m, Witherable t) =>
-  (a -> m (Either w b)) ->
+  (Accum (Seq w) :> es, Witherable t) =>
+  (a -> Eff es (Either w b)) ->
   t a ->
-  m (t b)
+  Eff es (t b)
 traverseW f = do
   wither $
     f >=> \case
@@ -75,10 +71,10 @@ traverseW f = do
 
 -- | Flipped version of 'traverseW' for convenience.
 forMW ::
-  (Has (Accum (Seq w)) sig m, Witherable t) =>
+  (Accum (Seq w) :> es, Witherable t) =>
   t a ->
-  (a -> m (Either w b)) ->
-  m (t b)
+  (a -> Eff es (Either w b)) ->
+  Eff es (t b)
 forMW = flip traverseW
 
 modifyM :: MonadState s m => (s -> m s) -> m ()

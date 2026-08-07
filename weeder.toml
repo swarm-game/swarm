@@ -18,8 +18,9 @@ roots = [
     # =====================================
     "^Main.prop_hittingSetMinimal$",
     "^Main.printAllLogs$",
-    "^Control.Carrier.Accum.Strict.execAccum$",
     "^Swarm.App.demoWeb$",
+    "^Swarm.Effect.Accum.Local.look$",
+    "^Swarm.Effect.Accum.Local.looks$",
     "^Swarm.Effect.Unify.Common.dom$",
     "^Swarm.Effect.Unify.Fast.@@$",
     "^Swarm.Effect.Unify.Naive.runUnification$",
@@ -55,7 +56,6 @@ roots = [
     "^Swarm.Util.isSuccessOr$",
     "^Swarm.Util.replaceLast$",
     "^Swarm.Util.reflow$",
-    "^Swarm.Util._NonEmpty$",
     "^Swarm.Util.Effect.modifyM$",
     "^Swarm.Util.Effect.throwToWarning$",
 

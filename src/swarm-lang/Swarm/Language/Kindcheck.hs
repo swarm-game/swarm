@@ -11,17 +11,17 @@ module Swarm.Language.Kindcheck (
   processType,
 ) where
 
-import Control.Algebra (Has)
-import Control.Effect.Reader (Reader, ask)
-import Control.Effect.Throw (Throw, throwError)
 import Control.Monad.Extra (unlessM)
 import Data.Fix (Fix (..))
+import Effectful
+import Effectful.Error.Static
+import Effectful.Reader.Static
 import Prettyprinter (hsep, nest, pretty, vsep, (<+>))
 import Swarm.Language.TDVar (tdVarName)
 import Swarm.Language.Types
 import Swarm.Pretty (PrettyPrec (..), ppr)
 import Swarm.Util (number)
-import Swarm.Util.Effect (withThrow)
+import Swarm.Util.Effect (withError)
 
 ------------------------------------------------------------
 -- Type processing
@@ -29,13 +29,13 @@ import Swarm.Util.Effect (withThrow)
 -- | Process a polytype, by doing name resolution and kind checking,
 --   and returning an appropriate 'TydefInfo' record to be used in the
 --   case of a type definition.
-processPolytype :: (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) => Polytype -> m TydefInfo
+processPolytype :: (Reader TDCtx :> es, Error KindError :> es) => Polytype -> Eff es TydefInfo
 processPolytype pty@(unPoly -> (xs, _)) = do
   pty' <- traverse processType pty
   pure $ TydefInfo pty' (Arity $ length xs)
 
 -- | Process a type by doing name resolution and kind checking.
-processType :: (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) => Type -> m Type
+processType :: (Reader TDCtx :> es, Error KindError :> es) => Type -> Eff es Type
 processType ty = do
   ty' <- resolveTydefs ty
   checkKind ty'
@@ -48,7 +48,7 @@ processType ty = do
 --   user-defined type name found anywhere in the type, resolve it to
 --   the correct version number depending on what is in scope, by
 --   calling 'resolveUserTy'.
-resolveTydefs :: Has (Reader TDCtx) sig m => Type -> m Type
+resolveTydefs :: Reader TDCtx :> es => Type -> Eff es Type
 resolveTydefs (Fix tyF) =
   Fix <$> case tyF of
     TyConF tc tys -> do
@@ -121,7 +121,7 @@ instance PrettyPrec KindError where
 --   /i.e./ not of the form @rec t. t@, and non-trivial, /i.e./ the
 --   variable bound by the @rec@ actually occurs somewhere in the
 --   body.
-checkKind :: (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) => Type -> m ()
+checkKind :: (Reader TDCtx :> es, Error KindError :> es) => Type -> Eff es ()
 checkKind ty@(Fix tyF) = case tyF of
   TyConF c tys -> do
     tdCtx <- ask
@@ -149,7 +149,7 @@ checkKind ty@(Fix tyF) = case tyF of
 -- | Check that the body of a recursive type actually contains the
 --   bound variable at least once (otherwise there's no point in using
 --   @rec@) and does not consist solely of that variable.
-checkRecTy :: (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) => Var -> Type -> m ()
+checkRecTy :: (Reader TDCtx :> es, Error KindError :> es) => Var -> Type -> Eff es ()
 checkRecTy x ty = do
   unlessM (containsVar NZ ty) $ throwError (TrivialRecTy x ty)
   unlessM (nonVacuous NZ ty) $ throwError (VacuousRecTy x ty)
@@ -163,16 +163,16 @@ checkRecTy x ty = do
 -- | Check whether a type contains a specific bound recursive type
 --   variable.
 containsVar ::
-  (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) =>
+  (Reader TDCtx :> es, Error KindError :> es) =>
   Nat ->
   Type ->
-  m Bool
+  Eff es Bool
 containsVar i ty@(Fix tyF) = case tyF of
   TyRecVarF j -> pure (i == j)
   TyVarF {} -> pure False
   TyConF (TCUser u) tys -> do
     ty' <-
-      withThrow
+      withError
         (\(UnexpandedUserType _) -> UndefinedTyCon (TCUser u) ty)
         (expandTydef u tys)
     containsVar i ty'
@@ -190,10 +190,10 @@ containsVar i ty@(Fix tyF) = case tyF of
 --   (2) ignore additional intervening @rec@s.  For example, given
 --   @tydef Id a = a@, the type @rec x. rec y. Id x@ is also vacuous.
 nonVacuous ::
-  (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) =>
+  (Reader TDCtx :> es, Error KindError :> es) =>
   Nat ->
   Type ->
-  m Bool
+  Eff es Bool
 nonVacuous i ty@(Fix tyF) = case tyF of
   -- The type simply consists of a variable bound by some @rec@.
   -- Check if it's the variable we're currently looking for.
@@ -201,7 +201,7 @@ nonVacuous i ty@(Fix tyF) = case tyF of
   -- Expand a user-defined type and keep looking.
   TyConF (TCUser u) tys -> do
     ty' <-
-      withThrow
+      withError
         (\(UnexpandedUserType _) -> UndefinedTyCon (TCUser u) ty)
         (expandTydef u tys)
     nonVacuous i ty'

@@ -9,21 +9,20 @@ module Swarm.TUI.Controller.Util where
 import Brick hiding (Direction)
 import Brick.Focus
 import Brick.Keybindings
-import Control.Carrier.Error.Either qualified as Fused
-import Control.Carrier.Lift qualified as Fused
-import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens as Lens
 import Control.Monad (forM, forM_, unless, void, when)
-import Control.Monad.IO.Class (MonadIO (liftIO), liftIO)
-import Control.Monad.State (MonadState, execState)
+import Control.Monad.State (MonadState)
 import Data.List.Extra (enumerate)
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
+import Effectful
+import Effectful.Error.Static
+import Effectful.State.Static.Local hiding (execState, get, gets, put)
+import Effectful.State.Static.Local qualified as E
 import Graphics.Vty qualified as V
-import Swarm.Effect (CacheIOC, MetricIOC, TimeIOC)
-import Swarm.Effect qualified as Effect
+import Swarm.Effect
 import Swarm.Failure (SystemFailure)
 import Swarm.Game.CESK (continue)
 import Swarm.Game.Device
@@ -36,7 +35,7 @@ import Swarm.Game.Step (finishGameTick)
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
-import Swarm.Language.Cache (moduleCache)
+import Swarm.Language.Cache (ModuleCache, moduleCache)
 import Swarm.Language.Capability (Capability (CDebug))
 import Swarm.Language.Module (Module, moduleTerm)
 import Swarm.Language.Pipeline (processSource)
@@ -194,7 +193,7 @@ loadVisibleRegion = do
     let swName = vr ^. subworld
     let f = void . zoomWorld swName $ \wMetric -> W.loadRegionM @Int @Entity wMetric (vr ^. planar)
     gs <- get
-    gs' <- liftIO . Fused.runM . Effect.runMetricIO . Effect.runTimeIO $ Fused.execState gs f
+    gs' <- liftIO . runEff . runMetricIO . runTimeIO $ E.execState gs f
     put gs'
 
 mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe (Cosmic Coords))
@@ -219,37 +218,35 @@ resetViewport n = do
   vScrollToBeginning n
   hScrollToBeginning n
 
-type ModuleCacheIOC = CacheIOC (ImportLoc Import.Resolved) (Module Elaborated)
-
 zoomWithIO ::
   (MonadState so m, MonadIO m) =>
   Lens' so si ->
-  Fused.StateC si (ModuleCacheIOC (MetricIOC (TimeIOC (Fused.LiftC IO)))) a ->
+  Eff [State si, ModuleCache, Metric, Time, IOE] a ->
   m a
 zoomWithIO l f = do
   sInner <- use l
-  (sInner', a) <- liftIO . Fused.runM . Effect.runTimeIO . Effect.runMetricIO . Effect.runCacheIO moduleCache $ Fused.runState sInner f
+  (a, sInner') <- liftIO . runEff . runTimeIO . runMetricIO . runCacheIO moduleCache . runState sInner $ f
   l .= sInner'
   return a
 
--- | Modifies the game state using a fused-effect state action.
+-- | Modifies the game state using an effectful state action.
 zoomGameStateFromAppState ::
   (MonadState AppState m, MonadIO m) =>
-  Fused.StateC GameState (ModuleCacheIOC (MetricIOC (TimeIOC (Fused.LiftC IO)))) a ->
+  Eff [State GameState, ModuleCache, Metric, Time, IOE] a ->
   m a
 zoomGameStateFromAppState = zoomWithIO $ playState . scenarioState . gameState
 
--- | Modifies the game state using a fused-effect state action.
+-- | Modifies the game state using an effectful state action.
 zoomGameStateFromScenarioState ::
   (MonadState ScenarioState m, MonadIO m) =>
-  Fused.StateC GameState (ModuleCacheIOC (MetricIOC (TimeIOC (Fused.LiftC IO)))) a ->
+  Eff [State GameState, ModuleCache, Metric, Time, IOE] a ->
   m a
 zoomGameStateFromScenarioState = zoomWithIO gameState
 
--- | Modifies the game state using a fused-effect state action.
+-- | Modifies the game state using an effectful state action.
 zoomGameStateFromPlayState ::
   (MonadState PlayState m, MonadIO m) =>
-  Fused.StateC GameState (ModuleCacheIOC (MetricIOC (TimeIOC (Fused.LiftC IO)))) a ->
+  Eff [State GameState, Cache (ImportLoc Import.Resolved) (Module Elaborated), Metric, Time, IOE] a ->
   m a
 zoomGameStateFromPlayState = zoomWithIO $ scenarioState . gameState
 
@@ -281,7 +278,7 @@ runBaseTerm m = do
   -- given term.
   gameState . baseRobot . machine %= continue m
   -- Finally, be sure to activate the base robot.
-  gameState %= execState (zoomRobots $ activateRobot 0)
+  gameState %= runPureEff . flip E.execState (zoomRobots $ activateRobot 0)
 
 -- | Set the REPL to the given text and REPL prompt type.
 modifyResetREPL :: Text -> REPLPrompt -> REPLState -> REPLState
@@ -304,7 +301,7 @@ runBaseCode uinput = do
   resetREPL T.empty (CmdPrompt [])
   env <- fromMaybe emptyEnv <$> preuse (gameState . baseEnv)
 
-  res <- liftIO $ Fused.runError @SystemFailure $ processSource Nothing (Just env) uinput
+  res <- liftIO . runEff $ runErrorNoCallStack @SystemFailure $ processSource Nothing (Just env) uinput
 
   case res of
     Right m -> do

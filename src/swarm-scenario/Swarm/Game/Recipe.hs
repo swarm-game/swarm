@@ -51,10 +51,7 @@ module Swarm.Game.Recipe (
   findLacking,
 ) where
 
-import Control.Algebra (Has)
 import Control.Arrow (left)
-import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Throw (Throw, liftEither)
 import Control.Lens hiding (from, (.=))
 import Control.Monad ((<=<))
 import Data.Bifunctor (second)
@@ -66,12 +63,14 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
+import Effectful
+import Effectful.Error.Static
 import GHC.Generics (Generic)
 import Swarm.Failure
 import Swarm.Game.Entity as E
 import Swarm.Game.Ingredients
 import Swarm.ResourceLoading (getDataFileNameThrow)
-import Swarm.Util.Effect (withThrow)
+import Swarm.Util.Effect (liftEither, withError)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
 import Witch
@@ -154,16 +153,16 @@ instance FromJSONE EntityMap (Recipe Entity) where
 -- | Given an already loaded 'EntityMap', try to load a list of
 --   recipes from the data file @recipes.yaml@.
 loadRecipes ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  (Error SystemFailure :> es, IOE :> es) =>
   EntityMap ->
-  m [Recipe Entity]
+  Eff es [Recipe Entity]
 loadRecipes em = do
   fileName <- getDataFileNameThrow Recipes f
   textRecipes <-
-    withThrow (AssetNotLoaded (Data Recipes) fileName . CanNotParseYaml)
-      . (liftEither <=< sendIO)
+    withError (AssetNotLoaded (Data Recipes) fileName . CanNotParseYaml)
+      . (liftEither <=< liftIO)
       $ decodeFileEither @[Recipe Text] fileName
-  withThrow (AssetNotLoaded (Data Recipes) fileName . SystemFailure . CustomFailure)
+  withError (AssetNotLoaded (Data Recipes) fileName . SystemFailure . CustomFailure)
     . liftEither
     . left (T.append "Unknown entities in recipe(s): " . T.intercalate ", ")
     . validationToEither
