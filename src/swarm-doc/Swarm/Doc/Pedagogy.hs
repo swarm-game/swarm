@@ -26,7 +26,6 @@ import Data.List.Extra (zipFrom)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
-import Data.Sequence (Seq)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
@@ -176,8 +175,8 @@ loadScenarioCollection = simpleErrorHandle $ do
   -- 'loadScenarios' below.  Any warnings will be caught when loading
   -- all the scenarios via the usual code path; we do not need to do
   -- anything with them here while simply rendering pedagogy info.
-  worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds tem
-  ignoreWarnings @(Seq SystemFailure) $ loadScenarios (ScenarioInputs worlds tem) True
+  worlds <- loadWorlds tem
+  ignoreWarnings @SystemFailure $ loadScenarios (ScenarioInputs worlds tem) True
 
 renderUsagesMarkdown :: CoverageInfo -> Text
 renderUsagesMarkdown (CoverageInfo (TutorialInfo (ScenarioWith s (ScenarioPath sp)) idx _sCmds dCmds) novelCmds) =

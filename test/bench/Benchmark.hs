@@ -8,14 +8,12 @@ module Main where
 import Control.Lens (view, (&), (.~))
 import Control.Monad (replicateM_)
 import Data.Map qualified as M
-import Data.Sequence (Seq)
 import Data.Text qualified as T
 import Data.Tuple.Extra (dupe)
 import Effectful
 import Effectful.State.Static.Local
 import ImportChain
 import Swarm.Effect (runCacheIO, runMetricIO, runTimeIO)
-import Swarm.Effect.Accum.Local
 import Swarm.Failure (SystemFailure, simpleErrorHandle)
 import Swarm.Game.CESK (initMachine)
 import Swarm.Game.Cosmetic.Display (defaultRobotDisplay)
@@ -38,6 +36,7 @@ import Swarm.Language.Module (Module)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax
 import Swarm.Util (parens, showT)
+import Swarm.Util.Effect (ignoreWarnings)
 import Swarm.Util.Erasable
 import Test.Tasty.Bench (Benchmark, bcompare, bench, bgroup, defaultMain, whnfAppIO)
 
@@ -148,8 +147,8 @@ mkGameState prog robotMaker numRobots = do
 
   -- NOTE: This replaces "classicGame0", which is still used by unit tests.
   gs <- simpleErrorHandle $ do
-    (_ :: Seq SystemFailure, initRS) <-
-      runAccum mempty . initRuntimeState $
+    initRS <-
+      ignoreWarnings @SystemFailure . initRuntimeState $
         RuntimeOptions {startPaused = False, pauseOnObjectiveCompletion = False, loadTestScenarios = False}
     (scenario, _gsi) <- loadStandaloneScenario "classic"
     return $ scenarioToGameStateForTests (ScenarioWith scenario Nothing) 0 0 Nothing $ view stdGameConfigInputs initRS

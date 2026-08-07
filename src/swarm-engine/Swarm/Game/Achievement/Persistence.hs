@@ -9,10 +9,9 @@ module Swarm.Game.Achievement.Persistence where
 
 import Control.Arrow (left)
 import Control.Monad (forM_)
-import Data.Sequence (Seq)
 import Data.Yaml qualified as Y
 import Effectful
-import Swarm.Effect.Accum.Local
+import Swarm.Effect.Warn.Local (Warn)
 import Swarm.Failure
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
@@ -24,7 +23,7 @@ import System.FilePath ((</>))
 -- | Load saved info about achievements from XDG data directory.
 --   Returns a list of attained achievements.
 loadAchievementsInfo ::
-  (Accum (Seq SystemFailure) :> es, IOE :> es) =>
+  (Warn SystemFailure :> es, IOE :> es) =>
   Eff es [Attainment]
 loadAchievementsInfo = do
   savedAchievementsPath <- liftIO $ getSwarmAchievementsPath False

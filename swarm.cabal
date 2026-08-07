@@ -183,7 +183,8 @@ common dotgen
   build-depends: dotgen >=0.4 && <0.5
 
 common effectful-core
-  build-depends: effectful-core >=2.6.0.0 && <2.7
+  build-depends:
+    effectful-core >=2.6.0.0 && <2.7
 
 common either
   build-depends: either >=5.0 && <5.1
@@ -975,6 +976,7 @@ library swarm-util
     Swarm.Effect.Metric
     Swarm.Effect.Output.Local
     Swarm.Effect.Time
+    Swarm.Effect.Warn.Local
     Swarm.Failure
     Swarm.Language.Phase
     Swarm.Language.Syntax.Direction

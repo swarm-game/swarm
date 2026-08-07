@@ -40,18 +40,17 @@ import Data.Either.Extra (fromRight')
 import Data.List (intercalate, isPrefixOf, stripPrefix)
 import Data.Map.Ordered qualified as OM
 import Data.Maybe (isJust)
-import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Yaml as Y
 import Effectful
 import Effectful.Error.Static
-import Swarm.Effect.Accum.Local
+import Swarm.Effect.Warn.Local (Warn, warn)
 import Swarm.Failure
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Status
 import Swarm.ResourceLoading
-import Swarm.Util.Effect (liftEither, warn, withError)
+import Swarm.Util.Effect (liftEither, withError)
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist)
 import System.FilePath (pathSeparator, splitDirectories, takeExtensions, (-<.>), (</>))
 
@@ -108,7 +107,7 @@ normalizeScenarioPath col p =
 
 -- | Load all the scenarios from the scenarios data directory.
 loadScenarios ::
-  (Accum (Seq SystemFailure) :> es, IOE :> es) =>
+  (Warn SystemFailure :> es, IOE :> es) =>
   ScenarioInputs ->
   Bool ->
   Eff es (ScenarioCollection ScenarioInfo)

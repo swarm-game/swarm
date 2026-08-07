@@ -25,10 +25,9 @@ import Brick (AttrMap)
 import Brick.Focus
 import Control.Lens hiding (from, (<.>))
 import Data.List.Extra (enumerate)
-import Data.Sequence (Seq)
 import Data.Set (Set)
 import Effectful
-import Swarm.Effect.Accum.Local
+import Swarm.Effect.Warn.Local
 import Swarm.Failure (SystemFailure)
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep
@@ -100,7 +99,7 @@ data UIInitOptions = UIInitOptions
 --   it involves reading a REPL history file, getting the current
 --   time, and loading text files from the data directory.
 initUIState ::
-  ( Accum (Seq SystemFailure) :> es
+  ( Warn SystemFailure :> es
   , IOE :> es
   ) =>
   UIInitOptions ->

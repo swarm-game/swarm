@@ -8,11 +8,9 @@ import Control.Monad ((>=>))
 import Control.Monad.State (MonadState, get, put)
 import Control.Monad.Trans.Except (ExceptT (..))
 import Data.Either.Extra (eitherToMaybe)
-import Data.Sequence (Seq)
-import Data.Sequence qualified as Seq
 import Effectful
 import Effectful.Error.Static
-import Swarm.Effect.Accum.Local
+import Swarm.Effect.Warn.Local
 import Witherable
 
 -- | Transform an @Error e1@ constraint into a @Error e2@ constraint,
@@ -30,7 +28,7 @@ liftEither = either throwError_ pure
 
 -- | Transform a @Throw e@ constraint into a concrete @Maybe@,
 --   logging any error as a warning.
-throwToWarning :: (Accum (Seq e) :> es) => Eff (Error e : es) a -> Eff es (Maybe a)
+throwToWarning :: (Warn e :> es) => Eff (Error e : es) a -> Eff es (Maybe a)
 throwToWarning m = do
   res <- runErrorNoCallStack m
   case res of
@@ -39,8 +37,8 @@ throwToWarning m = do
 
 -- | Run a computation with an @Accum@ effect (typically accumulating
 --   a list of warnings), ignoring the accumulated value.
-ignoreWarnings :: (Monoid e) => Eff (Accum e : es) a -> Eff es a
-ignoreWarnings = evalAccum mempty
+ignoreWarnings :: forall w es a. Eff (Warn w : es) a -> Eff es a
+ignoreWarnings = evalWarn
 
 -- | Convert a effectful style computation using an @Error e@
 --   constraint into an @ExceptT@ computation.  This is mostly a stub
@@ -49,17 +47,13 @@ ignoreWarnings = evalAccum mempty
 asExceptT :: Eff [Error e, IOE] a -> ExceptT e IO a
 asExceptT = ExceptT . (runEff . runErrorNoCallStack)
 
--- | Log a single failure as a warning.
-warn :: (Accum (Seq w) :> es) => w -> Eff es ()
-warn = add . Seq.singleton
-
 -- | A version of 'traverse'/'mapM' that also accumulates warnings.
 --
 --   Note that we can't generalize this to work over any 'Traversable'
 --   because it also needs to have a notion of "filtering".
 --   'Witherable' provides exactly the right abstraction.
 traverseW ::
-  (Accum (Seq w) :> es, Witherable t) =>
+  (Warn w :> es, Witherable t) =>
   (a -> Eff es (Either w b)) ->
   t a ->
   Eff es (t b)
@@ -71,7 +65,7 @@ traverseW f = do
 
 -- | Flipped version of 'traverseW' for convenience.
 forMW ::
-  (Accum (Seq w) :> es, Witherable t) =>
+  (Warn w :> es, Witherable t) =>
   t a ->
   (a -> Eff es (Either w b)) ->
   Eff es (t b)

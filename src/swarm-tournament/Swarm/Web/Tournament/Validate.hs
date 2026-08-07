@@ -13,14 +13,12 @@ import Control.Monad.State.Strict (evalStateT)
 import Control.Monad.Trans.Except
 import Data.ByteString.Lazy qualified as LBS
 import Data.Either.Extra (maybeToEither)
-import Data.Sequence (Seq)
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8')
 import Data.Yaml (decodeEither', parseEither)
 import Effectful
 import Effectful.Error.Static
 import Servant.Multipart
-import Swarm.Effect.Accum.Local
 import Swarm.Failure (SystemFailure)
 import Swarm.Game.CESK (continue)
 import Swarm.Game.Robot.Concrete (machine)
@@ -36,6 +34,7 @@ import Swarm.Language.Module (Module)
 import Swarm.Language.Pipeline
 import Swarm.Language.Syntax (Phase (..))
 import Swarm.Pretty (prettyString, prettyText)
+import Swarm.Util.Effect (ignoreWarnings)
 import Swarm.Util.Yaml
 import Swarm.Web.Tournament.Database.Query
 import Swarm.Web.Tournament.Type
@@ -163,7 +162,7 @@ initScenarioObjectWithEnv content = do
       . ExceptT
       . runEff
       . runErrorNoCallStack
-      $ evalAccum (mempty :: Seq SystemFailure) initScenarioInputs
+      $ ignoreWarnings @SystemFailure initScenarioInputs
 
   initScenarioObject scenarioInputs content
 
@@ -189,7 +188,7 @@ gamestateFromScenarioText content = do
       . ExceptT
       . runEff
       . runErrorNoCallStack
-      . evalAccum (mempty :: Seq SystemFailure)
+      . ignoreWarnings @SystemFailure
       . initRuntimeState
       $ RuntimeOptions
         { startPaused = False
