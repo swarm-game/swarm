@@ -21,6 +21,7 @@ roots = [
     "^Swarm.App.demoWeb$",
     "^Swarm.Effect.Accum.Local.look$",
     "^Swarm.Effect.Accum.Local.looks$",
+    "^Swarm.Effect.Accum.Local.evalAccum$",
     "^Swarm.Effect.Unify.Common.dom$",
     "^Swarm.Effect.Unify.Fast.@@$",
     "^Swarm.Effect.Unify.Naive.runUnification$",
@@ -57,7 +58,7 @@ roots = [
     "^Swarm.Util.replaceLast$",
     "^Swarm.Util.reflow$",
     "^Swarm.Util.Effect.modifyM$",
-    "^Swarm.Util.Effect.throwToWarning$",
+    "^Swarm.Util.Effect.errorToWarning$",
 
     # True positives (unused lenses):
     # -------------------------------

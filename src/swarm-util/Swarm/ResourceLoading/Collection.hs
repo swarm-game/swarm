@@ -26,25 +26,22 @@ module Swarm.ResourceLoading.Collection (
 
 import Control.Lens (Ixed (..), Traversal', makePrisms)
 import Control.Monad (filterM, forM_, when)
-import Data.Either (partitionEithers)
 import Data.List ((\\))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Map.Ordered (OMap)
 import Data.Map.Ordered qualified as OM
-import Data.Sequence (Seq)
-import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Effectful
 import Effectful.Error.Static
-import Swarm.Effect.Accum.Local
+import Swarm.Effect.Warn.Local (Warn, warn)
 import Swarm.Failure (
   OrderFileWarning (DanglingFiles, MissingFiles, NoOrderFile),
   SystemFailure (OrderFileWarning),
  )
 import Swarm.Util (Encoding (UTF8), readFileMay)
-import Swarm.Util.Effect (warn)
+import Swarm.Util.Effect (traverseW)
 import Swarm.Util.OrderedMap qualified as OM
 import System.Directory (
   doesDirectoryExist,
@@ -138,7 +135,7 @@ data CollectionConfig a = CollectionConfig
 --   recursive with 'loadCollectionItem'.
 loadCollection ::
   forall es a.
-  (Accum (Seq SystemFailure) :> es, IOE :> es) =>
+  (Warn SystemFailure :> es, IOE :> es) =>
   CollectionConfig a ->
   FilePath ->
   Eff es (Collection a)
@@ -158,9 +155,8 @@ loadCollection cfg dir = do
   -- or has thrown SystemFailure. The following code just adds that thrown failure to others.
   loadItems :: [FilePath] -> Eff es (Map FilePath (CollectionItem a))
   loadItems items = do
-    let loadItem f = runErrorNoCallStack @SystemFailure $ (f,) <$> loadCollectionItem cfg (dir </> f)
-    (itemFailures, okItems) <- partitionEithers <$> mapM loadItem items
-    add (Seq.fromList itemFailures)
+    let loadItem fp = runErrorNoCallStack @SystemFailure $ (fp,) <$> loadCollectionItem cfg (dir </> fp)
+    okItems <- traverseW loadItem items
     return $ M.fromList okItems
 
   -- Load a collection with items sorted alphabetically by file path, and
@@ -186,7 +182,7 @@ loadCollection cfg dir = do
 --   or a subcollection.
 loadCollectionItem ::
   ( Error SystemFailure :> es
-  , Accum (Seq SystemFailure) :> es
+  , Warn SystemFailure :> es
   , IOE :> es
   ) =>
   CollectionConfig a ->

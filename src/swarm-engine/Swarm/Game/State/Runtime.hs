@@ -28,11 +28,10 @@ where
 
 import Control.Lens
 import Data.Map (Map)
-import Data.Sequence (Seq)
 import Data.Text (Text)
 import Effectful
 import Effectful.Error.Static
-import Swarm.Effect.Accum.Local
+import Swarm.Effect.Warn.Local
 import Swarm.Failure (SystemFailure)
 import Swarm.Game.Land
 import Swarm.Game.Recipe (loadRecipes)
@@ -56,7 +55,7 @@ data RuntimeState = RuntimeState
 
 initScenarioInputs ::
   ( Error SystemFailure :> es
-  , Accum (Seq SystemFailure) :> es
+  , Warn SystemFailure :> es
   , IOE :> es
   ) =>
   Eff es ScenarioInputs
@@ -67,7 +66,7 @@ initScenarioInputs = do
 
 initGameStateInputs ::
   ( Error SystemFailure :> es
-  , Accum (Seq SystemFailure) :> es
+  , Warn SystemFailure :> es
   , IOE :> es
   ) =>
   Eff es GameStateInputs
@@ -78,7 +77,7 @@ initGameStateInputs = do
 
 initGameStateConfig ::
   ( Error SystemFailure :> es
-  , Accum (Seq SystemFailure) :> es
+  , Warn SystemFailure :> es
   , IOE :> es
   ) =>
   RuntimeOptions ->
@@ -99,7 +98,7 @@ data RuntimeOptions = RuntimeOptions
 
 initRuntimeState ::
   ( Error SystemFailure :> es
-  , Accum (Seq SystemFailure) :> es
+  , Warn SystemFailure :> es
   , IOE :> es
   ) =>
   RuntimeOptions ->

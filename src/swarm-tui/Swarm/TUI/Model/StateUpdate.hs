@@ -38,7 +38,6 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
-import Data.Sequence (Seq)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -47,7 +46,7 @@ import Data.Yaml (decodeFileEither, prettyPrintParseException)
 import Effectful
 import Effectful.Error.Static
 import Effectful.State.Static.Local
-import Swarm.Effect.Accum.Local
+import Swarm.Effect.Warn.Local (runWarn)
 import Swarm.Failure (SystemFailure (..))
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Persistence
@@ -158,7 +157,7 @@ initPersistentState ::
   AppOpts ->
   Eff es PersistentState
 initPersistentState opts@(AppOpts {..}) = do
-  (warnings :: Seq SystemFailure, PersistentState initRS initUI initKs initProg) <- runAccum mempty $ do
+  (PersistentState initRS initUI initKs initProg, warnings :: [SystemFailure]) <- runWarn $ do
     rs <- initRuntimeState $ mkRuntimeOptions opts
     let showMainMenu = not (skipMenu opts)
     ui <- initUIState UIInitOptions {..}

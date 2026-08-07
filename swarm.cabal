@@ -183,7 +183,8 @@ common dotgen
   build-depends: dotgen >=0.4 && <0.5
 
 common effectful-core
-  build-depends: effectful-core >=2.6.0.0 && <2.7
+  build-depends:
+    effectful-core >=2.6.0.0 && <2.7
 
 common either
   build-depends: either >=5.0 && <5.1
@@ -205,12 +206,6 @@ common filepath
 
 common free
   build-depends: free >=5.2 && <5.3
-
-common fused-effects
-  build-depends: fused-effects >=1.1.2.6 && <1.2
-
-common fused-effects-lens
-  build-depends: fused-effects-lens >=1.2.0.1 && <1.3
 
 common fuzzy
   build-depends: fuzzy >=0.1 && <0.2
@@ -980,6 +975,7 @@ library swarm-util
     Swarm.Effect.Cache
     Swarm.Effect.Metric
     Swarm.Effect.Time
+    Swarm.Effect.Warn.Local
     Swarm.Failure
     Swarm.Language.Phase
     Swarm.Language.Syntax.Direction
