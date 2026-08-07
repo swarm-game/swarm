@@ -56,7 +56,6 @@ roots = [
     "^Swarm.Util.isSuccessOr$",
     "^Swarm.Util.replaceLast$",
     "^Swarm.Util.reflow$",
-    "^Swarm.Util.Lens._NonEmpty$",
     "^Swarm.Util.Effect.modifyM$",
     "^Swarm.Util.Effect.throwToWarning$",
 

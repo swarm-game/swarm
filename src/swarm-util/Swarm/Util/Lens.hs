@@ -39,7 +39,6 @@ import Control.Lens (
  )
 
 import Control.Lens qualified as L
-import Data.List.NonEmpty qualified as NE
 import Effectful
 import Effectful.State.Static.Local
 import Language.Haskell.TH (DecsQ)
@@ -121,9 +120,3 @@ l <<.= b = l %%= (,b)
 (<>=) :: (State s :> es, Semigroup a) => L.ASetter' s a -> a -> Eff es ()
 l <>= a = modify (l L.<>~ a)
 {-# INLINE (<>=) #-}
-
-------------------------------------------------------------
--- Other lens utilities
-
-_NonEmpty :: Lens' (NE.NonEmpty a) (a, [a])
-_NonEmpty = L.lens (\(x NE.:| xs) -> (x, xs)) (const (uncurry (NE.:|)))
