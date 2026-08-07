@@ -18,7 +18,7 @@ import Witherable
 withError :: (HasCallStack, Error e' :> es) => (e -> e') -> Eff (Error e : es) a -> Eff es a
 withError f = runErrorNoCallStackWith (throwError_ . f)
 
--- | Transform a @Throw e@ constraint into a concrete @Maybe@,
+-- | Transform a @Error e@ constraint into a concrete @Maybe@,
 --   discarding the error.
 errorToMaybe :: (HasCallStack) => Eff (Error e : es) a -> Eff es (Maybe a)
 errorToMaybe = fmap eitherToMaybe . runErrorNoCallStack
@@ -26,16 +26,16 @@ errorToMaybe = fmap eitherToMaybe . runErrorNoCallStack
 liftEither :: (HasCallStack, Error e :> es) => Either e a -> Eff es a
 liftEither = either throwError_ pure
 
--- | Transform a @Throw e@ constraint into a concrete @Maybe@,
+-- | Transform a @Error e@ constraint into a concrete @Maybe@,
 --   logging any error as a warning.
-throwToWarning :: (Warn e :> es) => Eff (Error e : es) a -> Eff es (Maybe a)
-throwToWarning m = do
+errorToWarning :: (Warn e :> es) => Eff (Error e : es) a -> Eff es (Maybe a)
+errorToWarning m = do
   res <- runErrorNoCallStack m
   case res of
     Left err -> warn err >> return Nothing
     Right a -> return (Just a)
 
--- | Run a computation with an @Accum@ effect (typically accumulating
+-- | Run a computation with an @Warn@ effect (accumulating
 --   a list of warnings), ignoring the accumulated value.
 ignoreWarnings :: forall w es a. Eff (Warn w : es) a -> Eff es a
 ignoreWarnings = evalWarn

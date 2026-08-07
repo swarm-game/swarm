@@ -58,7 +58,7 @@ roots = [
     "^Swarm.Util.replaceLast$",
     "^Swarm.Util.reflow$",
     "^Swarm.Util.Effect.modifyM$",
-    "^Swarm.Util.Effect.throwToWarning$",
+    "^Swarm.Util.Effect.errorToWarning$",
 
     # True positives (unused lenses):
     # -------------------------------
