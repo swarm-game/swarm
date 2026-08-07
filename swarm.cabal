@@ -973,6 +973,7 @@ library swarm-util
     Swarm.Effect.Accum.Local
     Swarm.Effect.Cache
     Swarm.Effect.Metric
+    Swarm.Effect.Output.Local
     Swarm.Effect.Time
     Swarm.Failure
     Swarm.Language.Phase
