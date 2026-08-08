@@ -105,6 +105,10 @@ assertEqualUpToTrailingWS msg x y = assertEqual msg (trim x) (trim y)
  where
   trim = T.dropWhileEnd isSpace
 
+------------------------------------------------------------
+-- Basic low-effort diffing of Markdown documents, to help
+-- with debugging for failed tests
+
 class Show a => Diff a where
   diff :: a -> a -> Maybe (Text, Text)
 

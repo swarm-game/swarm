@@ -13,10 +13,11 @@
   * baz
   * fwap
   * quux
+
      * flerb
      * slimp
   *
     * a
     * b
-    * c
-* blah
+    * - c
+      - d
