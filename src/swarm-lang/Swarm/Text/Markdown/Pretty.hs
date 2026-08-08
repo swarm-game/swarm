@@ -18,37 +18,6 @@ import Swarm.Text.Markdown.Document (Document, TxtAttr (..))
 import Swarm.Text.Markdown.Layout (documentToStream)
 import Swarm.Text.Markdown.Token (OutputToken, Token' (..))
 
--- XXX delete old code
--- -- | Convert a single 'Node' to Markdown format.
--- nodeToMark :: PrettyPrec a => Node a -> Text
--- nodeToMark = \case
---   LeafText a t -> foldl attr t a
---   LeafRaw a c ->
---     mconcat $
---       wrap "`" c : ["{=" <> T.pack a <> "}" | not (null a)]
---   LeafCode c -> wrap "`" (prettyText c)
---   LeafCodeBlock f c -> codeBlock f $ prettyText c
---   LeafLink dest title desc -> between "[" "]" (foldMap nodeToMark desc) <> between "(" ")" (mkTarget dest title)
---  where
---   codeBlock f t = wrap "```" $ T.pack f <> "\n" <> t <> "\n"
---   mkTarget dest title = dest <> maybe "" ((" " <>) . wrap "\"") title
---   wrap c t = c <> t <> c
---   between x y t = x <> t <> y
---   attr t a = case a of
---     Emphasis -> wrap "_" t
---     Strong -> wrap "**" t
---     -- Raw, Code, and Link attributes won't actually occur in a LeafText
---     -- node, LeafRaw, LeafCode, and LeafLink will be used instead.
---     Raw _ -> t
---     Code -> t
---     Link {} -> t
-
--- -- | Convert a 'Paragraph' to Markdown format.
--- paragraphToMark :: PrettyPrec a => Paragraph a -> Text
--- paragraphToMark = \case
---   SimpleParagraph ns -> foldMap nodeToMark ns
---   ListParagraph _ty _sp _ds -> undefined
-
 openAttrToMark :: TxtAttr -> Text
 openAttrToMark = \case
   Strong -> "**"

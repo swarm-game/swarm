@@ -18,6 +18,7 @@ module Swarm.Text.Markdown.Layout (
   documentToStream,
 ) where
 
+import Commonmark.Types (ListSpacing (..), ListType (..))
 import Data.Char (isSpace)
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -160,25 +161,30 @@ paragraphToStream indentFirstLine i mw = \case
       . (if indentFirstLine then (indent <>) else id)
       . concatMap (nodeToStream mw)
       $ ns
-  ListParagraph _ty _sp items -> intercalate [Newline] (map2 (listItem indentFirstLine) (listItem True) items)
+  ListParagraph ty sp items -> intercalate (interlist sp) (map2 (listItem ty indentFirstLine) (listItem ty True) items)
  where
   indent = [HardSpace i | i > 0]
   linebreak = [Newline] <> indent
 
+  interlist = \case
+    TightList -> [Newline]
+    LooseList -> [Newline, Newline]
+
   nest = 2
 
-  bullet = [TextToken "-", SoftSpace]
-
+  bullet = \case
+    BulletList b -> [TextToken (T.singleton b), SoftSpace]
+    OrderedList {} -> [TextToken "-", SoftSpace] -- XXX fix me
   map2 _ _ [] = []
   map2 f g (x : xs) = f x : map g xs
 
-  listItem :: PrettyPrec a => Bool -> [Paragraph a] -> [Token]
-  listItem shouldIndent = \case
+  listItem :: PrettyPrec a => ListType -> Bool -> [Paragraph a] -> [Token]
+  listItem ty shouldIndent = \case
     [] -> []
     (p : ps) ->
       intercalate
-        [Newline]
-        ( ((if shouldIndent then indent else []) <> bullet <> paragraphToStream False (i + nest) (subtract nest <$> mw) p)
+        [Para]
+        ( ((if shouldIndent then indent else []) <> bullet ty <> paragraphToStream False (i + nest) (subtract nest <$> mw) p)
             : map (paragraphToStream True (i + nest) (subtract nest <$> mw)) ps
         )
 
