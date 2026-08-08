@@ -18,8 +18,8 @@ module Swarm.Text.Markdown.Layout (
   documentToStream,
 ) where
 
-import Commonmark.Types (ListSpacing (..), ListType (..))
-import Data.Char (isSpace)
+import Commonmark.Types (DelimiterType (..), EnumeratorType (..), ListSpacing (..), ListType (..))
+import Data.Char (chr, isSpace, ord)
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -28,7 +28,7 @@ import Data.Text qualified as T
 import Swarm.Pretty (PrettyPrec (..), prettyText, prettyTextLine, prettyTextWidth)
 import Swarm.Text.Markdown.Document
 import Swarm.Text.Markdown.Token
-import Swarm.Util (chopNE, spanMaybe)
+import Swarm.Util (chopNE, showT, spanMaybe)
 
 ------------------------------------------------------------
 -- Utility functions on text
@@ -161,7 +161,10 @@ paragraphToStream indentFirstLine i mw = \case
       . (if indentFirstLine then (indent <>) else id)
       . concatMap (nodeToStream mw)
       $ ns
-  ListParagraph ty sp items -> intercalate (interlist sp) (map2 (listItem ty indentFirstLine) (listItem ty True) items)
+  ListParagraph ty sp items ->
+    intercalate
+      (interlist sp)
+      (zipWith3 listItem (indentFirstLine : repeat True) (bullets ty) items)
  where
   indent = [HardSpace i | i > 0]
   linebreak = [Newline] <> indent
@@ -172,19 +175,32 @@ paragraphToStream indentFirstLine i mw = \case
 
   nest = 2
 
-  bullet = \case
-    BulletList b -> [TextToken (T.singleton b), SoftSpace]
-    OrderedList {} -> [TextToken "-", SoftSpace] -- XXX fix me
-  map2 _ _ [] = []
-  map2 f g (x : xs) = f x : map g xs
+  bullets = \case
+    BulletList b -> repeat [TextToken (T.singleton b), SoftSpace]
+    OrderedList start e d -> map mkNumber [start ..]
+     where
+      mkNumber n = delimiterL <> [enumerator n, delimiter, SoftSpace]
+      enumerator n = TextToken $ case e of
+        Decimal -> showT n
+        UpperAlpha -> T.singleton (chr (n - 1 + ord 'A'))
+        LowerAlpha -> T.singleton (chr (n - 1 + ord 'a'))
+        UpperRoman -> showT n -- XXX implement roman numerals?
+        LowerRoman -> showT n
+      delimiterL = case d of
+        TwoParens -> [TextToken "("]
+        _ -> []
+      delimiter = TextToken $ case d of
+        Period -> "."
+        OneParen -> ")"
+        TwoParens -> ")"
 
-  listItem :: PrettyPrec a => ListType -> Bool -> [Paragraph a] -> [Token]
-  listItem ty shouldIndent = \case
+  listItem :: PrettyPrec a => Bool -> [Token] -> [Paragraph a] -> [Token]
+  listItem shouldIndent bullet = \case
     [] -> []
     (p : ps) ->
       intercalate
         [Para]
-        ( ((if shouldIndent then indent else []) <> bullet ty <> paragraphToStream False (i + nest) (subtract nest <$> mw) p)
+        ( ((if shouldIndent then indent else []) <> bullet <> paragraphToStream False (i + nest) (subtract nest <$> mw) p)
             : map (paragraphToStream True (i + nest) (subtract nest <$> mw)) ps
         )
 

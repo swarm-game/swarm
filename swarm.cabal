@@ -315,6 +315,9 @@ common random
 common scientific
   build-depends: scientific >=0.3.6 && <0.3.9
 
+common semialign
+  build-depends: semialign >=1.4 && <1.5
+
 common servant
   build-depends: servant >=0.19 && <0.22
 
@@ -377,6 +380,9 @@ common text-rope
 
 common text-zipper
   build-depends: text-zipper >=0.10 && <0.14
+
+common these
+  build-depends: these >=1.2 && <1.3
 
 common time
   build-depends: time >=1.9 && <1.16
@@ -1378,10 +1384,12 @@ test-suite swarm-integration
     filepath,
     lens,
     mtl,
+    semialign,
     tasty,
     tasty-expected-failure,
     tasty-hunit,
     text,
+    these,
     witch,
     yaml,
 

@@ -6,21 +6,23 @@
 -- Test Markdown processing capabilities.
 module TestMarkdown (testMarkdown) where
 
+import Control.Applicative (asum)
 import Data.Char (isSpace)
-import Data.Function (on)
 import Data.Map (Map, (!?))
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.These (These (..))
+import Data.Zip (alignWith)
 import Swarm.Language.Syntax (Raw, Syntax)
 import Swarm.Language.Syntax.Util (eraseSrcLoc)
 import Swarm.Text.Markdown (fromTextM, toTextWidth)
-import Swarm.Text.Markdown.Document (Document, Node (..), mapD, mapP)
+import Swarm.Text.Markdown.Document (Document (..), Node (..), Paragraph (..), mapD, mapP)
 import Swarm.Text.Markdown.Pretty (docToMark)
-import Swarm.Util (acquireAllWithExt)
+import Swarm.Util (acquireAllWithExt, showT)
 import System.FilePath (dropExtension, takeExtension)
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (Assertion, assertEqual, testCase)
+import Test.Tasty.HUnit (Assertion, assertEqual, assertFailure, testCase)
 
 -- | Generate test tree to check that the .md files in
 --   @data/test/markdown/@ can be processed and laid out successfully,
@@ -68,7 +70,13 @@ testMarkdown = do
         doc <- fromTextM md
         let md' = docToMark doc
         doc' <- fromTextM md'
-        (assertEqual "Round-tripped markdown does not parse equivalently (up to whitespace + pretty-printing)" `on` normalizeMarkdown) doc doc'
+        let ndoc = normalizeMarkdown doc
+            ndoc' = normalizeMarkdown doc'
+        case diff ndoc ndoc' of
+          Nothing -> pure ()
+          Just (d1, d2) -> do
+            let msg = "Round-tripped markdown does not parse equivalently (up to whitespace + pretty-printing)"
+            assertFailure $ msg <> "\n" <> "expected:  " <> T.unpack d1 <> "\nbut got:  " <> T.unpack d2
 
       normalizeMarkdown :: Document (Syntax Raw) -> Document (Syntax Raw)
       normalizeMarkdown = (mapD . mapP) normalizeNode
@@ -96,3 +104,40 @@ assertEqualUpToTrailingWS :: String -> Text -> Text -> Assertion
 assertEqualUpToTrailingWS msg x y = assertEqual msg (trim x) (trim y)
  where
   trim = T.dropWhileEnd isSpace
+
+class Show a => Diff a where
+  diff :: a -> a -> Maybe (Text, Text)
+
+instance Diff a => Diff [a] where
+  diff xs ys = asum (alignWith diffExt xs ys)
+   where
+    diffExt = \case
+      This x -> Just (showT x, "<EMPTY>")
+      That y -> Just ("<EMPTY>", showT y)
+      These x y -> diff x y
+
+instance (Eq c, Diff c) => Diff (Document c) where
+  diff (Document ps1) (Document ps2) = diff ps1 ps2
+
+instance (Eq c, Diff c) => Diff (Paragraph c) where
+  diff (SimpleParagraph ns1) (SimpleParagraph ns2) = diff ns1 ns2
+  diff l1@(ListParagraph t1 s1 is1) l2@(ListParagraph t2 s2 is2)
+    | t1 == t2 && s1 == s2 = diff is1 is2
+    | otherwise = Just (showT l1, showT l2)
+  diff p1 p2 = Just (showT p1, showT p2)
+
+diffEq :: (Show a, Eq a) => a -> a -> Maybe (Text, Text)
+diffEq x y
+  | x == y = Nothing
+  | otherwise = Just (showT x, showT y)
+
+instance (Eq c, Diff c) => Diff (Node c) where
+  diff (LeafCode c1) (LeafCode c2) = diff c1 c2
+  diff (LeafCodeBlock s1 c1) (LeafCodeBlock s2 c2)
+    | s1 == s2 = diff c1 c2
+  diff (LeafLink t1 i1 c1) (LeafLink t2 i2 c2)
+    | t1 == t2 && i1 == i2 = diff c1 c2
+  diff n1 n2 = diffEq n1 n2
+
+instance Diff (Syntax Raw) where
+  diff = diffEq
