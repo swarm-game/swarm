@@ -154,7 +154,7 @@ normalise = mergeTokens . concatMap normaliseToken
 --   A non-positive line width will simply be interpreted as a line
 --   width of 1.
 paragraphToStream :: PrettyPrec a => Bool -> Int -> Maybe Int -> Paragraph a -> [Token]
-paragraphToStream indentFirstLine i mw = \case
+paragraphToStream indentFirstLine cols mw = \case
   SimpleParagraph ns ->
     maybe id (splitter . max 1) mw
       . glueTokens
@@ -166,7 +166,7 @@ paragraphToStream indentFirstLine i mw = \case
       (interlist sp)
       (zipWith3 listItem (indentFirstLine : repeat True) (bullets ty) items)
  where
-  indent = [HardSpace i | i > 0]
+  indent = [HardSpace cols | cols > 0]
   linebreak = [Newline] <> indent
 
   interlist = \case
@@ -177,22 +177,35 @@ paragraphToStream indentFirstLine i mw = \case
 
   bullets = \case
     BulletList b -> repeat [TextToken (T.singleton b), SoftSpace]
-    OrderedList start e d -> map mkNumber [start ..]
+    OrderedList start enum delim -> map mkNumber [start ..]
      where
       mkNumber n = delimiterL <> [enumerator n, delimiter, SoftSpace]
-      enumerator n = TextToken $ case e of
+      enumerator n = TextToken $ case enum of
         Decimal -> showT n
         UpperAlpha -> T.singleton (chr (n - 1 + ord 'A'))
         LowerAlpha -> T.singleton (chr (n - 1 + ord 'a'))
-        UpperRoman -> showT n -- XXX implement roman numerals?
-        LowerRoman -> showT n
-      delimiterL = case d of
+        UpperRoman -> T.toUpper (toRoman n)
+        LowerRoman -> toRoman n
+      delimiterL = case delim of
         TwoParens -> [TextToken "("]
         _ -> []
-      delimiter = TextToken $ case d of
+      delimiter = TextToken $ case delim of
         Period -> "."
         OneParen -> ")"
         TwoParens -> ")"
+
+      toRoman = T.pack . reverse . go "ivxlcdm"
+       where
+        go [m] n = replicate n m
+        go (i : v : x : xs) n
+          | d < 4 = replicate d i ++ n'
+          | d == 4 = [v, i] ++ n'
+          | d < 9 = replicate (d - 5) i ++ [v] ++ n'
+          | otherwise = [x, i] ++ n'
+         where
+          (r, d) = n `divMod` 10
+          n' = go (x : xs) r
+        go _ _ = ""
 
   listItem :: PrettyPrec a => Bool -> [Token] -> [Paragraph a] -> [Token]
   listItem shouldIndent bullet = \case
@@ -200,8 +213,8 @@ paragraphToStream indentFirstLine i mw = \case
     (p : ps) ->
       intercalate
         [Para]
-        ( ((if shouldIndent then indent else []) <> bullet <> paragraphToStream False (i + nest) (subtract nest <$> mw) p)
-            : map (paragraphToStream True (i + nest) (subtract nest <$> mw)) ps
+        ( ((if shouldIndent then indent else []) <> bullet <> paragraphToStream False (cols + nest) (subtract nest <$> mw) p)
+            : map (paragraphToStream True (cols + nest) (subtract nest <$> mw)) ps
         )
 
   -- Given a maximum width per line, split a token stream into lines

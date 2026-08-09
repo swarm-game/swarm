@@ -21,7 +21,7 @@ module Swarm.Text.Markdown.Parse (
 where
 
 import Commonmark qualified as Mark
-import Commonmark.Extensions qualified as Mark (rawAttributeSpec)
+import Commonmark.Extensions qualified as Mark
 import Control.Applicative ((<|>))
 import Control.Arrow (left)
 import Control.Monad (guard)
@@ -106,7 +106,12 @@ instance Mark.IsBlock [Node Text] [Paragraph Text] where
 -- | Read a Markdown document, leaving any embedded code as @Text@.
 fromTextPure :: Text -> Either Text (Document Text)
 fromTextPure t = do
-  let spec = Mark.rawAttributeSpec <> Mark.defaultSyntaxSpec
+  let spec =
+        mconcat
+          [ Mark.fancyListSpec
+          , Mark.rawAttributeSpec
+          , Mark.defaultSyntaxSpec
+          ]
   let runSimple = left showT . runIdentity
   fmap Document . runSimple $ Mark.commonmarkWith spec "markdown" t
 
