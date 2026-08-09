@@ -210,7 +210,6 @@ drawMarkdown d = do
     Markdown.Emphasis -> withAttr italicAttr
     Markdown.Raw f -> withAttr (rawAttr f)
     Markdown.Code -> withAttr highlightAttr
-    -- XXX Eventually, put it in a focus ring & allow selecting it.
     Markdown.Link dest _title -> clickable (UILink dest) . withAttr highlightAttr
 
   rawAttr = \case
