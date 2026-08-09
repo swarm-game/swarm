@@ -9,7 +9,6 @@
 -- Parsing Documents from Markdown source, with embedded Swarm source.
 module Swarm.Text.Markdown.Parse (
   -- * Commonmark parsing
-  quoteMaybe,
   fromTextPure,
 
   -- * Markdown -> Document parsing with Swarm code processing
@@ -72,10 +71,6 @@ instance GHC.Exts.IsString (Paragraph (Syntax Raw)) where
   fromString s = case paragraphs $ GHC.Exts.fromString s of
     [] -> SimpleParagraph []
     (p : _) -> p
-
--- | Surround some text in double quotes if it is not empty.
-quoteMaybe :: Text -> Text
-quoteMaybe t = if T.null t then t else T.concat ["\"", t, "\""]
 
 -- | This instance tells Commonmark how to parse Markdown inline elements into our custom data type.
 instance Mark.IsInline [Node Text] where
