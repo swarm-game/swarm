@@ -1,6 +1,0 @@
-module MarkdownDiff where
-
-import Swarm.Text.Markdown.Document
-
-documentDiff :: Document c -> Document c -> 
-

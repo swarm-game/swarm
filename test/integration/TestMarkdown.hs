@@ -54,16 +54,18 @@ testMarkdown = do
       -- requiring the pretty-printed Markdown to parse to an
       -- identical AST as the original is slightly too strong, since
       -- the Commonmark parser produces LeafText nodes that preserve
-      -- the exact number of spaces in the original source.  However,
-      -- simply requiring parsing then pretty-printing to be
-      -- idempotent would be much too weak, since it would be
-      -- satisfied e.g. by a pretty-printer that always produced the
-      -- letter Q and nothing else.
+      -- the exact number of spaces in the original source, and the
+      -- Swarm parser produces an AST with embedded source location
+      -- information.  However, simply requiring parsing then
+      -- pretty-printing to be idempotent would be much too weak,
+      -- since it would be satisfied e.g. by a pretty-printer that
+      -- always produced the letter Q and nothing else.
       --
       -- Instead, we require that parsing produces an AST which is
       -- equivalent to the AST produced by parsing, pretty-printing,
       -- then parsing again, but only up to normalization of LeafText
-      -- nodes containing spaces.
+      -- nodes containing spaces and removal of all SrcLoc information
+      -- from embedded Swarm code.
 
       mkRoundTripTest :: Text -> TestTree
       mkRoundTripTest md = testCase "round-trip" $ do

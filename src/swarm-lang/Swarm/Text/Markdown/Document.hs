@@ -46,9 +46,9 @@ newtype Document c = Document {paragraphs :: [Paragraph c]}
   deriving (Semigroup, Monoid) via [Paragraph c]
 
 -- | Markdown paragraphs are either a simple paragraph consisting of a
---   list of inline leaf nodes, or a list.  Note that a list contains
---   a list of 'Document's, since each list item can contain multiple
---   paragraphs.
+--   list of inline leaf nodes, or a list.  A list has a style for
+--   displaying items, as well as a list of items, each of which can
+--   contain a list of paragraphs.
 --
 --   For simple paragraphs, the idea is that paragraphs do not have
 --   line breaks, and so the inline elements follow each other, with
