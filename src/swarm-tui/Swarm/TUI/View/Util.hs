@@ -175,7 +175,7 @@ drawMarkdown d = do
     let w = ctx ^. availWidthL
 
     -- Compile + layout the parsed Markdown document into a token stream
-    let docStream :: [Markdown.OutputToken] = Markdown.toStream (Just w) d
+    let docStream :: [Markdown.OutputToken] = Markdown.documentToStream (Just w) d
 
     -- Split the stream at paragraph breaks, render each paragraph,
     -- and lay them out with spacing
@@ -205,11 +205,12 @@ drawMarkdown d = do
   applyAttrs w = foldr applyAttr w <$> get
 
   applyAttr :: Markdown.TxtAttr -> Widget Name -> Widget Name
-  applyAttr a = withAttr $ case a of
-    Markdown.Strong -> boldAttr
-    Markdown.Emphasis -> italicAttr
-    Markdown.Raw f -> rawAttr f
-    Markdown.Code -> highlightAttr
+  applyAttr = \case
+    Markdown.Strong -> withAttr boldAttr
+    Markdown.Emphasis -> withAttr italicAttr
+    Markdown.Raw f -> withAttr (rawAttr f)
+    Markdown.Code -> withAttr highlightAttr
+    Markdown.Link dest _title -> clickable (UILink dest) . withAttr highlightAttr
 
   rawAttr = \case
     "entity" -> greenAttr

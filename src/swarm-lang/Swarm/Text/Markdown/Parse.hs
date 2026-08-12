@@ -9,7 +9,6 @@
 -- Parsing Documents from Markdown source, with embedded Swarm source.
 module Swarm.Text.Markdown.Parse (
   -- * Commonmark parsing
-  quoteMaybe,
   fromTextPure,
 
   -- * Markdown -> Document parsing with Swarm code processing
@@ -21,9 +20,10 @@ module Swarm.Text.Markdown.Parse (
 where
 
 import Commonmark qualified as Mark
-import Commonmark.Extensions qualified as Mark (rawAttributeSpec)
+import Commonmark.Extensions qualified as Mark
 import Control.Applicative ((<|>))
 import Control.Arrow (left)
+import Control.Monad (guard)
 import Data.Functor.Identity (Identity (..))
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -43,16 +43,16 @@ import Swarm.Util (showT)
 -- Some Commonmark instances for tracking source spans and attributes.
 -- We do not use either, so the implementations are trivial.
 
-instance Mark.Rangeable (Paragraph c) where
+instance Mark.Rangeable [Node c] where
   ranged _ = id
 
-instance Mark.HasAttributes (Paragraph c) where
+instance Mark.HasAttributes [Node c] where
   addAttributes _ = id
 
-instance Mark.Rangeable (Document c) where
+instance Mark.Rangeable [Paragraph c] where
   ranged _ = id
 
-instance Mark.HasAttributes (Document c) where
+instance Mark.HasAttributes [Paragraph c] where
   addAttributes _ = id
 
 -- | This instance allows us to write a 'Document' directly as a list of
@@ -69,45 +69,46 @@ instance GHC.Exts.IsString (Document (Syntax Raw)) where
 -- | This instance allows us to write a 'Paragraph' as a string literal.
 instance GHC.Exts.IsString (Paragraph (Syntax Raw)) where
   fromString s = case paragraphs $ GHC.Exts.fromString s of
-    [] -> mempty
+    [] -> SimpleParagraph []
     (p : _) -> p
 
--- | Surround some text in double quotes if it is not empty.
-quoteMaybe :: Text -> Text
-quoteMaybe t = if T.null t then t else T.concat ["\"", t, "\""]
-
 -- | This instance tells Commonmark how to parse Markdown inline elements into our custom data type.
-instance Mark.IsInline (Paragraph Text) where
-  lineBreak = pureP $ txt "\n"
-  softBreak = pureP $ txt " "
-  str = pureP . txt
+instance Mark.IsInline [Node Text] where
+  lineBreak = pure $ txt "\n"
+  softBreak = pure $ txt " "
+  str = pure . txt
   entity = Mark.str
   escapedChar c = Mark.str $ T.pack ['\\', c]
-  emph = mapP $ addTextAttribute Emphasis
-  strong = mapP $ addTextAttribute Strong
-  link dest title desc = pureP (txt "[") <> desc <> pureP (txt $ "](" <> dest <> quoteMaybe title <> ")")
-  image dest title desc = pureP (txt "!") <> Mark.link dest title desc
-  code = pureP . LeafCode
-  rawInline (Mark.Format f) = pureP . LeafRaw (T.unpack f)
+  emph = map $ addTextAttribute Emphasis
+  strong = map $ addTextAttribute Strong
+  link dest title desc = pure $ LeafLink dest (title <$ guard (title /= "")) desc
+  image dest title desc = pure (txt "!") <> Mark.link dest title desc
+  code = pure . LeafCode
+  rawInline (Mark.Format f) = pure . LeafRaw (T.unpack f)
 
 -- | This instance tells Commonmark how to parse Markdown block elements into our custom data type.
-instance Mark.IsBlock (Paragraph Text) (Document Text) where
-  paragraph = Document . (: [])
+instance Mark.IsBlock [Node Text] [Paragraph Text] where
+  paragraph = pure . SimpleParagraph
   plain = Mark.paragraph
   thematicBreak = mempty
-  blockQuote (Document ns) = Document $ map Mark.emph ns
-  codeBlock f = Mark.plain . pureP . LeafCodeBlock (T.unpack f)
+  blockQuote = (map . mapP) (addTextAttribute Emphasis)
+  codeBlock f = Mark.plain . pure . LeafCodeBlock (T.unpack f)
   heading _lvl = Mark.plain . Mark.strong
   rawBlock _ _ = mempty
   referenceLinkDefinition = mempty
-  list _type _spacing = mconcat
+  list ty spacing = pure . ListParagraph ty spacing
 
 -- | Read a Markdown document, leaving any embedded code as @Text@.
 fromTextPure :: Text -> Either Text (Document Text)
 fromTextPure t = do
-  let spec = Mark.rawAttributeSpec <> Mark.defaultSyntaxSpec
+  let spec =
+        mconcat
+          [ Mark.fancyListSpec
+          , Mark.rawAttributeSpec
+          , Mark.defaultSyntaxSpec
+          ]
   let runSimple = left showT . runIdentity
-  runSimple $ Mark.commonmarkWith spec "markdown" t
+  fmap Document . runSimple $ Mark.commonmarkWith spec "markdown" t
 
 ------------------------------------------------------------
 -- Markdown -> Document with Swarm code processing
@@ -166,3 +167,4 @@ fromText = either (Document . (: []) . pureP . LeafRaw "") ((mapD . mapP) proces
     LeafCodeBlock b c -> either (LeafRaw "") (LeafCodeBlock b) (parseSyntax c)
     LeafText a b -> LeafText a b
     LeafRaw a b -> LeafRaw a b
+    LeafLink a b c -> LeafLink a b (map processNode c)

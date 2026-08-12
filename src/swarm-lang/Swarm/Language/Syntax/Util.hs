@@ -22,6 +22,7 @@ module Swarm.Language.Syntax.Util (
 
   -- ** Erasure
   Erasable (..),
+  eraseSrcLoc,
 
   -- ** Free variable traversal
   freeVarsS,
@@ -40,6 +41,7 @@ module Swarm.Language.Syntax.Util (
 import Control.Lens (Traversal', para, universe, (%~), (^.), pattern Empty)
 import Data.Data (Data, Typeable)
 import Data.Functor.Identity (runIdentity)
+import Data.Generics (everywhere, mkT)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Semigroup (Sum (..))
@@ -171,7 +173,7 @@ traverseSyntax f g (Syntax loc t com ty) =
   Syntax loc <$> traverseTerm f g t <*> pure com <*> f ty
 
 ------------------------------------------------------------
--- Type erasure
+-- Type/source loc erasure
 ------------------------------------------------------------
 
 -- | Erase type annotations.
@@ -186,6 +188,10 @@ instance Erasable Syntax where
 instance Erasable Term where
   erase = runIdentity . traverseTerm (const (pure ())) pure
   eraseRaw = runIdentity . traverseTerm (const (pure ())) (pure . unresolveImportLoc)
+
+-- | Erase all the source location information contained in an AST.
+eraseSrcLoc :: (Data (Anchor (ImportPhaseFor a)), Data (SwarmType a), Typeable a, Typeable (ImportPhaseFor a)) => Syntax a -> Syntax a
+eraseSrcLoc = everywhere (mkT (const NoLoc :: SrcLoc -> SrcLoc))
 
 ------------------------------------------------------------
 -- Free variable traversals

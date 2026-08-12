@@ -21,6 +21,7 @@ module Swarm.Text.Markdown.Document (
   findCode,
 ) where
 
+import Commonmark.Types (ListSpacing, ListType)
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -44,19 +45,20 @@ newtype Document c = Document {paragraphs :: [Paragraph c]}
   deriving (Eq, Show, Functor, Foldable, Traversable)
   deriving (Semigroup, Monoid) via [Paragraph c]
 
--- | Markdown paragraphs, consisting of a list of inline leaf nodes.
+-- | Markdown paragraphs are either a simple paragraph consisting of a
+--   list of inline leaf nodes, or a list.  A list has a style for
+--   displaying items, as well as a list of items, each of which can
+--   contain a list of paragraphs.
 --
---   The idea is that paragraphs do not have line breaks, and so the
---   inline elements follow each other, with spaces represented as
---   explicit nodes.  In particular, inline code can be followed by
---   text without space between them (e.g. @\`logger\`s@).
---
---   'Paragraph's form a 'Monoid' under concatenation (where combining
---   two paragraphs means running them together into a single
---   paragraph), with the empty paragraph as the identity.
-newtype Paragraph c = Paragraph {nodes :: [Node c]}
+--   For simple paragraphs, the idea is that paragraphs do not have
+--   line breaks, and so the inline elements follow each other, with
+--   spaces represented as explicit nodes.  In particular, inline code
+--   can be followed by text without space between them
+--   (e.g. @\`logger\`s@).
+data Paragraph c where
+  SimpleParagraph :: [Node c] -> Paragraph c
+  ListParagraph :: ListType -> ListSpacing -> [[Paragraph c]] -> Paragraph c
   deriving (Eq, Show, Functor, Foldable, Traversable)
-  deriving (Semigroup, Monoid) via [Node c]
 
 -- | Map a function over every 'Paragraph' in a 'Document'.
 mapD :: (Paragraph c -> Paragraph c') -> Document c -> Document c'
@@ -64,11 +66,13 @@ mapD f (Document ps) = Document (map f ps)
 
 -- | Map a function over every 'Node' in a 'Paragraph'.
 mapP :: (Node c -> Node c') -> Paragraph c -> Paragraph c'
-mapP f (Paragraph ns) = Paragraph (map f ns)
+mapP f = \case
+  SimpleParagraph ns -> SimpleParagraph (map f ns)
+  ListParagraph ty sp ds -> ListParagraph ty sp ((map . map . mapP) f ds)
 
 -- | Create a singleton 'Paragraph' with one 'Node'.
 pureP :: Node c -> Paragraph c
-pureP = Paragraph . (: [])
+pureP = SimpleParagraph . (: [])
 
 -- | Text attributes.
 data TxtAttr where
@@ -80,6 +84,8 @@ data TxtAttr where
   Raw :: String -> TxtAttr
   -- | Code.
   Code :: TxtAttr
+  -- | A link, consisting of a destination and optional title.
+  Link :: Text -> Maybe Text -> TxtAttr
   deriving (Eq, Show, Ord)
 
 -- | Inline leaf nodes.
@@ -95,6 +101,8 @@ data Node c
     LeafCode c
   | -- | A code block.
     LeafCodeBlock String c
+  | -- | A link: target, optional title, contents.
+    LeafLink Text (Maybe Text) [Node c]
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 --------------------------------------------------
@@ -111,8 +119,12 @@ addTextAttribute _ n = n
 
 -- | Extract all the code embedded in a document.
 findCode :: Document c -> [c]
-findCode = concatMap (mapMaybe codeOnly . nodes) . paragraphs
+findCode = concatMap findCodeP . paragraphs
  where
+  findCodeP :: Paragraph c -> [c]
+  findCodeP = \case
+    SimpleParagraph ns -> mapMaybe codeOnly ns
+    ListParagraph _ _ ds -> (concatMap . concatMap) findCodeP ds
   codeOnly = \case
     LeafCode s -> Just s
     LeafCodeBlock _i s -> Just s
