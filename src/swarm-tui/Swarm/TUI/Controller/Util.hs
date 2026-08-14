@@ -12,6 +12,7 @@ import Brick.Keybindings
 import Control.Lens as Lens
 import Control.Monad (forM, forM_, unless, void, when)
 import Control.Monad.State (MonadState)
+import Data.Functor (($>))
 import Data.List.Extra (enumerate)
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
@@ -44,6 +45,7 @@ import Swarm.Language.Syntax.Import qualified as Import
 import Swarm.Language.Value (emptyEnv)
 import Swarm.Pretty
 import Swarm.TUI.Model (
+  AppEvent,
   AppState,
   PlayState,
   ScenarioState,
@@ -178,6 +180,19 @@ toggleEndScenarioModal mt m = do
   if isUIModalClosed s
     then openEndScenarioModal m mt
     else Brick.zoom scenarioState dismissScenarioDialog
+
+-- | Handle a scroll event on a viewport.  Return True if an event was handled, otherwise False.
+handleScrollEvent :: ViewportScroll Name -> BrickEvent Name AppEvent -> EventM Name s Bool
+handleScrollEvent vs = \case
+  Key V.KDown -> vScrollBy vs 1 $> True
+  Key V.KUp -> vScrollBy vs (-1) $> True
+  CharKey 'k' -> vScrollBy vs 1 $> True
+  CharKey 'j' -> vScrollBy vs (-1) $> True
+  Key V.KPageDown -> vScrollPage vs Brick.Down $> True
+  Key V.KPageUp -> vScrollPage vs Brick.Up $> True
+  Key V.KHome -> vScrollToBeginning vs $> True
+  Key V.KEnd -> vScrollToEnd vs $> True
+  _ -> pure False
 
 setFocus :: FocusablePanel -> EventM Name ScenarioState ()
 setFocus name = uiGameplay . uiFocusRing %= focusSetCurrent (FocusablePanel name)

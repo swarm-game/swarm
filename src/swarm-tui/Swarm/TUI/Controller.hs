@@ -43,6 +43,7 @@ import Control.Lens as Lens
 import Control.Monad (forM_, unless, void, when)
 import Control.Monad.Extra (whenJust)
 import Control.Monad.State (MonadState)
+import Data.Functor (($>))
 import Data.List (find)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -173,7 +174,7 @@ handleUpstreamVersionResponse ev = do
 handleHelpEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleHelpEvent = \case
   Key V.KEsc -> uiState . uiHelp .= Nothing
-  _ -> pure ()
+  ev -> handleScrollEvent helpScroll ev $> ()
 
 handleMenuEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMenuEvent e =
@@ -453,7 +454,7 @@ handleMainEvent forceRedraw ev = do
           WorldPanel | otherwise -> continueWithoutRedraw
           WorldEditorPanel -> Brick.zoom (playState . scenarioState) $ EC.handleWorldEditorPanelEvent ev
           RobotPanel -> handleRobotPanelEvent ev
-          InfoPanel -> Brick.zoom (playState . scenarioState) $ handleInfoPanelEvent infoScroll ev
+          InfoPanel -> Brick.zoom (playState . scenarioState) $ handleInfoPanelEvent ev
         _ -> continueWithoutRedraw
 
 closeModal :: Modal -> EventM Name ScenarioState ()
@@ -517,8 +518,8 @@ handleModalEvent = \case
                 lw <- use $ uiGameplay . uiDialogs . uiGoal . listWidget
                 newList <- refreshGoalList lw
                 uiGameplay . uiDialogs . uiGoal . listWidget .= newList
-              GoalSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
-            _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
+              GoalSummary -> handleScrollEvent modalScroll (VtyEvent ev) $> ()
+            _ -> handleScrollEvent modalScroll (VtyEvent ev) $> ()
       Just (MidScenarioModal StructuresModal) -> case ev of
         V.EvKey (V.KChar '\t') [] -> uiGameplay . uiDialogs . uiStructure . structurePanelFocus %= focusNext
         _ -> do
@@ -527,8 +528,8 @@ handleModalEvent = \case
             Just (StructureWidgets w) -> case w of
               StructuresList ->
                 refreshList ev $ uiGameplay . uiDialogs . uiStructure . structurePanelListWidget
-              StructureSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
-            _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
+              StructureSummary -> handleScrollEvent modalScroll (VtyEvent ev) $> ()
+            _ -> handleScrollEvent modalScroll (VtyEvent ev) $> ()
       Just (MidScenarioModal RobotsModal) -> do
         uiGame <- use uiGameplay
         g <- use gameState
@@ -543,7 +544,7 @@ handleModalEvent = \case
                 -- Ensure list widget content is updated immediately
                 mRob <- use $ robotsGridList . to (getSelectedRobot g)
                 forM_ mRob $ Brick.zoom robotDetailsPaneState . updateRobotDetailsPane
-      _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
+      _ -> handleScrollEvent modalScroll (VtyEvent ev) $> ()
    where
     refreshGoalList lw = nestEventM' lw $ handleListEventWithSeparators ev shouldSkipSelection
     refreshList ev' z = Brick.zoom z $ BL.handleListEvent ev'
@@ -953,21 +954,13 @@ adjReplHistIndex d s = validateREPLForm (s & uiGameplay . uiREPL %~ moveREPL)
 -- Info panel events
 ------------------------------------------------------------
 
--- | Handle user events in the info panel (just scrolling).
+-- | Handle user events in the info panel.
 --
 -- TODO: #2010 Finish porting Controller to KeyEventHandlers
-handleInfoPanelEvent :: ViewportScroll Name -> BrickEvent Name AppEvent -> EventM Name ScenarioState ()
-handleInfoPanelEvent vs = \case
-  Key V.KDown -> vScrollBy vs 1
-  Key V.KUp -> vScrollBy vs (-1)
-  CharKey 'k' -> vScrollBy vs 1
-  CharKey 'j' -> vScrollBy vs (-1)
-  Key V.KPageDown -> vScrollPage vs Brick.Down
-  Key V.KPageUp -> vScrollPage vs Brick.Up
-  Key V.KHome -> vScrollToBeginning vs
-  Key V.KEnd -> vScrollToEnd vs
+handleInfoPanelEvent :: BrickEvent Name AppEvent -> EventM Name ScenarioState ()
+handleInfoPanelEvent = \case
   Key V.KEnter -> showEntityDescription
-  _ -> return ()
+  e -> handleScrollEvent infoScroll e $> ()
 
 -- * Util
 

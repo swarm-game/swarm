@@ -110,12 +110,11 @@ import Swarm.Game.Universe
 import Swarm.Game.World (Seed)
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (..), constCaps)
-import Swarm.Language.Help (HelpPage, helpDoc, helpMetadata)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Log
 import Swarm.Pretty (prettyText, prettyTextLine, prettyTextWidth)
-import Swarm.ResourceLoading (Collection, CollectionItem (..), atPath)
+import Swarm.ResourceLoading (CollectionItem (..), atPath)
 import Swarm.TUI.Border
 import Swarm.TUI.Controller (ticksPerFrameCap)
 import Swarm.TUI.Controller.EventHandlers (allEventHandlers, mainEventHandlers, replEventHandlers, robotEventHandlers, worldEventHandlers)
@@ -140,6 +139,7 @@ import Swarm.TUI.View.Achievement
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.KeyCmd
+import Swarm.TUI.View.Help
 import Swarm.TUI.View.Logo
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Popup
@@ -147,7 +147,7 @@ import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Static
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.TUI.View.Util as VU
-import Swarm.Text.Markdown (Document, toText)
+import Swarm.Text.Markdown (Document)
 import Swarm.Util
 import Text.Printf
 import Text.Wrap
@@ -161,22 +161,6 @@ drawUI s = drawPopups s : mainLayers
     | Just curHelp <- s ^. uiState . uiHelp = drawHelpUI (s ^. runtimeState . helpData) curHelp
     | s ^. uiState . uiPlaying = drawGameUI s
     | otherwise = drawMenuUI s
-
-drawHelpUI :: Collection HelpPage -> FilePath -> [Widget Name]
-drawHelpUI help hp = [helpPageWidget (help ^? atPath hp)]
-
--- XXX move this somewhere else, i.e. Swarm.TUI.View.Help
-helpPageWidget :: Maybe HelpPage -> Widget Name
-helpPageWidget = \case
-  Nothing -> txt "Error, help page not found" -- XXX improve me
-  -- XXX vertical scroll bars
-  Just p -> borderWithLabels labels . padBottom Max . padRight Max . padLeft (Pad 1) . padTop (Pad 1) . drawMarkdown $ p ^. helpDoc
-   where
-    labels :: BorderLabels Name
-    labels = plainBorder & topLabels .~ (plainHBorder & centerLabel ?~ txt (toText title))
-
-    title :: Document (Syntax Raw)
-    title = fromMaybe mempty (p ^. helpMetadata . at "title")
 
 drawMenuUI :: AppState -> [Widget Name]
 drawMenuUI s = case s ^. uiState . uiMenu of
