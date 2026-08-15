@@ -124,9 +124,9 @@ openMidScenarioModal mt = do
   uiGameplay . uiDialogs . uiModal ?= newModal
  where
   -- Set the game to AutoPause if needed
-  ensurePause = do
-    pause <- use $ gameState . temporal . paused
-    unless (pause || isRunningModal (MidScenarioModal mt)) $ gameState . temporal . runStatus .= AutoPause
+  ensurePause = Brick.zoom (gameState . temporal) $ do
+    pause <- use paused
+    unless (pause || isRunningModal (MidScenarioModal mt)) $ runStatus .= AutoPause
 
 -- | The running modals do not autopause the game.
 isRunningModal :: ModalType -> Bool

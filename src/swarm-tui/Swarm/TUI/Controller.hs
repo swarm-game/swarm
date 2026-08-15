@@ -106,6 +106,7 @@ import Swarm.TUI.Launch.Prep (prepareLaunchDialog)
 import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Dialog hiding (Completed)
+import Swarm.TUI.Model.Help
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
@@ -121,7 +122,7 @@ import Web.Browser (openBrowser)
 -- | The top-level event handler for the TUI.
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleEvent e = do
-  help <- use $ uiState . uiHelp . to isJust
+  help <- use $ uiState . uiHelp . curHelpPage . to isJust
   playing <- use $ uiState . uiPlaying
   case e of
     -- the query for upstream version could finish at any time, so we have to handle it here
@@ -173,7 +174,8 @@ handleUpstreamVersionResponse ev = do
 
 handleHelpEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleHelpEvent = \case
-  Key V.KEsc -> uiState . uiHelp .= Nothing
+  Key V.KEsc -> uiState . uiHelp . curHelpPage .= Nothing -- XXX use generic function to close help
+  MouseDown (UILink dest) _ _ _ -> handleLinkClick dest
   ev -> handleScrollEvent helpScroll ev $> ()
 
 handleMenuEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -249,7 +251,7 @@ handleMainMenuEvent menu = \case
           -- correct data files aren't installed.  In that case, log
           -- an error.
           _ -> runtimeState . eventLog %= logEvent SystemLog Error "Tutorials" "No tutorials found!"
-      Help -> uiState . uiHelp .= Just "index.md"
+      Help -> uiState . uiHelp . curHelpPage .= Just "index.md" -- XXX use generic help visit function
       Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
       Messages -> do
         runtimeState . eventLog . notificationsCount .= 0
@@ -397,8 +399,8 @@ handleMainEvent forceRedraw ev = do
           when shouldUpdateCursor $
             uiGameplay . uiWorldCursor .= mouseCoordsM
         REPLInput -> handleREPLEvent ev
-        UILink dest -> void . liftIO $ openBrowser (T.unpack dest)
-        -- XXX help
+        UILink dest -> handleLinkClick dest
+        -- XXX toggle help
         (UIShortcut "Help") -> Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal HelpModal
         (UIShortcut "Robots") -> Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal RobotsModal
         (UIShortcut "Commands") -> Brick.zoom (playState . scenarioState) $ toggleDiscoveryNotificationModal CommandsModal availableCommands
@@ -456,6 +458,13 @@ handleMainEvent forceRedraw ev = do
           RobotPanel -> handleRobotPanelEvent ev
           InfoPanel -> Brick.zoom (playState . scenarioState) $ handleInfoPanelEvent ev
         _ -> continueWithoutRedraw
+
+-- | XXX
+handleLinkClick :: Text -> EventM Name AppState ()
+handleLinkClick dest =
+  if ("http" `T.isPrefixOf` dest)
+    then void . liftIO $ openBrowser (T.unpack dest)
+    else uiState . uiHelp . curHelpPage .= Just (T.unpack dest) -- XXX need to toggle help in a way that could pause game
 
 closeModal :: Modal -> EventM Name ScenarioState ()
 closeModal m = do

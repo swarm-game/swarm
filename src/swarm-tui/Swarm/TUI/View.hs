@@ -128,6 +128,7 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Dialog.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.Event qualified as SE
+import Swarm.TUI.Model.Help
 import Swarm.TUI.Model.KeyBindings (KeybindingMetadata (..), keybindingMeta)
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Repl
@@ -158,7 +159,7 @@ drawUI :: AppState -> [Widget Name]
 drawUI s = drawPopups s : mainLayers
  where
   mainLayers
-    | Just curHelp <- s ^. uiState . uiHelp = drawHelpUI (s ^. runtimeState . helpData) curHelp
+    | Just curHelp <- s ^. uiState . uiHelp . curHelpPage = drawHelpUI (s ^. runtimeState . helpData) curHelp
     | s ^. uiState . uiPlaying = drawGameUI s
     | otherwise = drawMenuUI s
 
