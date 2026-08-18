@@ -2,6 +2,13 @@
 
 All notable changes to the "swarm-language" extension will be documented in this file.
 
+## version 0.2.1
+
+* Get rid of `run` command
+* Add `default` keyword
+* Add `up` direction literal
+* Add `import` keyword
+
 ## version 0.2.0
 * Update language version, dependencies and VSCode CI workflows
 
