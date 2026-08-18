@@ -32,7 +32,7 @@ repository:
     patterns:
       - include: '#keyword'
       - include: '#require'
-      - include: '#stock'
+      - include: '#import'
       - include: '#operator'
       - include: '#lambda'
       - include: '#chain'
@@ -50,10 +50,10 @@ repository:
           \b(waypoint|waypoints|hastag|tagmembers|self|parent|base|if|inl|inr|case|match|force|undefined|default|fail|not|format|read|chars|split|charat|tochar|key|noop|wait|selfdestruct|move|backup|volume|path|push|stride|turn|grab|harvest|sow|ignite|place|ping|give|equip|unequip|make|has|equipped|count|drill|use|build|salvage|reprogram|say|listen|log|view|appear|create|halt|time|scout|whereami|locateme|structures|floorplan|detect|resonate|density|sniff|chirp|watch|surveil|heading|blocked|scan|upload|ishere|isempty|meet|meetall|whoami|setname|random|pure|try|print|erase|swap|atomic|instant|installkeyhandler|teleport|warp|as|robotnamed|robotnumbered|knows|destroy)\b
       require:
         name: keyword.control.require
-        match: \b(require)\b
-      stock:
-        name: keyword.control.stock
-        match: \b(stock)\b
+        match: \b(require|stock)\b
+      import:
+        name: keyword.control.import
+        match: \b(import)\b
       lambda:
         name: keyword.operator.lambda
         match: \\(\w+)\.
