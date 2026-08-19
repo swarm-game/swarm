@@ -780,7 +780,7 @@ constInfo c = case c of
   Random ->
     command 1 Intangible . doc (Set.singleton $ Query PRNG) "Get a uniformly random integer." $
       ["The random integer will be chosen from the range 0 to n-1, exclusive of the argument."]
-  Pure -> command 1 Intangible $ shortDoc Set.empty "Create a pure `Cmd a`{=type} computation that yields the given value."
+  Pure -> command 1 Intangible $ shortDoc Set.empty "Create a pure `Cmd a` computation that yields the given value."
   Try -> command 2 Intangible $ shortDoc Set.empty "Execute a command, catching errors."
   Undefined -> function 0 $ shortDoc Set.empty "A value of any type, that is evaluated as error."
   Default -> function 1 $ shortDoc Set.empty "A default value of a given type."
@@ -817,7 +817,7 @@ constInfo c = case c of
         "Print text onto an entity."
       $ [ "`print p txt` Consumes one printable `p` entity from your inventory, and produces an entity"
         , "whose name is concatenated with a colon and the given text."
-        , "In conjunction with `format`, this can be used to print values onto entities such as `paper`{=entity}"
+        , "In conjunction with `format`, this can be used to print values onto entities such as `paper`"
         , "and give them to other robots, which can reconstitute the values with `read`."
         ]
   Erase ->
