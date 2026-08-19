@@ -80,7 +80,7 @@ explain ::
   Tree Text
 explain trm = case trm ^. sTerm of
   TUnit -> literal "The unit value."
-  TConst c -> literal . constGenSig c $ briefDoc (constDoc $ constInfo c)
+  TConst c -> literal $ explainConst c ty
   TDir {} -> literal "A direction literal."
   TInt {} -> literal "An integer literal."
   TText {} -> literal "A text literal."
@@ -140,9 +140,14 @@ explain trm = case trm ^. sTerm of
   ty = trm ^. sType
   literal = pure . typeSignature (prettyText $ trm ^. sTerm) ty
   internal description = literal $ description <> "\n**These should never show up in surface syntax.**"
-  constGenSig c =
-    let ity = inferConst c
-     in U.applyWhen (not $ ty `eq` ity) $ typeSignature (prettyText c) ity
+
+-- | Helper function to explain built-in functions and comands.
+explainConst :: ExplainableType t => Const -> t -> Text
+explainConst c ty = constGenSig $ T.unlines [briefDoc cDoc, T.empty, longDoc cDoc]
+ where
+  cDoc = constDoc $ constInfo c
+  ity = inferConst c
+  constGenSig = U.applyWhen (not $ ty `eq` ity) $ typeSignature (prettyText c) ity
 
 -- | Helper function to explain function application.
 --
@@ -170,6 +175,7 @@ explainFunction s =
           (map explain params)
       ]
 
+-- | Helper function to explain variable definition or binding.
 explainDefinition :: (ExplainableType ty) => LetSyntax -> Bool -> LocVar -> ty -> Maybe RawPolytype -> Text
 explainDefinition ls isRecursive (Loc _s var) ty maybeTypeAnnotation =
   typeSignature var ty $
@@ -182,6 +188,7 @@ explainDefinition ls isRecursive (Loc _s var) ty maybeTypeAnnotation =
       , "a type annotation on the variable."
       ]
 
+-- | Prepend markdown formatted type signature.
 typeSignature :: (ExplainableType ty) => Var -> ty -> Text -> Text
 typeSignature v typ body = T.unlines ["```", short, "```", body]
  where
