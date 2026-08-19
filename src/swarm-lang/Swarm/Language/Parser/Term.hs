@@ -65,13 +65,13 @@ parseTermAtom = do
 parseTermAtom2 :: Parser (Syntax Raw)
 parseTermAtom2 =
   parseLoc
-    ( TUnit <$ symbol "()"
+    ( TUnit <$ (symbol "()" <?> "unit literal")
         <|> TConst <$> parseConst
         <|> TVar <$> tmVar
         <|> TDir <$> parseDirection
         <|> TInt <$> integer
         <|> TText <$> textLiteral
-        <|> TBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
+        <|> TBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false") <?> "boolean literal")
         <|> reserved "require" *> parseRequire
         <|> reserved "stock" *> parseStock
         <|> uncurry SRequirements <$> (reserved "requirements" *> match parseTerm)
@@ -80,17 +80,17 @@ parseTermAtom2 =
           <*> optional (symbol ":" *> parseType)
           <*> (symbol "." *> parseTerm)
         <|> sLet LSLet
-          <$> (reserved "let" *> locTmVar)
+          <$> (reserved "let" *> locTmVar <?> "binding")
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm)
           <*> (reserved "in" *> parseTerm)
         <|> do
-          reserved "def"
+          reserved "def" <?> "binding"
           locVar@(Loc _srcLoc nameText) <- locTmVar
           mTy <- optional (symbol ":" *> parsePolytype)
           _ <- symbol "="
           body <- parseTerm
-          reserved "end" <?> ("'end' keyword for definition of '" <> T.unpack nameText <> "'")
+          reserved "end" <?> ("\"end\" keyword for definition of '" <> T.unpack nameText <> "'")
           rest <- optional (symbol ";") *> (parseTerm <|> (eof $> sNoop))
           return $ sLet LSDef locVar mTy body rest
         <|> STydef
@@ -221,7 +221,7 @@ binOps = M.unionsWith (++) $ mapMaybe binOpToTuple allConst
     pure $
       M.singleton
         (fixity ci)
-        [assI (mkOp c <$> parseLocG (operator (syntax ci)))]
+        [assI (mkOp c <$> parseLocG (operator (syntax ci)) <?> "operator")]
 
 -- | Precedences and parsers of unary operators (currently only 'Neg').
 --
@@ -239,7 +239,7 @@ unOps = M.unionsWith (++) $ mapMaybe unOpToTuple allConst
     pure $
       M.singleton
         (fixity ci)
-        [assI (exprLoc1 $ SApp (noLoc $ TConst c) <$ operator (syntax ci))]
+        [assI (exprLoc1 . label "operator" $ SApp (noLoc $ TConst c) <$ operator (syntax ci))]
 
   -- combine location for ExprParser
   exprLoc1 :: Parser (Syntax Raw -> Term Raw) -> Parser (Syntax Raw -> Syntax Raw)
