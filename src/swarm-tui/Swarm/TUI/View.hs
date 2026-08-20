@@ -1,5 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -129,7 +129,7 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Dialog.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.Event qualified as SE
-import Swarm.TUI.Model.KeyBindings (keybindingMeta, KeybindingMetadata(..))
+import Swarm.TUI.Model.KeyBindings (KeybindingMetadata (..), keybindingMeta)
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
@@ -728,21 +728,21 @@ helpHeading attr = padBottom (Pad 1) . withAttr attr . txt
 
 helpKeysWidget :: KeyConfig SE.SwarmEvent -> Widget Name
 helpKeysWidget keyConf =
-    vBox
-      [ helpHeading boldAttr "Keybindings"
-      , keyLegend
-      , keySection "Main (always active)" mainEventHandlers
-      , keySection "REPL panel" replEventHandlers
-      , keySection "World view panel" worldEventHandlers
-      , keySection "Robot inventory panel" robotEventHandlers
-      ]
+  vBox
+    [ helpHeading boldAttr "Keybindings"
+    , keyLegend
+    , keySection "Main (always active)" mainEventHandlers
+    , keySection "REPL panel" replEventHandlers
+    , keySection "World view panel" worldEventHandlers
+    , keySection "Robot inventory panel" robotEventHandlers
+    ]
  where
   keyLegend =
     padBottom (Pad 1) $
       vBox
         [ txt "You can set the keybindings in config file, run "
-          <+> withAttr highlightAttr (txt "swarm keybindings --init")
-          <+> txt " to create it."
+            <+> withAttr highlightAttr (txt "swarm keybindings --init")
+            <+> txt " to create it."
         , txt "Custom keybindings will be " <+> withAttr highlightAttr (txt "highlighted") <+> txt "."
         ]
   keySection name handlers =
