@@ -1,5 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- | Load and show Swarm keybindings.
 --
@@ -65,7 +65,7 @@ data KeybindingPrint = MarkdownPrint | TextPrint | IniPrint
   deriving (Eq, Ord, Show)
 
 -- | Keybinding formatting metadata.
--- 
+--
 --  To be used with OverloadedRecordDot, instead of Text tuples.
 data KeybindingMetadata = KeyMeta
   { name :: Text
@@ -112,7 +112,7 @@ keybindingINI kc sections =
   sectionsINI (s, hs) = section s : map (keyBindingEventINI kc) hs
 
 -- | Helper function to format one keybinding in the INI format.
--- 
+--
 -- >>> let ev = keyEvents [("skip", -1), ("abort", 0), ("continue", 1)]
 -- >>> let def = [(-1, [BK.bind 's']), (0, [BK.bind 'a']), (1, [BK.bind 'c'])]
 -- >>> let kc = newKeyConfig ev def [(0, Unbound), (1, BindingList [BK.bind 'd'])]
@@ -136,8 +136,8 @@ keyBindingEventINI kc (ev, description) =
 -- | Keybinding metadata used in TUI.
 keybindingMeta :: Ord k => KeyConfig k -> KeyEventHandler k m -> KeybindingMetadata
 keybindingMeta kc keh = case kehEventTrigger keh of
-    ByKey b -> KeyMeta {name = "(non-customizable key)", keys = ppBinding b, description = desc, custom = False }
-    ByEvent ev -> keybindingMeta' kc (ev, desc)
+  ByKey b -> KeyMeta {name = "(non-customizable key)", keys = ppBinding b, description = desc, custom = False}
+  ByEvent ev -> keybindingMeta' kc (ev, desc)
  where
   desc = handlerDescription $ kehHandler keh
 
