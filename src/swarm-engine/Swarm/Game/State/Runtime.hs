@@ -92,7 +92,6 @@ initGameStateConfig RuntimeOptions {..} = do
 data RuntimeOptions = RuntimeOptions
   { startPaused :: Bool
   , pauseOnObjectiveCompletion :: Bool
-  , loadTestScenarios :: Bool
   }
   deriving (Eq, Show)
 
