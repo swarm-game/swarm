@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 
 -- | Load and show Swarm keybindings.
 --
@@ -7,7 +8,8 @@ module Swarm.TUI.Model.KeyBindings (
   initKeyHandlingState,
   KeybindingPrint (..),
   showKeybindings,
-  handlerNameKeysDescription,
+  keybindingMeta,
+  KeybindingMetadata (..),
 ) where
 
 import Brick
@@ -26,7 +28,21 @@ import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event (SwarmEvent, defaultSwarmBindings, swarmEvents)
 
+---------------------------------------------------------------------
+-- LOADING
+---------------------------------------------------------------------
+
 -- See Note [how Swarm event handlers work]
+
+-- | Load keybinding configuration and create key dispatchers.
+initKeyHandlingState ::
+  (Error SystemFailure :> es, IOE :> es) =>
+  Eff es KeyEventHandlingState
+initKeyHandlingState = do
+  customBindings <- loadKeybindingConfig
+  let cfg = newKeyConfig swarmEvents defaultSwarmBindings customBindings
+  dispatchers <- createKeyDispatchers cfg
+  return $ KeyEventHandlingState cfg dispatchers
 
 loadKeybindingConfig ::
   (Error SystemFailure :> es, IOE :> es) =>
@@ -41,17 +57,22 @@ loadKeybindingConfig = do
         Left e -> throwError $ AssetNotLoaded Keybindings ini (SystemFailure . CustomFailure $ T.pack e)
         Right bs -> pure $ fromMaybe [] bs
 
-initKeyHandlingState ::
-  (Error SystemFailure :> es, IOE :> es) =>
-  Eff es KeyEventHandlingState
-initKeyHandlingState = do
-  customBindings <- loadKeybindingConfig
-  let cfg = newKeyConfig swarmEvents defaultSwarmBindings customBindings
-  dispatchers <- createKeyDispatchers cfg
-  return $ KeyEventHandlingState cfg dispatchers
+---------------------------------------------------------------------
+-- PRINTING
+---------------------------------------------------------------------
 
 data KeybindingPrint = MarkdownPrint | TextPrint | IniPrint
   deriving (Eq, Ord, Show)
+
+-- | Keybinding formatting metadata.
+-- 
+--  To be used with OverloadedRecordDot, instead of Text tuples.
+data KeybindingMetadata = KeyMeta
+  { name :: Text
+  , keys :: Text
+  , description :: Text
+  , custom :: Bool
+  }
 
 showKeybindings :: KeybindingPrint -> IO Text
 showKeybindings kPrint = do
@@ -73,6 +94,7 @@ keySections =
   , ("Robot inventory panel", robotEventHandlers)
   ]
 
+-- | Keybindings INI file format.
 keybindingINI :: Ord k => KeyConfig k -> [(Text, [KeyEventHandler k m])] -> Text
 keybindingINI kc sections =
   T.intercalate "\n" $
@@ -89,44 +111,46 @@ keybindingINI kc sections =
   section s = "\n;;;; " <> s <> "\n"
   sectionsINI (s, hs) = section s : map (keyBindingEventINI kc) hs
 
+-- | Helper function to format one keybinding in the INI format.
+-- 
+-- >>> let ev = keyEvents [("skip", -1), ("abort", 0), ("continue", 1)]
+-- >>> let def = [(-1, [BK.bind 's']), (0, [BK.bind 'a']), (1, [BK.bind 'c'])]
+-- >>> let kc = newKeyConfig ev def [(0, Unbound), (1, BindingList [BK.bind 'd'])]
+--
+-- >>> keyBindingEventINI kc (-1, "Skip selection.")
+-- ";; Skip selection.\n; skip = s\n"
+-- >>> keyBindingEventINI kc (0, "Abort game.")
+-- ";; Abort game.\nabort = unbound\n"
+-- >>> keyBindingEventINI kc (1, "Continue game with selection.")
+-- ";; Continue game with selection.\ncontinue = d\n"
 keyBindingEventINI :: Ord k => KeyConfig k -> (k, Text) -> Text
 keyBindingEventINI kc (ev, description) =
   T.unlines
-    [ ";; " <> description
-    , commentDefault <> name <> " = " <> bindingList
+    [ ";; " <> hMeta.description
+    , commentDefault <> hMeta.name <> " = " <> hMeta.keys
     ]
  where
-  commentDefault = if custom then "" else "; "
-  (custom, bindingList) = case lookupKeyConfigBindings kc ev of
-    Just Unbound -> (True, "unbound")
-    Just (BindingList bs) -> (True, listBindings bs)
-    Nothing ->
-      ( False
-      , if null (allDefaultBindings kc ev)
-          then "unbound"
-          else listBindings $ allDefaultBindings kc ev
-      )
-  listBindings = T.intercalate "," . fmap ppBinding
-  name = fromMaybe "(unnamed)" $ keyEventName (keyConfigEvents kc) ev
+  commentDefault = if hMeta.custom then "" else "; "
+  hMeta = keybindingMeta' kc (ev, description)
 
-handlerNameKeysDescription :: Ord k => KeyConfig k -> KeyEventHandler k m -> (Text, Text, Text)
-handlerNameKeysDescription kc keh = (name, keys, desc)
+-- | Keybinding metadata used in TUI.
+keybindingMeta :: Ord k => KeyConfig k -> KeyEventHandler k m -> KeybindingMetadata
+keybindingMeta kc keh = case kehEventTrigger keh of
+    ByKey b -> KeyMeta {name = "(non-customizable key)", keys = ppBinding b, description = desc, custom = False }
+    ByEvent ev -> keybindingMeta' kc (ev, desc)
  where
   desc = handlerDescription $ kehHandler keh
-  (name, keys) = case kehEventTrigger keh of
-    ByKey b -> ("(non-customizable key)", ppBinding b)
-    ByEvent ev ->
-      let name' = fromMaybe "(unnamed)" $ keyEventName (keyConfigEvents kc) ev
-       in case lookupKeyConfigBindings kc ev of
-            Nothing ->
-              if not (null (allDefaultBindings kc ev))
-                then (name', T.intercalate "," $ ppBinding <$> allDefaultBindings kc ev)
-                else (name', "unbound")
-            Just Unbound ->
-              (name', "unbound")
-            Just (BindingList bs) ->
-              let result =
-                    if not (null bs)
-                      then T.intercalate "," $ ppBinding <$> bs
-                      else "unbound"
-               in (name', result)
+
+-- | Common helper function to get keybinding formatting metadata.
+keybindingMeta' :: Ord k => KeyConfig k -> (k, Text) -> KeybindingMetadata
+keybindingMeta' kc (ev, desc) = case lookupKeyConfigBindings kc ev of
+  Nothing | null defaultBind -> unboundResult
+  Nothing -> KeyMeta {name = name, keys = ppBindings defaultBind, description = desc, custom = False}
+  Just Unbound -> unboundResult
+  Just (BindingList []) -> unboundResult
+  Just (BindingList bs) -> KeyMeta {name = name, keys = ppBindings bs, description = desc, custom = True}
+ where
+  unboundResult = KeyMeta {name = name, keys = "unbound", description = desc, custom = not $ null defaultBind}
+  defaultBind = allDefaultBindings kc ev
+  ppBindings = T.intercalate "," . fmap ppBinding
+  name = fromMaybe "(unnamed)" $ keyEventName (keyConfigEvents kc) ev
