@@ -28,6 +28,12 @@ import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event (SwarmEvent, defaultSwarmBindings, swarmEvents)
 
+-- $setup
+-- >>> :set -XOverloadedStrings
+-- >>> import Brick
+-- >>> import Brick.Keybindings as BK
+-- >>> import Data.Text (Text)
+
 ---------------------------------------------------------------------
 -- LOADING
 ---------------------------------------------------------------------
@@ -113,8 +119,6 @@ keybindingINI kc sections =
 
 -- | Helper function to format one keybinding in the INI format.
 --
--- >>> import Brick
--- >>> import Brick.Keybindings as BK
 -- >>> let ev = keyEvents [("skip", -1), ("abort", 0), ("continue", 1)]
 -- >>> let def = [(-1, [BK.bind 's']), (0, [BK.bind 'a']), (1, [BK.bind 'c'])]
 -- >>> let kc = newKeyConfig ev def [(0, Unbound), (1, BindingList [BK.bind 'd'])]
