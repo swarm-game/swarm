@@ -69,6 +69,7 @@ defaultSwarmBindings =
 data MainEvent
   = QuitEvent
   | ViewHelpEvent
+  | HelpBackEvent
   | ViewRobotsEvent
   | ViewRecipesEvent
   | ViewCommandsEvent
@@ -97,6 +98,7 @@ mainEvents :: KeyEvents MainEvent
 mainEvents = allKeyEvents $ \case
   QuitEvent -> "quit"
   ViewHelpEvent -> "view help"
+  HelpBackEvent -> "go back"
   ViewRobotsEvent -> "view robots"
   ViewRecipesEvent -> "view recipes"
   ViewCommandsEvent -> "view commands"
@@ -124,6 +126,7 @@ defaultMainBindings :: [(MainEvent, [Binding])]
 defaultMainBindings = allBindings $ \case
   QuitEvent -> [ctrl 'q']
   ViewHelpEvent -> [fn 1]
+  HelpBackEvent -> [meta V.KLeft, meta V.KBS]
   ViewRobotsEvent -> [fn 2]
   ViewRecipesEvent -> [fn 3]
   ViewCommandsEvent -> [fn 4]

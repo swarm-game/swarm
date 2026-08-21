@@ -174,11 +174,16 @@ handleUpstreamVersionResponse ev = do
   runtimeState . upstreamRelease .= ev
 
 handleHelpEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleHelpEvent = \case
-  Key V.KEsc -> closeHelp
-  FKey 1 -> closeHelp
-  MouseDown (UILink dest) _ _ _ -> handleLinkClick dest
-  ev -> handleScrollEvent helpScroll ev $> ()
+handleHelpEvent ev = do
+  s <- get
+  let keyHandler = s ^. keyEventHandling . keyDispatchers . to mainGameDispatcher
+  case ev of
+    Key V.KEsc -> closeHelp
+    VtyEvent (V.EvKey k m)
+      | isJust (B.lookupVtyEvent k m keyHandler) -> void $ B.handleKey keyHandler k m
+    FKey 1 -> closeHelp
+    MouseDown (UILink dest) _ _ _ -> handleLinkClick dest
+    _ -> handleScrollEvent helpScroll ev $> ()
 
 handleMenuEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMenuEvent e =
