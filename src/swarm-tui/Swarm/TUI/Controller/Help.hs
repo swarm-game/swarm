@@ -1,19 +1,30 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- XXX
-module Swarm.TUI.Controller.Help where
+-- Functions for manipulating the help system.
+module Swarm.TUI.Controller.Help (visitHelpPage, visitPreviousHelpPage, openHelp, closeHelp, toggleHelp) where
 
 import Brick (EventM, zoom)
-import Control.Lens (use, (%=), (.=))
+import Control.Lens (use, uses, (%=), (.=))
+import Data.List (uncons)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model (AppState, Name, playState, scenarioState, uiState)
 import Swarm.TUI.Model.Help (curHelpPage, helpHistory)
 import Swarm.TUI.Model.UI (uiHelp)
 
--- | XXX
+-- | Toggle the help system. If it is currently open, close it, saving
+--   the current page to history.  If it is currently closed, open it
+--   to the most recently visited page if any, or the index otherwise.
 toggleHelp :: EventM Name AppState ()
-toggleHelp = undefined
+toggleHelp = do
+  curPage <- use $ uiState . uiHelp . curHelpPage
+  maybe openHelp (const closeHelp) curPage
+
+-- | Save the current help page (if any) to the help browsing history.
+saveCurHelpPage :: EventM Name AppState ()
+saveCurHelpPage = do
+  curPage <- use $ uiState . uiHelp . curHelpPage
+  uiState . uiHelp . helpHistory %= maybe id (:) curPage
 
 -- | Visit a page in the help system, automatically pausing the game
 --   and saving browsing history as appropriate.
@@ -23,18 +34,41 @@ visitHelpPage page = do
   Brick.zoom (playState . scenarioState) ensurePause
 
   -- Add the currently visited help page (if any) to the history
-  curPage <- use $ uiState . uiHelp . curHelpPage
-  uiState . uiHelp . helpHistory %= maybe id (:) curPage
+  saveCurHelpPage
 
   -- Visit the requested page
   uiState . uiHelp . curHelpPage .= Just page
 
--- XXX Deal with pausing, etc.
+-- | Open the help system to the most recently visited page, if any,
+--   or the index otherwise.  Assumes that the help system was
+--   previously closed, i.e. makes no attempt to save the current page
+--   to the history.
+openHelp :: EventM Name AppState ()
+openHelp = do
+  hist <- use $ uiState . uiHelp . helpHistory
 
--- | XXX
+  case hist of
+    [] -> visitHelpPage "index.md"
+    _ -> visitPreviousHelpPage
+
+  -- Ensure the game is paused, and open the appropriate page.
+  Brick.zoom (playState . scenarioState) ensurePause
+
+-- | Close the help system, saving the currently visited page to the history.
 closeHelp :: EventM Name AppState ()
-closeHelp = uiState . uiHelp . curHelpPage .= Nothing
+closeHelp = do
+  saveCurHelpPage
+  Brick.zoom (playState . scenarioState) safeAutoUnpause
+  uiState . uiHelp . curHelpPage .= Nothing
 
--- | Go back to the previous page in the help system browsing history.
+-- | Pop the previous page in the help system browsing history (if
+--   any) and visit it.  If there is no previous page, do nothing.
 visitPreviousHelpPage :: EventM Name AppState ()
-visitPreviousHelpPage = undefined
+visitPreviousHelpPage = do
+  mprev <- uses (uiState . uiHelp . helpHistory) uncons
+  case mprev of
+    Nothing -> pure ()
+    Just (p, hist) -> do
+      Brick.zoom (playState . scenarioState) ensurePause
+      uiState . uiHelp . curHelpPage .= Just p
+      uiState . uiHelp . helpHistory .= hist
