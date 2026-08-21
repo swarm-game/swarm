@@ -74,6 +74,7 @@ data MainEvent
   | ViewCommandsEvent
   | ViewMessagesEvent
   | ViewStructuresEvent
+  | ViewConfigEvent
   | ViewGoalEvent
   | HideRobotsEvent
   | ShowCESKDebugEvent
@@ -101,6 +102,7 @@ mainEvents = allKeyEvents $ \case
   ViewCommandsEvent -> "view commands"
   ViewMessagesEvent -> "view messages"
   ViewStructuresEvent -> "view structures"
+  ViewConfigEvent -> "view configuration"
   ViewGoalEvent -> "view goal"
   HideRobotsEvent -> "hide robots"
   ShowCESKDebugEvent -> "debug CESK"
@@ -127,6 +129,7 @@ defaultMainBindings = allBindings $ \case
   ViewCommandsEvent -> [fn 4]
   ViewMessagesEvent -> [fn 5]
   ViewStructuresEvent -> [fn 6]
+  ViewConfigEvent -> [fn 7]
   ViewGoalEvent -> [ctrl 'g']
   HideRobotsEvent -> [meta 'h']
   ShowCESKDebugEvent -> [meta 'd']

@@ -482,7 +482,7 @@ drawGameUI s =
   uig = ps ^. uiGameplay
 
   h =
-    TopLevelHelpInfo
+    TopLevelConfigInfo
       (s ^. runtimeState . webPort)
       keyConf
 
@@ -628,7 +628,7 @@ chooseCursor s locs = do
 
 -- | Draw a dialog window, if one should be displayed right now.
 drawDialog ::
-  TopLevelHelpInfo ->
+  TopLevelConfigInfo ->
   Bool ->
   ScenarioState ->
   Widget Name
@@ -645,7 +645,7 @@ drawDialog h isNoMenu ps =
 
 -- | Draw one of the various types of modal dialog.
 drawModal ::
-  TopLevelHelpInfo ->
+  TopLevelConfigInfo ->
   ScenarioState ->
   Bool ->
   ModalType ->
@@ -653,7 +653,7 @@ drawModal ::
 drawModal h ps isNoMenu = \case
   MidScenarioModal x -> case x of
     -- XXX info like current seed, port, etc. should be displayed somewhere else.
-    HelpModal -> helpWidget h $ gs ^. randomness . seed
+    ConfigModal -> configWidget h $ gs ^. randomness . seed
     RobotsModal -> drawRobotsDisplayModal uig gs $ uig ^. uiDialogs . uiRobot
     RecipesModal -> availableListWidget gs RecipeList
     CommandsModal -> commandsListWidget aMap gs
@@ -690,19 +690,15 @@ drawModal h ps isNoMenu = \case
   uig = ps ^. uiGameplay
   aMap = uig ^. uiAttributeMap
 
--- | Information provided from the top-level state to be displayed in the help dialog.
---
---   XXX eventually we probably just want to make the help dialog its
---   own special thing that can be displayed at the top level, so it
---   can be displayed from the main menu OR from within a game.
-data TopLevelHelpInfo = TopLevelHelpInfo
-  { _helpPort :: Maybe Port
-  , _helpKeyConf :: KeyConfig SE.SwarmEvent
+-- | Information provided from the top-level state to be displayed in
+--   the configuration dialog.
+data TopLevelConfigInfo = TopLevelConfigInfo
+  { _configPort :: Maybe Port
+  , _configKeyConf :: KeyConfig SE.SwarmEvent
   }
 
--- XXX get rid of this eventually?
-helpWidget :: TopLevelHelpInfo -> Seed -> Widget Name
-helpWidget (TopLevelHelpInfo mport keyConf) theSeed =
+configWidget :: TopLevelConfigInfo -> Seed -> Widget Name
+configWidget (TopLevelConfigInfo mport keyConf) theSeed =
   padLeftRight 2 . vBox $
     padTop (Pad 1)
       <$> [ info
@@ -917,6 +913,7 @@ drawModalMenu gs keyConf = vLimit 1 $ drawKeyCmds globalKeyCmds
       , notificationKey (discovery . availableCommands) SE.ViewCommandsEvent "Commands"
       , notificationKey messageNotifications SE.ViewMessagesEvent "Messages"
       , structuresKey
+      , Just (SingleButton NoHighlight (keyM SE.ViewConfigEvent) "Config")
       ]
   keyM = VU.bindingText keyConf . SE.Main
 

@@ -31,6 +31,7 @@ import Swarm.Game.State.Substate
 import Swarm.Game.Step (finishGameTick)
 import Swarm.Language.Syntax (Phase (..))
 import Swarm.TUI.Controller.EventHandlers.Frame (runGameTickUI)
+import Swarm.TUI.Controller.Help (toggleHelp)
 import Swarm.TUI.Controller.UpdateUI (updateUI)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Model (isWorldEditorEnabled, worldOverdraw)
@@ -49,10 +50,7 @@ import System.Clock (Clock (..), TimeSpec (..), getTime)
 mainEventHandlers :: [KeyEventHandler SwarmEvent (EventM Name AppState)]
 mainEventHandlers = allHandlers Main $ \case
   QuitEvent -> ("Open quit game dialog", toggleQuitGameDialog)
-  ViewHelpEvent ->
-    ( "View Help screen"
-    , Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal HelpModal
-    )
+  ViewHelpEvent -> ("Open help", toggleHelp)
   ViewRobotsEvent ->
     ( "View Robots screen"
     , Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal RobotsModal
@@ -73,6 +71,10 @@ mainEventHandlers = allHandlers Main $ \case
     ( "View Structures screen"
     , Brick.zoom (playState . scenarioState) $
         toggleStructuresModal (recognizerAutomatons . originalStructureDefinitions)
+    )
+  ViewConfigEvent ->
+    ( "View configuration panel"
+    , Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal ConfigModal
     )
   ViewGoalEvent ->
     ( "View scenario goal description"
