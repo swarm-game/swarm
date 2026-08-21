@@ -176,6 +176,7 @@ handleUpstreamVersionResponse ev = do
 handleHelpEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleHelpEvent = \case
   Key V.KEsc -> closeHelp
+  FKey 1 -> closeHelp
   MouseDown (UILink dest) _ _ _ -> handleLinkClick dest
   ev -> handleScrollEvent helpScroll ev $> ()
 
