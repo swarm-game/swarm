@@ -95,6 +95,7 @@ import Swarm.Pretty (prettyString)
 import Swarm.ResourceLoading (CollectionItem (..), collectionToList, getSwarmHistoryPath)
 import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Controller.EventHandlers.Robot (showEntityDescription)
+import Swarm.TUI.Controller.Help (closeHelp, visitHelpPage)
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
 import Swarm.TUI.Controller.UpdateUI
 import Swarm.TUI.Controller.Util
@@ -174,7 +175,7 @@ handleUpstreamVersionResponse ev = do
 
 handleHelpEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleHelpEvent = \case
-  Key V.KEsc -> uiState . uiHelp . curHelpPage .= Nothing -- XXX use generic function to close help
+  Key V.KEsc -> closeHelp
   MouseDown (UILink dest) _ _ _ -> handleLinkClick dest
   ev -> handleScrollEvent helpScroll ev $> ()
 
@@ -251,7 +252,7 @@ handleMainMenuEvent menu = \case
           -- correct data files aren't installed.  In that case, log
           -- an error.
           _ -> runtimeState . eventLog %= logEvent SystemLog Error "Tutorials" "No tutorials found!"
-      Help -> uiState . uiHelp . curHelpPage .= Just "index.md" -- XXX use generic help visit function
+      Help -> visitHelpPage "index.md"
       Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
       Messages -> do
         runtimeState . eventLog . notificationsCount .= 0
@@ -462,9 +463,9 @@ handleMainEvent forceRedraw ev = do
 -- | XXX
 handleLinkClick :: Text -> EventM Name AppState ()
 handleLinkClick dest =
-  if ("http" `T.isPrefixOf` dest)
+  if "http" `T.isPrefixOf` dest
     then void . liftIO $ openBrowser (T.unpack dest)
-    else uiState . uiHelp . curHelpPage .= Just (T.unpack dest) -- XXX need to toggle help in a way that could pause game
+    else visitHelpPage (T.unpack dest)
 
 closeModal :: Modal -> EventM Name ScenarioState ()
 closeModal m = do

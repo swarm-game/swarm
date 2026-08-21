@@ -1132,6 +1132,7 @@ library swarm-tui
   exposed-modules:
     Swarm.TUI.Border
     Swarm.TUI.Controller
+    Swarm.TUI.Controller.Help
     Swarm.TUI.Controller.EventHandlers
     Swarm.TUI.Controller.EventHandlers.Frame
     Swarm.TUI.Controller.EventHandlers.Main
