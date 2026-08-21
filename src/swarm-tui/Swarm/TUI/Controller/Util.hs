@@ -111,22 +111,20 @@ openEndScenarioModal m mt = do
     NoMenu -> True
     _ -> False
 
-  -- Set the game to AutoPause if needed
-  ensurePause = Brick.zoom (gameState . temporal) $ do
-    pause <- use paused
-    unless pause $ runStatus .= AutoPause
-
+-- | Open a mid-scenario modal window, and potentially auto-pause the
+--   game depending on the specific modal being opened.
 openMidScenarioModal :: MidScenarioModalType -> EventM Name ScenarioState ()
 openMidScenarioModal mt = do
   resetViewport modalScroll
   newModal <- gets $ flip generateModal mt
-  ensurePause
+  unless (isRunningModal (MidScenarioModal mt)) ensurePause
   uiGameplay . uiDialogs . uiModal ?= newModal
- where
-  -- Set the game to AutoPause if needed
-  ensurePause = Brick.zoom (gameState . temporal) $ do
-    pause <- use paused
-    unless (pause || isRunningModal (MidScenarioModal mt)) $ runStatus .= AutoPause
+
+-- | Set the game to AutoPause if needed, unless it is already paused.
+ensurePause :: EventM Name ScenarioState ()
+ensurePause = Brick.zoom (gameState . temporal) $ do
+  pause <- use paused
+  unless pause $ runStatus .= AutoPause
 
 -- | The running modals do not autopause the game.
 isRunningModal :: ModalType -> Bool

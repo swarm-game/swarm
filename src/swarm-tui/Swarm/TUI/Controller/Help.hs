@@ -4,21 +4,30 @@
 -- XXX
 module Swarm.TUI.Controller.Help where
 
-import Brick (EventM)
-import Control.Lens ((.=))
-import Swarm.TUI.Model (AppState, Name, uiState)
-import Swarm.TUI.Model.Help (curHelpPage)
+import Brick (EventM, zoom)
+import Control.Lens (use, (%=), (.=))
+import Swarm.TUI.Controller.Util
+import Swarm.TUI.Model (AppState, Name, playState, scenarioState, uiState)
+import Swarm.TUI.Model.Help (curHelpPage, helpHistory)
 import Swarm.TUI.Model.UI (uiHelp)
 
 -- | XXX
 toggleHelp :: EventM Name AppState ()
 toggleHelp = undefined
 
--- XXX deal with pausing, history, etc.
-
--- | XXX
+-- | Visit a page in the help system, automatically pausing the game
+--   and saving browsing history as appropriate.
 visitHelpPage :: FilePath -> EventM Name AppState ()
-visitHelpPage page = uiState . uiHelp . curHelpPage .= Just page
+visitHelpPage page = do
+  -- Auto-pause if currently playing
+  Brick.zoom (playState . scenarioState) ensurePause
+
+  -- Add the currently visited help page (if any) to the history
+  curPage <- use $ uiState . uiHelp . curHelpPage
+  uiState . uiHelp . helpHistory %= maybe id (:) curPage
+
+  -- Visit the requested page
+  uiState . uiHelp . curHelpPage .= Just page
 
 -- XXX Deal with pausing, etc.
 
@@ -26,6 +35,6 @@ visitHelpPage page = uiState . uiHelp . curHelpPage .= Just page
 closeHelp :: EventM Name AppState ()
 closeHelp = uiState . uiHelp . curHelpPage .= Nothing
 
--- | XXX
+-- | Go back to the previous page in the help system browsing history.
 visitPreviousHelpPage :: EventM Name AppState ()
 visitPreviousHelpPage = undefined
