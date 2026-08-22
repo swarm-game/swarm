@@ -9,7 +9,7 @@ module Swarm.Doc.Wiki.Matrix where
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import Swarm.Doc.Command
-import Swarm.Pretty (prettyTextLine, PrettyPrec)
+import Swarm.Pretty (PrettyPrec, prettyTextLine)
 import Text.Pandoc
 import Text.Pandoc.Builder
 
