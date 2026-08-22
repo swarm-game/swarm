@@ -149,7 +149,7 @@ mkGameState prog robotMaker numRobots = do
   gs <- simpleErrorHandle $ do
     initRS <-
       ignoreWarnings @SystemFailure . initRuntimeState $
-        RuntimeOptions {startPaused = False, pauseOnObjectiveCompletion = False, loadTestScenarios = False}
+        RuntimeOptions {startPaused = False, pauseOnObjectiveCompletion = False}
     (scenario, _gsi) <- loadStandaloneScenario "classic"
     return $ scenarioToGameStateForTests (ScenarioWith scenario Nothing) 0 0 Nothing $ view stdGameConfigInputs initRS
 

@@ -193,7 +193,6 @@ gamestateFromScenarioText content = do
       $ RuntimeOptions
         { startPaused = False
         , pauseOnObjectiveCompletion = False
-        , loadTestScenarios = False
         }
 
   let scenarioInputs = gsiScenarioInputs . initState $ rs ^. stdGameConfigInputs

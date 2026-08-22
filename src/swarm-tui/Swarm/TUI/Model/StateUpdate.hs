@@ -81,7 +81,7 @@ import Swarm.Game.Tick (TickNumber (TickNumber))
 import Swarm.Game.World (Seed)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
 import Swarm.Pretty (prettyText)
-import Swarm.ResourceLoading (atPath, getSwarmHistoryPath)
+import Swarm.ResourceLoading (atPath, emptyCollection, getSwarmHistoryPath)
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Model qualified as EM
 import Swarm.TUI.Editor.Util qualified as EU
@@ -126,8 +126,7 @@ addWarnings = List.foldl' logWarning
  where
   logWarning rs' w = rs' & eventLog %~ logEvent SystemLog Error "UI Loading" (prettyText w)
 
--- | Based on the command line options, should we skip displaying the
---   menu?
+-- | Check command line flags if we should skip displaying the menu.
 skipMenu :: AppOpts -> Bool
 skipMenu AppOpts {..} = isJust userScenario || isRunningInitialProgram || isJust userSeed
  where
@@ -138,7 +137,6 @@ mkRuntimeOptions AppOpts {..} =
   RuntimeOptions
     { startPaused = pausedAtStart
     , pauseOnObjectiveCompletion = autoShowObjectives
-    , loadTestScenarios = Set.member LoadTestingScenarios debugOptions
     }
 
 data PersistentState
@@ -156,31 +154,37 @@ initPersistentState ::
   (Error SystemFailure :> es, IOE :> es) =>
   AppOpts ->
   Eff es PersistentState
-initPersistentState opts@(AppOpts {..}) = do
-  (PersistentState initRS initUI initKs initProg, warnings :: [SystemFailure]) <- runWarn $ do
+initPersistentState opts@(AppOpts {..}) =
+  fmap addWarningsToRuntimeState . runWarn $ do
     rs <- initRuntimeState $ mkRuntimeOptions opts
-    let showMainMenu = not (skipMenu opts)
     ui <- initUIState UIInitOptions {..}
     ks <- initKeyHandlingState
 
-    s <-
-      loadScenarios
-        (gsiScenarioInputs $ initState $ rs ^. stdGameConfigInputs)
-        (loadTestScenarios $ mkRuntimeOptions opts)
-    achievements <- loadAchievementsInfo
+    loadedScenarios <- whenC showMainMenu $ loadScenarios (getScenarioInputs rs) filterTestScenarios
+    achievements <- categorizeAchievement <$> loadAchievementsInfo
 
-    let animState = AnimInactive
     let progState =
           ProgressionState
-            { _scenarios = s
-            , _attainedAchievements = M.fromList $ map (view achievement &&& id) achievements
+            { _scenarios = loadedScenarios
+            , _attainedAchievements = achievements
             , _uiPopups = initPopupState
             , _scenarioSequence = mempty
-            , _uiPopupAnimationState = animState
+            , _uiPopupAnimationState = AnimInactive
             }
     return $ PersistentState rs ui ks progState
-  let initRS' = addWarnings initRS (F.toList warnings)
-  return $ PersistentState initRS' initUI initKs initProg
+ where
+  addWarningsToRuntimeState :: (PersistentState, [SystemFailure]) -> PersistentState
+  addWarningsToRuntimeState (PersistentState initRS initUI initKs initProg, warnings) =
+    let initRS' = addWarnings initRS (F.toList warnings)
+     in PersistentState initRS' initUI initKs initProg
+  -- helpers for getting inner data
+  showMainMenu = not (skipMenu opts)
+  filterTestScenarios dirName = Set.member LoadTestingScenarios debugOptions || dirName /= "Testing"
+  getScenarioInputs rs = rs ^. stdGameConfigInputs . to initState . to gsiScenarioInputs
+  -- skip loading collection
+  whenC b a = if b then a else pure emptyCollection
+  -- categorize achievements by their type
+  categorizeAchievement = M.fromList . map (view achievement &&& id)
 
 getScenarioInfoFromPath ::
   ScenarioCollection ScenarioInfo ->
