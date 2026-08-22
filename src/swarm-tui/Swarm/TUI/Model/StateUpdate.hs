@@ -43,6 +43,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (getZonedTime)
 import Data.Yaml (decodeFileEither, prettyPrintParseException)
+import Debug.Trace (traceMarkerIO)
 import Effectful
 import Effectful.Error.Static
 import Effectful.State.Static.Local
@@ -155,7 +156,7 @@ initPersistentState ::
   AppOpts ->
   Eff es PersistentState
 initPersistentState opts@(AppOpts {..}) =
-  fmap addWarningsToRuntimeState . runWarn $ do
+  marked . fmap addWarningsToRuntimeState . runWarn $ do
     rs <- initRuntimeState $ mkRuntimeOptions opts
     ui <- initUIState UIInitOptions {..}
     ks <- initKeyHandlingState
@@ -185,6 +186,11 @@ initPersistentState opts@(AppOpts {..}) =
   whenC b a = if b then a else pure emptyCollection
   -- categorize achievements by their type
   categorizeAchievement = M.fromList . map (view achievement &&& id)
+  marked a = do
+    liftIO $ traceMarkerIO "Begin initPersistentState"
+    r <- a
+    liftIO $ traceMarkerIO "End initPersistentState"
+    pure r
 
 getScenarioInfoFromPath ::
   ScenarioCollection ScenarioInfo ->
@@ -205,7 +211,7 @@ constructAppState ::
   AppOpts ->
   Maybe (BChan AppEvent) ->
   Eff es AppState
-constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mChan = do
+constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mChan = marked $ do
   historyT <- liftIO $ readFileMayT UTF8 =<< getSwarmHistoryPath False
   let mkREPLSubmission msg = REPLHistItem (REPLEntry Submitted) msg (TickNumber $ -1)
   let history = maybe [] (map mkREPLSubmission . T.lines) historyT
@@ -251,6 +257,11 @@ constructAppState (PersistentState rs ui key progState) opts@(AppOpts {..}) mCha
           (startGameWithSeed (ScenarioWith scenario si) $ LaunchParams (pure userSeed) (pure codeToRun))
           appStateWithReplay
  where
+  marked a = do
+    liftIO $ traceMarkerIO "Begin constructAppState"
+    r <- a
+    liftIO $ traceMarkerIO "End constructAppState"
+    pure r
   initialUiGameplay startTime history =
     UIGameplay
       { _uiFocusRing = initFocusRing
@@ -322,6 +333,7 @@ startGame (ScenarioWith s (ScenarioPath p) :| remaining) c = do
   playState . progression . scenarioSequence .= remaining
   ss <- use $ playState . progression . scenarios
   let si = getScenarioInfoFromPath ss p
+  liftIO . traceMarkerIO $ "startGame " <> si ^. scenarioPath
   startGameWithSeed (ScenarioWith s si) . LaunchParams (pure Nothing) $ pure c
 
 -- | Re-initialize the game from the stored reference to the current scenario.
@@ -486,6 +498,6 @@ initAppStateForScenario sceneName userSeed toRun =
       }
 
 -- | For convenience, the 'AppState' corresponding to the classic game
---   with seed 0.  This is used only for benchmarks and unit tests.
+--   with seed 0.  This is used only for unit tests.
 classicGame0 :: ExceptT Text IO AppState
 classicGame0 = initAppStateForScenario "classic" (Just 0) Nothing

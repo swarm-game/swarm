@@ -42,6 +42,7 @@ import Data.Map.Ordered qualified as OM
 import Data.Maybe (isJust)
 import Data.Text (Text)
 import Data.Yaml as Y
+import Debug.Trace (traceMarkerIO)
 import Effectful
 import Effectful.Error.Static
 import Swarm.Effect.Warn.Local (Warn, warn)
@@ -111,11 +112,17 @@ loadScenarios ::
   ScenarioInputs ->
   (String -> Bool) ->
   Eff es (ScenarioCollection ScenarioInfo)
-loadScenarios scenarioInputs filterScenarioDir = do
+loadScenarios scenarioInputs filterScenarioDir = marked $ do
   res <- runErrorNoCallStack @SystemFailure $ getDataDirThrow Scenarios "scenarios"
   case res of
     Left err -> warn err >> pure emptyCollection
     Right dataDir -> loadCollection (scenarioCollectionConfig scenarioInputs filterScenarioDir) dataDir
+ where
+  marked a = do
+    liftIO $ traceMarkerIO "Begin loadScenarios"
+    r <- a
+    liftIO $ traceMarkerIO "End loadScenarios"
+    pure r
 
 -- | Configuration record for recursively loading the scenario collection.
 scenarioCollectionConfig :: ScenarioInputs -> (String -> Bool) -> CollectionConfig (ScenarioWith ScenarioInfo)
