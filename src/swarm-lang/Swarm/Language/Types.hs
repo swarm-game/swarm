@@ -145,7 +145,7 @@ import Data.Data.Lens (uniplate)
 import Data.Eq.Deriving (deriveEq1)
 import Data.Fix
 import Data.Foldable (fold)
-import Data.Functor.Classes (Eq1)
+import Data.Functor.Classes (Eq1 (..))
 import Data.Hashable (Hashable (..))
 import Data.Hashable.Lifted (Hashable1 (..))
 import Data.Kind qualified
@@ -159,8 +159,6 @@ import Data.Set qualified as S
 import Data.String (IsString (..))
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Vector.Strict (Vector)
-import Data.Vector.Strict qualified as Vec
 import Effectful
 import Effectful.Error.Static
 import Effectful.Reader.Static
@@ -168,6 +166,8 @@ import GHC.Generics (Generic, Generic1)
 import Prettyprinter (align, braces, brackets, concatWith, flatAlt, hsep, pretty, punctuate, softline, (<+>))
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
+import Swarm.Language.SmallVector (SmallVector)
+import Swarm.Language.SmallVector qualified as SVec
 import Swarm.Language.Syntax.Import (ImportLoc, ImportPhase (Resolved))
 import Swarm.Language.TDVar (TDVar (..), mkTDVar, setVersion)
 import Swarm.Language.Var (Var)
@@ -285,12 +285,9 @@ natToInt (NS n) = 1 + natToInt n
 --   so that we can easily use generic recursion schemes to implement
 --   things like substitution.
 data TypeF t
-  = -- | A type constructor applied to some type arguments. For now,
-    --   all type constructor applications are required to be fully
-    --   saturated (higher kinds are not supported), so we just
-    --   directly store a list of all arguments (as opposed to
-    --   iterating binary application).
-    TyConVF TyCon (Vector t)
+  = -- | A type constructor applied to some type arguments.
+    --   See the pattern synonym 'TyConF'.
+    TyConVF TyCon (SmallVector t)
   | -- | A type variable.  The first Var represents the original name,
     --   and should be ignored except for use in e.g. error messages.
     --   The second Var is the real name of the variable; it may be the
@@ -308,21 +305,20 @@ data TypeF t
     TyRecF Var t
   deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Generic, Generic1, Data, Hashable)
 
+-- | A type constructor applied to some type arguments. For now,
+--   all type constructor applications are required to be fully
+--   saturated (higher kinds are not supported), so we just
+--   directly store a list of all arguments (as opposed to
+--   iterating binary application).
+--
+--   Note that this is a pattern for easier matching on lists.
+--   See 'TyConVF' which uses 'SmallVector' for storage.
 pattern TyConF :: TyCon -> [t] -> TypeF t
-pattern TyConF t ts <- TyConVF t (Vec.toList -> ts)
+pattern TyConF t ts <- TyConVF t (SVec.toList -> ts)
   where
-    TyConF t ts = TyConVF t (Vec.fromList ts)
+    TyConF t ts = TyConVF t (SVec.fromList ts)
 
 {-# COMPLETE TyConF, TyVarF, TyRcdF, TyRecVarF, TyRecF #-}
-
--- TODO: replace with import Data.Vector.Instances
-instance (Hashable a) => Hashable (Vector a) where
-  hashWithSalt salt = hashWithSalt salt . Vec.toList
-  {-# INLINE hashWithSalt #-}
-
-instance Hashable1 Vector where
-  liftHashWithSalt itemHashWithSalt salt = liftHashWithSalt itemHashWithSalt salt . Vec.toList
-  {-# INLINE liftHashWithSalt #-}
 
 deriveEq1 ''TypeF
 deriveOrd1 ''TypeF
