@@ -109,19 +109,19 @@ normalizeScenarioPath col p =
 loadScenarios ::
   (Warn SystemFailure :> es, IOE :> es) =>
   ScenarioInputs ->
-  Bool ->
+  (String -> Bool) ->
   Eff es (ScenarioCollection ScenarioInfo)
-loadScenarios scenarioInputs loadTestScenarios = do
+loadScenarios scenarioInputs filterScenarioDir = do
   res <- runErrorNoCallStack @SystemFailure $ getDataDirThrow Scenarios "scenarios"
   case res of
     Left err -> warn err >> pure emptyCollection
-    Right dataDir -> loadCollection (scenarioCollectionConfig scenarioInputs loadTestScenarios) dataDir
+    Right dataDir -> loadCollection (scenarioCollectionConfig scenarioInputs filterScenarioDir) dataDir
 
 -- | Configuration record for recursively loading the scenario collection.
-scenarioCollectionConfig :: ScenarioInputs -> Bool -> CollectionConfig (ScenarioWith ScenarioInfo)
-scenarioCollectionConfig scenarioInputs loadTestScenarios =
+scenarioCollectionConfig :: ScenarioInputs -> (String -> Bool) -> CollectionConfig (ScenarioWith ScenarioInfo)
+scenarioCollectionConfig scenarioInputs filterScenarioDir =
   CollectionConfig
-    { shouldLoad = isYamlOrPublicDirectory
+    { shouldLoad = isYamlOrAllowedDirectory
     , warnUnordered = True
     , loadItem = loadScenarioItem scenarioInputs
     }
@@ -129,16 +129,14 @@ scenarioCollectionConfig scenarioInputs loadTestScenarios =
   -- Keep only files which are .yaml files or directories not starting
   -- with an underscore.  Marked directories contain scenarios that
   -- can't be parsed (failure tests) or only script solutions.
-  isYamlOrPublicDirectory :: FilePath -> FilePath -> IO Bool
-  isYamlOrPublicDirectory d f = do
+  -- Uses provided filter for the directory.
+  isYamlOrAllowedDirectory :: FilePath -> FilePath -> IO Bool
+  isYamlOrAllowedDirectory d f = do
     isDir <- doesDirectoryExist $ d </> f
     return $
       if isDir
-        then not ("_" `isPrefixOf` f || isHiddenDir f)
+        then not ("_" `isPrefixOf` f) && filterScenarioDir f
         else takeExtensions f == ".yaml"
-
-  isHiddenDir :: String -> Bool
-  isHiddenDir f = not loadTestScenarios && f == "Testing"
 
 -- | Load a single scenario from a path, returning either a loading
 --   error, or a scenario along with a list of warnings.

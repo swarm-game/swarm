@@ -176,7 +176,7 @@ loadScenarioCollection = simpleErrorHandle $ do
   -- all the scenarios via the usual code path; we do not need to do
   -- anything with them here while simply rendering pedagogy info.
   worlds <- loadWorlds tem
-  ignoreWarnings @SystemFailure $ loadScenarios (ScenarioInputs worlds tem) True
+  ignoreWarnings @SystemFailure $ loadScenarios (ScenarioInputs worlds tem) (\_dir -> True)
 
 renderUsagesMarkdown :: CoverageInfo -> Text
 renderUsagesMarkdown (CoverageInfo (TutorialInfo (ScenarioWith s (ScenarioPath sp)) idx _sCmds dCmds) novelCmds) =

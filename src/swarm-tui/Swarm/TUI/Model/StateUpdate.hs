@@ -160,8 +160,8 @@ initPersistentState opts@(AppOpts {..}) =
     ui <- initUIState UIInitOptions {..}
     ks <- initKeyHandlingState
 
-    loadedScenarios <- whenC showMainMenu $ loadScenarios (getScenarioInputs rs) skipLoadingTests
-    achievements <- whenM showMainMenu $ categorizeAchievement <$> loadAchievementsInfo
+    loadedScenarios <- whenC showMainMenu $ loadScenarios (getScenarioInputs rs) filterTestScenarios
+    achievements <- categorizeAchievement <$> loadAchievementsInfo
 
     let progState =
           ProgressionState
@@ -174,16 +174,15 @@ initPersistentState opts@(AppOpts {..}) =
     return $ PersistentState rs ui ks progState
  where
   addWarningsToRuntimeState :: (PersistentState, [SystemFailure]) -> PersistentState
-  addWarningsToRuntimeState (PersistentState initRS initUI initKs initProg, warnings :: [SystemFailure]) =
+  addWarningsToRuntimeState (PersistentState initRS initUI initKs initProg, warnings) =
     let initRS' = addWarnings initRS (F.toList warnings)
      in PersistentState initRS' initUI initKs initProg
   -- helpers for getting inner data
   showMainMenu = not (skipMenu opts)
-  skipLoadingTests = Set.member LoadTestingScenarios debugOptions
+  filterTestScenarios dirName = Set.member LoadTestingScenarios debugOptions || dirName /= "Testing"
   getScenarioInputs rs = rs ^. stdGameConfigInputs . to initState . to gsiScenarioInputs
-  -- skip loading collections
+  -- skip loading collection
   whenC b a = if b then a else pure emptyCollection
-  whenM b a = if b then a else pure mempty
   -- categorize achievements by their type
   categorizeAchievement = M.fromList . map (view achievement &&& id)
 
