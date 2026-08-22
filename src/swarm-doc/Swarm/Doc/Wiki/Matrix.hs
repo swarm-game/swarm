@@ -9,7 +9,7 @@ module Swarm.Doc.Wiki.Matrix where
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import Swarm.Doc.Command
-import Swarm.Pretty (prettyTextLine)
+import Swarm.Pretty (prettyTextLine, PrettyPrec)
 import Text.Pandoc
 import Text.Pandoc.Builder
 
@@ -30,7 +30,7 @@ makePropsTable headingsList =
 
 genPropsRow :: CommandEntry -> [Blocks]
 genPropsRow e =
-  [ showCode (cmd e)
+  [ prettyCode (cmd e)
   , showCode (effects e)
   , showCode (hasActorTarget $ derivedAttrs e)
   ]
@@ -38,4 +38,6 @@ genPropsRow e =
  where
   showCode :: Show a => a -> Blocks
   showCode = plain . code . T.pack . show
-  completeTypeMembers = NE.map (showCode . prettyTextLine) $ argTypes e
+  prettyCode :: PrettyPrec a => a -> Blocks
+  prettyCode = plain . code . prettyTextLine
+  completeTypeMembers = NE.map prettyCode $ argTypes e
