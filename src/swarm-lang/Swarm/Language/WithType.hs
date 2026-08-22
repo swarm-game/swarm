@@ -5,8 +5,6 @@
 module Swarm.Language.WithType (WithType (..), value, polytype, requires) where
 
 import Control.Lens (makeLenses)
-import Data.Aeson (ToJSON)
-import Data.Aeson.Types (FromJSON)
 import GHC.Generics (Generic)
 import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Types (Polytype)
@@ -17,6 +15,6 @@ data WithType v = WithType
   , _polytype :: Polytype
   , _requires :: Requirements
   }
-  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+  deriving (Show, Eq, Generic)
 
 makeLenses ''WithType

@@ -137,6 +137,7 @@ module Swarm.Language.Types (
 import Control.Lens (Plated (..), makeLenses, rewriteM, view)
 import Control.Monad.Free
 import Data.Aeson (FromJSON (..), FromJSON1 (..), ToJSON (..), ToJSON1 (..), genericLiftParseJSON, genericLiftToJSON, genericParseJSON, genericToJSON)
+import Data.Aeson qualified as Ae
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
 import Data.Eq.Deriving (deriveEq1)
@@ -166,7 +167,7 @@ import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Syntax.Import (ImportLoc, ImportPhase (Resolved))
 import Swarm.Language.TDVar (TDVar (..), mkTDVar, setVersion)
 import Swarm.Language.Var (Var)
-import Swarm.Pretty (PrettyPrec (..), pparens, pparens', ppr, prettyBinding)
+import Swarm.Pretty (PrettyPrec (..), pparens, pparens', ppr, prettyBinding, prettyTextLine)
 import Swarm.Util (showT, unsnocNE)
 import Swarm.Util.JSON (optionsMinimize, optionsUnwrapUnary)
 import Text.Show.Deriving (deriveShow1)
@@ -308,12 +309,6 @@ deriveOrd1 ''TypeF
 deriveShow1 ''TypeF
 
 instance Hashable1 TypeF -- needs the Eq1 instance
-
-instance ToJSON1 TypeF where
-  liftToJSON = genericLiftToJSON optionsMinimize
-
-instance FromJSON1 TypeF where
-  liftParseJSON = genericLiftParseJSON optionsMinimize
 
 -- | @Type@ is now defined as the fixed point of 'TypeF'.  It would be
 --   annoying to manually apply and match against 'Fix' constructors
@@ -462,6 +457,9 @@ instance (UnchainableFun t, PrettyPrec t, SubstRec t) => PrettyPrec (TypeF t) wh
     TyConF c [] -> ppr c
     TyConF c tys -> pparens (p > 9) $ ppr c <+> hsep (map (prettyPrec 10) tys)
 
+instance (UnchainableFun t, PrettyPrec t, SubstRec t) => ToJSON (TypeF t) where
+  toJSON = Ae.String . prettyTextLine
+
 ------------------------------------------------------------
 -- Generic folding over type representations
 ------------------------------------------------------------
@@ -539,7 +537,7 @@ data ImplicitQuantification = Unquantified | Quantified
 --   only way to create a @Poly Quantified@ is through the 'quantify'
 --   function.
 data Poly (q :: ImplicitQuantification) t = Forall {_ptVars :: [Var], ptBody :: t}
-  deriving (Show, Eq, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON, Hashable)
+  deriving (Show, Eq, Functor, Foldable, Traversable, Data, Generic, Hashable)
 
 -- | Create a raw, unquantified @Poly@ value.
 mkPoly :: [Var] -> t -> Poly 'Unquantified t
@@ -592,6 +590,9 @@ type UPolytype = Poly 'Quantified UType
 instance PrettyPrec (Poly q UType) where
   prettyPrec _ (Forall [] t) = ppr t
   prettyPrec _ (Forall xs t) = hsep ("∀" : map ppr xs) <> "." <+> ppr t
+
+instance ToJSON Polytype where
+  toJSON = Ae.String . prettyTextLine
 
 ------------------------------------------------------------
 -- WithU
@@ -831,7 +832,7 @@ data TydefInfo = TydefInfo
   { _tydefType :: Polytype
   , _tydefArity :: Arity
   }
-  deriving (Eq, Show, Generic, Data, FromJSON, ToJSON, Hashable)
+  deriving (Eq, Show, Generic, Data, Hashable)
 
 makeLenses ''TydefInfo
 

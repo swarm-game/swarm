@@ -1,14 +1,18 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Auto-generation of command attributes matrix.
 module Swarm.Doc.Command where
 
-import Data.Aeson (ToJSON)
+import Data.Aeson (ToJSON, (.=))
+import Data.Aeson qualified as Ae
 import Data.List.Extra (enumerate)
 import Data.List.NonEmpty qualified as NE
 import Data.Set (Set)
 import Data.Set qualified as Set
+import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Servant.Docs qualified as SD
 import Swarm.Doc.Util
@@ -16,6 +20,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Syntax.CommandMetadata
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types
+import Swarm.Pretty (prettyTextLine)
 
 data DerivedAttrs = DerivedAttrs
   { hasActorTarget :: Bool
@@ -34,7 +39,16 @@ data CommandEntry = CommandEntry
   , argTypes :: NE.NonEmpty Type
   , derivedAttrs :: DerivedAttrs
   }
-  deriving (Generic, ToJSON)
+  deriving (Generic)
+
+instance ToJSON CommandEntry where
+  toJSON c =
+    Ae.object
+      [ "cmd" .= cmd c
+      , "effects" .= effects c
+      , "argTypes" .= (prettyTextLine <$> argTypes c)
+      , "derivedAttrs" .= derivedAttrs c
+      ]
 
 newtype CommandCatalog = CommandCatalog {entries :: [CommandEntry]}
   deriving newtype (ToJSON)
@@ -54,7 +68,7 @@ mkEntry c =
       , modifiesRobot = not . Set.disjoint cmdEffects . Set.fromList $ map (Mutation . RobotChange) enumerate
       , movesRobot = Mutation (RobotChange PositionChange) `Set.member` cmdEffects
       , returnsValue = theOutputType /= TyCmd TyUnit
-      , outputType = show theOutputType
+      , outputType = T.unpack $ prettyTextLine theOutputType
       }
  where
   cmdInfo = constInfo c

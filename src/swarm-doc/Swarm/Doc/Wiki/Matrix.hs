@@ -9,6 +9,7 @@ module Swarm.Doc.Wiki.Matrix where
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import Swarm.Doc.Command
+import Swarm.Pretty (prettyTextLine)
 import Text.Pandoc
 import Text.Pandoc.Builder
 
@@ -37,4 +38,4 @@ genPropsRow e =
  where
   showCode :: Show a => a -> Blocks
   showCode = plain . code . T.pack . show
-  completeTypeMembers = NE.map showCode $ argTypes e
+  completeTypeMembers = NE.map (showCode . prettyTextLine) $ argTypes e
