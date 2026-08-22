@@ -3,6 +3,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -22,6 +23,7 @@ module Swarm.Language.Types (
 
   -- ** Type structure functor
   TypeF (..),
+  pattern TyConF,
 
   -- ** Recursive types
   Nat (..),
@@ -145,7 +147,7 @@ import Data.Fix
 import Data.Foldable (fold)
 import Data.Functor.Classes (Eq1)
 import Data.Hashable (Hashable (..))
-import Data.Hashable.Lifted (Hashable1)
+import Data.Hashable.Lifted (Hashable1 (..))
 import Data.Kind qualified
 import Data.List.NonEmpty ((<|))
 import Data.List.NonEmpty qualified as NE
@@ -157,6 +159,8 @@ import Data.Set qualified as S
 import Data.String (IsString (..))
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Vector.Strict (Vector)
+import Data.Vector.Strict qualified as Vec
 import Effectful
 import Effectful.Error.Static
 import Effectful.Reader.Static
@@ -286,7 +290,7 @@ data TypeF t
     --   saturated (higher kinds are not supported), so we just
     --   directly store a list of all arguments (as opposed to
     --   iterating binary application).
-    TyConF TyCon [t]
+    TyConVF TyCon (Vector t)
   | -- | A type variable.  The first Var represents the original name,
     --   and should be ignored except for use in e.g. error messages.
     --   The second Var is the real name of the variable; it may be the
@@ -303,6 +307,22 @@ data TypeF t
     --   via de Bruijn indices.
     TyRecF Var t
   deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Generic, Generic1, Data, Hashable)
+
+pattern TyConF :: TyCon -> [t] -> TypeF t
+pattern TyConF t ts <- TyConVF t (Vec.toList -> ts)
+  where
+    TyConF t ts = TyConVF t (Vec.fromList ts)
+
+{-# COMPLETE TyConF, TyVarF, TyRcdF, TyRecVarF, TyRecF #-}
+
+-- TODO: replace with import Data.Vector.Instances
+instance (Hashable a) => Hashable (Vector a) where
+  hashWithSalt salt = hashWithSalt salt . Vec.toList
+  {-# INLINE hashWithSalt #-}
+
+instance Hashable1 Vector where
+  liftHashWithSalt itemHashWithSalt salt = liftHashWithSalt itemHashWithSalt salt . Vec.toList
+  {-# INLINE liftHashWithSalt #-}
 
 deriveEq1 ''TypeF
 deriveOrd1 ''TypeF
