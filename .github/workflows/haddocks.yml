@@ -41,7 +41,7 @@ jobs:
           ghc-version: "9.12.1"
           cabal-version: "3.16.0.0"
       - name: Build haddocks
-        run: cabal haddock-project -O0 --output haddocks --hackage --all
+        run: cabal haddock-project --output haddocks --hackage --all
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
