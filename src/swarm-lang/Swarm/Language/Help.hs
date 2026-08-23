@@ -22,7 +22,6 @@ import Data.Char (isSpace)
 import Data.Either (partitionEithers)
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Effectful
@@ -38,6 +37,7 @@ import Swarm.ResourceLoading.Collection (
  )
 import Swarm.Text.Markdown (Document, fromTextE)
 import Swarm.Util (Encoding (UTF8), readFileMayT)
+import System.FilePath (takeExtension)
 
 -- | A single page in the help collection. Contains a parsed document
 --   along with arbitrary metadata.
@@ -52,7 +52,7 @@ makeLenses ''HelpPage
 helpCollectionConfig :: CollectionConfig HelpPage
 helpCollectionConfig =
   CollectionConfig
-    { shouldLoad = \_ _ -> pure True -- XXX fix me, what should be ignored?
+    { shouldLoad = \_ path -> pure (takeExtension path == ".md") -- only load .md files
     , warnUnordered = False
     , loadItem = loadHelpPage
     }

@@ -448,6 +448,7 @@ library swarm-lang
     directory,
     effectful,
     extra,
+    filepath,
     free,
     generic-data,
     hashable,

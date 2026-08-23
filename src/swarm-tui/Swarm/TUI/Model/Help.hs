@@ -16,7 +16,7 @@ import Swarm.Util.Lens (makeLensesNoSigs)
 
 data HelpState = HelpState
   { _curHelpPage :: Maybe FilePath
-  , _helpHistory :: [FilePath] -- XXX make this a zipper, so we can go forward and back?
+  , _helpHistory :: [FilePath]
   }
 
 initHelpState :: HelpState

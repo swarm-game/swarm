@@ -652,7 +652,6 @@ drawModal ::
   Widget Name
 drawModal h ps isNoMenu = \case
   MidScenarioModal x -> case x of
-    -- XXX info like current seed, port, etc. should be displayed somewhere else.
     ConfigModal -> configWidget h $ gs ^. randomness . seed
     RobotsModal -> drawRobotsDisplayModal uig gs $ uig ^. uiDialogs . uiRobot
     RecipesModal -> availableListWidget gs RecipeList

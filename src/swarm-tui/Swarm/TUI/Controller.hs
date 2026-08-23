@@ -466,7 +466,10 @@ handleMainEvent forceRedraw ev = do
           InfoPanel -> Brick.zoom (playState . scenarioState) $ handleInfoPanelEvent ev
         _ -> continueWithoutRedraw
 
--- | XXX
+-- | Handle a click event on a link.  If the link destination starts
+--   with @http@, treat it as an external URL and try to open it in
+--   the user's browser.  Otherwise, treat it as a link to an internal
+--   help page.
 handleLinkClick :: Text -> EventM Name AppState ()
 handleLinkClick dest =
   if "http" `T.isPrefixOf` dest
