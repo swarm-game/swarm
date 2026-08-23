@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -128,7 +129,7 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Dialog.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.Event qualified as SE
-import Swarm.TUI.Model.KeyBindings (handlerNameKeysDescription)
+import Swarm.TUI.Model.KeyBindings (KeybindingMetadata (..), keybindingMeta)
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
@@ -699,40 +700,55 @@ helpWidget (ToplevelConfigurationHelp mport keyConf) theSeed =
     padTop (Pad 1)
       <$> [ info
           , colorizationLegend
-          , helpKeys
+          , helpKeysWidget keyConf
           , tips
           ]
  where
   tips =
     vBox
-      [ heading boldAttr "Have questions? Want some tips? Check out:"
+      [ helpHeading boldAttr "Have questions? Want some tips? Check out:"
       , txt "  - The Swarm wiki, " <+> hyperlink wikiUrl (txt wikiUrl)
       , txt "  - The Swarm Discord server at " <+> hyperlink swarmDiscord (txt swarmDiscord)
       ]
   info =
     vBox
-      [ heading boldAttr "Configuration"
+      [ helpHeading boldAttr "Configuration"
       , txt ("Seed: " <> into @Text (show theSeed))
       , txt ("Web server port: " <> maybe "none" (into @Text . show) mport)
       ]
   colorizationLegend =
     vBox
-      [ heading boldAttr "Colorization legend"
+      [ helpHeading boldAttr "Colorization legend"
       , drawMarkdown
           ("In text, snippets of code like `3 + 4` or `scan down` will be colorized. Types like `Cmd Text`{=type} have a dedicated color. The names of an `entity`{=entity}, a `structure`{=structure}, and a `tag`{=tag} also each have their own color." :: Document (Syntax Raw))
       ]
-  helpKeys =
-    vBox
-      [ heading boldAttr "Keybindings"
-      , keySection "Main (always active)" mainEventHandlers
-      , keySection "REPL panel" replEventHandlers
-      , keySection "World view panel" worldEventHandlers
-      , keySection "Robot inventory panel" robotEventHandlers
-      ]
+
+helpHeading :: AttrName -> Text -> Widget Name
+helpHeading attr = padBottom (Pad 1) . withAttr attr . txt
+
+helpKeysWidget :: KeyConfig SE.SwarmEvent -> Widget Name
+helpKeysWidget keyConf =
+  vBox
+    [ helpHeading boldAttr "Keybindings"
+    , keyLegend
+    , keySection "Main (always active)" mainEventHandlers
+    , keySection "REPL panel" replEventHandlers
+    , keySection "World view panel" worldEventHandlers
+    , keySection "Robot inventory panel" robotEventHandlers
+    ]
+ where
+  keyLegend =
+    padBottom (Pad 1) $
+      vBox
+        [ txt "You can set the keybindings in config file, run "
+            <+> withAttr highlightAttr (txt "swarm keybindings --init")
+            <+> txt " to create it."
+        , txt "Custom keybindings will be " <+> withAttr highlightAttr (txt "highlighted") <+> txt "."
+        ]
   keySection name handlers =
     padBottom (Pad 1) $
       vBox
-        [ heading italicAttr name
+        [ helpHeading italicAttr name
         , mkKeyTable handlers
         ]
   mkKeyTable =
@@ -740,18 +756,17 @@ helpWidget (ToplevelConfigurationHelp mport keyConf) theSeed =
       . BT.surroundingBorder False
       . BT.rowBorders False
       . BT.table
-      . map (toRow . keyHandlerToText)
-  heading attr = padBottom (Pad 1) . withAttr attr . txt
-  toRow (n, k, d) =
-    [ padRight (Pad 1) $ txtFilled maxN n
-    , padLeftRight 1 $ txtFilled maxK k
-    , padLeft (Pad 1) $ txtFilled maxD d
+      . map (toRow . keybindingMeta keyConf)
+  toRow hMeta =
+    [ padRight (Pad 1) $ txtFilled maxN hMeta.name
+    , padLeftRight 1 $ applyWhen hMeta.custom (withAttr highlightAttr) $ txtFilled maxK hMeta.keys
+    , padLeft (Pad 1) $ txtFilled maxD hMeta.description
     ]
-  keyHandlerToText = handlerNameKeysDescription keyConf
   -- Get maximum width of the table columns so it all neatly aligns
   txtFilled n t = padRight (Pad $ max 0 (n - textWidth t)) $ txt t
-  (maxN, maxK, maxD) = map3 (maximum0 . map textWidth) . unzip3 $ keyHandlerToText <$> allEventHandlers
+  (maxN, maxK, maxD) = map3 (maximum0 . map textWidth) . unzip3 $ handlerTexts . keybindingMeta keyConf <$> allEventHandlers
   map3 f (n, k, d) = (f n, f k, f d)
+  handlerTexts hMeta = (hMeta.name, hMeta.keys, hMeta.description)
 
 data NotificationList = RecipeList | MessageList
 
