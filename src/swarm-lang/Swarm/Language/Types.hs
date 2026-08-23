@@ -136,7 +136,7 @@ module Swarm.Language.Types (
 
 import Control.Lens (Plated (..), makeLenses, rewriteM, view)
 import Control.Monad.Free
-import Data.Aeson (FromJSON (..), FromJSON1 (..), ToJSON (..), ToJSON1 (..), genericLiftParseJSON, genericLiftToJSON, genericParseJSON, genericToJSON)
+import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Aeson qualified as Ae
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
