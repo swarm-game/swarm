@@ -703,36 +703,29 @@ configWidget (TopLevelConfigInfo mport keyConf) theSeed =
     padTop (Pad 1)
       <$> [ info
           , colorizationLegend
-          , helpKeysWidget keyConf
-          , tips
+          , configKeysWidget keyConf
           ]
  where
-  tips =
-    vBox
-      [ helpHeading boldAttr "Have questions? Want some tips? Check out:"
-      , txt "  - The Swarm wiki, " <+> hyperlink wikiUrl (txt wikiUrl)
-      , txt "  - The Swarm Discord server at " <+> hyperlink swarmDiscord (txt swarmDiscord)
-      ]
   info =
     vBox
-      [ helpHeading boldAttr "Configuration"
+      [ configSectionHeading boldAttr "Configuration"
       , txt ("Seed: " <> into @Text (show theSeed))
       , txt ("Web server port: " <> maybe "none" (into @Text . show) mport)
       ]
   colorizationLegend =
     vBox
-      [ helpHeading boldAttr "Colorization legend"
+      [ configSectionHeading boldAttr "Colorization legend"
       , drawMarkdown
           ("In text, snippets of code like `3 + 4` or `scan down` will be colorized. Types like `Cmd Text`{=type} have a dedicated color. The names of an `entity`{=entity}, a `structure`{=structure}, and a `tag`{=tag} also each have their own color." :: Document (Syntax Raw))
       ]
 
-helpHeading :: AttrName -> Text -> Widget Name
-helpHeading attr = padBottom (Pad 1) . withAttr attr . txt
+configSectionHeading :: AttrName -> Text -> Widget Name
+configSectionHeading attr = padBottom (Pad 1) . withAttr attr . txt
 
-helpKeysWidget :: KeyConfig SE.SwarmEvent -> Widget Name
-helpKeysWidget keyConf =
+configKeysWidget :: KeyConfig SE.SwarmEvent -> Widget Name
+configKeysWidget keyConf =
   vBox
-    [ helpHeading boldAttr "Keybindings"
+    [ configSectionHeading boldAttr "Keybindings"
     , keyLegend
     , keySection "Main (always active)" mainEventHandlers
     , keySection "REPL panel" replEventHandlers
@@ -751,7 +744,7 @@ helpKeysWidget keyConf =
   keySection name handlers =
     padBottom (Pad 1) $
       vBox
-        [ helpHeading italicAttr name
+        [ configSectionHeading italicAttr name
         , mkKeyTable handlers
         ]
   mkKeyTable =

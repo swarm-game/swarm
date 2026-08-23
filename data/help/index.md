@@ -1,14 +1,9 @@
 % title: Swarm Help
 % author: Brent Yorgey
 
-This is a help page!  It contains an index to everything else!  Here
-is some Swarm code: `move; move`.  Here is an entity: `tree`{=entity}.
-And here is a type: `Int`{=type}.
+Have questions? Want some tips? Check out:
 
-Here is an internal link: [test](test/test.md).  And here is an
-external one: [Swarm](https://swarm-game.github.io/).  And here is an
-[internal link to a nonexistent page](flerb.md).
+- The [Swarm wiki](https://github.com/swarm-game/swarm/wiki/)
+- The [Swarm Discord server](https://discord.gg/kp8MuSgkPw)
 
-* Quick Start
-* Language Reference
-* Other Stuff
+This page is a placeholder for now.  More documentation coming soon!
