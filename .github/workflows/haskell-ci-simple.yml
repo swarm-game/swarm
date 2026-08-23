@@ -29,8 +29,8 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, macos-latest]
-        cabal: ["3.16.0.0"]
-        ghc: ["9.12.1"]
+        cabal: ["3.16.1.0"]
+        ghc: ["9.12.4"]
     timeout-minutes:
       60
 
