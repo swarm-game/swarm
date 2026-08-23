@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -16,7 +17,9 @@ module Swarm.Language.Syntax.AST (
   Term (..),
 ) where
 
-import Control.Lens (Plated (..))
+import Control.Lens (Plated (..), Traversal')
+import Control.Lens.Prism (_Just)
+import Control.Lens.Tuple (_2)
 import Data.Aeson.Types hiding (Key)
 import Data.Data (Data, Typeable)
 import Data.Data.Lens (uniplate)
@@ -60,8 +63,45 @@ deriving instance (Show (Anchor (ImportPhaseFor phase)), Show (SwarmType phase))
 deriving instance (Data (Anchor (ImportPhaseFor phase)), Data (SwarmType phase), Typeable phase, Typeable (ImportPhaseFor phase)) => Data (Syntax phase)
 deriving instance (Hashable (Anchor (ImportPhaseFor phase)), Generic (Anchor (ImportPhaseFor phase)), Hashable (SwarmType phase)) => Hashable (Syntax phase)
 
-instance (Data (Anchor (ImportPhaseFor phase)), Data (SwarmType phase), Typeable phase, Typeable (ImportPhaseFor phase)) => Plated (Syntax phase) where
-  plate = uniplate
+instance Plated (Syntax phase) where
+  {-# INLINE plate #-}
+  plate :: Traversal' (Syntax phase) (Syntax phase)
+  plate f syntax@(Syntax {..}) =
+    case _sTerm of
+      TUnit -> pure syntax
+      TConst _ -> pure syntax
+      TDir _ -> pure syntax
+      TInt _ -> pure syntax
+      TAntiInt _ -> pure syntax
+      TText _ -> pure syntax
+      TAntiText _ -> pure syntax
+      TBool _ -> pure syntax
+      TAntiSyn _ -> pure syntax
+      TRobot _ -> pure syntax
+      TRef _ -> pure syntax
+      TRequire _ -> pure syntax
+      TStock _ _ -> pure syntax
+      SRequirements a s -> withTerm $ SRequirements a <$> f s
+      TVar _ -> pure syntax
+      SPair s1 s2 -> withTerm $ liftA2 SPair (f s1) (f s2)
+      SLam a b s -> withTerm $ SLam a b <$> f s
+      SApp s1 s2 -> withTerm $ liftA2 SApp (f s1) (f s2)
+      SLet a b c d e g s1 s2 -> withTerm $ liftA2 (SLet a b c d e g) (f s1) (f s2)
+      STydef a b c s -> withTerm $ STydef a b c <$> f s
+      SBind a b c d s1 s2 -> withTerm $ liftA2 (SBind a b c d) (f s1) (f s2)
+      SDelay s -> withTerm $ SDelay <$> f s
+      SRcd lits -> withTerm $ SRcd <$> traverseRecord f lits
+      SProj s a -> withTerm $ flip SProj a <$> f s
+      SAnnotate s a -> withTerm $ flip SAnnotate a <$> f s
+      SSuspend s -> withTerm $ SSuspend <$> f s
+      SParens s -> withTerm $ SParens <$> f s
+      TType _ -> pure syntax
+      SImportIn a b s -> withTerm $ SImportIn a b <$> f s
+      SExportIn a s -> withTerm $ SExportIn a <$> f s
+   where
+    withTerm = fmap (\y -> Syntax {_sTerm = y, ..})
+    traverseRecord :: Traversal' [(LocVar, Maybe (Syntax phase))] (Syntax phase)
+    traverseRecord = traverse . _2 . _Just
 
 -- | A @let@ expression can be written either as @let x = e1 in e2@ or
 --   as @def x = e1 end; e2@. This enumeration simply records which it
