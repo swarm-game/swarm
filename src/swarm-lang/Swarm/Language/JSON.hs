@@ -18,7 +18,7 @@ import GHC.Generics (Generic)
 import Swarm.Language.Module (Module (..), ModuleCtx, ModuleImports, ModuleProvenance (..))
 import Swarm.Language.Parser (readNonemptyTerm)
 import Swarm.Language.Syntax (Anchor, ImportPhaseFor, Phase (Raw), SwarmType, Syntax, Term, Unresolvable, sTerm)
-import Swarm.Language.Value (Env, Value (..))
+import Swarm.Language.Value (Env, Value (..), valueToTerm)
 import Swarm.Pretty (PrettyPrec, prettyText)
 import Swarm.Util.JSON (optionsMinimize)
 import Swarm.Util.Yaml (FromJSONE (..), ParserE, getE, getProvenance, liftE, localE)
@@ -37,10 +37,10 @@ parseProgram v = do
   prov <- getProvenance
   liftE $ Ae.withText "program" (\txt -> fmap (prov,txt,) (parseJSON v)) v
 
-instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => ToJSON (Term phase) where
+instance (Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => ToJSON (Term phase) where
   toJSON = Ae.String . prettyText
 
-instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => ToJSON (Syntax phase) where
+instance (Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => ToJSON (Syntax phase) where
   toJSON = Ae.String . prettyText
 
 deriving instance (Generic (Anchor (ImportPhaseFor phase)), ToJSON (Anchor (ImportPhaseFor phase)), ToJSON (SwarmType phase), ToJSON (ModuleCtx phase), ToJSON (ModuleImports phase), Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => ToJSON (Module phase)
@@ -63,7 +63,7 @@ instance FromJSONE ModuleProvenance (Module Raw) where
       <*> getE
 
 instance ToJSON Value where
-  toJSON = genericToJSON optionsMinimize
+  toJSON = toJSON . valueToTerm
 
 -- TODO (#2213): Craft some appropriate FromJSONE instances for things
 -- like Value and Env.  Below is an early experiment.
