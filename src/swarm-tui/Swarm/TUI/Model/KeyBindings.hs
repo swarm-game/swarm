@@ -10,6 +10,9 @@ module Swarm.TUI.Model.KeyBindings (
   showKeybindings,
   keybindingMeta,
   KeybindingMetadata (..),
+
+  -- ** Internal helpers exposed for unit tests
+  keyBindingEventINI,
 ) where
 
 import Brick
