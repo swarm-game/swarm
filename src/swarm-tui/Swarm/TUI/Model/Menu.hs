@@ -97,7 +97,6 @@ data Menu
     NewGameMenu (NonEmpty (BL.List Name (ScenarioItem ScenarioPath)))
   | AchievementsMenu (BL.List Name CategorizedAchievement)
   | MessagesMenu
-  | AboutMenu
 
 mainMenu :: MainMenuEntry -> BL.List Name MainMenuEntry
 mainMenu e = BL.list MenuList (V.fromList enumerate) 1 & BL.listMoveToElement e

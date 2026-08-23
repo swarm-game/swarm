@@ -172,7 +172,6 @@ drawMenuUI s = case s ^. uiState . uiMenu of
   NewGameMenu stk -> drawNewGameMenuUI s stk $ s ^. uiState . uiLaunchConfig
   AchievementsMenu l -> [drawAchievementsMenuUI s l]
   MessagesMenu -> [drawMainMessages s]
-  AboutMenu -> [drawAboutMenuUI (s ^. runtimeState . appData . at "about")]
 
 drawMainMessages :: AppState -> Widget Name
 drawMainMessages s = renderDialog dial . padBottom Max . scrollList $ drawLogs ls
@@ -429,14 +428,6 @@ drawMainMenuEntry s = \case
   highlightMessages =
     applyWhen (s ^. runtimeState . eventLog . notificationsCount > 0) $
       withAttr notifAttr
-
-drawAboutMenuUI :: Maybe Text -> Widget Name
-drawAboutMenuUI Nothing = centerLayer $ txt "About swarm!"
-drawAboutMenuUI (Just t) = centerLayer . vBox . map (hCenter . txt . nonblank) $ T.lines t
- where
-  -- Turn blank lines into a space so they will take up vertical space as widgets
-  nonblank "" = " "
-  nonblank s = s
 
 -- | Draw the main game UI.  Generates a list of widgets, where each
 --   represents a layer.  Right now we just generate two layers: the

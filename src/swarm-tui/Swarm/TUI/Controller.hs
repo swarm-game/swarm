@@ -202,7 +202,6 @@ handleMenuEvent e =
           Just siPair -> handleLaunchOptionsEvent siPair e
     MessagesMenu -> handleMainMessagesEvent e
     AchievementsMenu l -> handleMainAchievementsEvent l e
-    AboutMenu -> pressAnyKey (MainMenu (mainMenu About)) e
 
 -- | The event handler for the main menu.
 --
@@ -264,7 +263,8 @@ handleMainMenuEvent menu = \case
         runtimeState . eventLog . notificationsCount .= 0
         uiState . uiMenu .= MessagesMenu
       About -> do
-        uiState . uiMenu .= AboutMenu
+        visitHelpPage "about.md"
+        -- XXX move granting this achievement to help system, so it works no matter how you get to the about page
         Brick.zoom (playState . progression) $
           attainAchievement $
             GlobalAchievement LookedAtAboutScreen
@@ -347,10 +347,6 @@ exitNewGameMenu stk =
     .= case snd (NE.uncons stk) of
       Nothing -> MainMenu (mainMenu NewGame)
       Just stk' -> NewGameMenu stk'
-
-pressAnyKey :: Menu -> BrickEvent Name AppEvent -> EventM Name AppState ()
-pressAnyKey m (VtyEvent (V.EvKey _ _)) = uiState . uiMenu .= m
-pressAnyKey _ _ = pure ()
 
 -- | The top-level event handler while we are running the game itself.
 handleMainEvent :: Bool -> BrickEvent Name AppEvent -> EventM Name AppState ()
