@@ -4,7 +4,7 @@
 ##                                                                  #
 ## WARNING:                                                         #
 ## Hand-edited to add filter in on.push and on.pull_request.        #
-## Also hand-edited to add 'weeder' step to GHC 9.6.6.              #
+## Also hand-edited to add 'weeder' step to GHC 9.6.7.              #
 ## If possible do not manually edit beside the above.               #
 #####################################################################
 #
@@ -18,9 +18,9 @@
 #
 # For more information, see https://github.com/haskell-CI/haskell-ci
 #
-# version: 0.19.20250917
+# version: 0.19.20260624
 #
-# REGENDATA ("0.19.20250917",["github","--config=.github/workflows/cabal.haskell-ci","--copy-fields=all","swarm.cabal"])
+# REGENDATA ("0.19.20260624",["github","--config=.github/workflows/cabal.haskell-ci","--copy-fields=all","swarm.cabal"])
 #
 name: Haskell-CI
 on:
@@ -58,24 +58,24 @@ jobs:
     strategy:
       matrix:
         include:
-          - compiler: ghc-9.12.1
+          - compiler: ghc-9.12.4
             compilerKind: ghc
-            compilerVersion: 9.12.1
+            compilerVersion: 9.12.4
             setup-method: ghcup
             allow-failure: false
-          - compiler: ghc-9.10.1
+          - compiler: ghc-9.10.3
             compilerKind: ghc
-            compilerVersion: 9.10.1
+            compilerVersion: 9.10.3
             setup-method: ghcup
             allow-failure: false
-          - compiler: ghc-9.8.2
+          - compiler: ghc-9.8.4
             compilerKind: ghc
-            compilerVersion: 9.8.2
+            compilerVersion: 9.8.4
             setup-method: ghcup
             allow-failure: false
-          - compiler: ghc-9.6.6
+          - compiler: ghc-9.6.7
             compilerKind: ghc
-            compilerVersion: 9.6.6
+            compilerVersion: 9.6.7
             setup-method: ghcup
             allow-failure: false
       fail-fast: false
@@ -177,7 +177,7 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-docspec
           cabal-docspec --version
       - name: checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           path: source
       - name: initial cabal.project for sdist
@@ -218,7 +218,7 @@ jobs:
           $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH --dry-run all
           cabal-plan
       - name: restore cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           key: ${{ runner.os }}-${{ matrix.compiler }}-${{ github.sha }}
           path: ~/.cabal/store
@@ -231,7 +231,7 @@ jobs:
         run: |
           $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH all --write-ghc-environment-files=always
       - name: weeder
-        if: matrix.compilerVersion == '9.6.6'
+        if: matrix.compilerVersion == '9.6.7'
         uses: freckle/weeder-action@v2
         with:
           ghc-version: ${{ matrix.compilerVersion }}
@@ -253,7 +253,7 @@ jobs:
           $CABAL v2-haddock --disable-documentation --haddock-all $ARG_COMPILER --with-haddock $HADDOCK $ARG_TESTS $ARG_BENCH all
       - name: save cache
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           key: ${{ runner.os }}-${{ matrix.compiler }}-${{ github.sha }}
           path: ~/.cabal/store
