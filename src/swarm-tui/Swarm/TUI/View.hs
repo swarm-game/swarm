@@ -186,7 +186,7 @@ drawMainMenuUI s l =
   vBox . catMaybes $
     [ drawLogo <$> logo
     , hCenter . padTopBottom 2 <$> newVersionWidget version
-    , Just . centerLayer . vLimit 6 . hLimit 20 $
+    , Just . centerLayer . vLimit 7 . hLimit 20 $
         BL.renderList (const (hCenter . drawMainMenuEntry s)) True l
     ]
  where

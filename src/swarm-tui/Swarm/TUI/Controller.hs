@@ -262,12 +262,7 @@ handleMainMenuEvent menu = \case
       Messages -> do
         runtimeState . eventLog . notificationsCount .= 0
         uiState . uiMenu .= MessagesMenu
-      About -> do
-        visitHelpPage "about.md"
-        -- XXX move granting this achievement to help system, so it works no matter how you get to the about page
-        Brick.zoom (playState . progression) $
-          attainAchievement $
-            GlobalAchievement LookedAtAboutScreen
+      About -> visitHelpPage "about.md"
       Quit -> haltApp
   CharKey 'q' -> haltApp
   ControlChar 'q' -> haltApp

@@ -6,9 +6,12 @@ module Swarm.TUI.Controller.Help (visitHelpPage, visitPreviousHelpPage, openHelp
 
 import Brick (EventM, zoom)
 import Control.Lens (use, uses, (%=), (.=))
+import Control.Monad (when)
 import Data.List (uncons)
+import Swarm.Game.Achievement.Definitions (CategorizedAchievement (GlobalAchievement), GlobalAchievement (LookedAtAboutScreen))
 import Swarm.TUI.Controller.Util
-import Swarm.TUI.Model (AppState, Name, playState, scenarioState, uiState)
+import Swarm.TUI.Model (AppState, Name, playState, progression, scenarioState, uiState)
+import Swarm.TUI.Model.Achievements (attainAchievement)
 import Swarm.TUI.Model.Help (curHelpPage, helpHistory)
 import Swarm.TUI.Model.UI (uiHelp)
 
@@ -38,6 +41,12 @@ visitHelpPage page = do
 
   -- Visit the requested page
   uiState . uiHelp . curHelpPage .= Just page
+
+  -- Grant achievement for looking at About page
+  when (page == "about.md")
+    . Brick.zoom (playState . progression)
+    . attainAchievement
+    $ GlobalAchievement LookedAtAboutScreen
 
 -- | Open the help system to the most recently visited page, if any,
 --   or the index otherwise.  Assumes that the help system was
