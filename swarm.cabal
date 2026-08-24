@@ -54,6 +54,7 @@ data-dir: data/
 data-files:
   *.txt
   *.yaml
+  help/**/*.md
   lib/**/*.sw
   scenarios/**/*.sw
   scenarios/**/*.txt
@@ -67,7 +68,6 @@ data-files:
   test/standalone-topography/*.png
   test/standalone-topography/*.yaml
   worlds/*.world
-  help/**/*.md
 
 source-repository head
   type: git
