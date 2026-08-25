@@ -232,7 +232,7 @@ jobs:
           $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH all --write-ghc-environment-files=always
       - name: weeder
         if: matrix.compilerVersion == '9.10.3'
-        uses: freckle/weeder-action@v2
+        uses: freckle/weeder-action@v3
         with:
           ghc-version: ${{ matrix.compilerVersion }}
           weeder-arguments: --config $GITHUB_WORKSPACE/source/weeder.toml
