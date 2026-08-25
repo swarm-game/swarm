@@ -1,9 +1,11 @@
+{-# LANGUAGE TypeFamilies #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Strict small vector type to save on allocations, specifically for type parameters.
+-- Strict small vector type to save on allocations, created for type parameters.
 -- Most swarm functions will not have more than two parameters.
-module Swarm.Language.SmallVector (
+module Swarm.Data.SmallVector (
   SmallVector,
   toList,
   fromList,
@@ -16,9 +18,11 @@ import Data.Hashable.Lifted (Hashable1 (..))
 import Data.Vector.Instances ()
 import Data.Vector.Strict (Vector)
 import Data.Vector.Strict qualified as Vec
+import GHC.Exts qualified as GHC (IsList (..))
 import GHC.Generics (Generic, Generic1)
 
-data SmallVector a = Nil | One a | Two a a | Three a a a | Many (Vector a)
+-- | Strict vector optimized for less than three elements.
+data SmallVector a = Nil | One a | Two a a | Many (Vector a)
   deriving (Functor, Foldable, Traversable, Generic, Generic1, Data, Hashable, Hashable1)
 
 toList :: SmallVector a -> [a]
@@ -26,16 +30,22 @@ toList = \case
   Nil -> []
   One a -> [a]
   Two a b -> [a, b]
-  Three a b c -> [a, b, c]
   Many v -> Vec.toList v
+{-# INLINE toList #-}
 
 fromList :: [a] -> SmallVector a
 fromList = \case
   [] -> Nil
   [a] -> One a
   [a, b] -> Two a b
-  [a, b, c] -> Three a b c
   l -> Many $ Vec.fromList l
+{-# INLINE fromList #-}
+
+-- instance for OverloadedLists
+instance GHC.IsList (SmallVector a) where
+  type Item (SmallVector a) = a
+  fromList = fromList
+  toList = toList
 
 instance Eq a => Eq (SmallVector a) where
   v1 == v2 = toList v1 == toList v2

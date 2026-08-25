@@ -164,10 +164,10 @@ import Effectful.Error.Static
 import Effectful.Reader.Static
 import GHC.Generics (Generic, Generic1)
 import Prettyprinter (align, braces, brackets, concatWith, flatAlt, hsep, pretty, punctuate, softline, (<+>))
+import Swarm.Data.SmallVector (SmallVector)
+import Swarm.Data.SmallVector qualified as SVec
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.SmallVector (SmallVector)
-import Swarm.Language.SmallVector qualified as SVec
 import Swarm.Language.Syntax.Import (ImportLoc, ImportPhase (Resolved))
 import Swarm.Language.TDVar (TDVar (..), mkTDVar, setVersion)
 import Swarm.Language.Var (Var)

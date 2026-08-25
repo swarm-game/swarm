@@ -469,7 +469,6 @@ library swarm-lang
     time,
     unicode-show,
     vector,
-    vector-instances,
     vty,
     witch,
     yaml,
@@ -513,7 +512,6 @@ library swarm-lang
     Swarm.Language.Requirements
     Swarm.Language.Requirements.Analysis
     Swarm.Language.Requirements.Type
-    Swarm.Language.SmallVector
     Swarm.Language.Syntax
     Swarm.Language.Syntax.AST
     Swarm.Language.Syntax.CommandMetadata
@@ -976,6 +974,7 @@ library swarm-util
     transformers,
     unordered-containers,
     vector,
+    vector-instances,
     witch,
     witherable,
     yaml,
@@ -983,7 +982,8 @@ library swarm-util
   visibility: public
   -- cabal-gild: discover src/swarm-util
   exposed-modules:
-    Data.BoolExpr.Simplify
+    Swarm.Data.BoolExpr.Simplify
+    Swarm.Data.SmallVector
     Swarm.Effect
     Swarm.Effect.Accum.Local
     Swarm.Effect.Cache
