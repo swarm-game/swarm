@@ -70,6 +70,7 @@ data MainEvent
   = QuitEvent
   | ViewHelpEvent
   | HelpBackEvent
+  | HelpFwdEvent
   | ViewRobotsEvent
   | ViewRecipesEvent
   | ViewCommandsEvent
@@ -99,6 +100,7 @@ mainEvents = allKeyEvents $ \case
   QuitEvent -> "quit"
   ViewHelpEvent -> "view help"
   HelpBackEvent -> "go back"
+  HelpFwdEvent -> "go forward"
   ViewRobotsEvent -> "view robots"
   ViewRecipesEvent -> "view recipes"
   ViewCommandsEvent -> "view commands"
@@ -126,7 +128,8 @@ defaultMainBindings :: [(MainEvent, [Binding])]
 defaultMainBindings = allBindings $ \case
   QuitEvent -> [ctrl 'q']
   ViewHelpEvent -> [fn 1]
-  HelpBackEvent -> [meta V.KLeft, meta V.KBS]
+  HelpBackEvent -> [meta V.KLeft]
+  HelpFwdEvent -> [meta V.KRight]
   ViewRobotsEvent -> [fn 2]
   ViewRecipesEvent -> [fn 3]
   ViewCommandsEvent -> [fn 4]

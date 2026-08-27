@@ -10,4 +10,3 @@ For a full list of contributors, see https://github.com/swarm-game/swarm/graphs/
 - [Wiki](https://github.com/swarm-game/swarm/wiki)
 
 Interested in [contributing to Swarm](https://github.com/swarm-game/swarm/blob/main/CONTRIBUTING.md)?  All are welcome!
-
