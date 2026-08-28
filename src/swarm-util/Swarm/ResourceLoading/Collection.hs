@@ -33,7 +33,9 @@ import Data.Map qualified as M
 import Data.Map.Ordered (OMap)
 import Data.Map.Ordered qualified as OM
 import Data.Text (Text)
+import Debug.Trace (traceEventIO)
 import Effectful
+import Effectful.Concurrent.Async (pooledMapConcurrently, runConcurrent)
 import Effectful.Error.Static
 import Swarm.Effect.Warn.Local (Warn, warn)
 import Swarm.Failure (
@@ -156,7 +158,8 @@ loadCollection cfg dir = do
   loadItems :: [FilePath] -> Eff es (Map FilePath (CollectionItem a))
   loadItems items = do
     let loadItem fp = runErrorNoCallStack @SystemFailure $ (fp,) <$> loadCollectionItem cfg (dir </> fp)
-    okItems <- traverseW loadItem items
+    eItems <- runConcurrent $ pooledMapConcurrently loadItem items
+    okItems <- traverseW pure eItems
     return $ M.fromList okItems
 
   -- Load a collection with items sorted alphabetically by file path, and
@@ -188,7 +191,7 @@ loadCollectionItem ::
   CollectionConfig a ->
   FilePath ->
   Eff es (CollectionItem a)
-loadCollectionItem cfg path = do
+loadCollectionItem cfg path = marked $ do
   isDir <- liftIO $ doesDirectoryExist path
   let collectionName = into @Text . takeBaseName $ path
   case isDir of
@@ -198,3 +201,9 @@ loadCollectionItem cfg path = do
       case eitherItem of
         Right (ws, item) -> mapM_ warn ws >> pure (Single item)
         Left loadFailure -> throwError loadFailure
+ where
+  marked a = do
+    liftIO $ traceEventIO $ "START loadCollectionItem " <> path
+    r <- a
+    liftIO $ traceEventIO $ "STOP loadCollectionItem " <> path
+    pure r
