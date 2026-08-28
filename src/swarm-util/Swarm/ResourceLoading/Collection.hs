@@ -33,7 +33,9 @@ import Data.Map qualified as M
 import Data.Map.Ordered (OMap)
 import Data.Map.Ordered qualified as OM
 import Data.Text (Text)
+import Debug.Trace (traceEventIO)
 import Effectful
+import Effectful.Concurrent.Async (pooledMapConcurrently, runConcurrent)
 import Effectful.Error.Static
 import Swarm.Effect.Warn.Local (Warn, warn)
 import Swarm.Failure (
@@ -49,8 +51,6 @@ import System.Directory (
  )
 import System.FilePath (splitDirectories, takeBaseName, (</>))
 import Witch (into)
-import Effectful.Concurrent.Async (runConcurrent, pooledMapConcurrently)
-import Debug.Trace (traceEventIO)
 
 -- | A collection of @a@ is a tree, where at each level we map
 --   FilePaths to either singleton items of type @a@, or nested
