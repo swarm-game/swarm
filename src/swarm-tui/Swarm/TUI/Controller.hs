@@ -180,6 +180,10 @@ handleHelpEvent ev = do
   let keyHandler = s ^. keyEventHandling . keyDispatchers . to mainGameDispatcher
   case ev of
     Key V.KEsc -> closeHelp
+    CharKey '\t' -> uiState . uiHelp . helpLinks %= focusNext
+    Key V.KEnter -> case focusGetCurrent (s ^. uiState . uiHelp . helpLinks) of
+      Just (UILink dest) -> handleLinkClick dest
+      _ -> pure ()
     VtyEvent (V.EvKey k m)
       | isJust (B.lookupVtyEvent k m keyHandler) -> void $ B.handleKey keyHandler k m
     FKey 1 -> closeHelp

@@ -21,10 +21,10 @@ import Swarm.ResourceLoading.Collection (Collection)
 import Swarm.TUI.Border (BorderLabels, borderWithLabels, bottomLabels, centerLabel, leftLabel, plainBorder, plainHBorder, topLabels)
 import Swarm.TUI.Model (AppState, Name (..), keyConfig, keyEventHandling, runtimeState, uiState)
 import Swarm.TUI.Model.Event (MainEvent (HelpBackEvent, HelpFwdEvent), SwarmEvent (Main))
-import Swarm.TUI.Model.Help (HelpState, helpHistoryBack, helpHistoryForward)
+import Swarm.TUI.Model.Help (HelpState, helpHistoryBack, helpHistoryForward, helpLinks)
 import Swarm.TUI.Model.UI (uiHelp)
 import Swarm.TUI.View.KeyCmd
-import Swarm.TUI.View.Util (bindingText, drawMarkdown)
+import Swarm.TUI.View.Util (bindingText, drawMarkdownWithLinks)
 import Swarm.Text.Markdown (Document, toText)
 
 drawHelpUI :: AppState -> FilePath -> [Widget Name]
@@ -75,10 +75,12 @@ helpPageWidget path help helpSt keyConf =
   helpCmds =
     [ SingleButton (bool NoHighlight Alert anyBackHistory) (bindingText keyConf $ Main HelpBackEvent) "back"
     , SingleButton (bool NoHighlight Alert anyForwardHistory) (bindingText keyConf $ Main HelpFwdEvent) "forward"
+    , SingleButton NoHighlight "Tab" "cycle"
+    , SingleButton NoHighlight "Enter" "visit"
     , SingleButton NoHighlight "Esc" "exit"
     ]
 
   content :: Widget Name
   content = case mhp of
     Nothing -> padTop (Pad 2) . hCenter . txt $ "No help page exists at path " <> T.pack path
-    Just hp -> drawMarkdown (hp ^. helpDoc)
+    Just hp -> drawMarkdownWithLinks (helpSt ^. helpLinks) (hp ^. helpDoc)
