@@ -1,5 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -22,6 +23,7 @@ module Swarm.ResourceLoading.Collection (
   atPath,
   CollectionConfig (..),
   loadCollection,
+  loadCollectionConcurrent,
 ) where
 
 import Control.Lens (Ixed (..), Traversal', makePrisms)
@@ -33,7 +35,9 @@ import Data.Map qualified as M
 import Data.Map.Ordered (OMap)
 import Data.Map.Ordered qualified as OM
 import Data.Text (Text)
+import Debug.Trace (traceEventIO)
 import Effectful
+import Effectful.Concurrent.Async (Concurrent, pooledMapConcurrently, runConcurrent)
 import Effectful.Error.Static
 import Swarm.Effect.Warn.Local (Warn, warn)
 import Swarm.Failure (
@@ -49,21 +53,38 @@ import System.Directory (
  )
 import System.FilePath (splitDirectories, takeBaseName, (</>))
 import Witch (into)
-import Effectful.Concurrent.Async (runConcurrent, pooledMapConcurrently)
-import Debug.Trace (traceEventIO)
+import Witherable (Filterable, Witherable)
+import Witherable qualified as W (Filterable (..), Witherable (..))
 
 -- | A collection of @a@ is a tree, where at each level we map
 --   FilePaths to either singleton items of type @a@, or nested
 --   subcollections.
 newtype Collection a = Collection
   {collectionMap :: OMap FilePath (CollectionItem a)}
-  deriving (Functor)
+  deriving (Functor, Foldable, Traversable)
 
 -- | Either a singleton item, or a nested subcollection with a label.
 data CollectionItem a = Single a | SubCollection Text (Collection a)
-  deriving (Functor)
+  deriving (Functor, Foldable, Traversable)
 
 makePrisms ''CollectionItem
+
+instance Filterable Collection where
+  catMaybes :: Collection (Maybe a) -> Collection a
+  catMaybes (Collection m) = Collection (W.mapMaybe filterItem m)
+
+instance Ord k => Filterable (OMap k) where
+  catMaybes :: OMap k (Maybe a) -> OMap k a
+  catMaybes = OM.fromList . W.mapMaybe strength . OM.assocs
+   where
+    strength (k, ma) = (k,) <$> ma
+
+filterItem :: CollectionItem (Maybe a) -> Maybe (CollectionItem a)
+filterItem = \case
+  Single ma -> Single <$> ma
+  SubCollection label c -> Just $ SubCollection label (W.catMaybes c)
+
+instance Witherable Collection
 
 -- | The empty collection with no items.
 emptyCollection :: Collection a
@@ -133,6 +154,31 @@ data CollectionConfig a = CollectionConfig
   -- a SystemFailure, or return an item along with a list of warnings
   }
 
+loadCollectionConcurrent ::
+  forall es a.
+  (Warn SystemFailure :> es, IOE :> es) =>
+  CollectionConfig a ->
+  FilePath ->
+  Eff es (Collection a)
+loadCollectionConcurrent cfg dir = do
+  collectedPaths <- loadCollection cfg {loadItem = loadPathOnly} dir
+  eItems <- runConcurrent $ pooledMapConcurrently loadItemE collectedPaths
+  traverseW pure eItems
+ where
+  loadPathOnly :: FilePath -> IO (Either SystemFailure ([SystemFailure], FilePath))
+  loadPathOnly p = pure (Right ([], p))
+  loadItemE :: FilePath -> Eff (Concurrent : es) (Either SystemFailure a)
+  loadItemE fp = pairToWarnAnd =<< liftIO (marked fp $ loadItem cfg fp)
+  pairToWarnAnd :: Either SystemFailure ([SystemFailure], a) -> Eff (Concurrent : es) (Either SystemFailure a)
+  pairToWarnAnd = \case
+    Right (ws, item) -> mapM_ warn ws >> pure (Right item)
+    Left e -> pure $ Left e
+  marked path a = do
+    liftIO $ traceEventIO $ "START load " <> path
+    r <- a
+    liftIO $ traceEventIO $ "STOP load " <> path
+    pure r
+
 -- | Recursively load a collection from a specified folder.  Mutually
 --   recursive with 'loadCollectionItem'.
 loadCollection ::
@@ -158,8 +204,7 @@ loadCollection cfg dir = do
   loadItems :: [FilePath] -> Eff es (Map FilePath (CollectionItem a))
   loadItems items = do
     let loadItem fp = runErrorNoCallStack @SystemFailure $ (fp,) <$> loadCollectionItem cfg (dir </> fp)
-    eItems <- runConcurrent $ pooledMapConcurrently loadItem items
-    okItems <- traverseW pure eItems
+    okItems <- traverseW loadItem items
     return $ M.fromList okItems
 
   -- Load a collection with items sorted alphabetically by file path, and
@@ -191,7 +236,7 @@ loadCollectionItem ::
   CollectionConfig a ->
   FilePath ->
   Eff es (CollectionItem a)
-loadCollectionItem cfg path = marked $ do
+loadCollectionItem cfg path = do
   isDir <- liftIO $ doesDirectoryExist path
   let collectionName = into @Text . takeBaseName $ path
   case isDir of
@@ -201,9 +246,3 @@ loadCollectionItem cfg path = marked $ do
       case eitherItem of
         Right (ws, item) -> mapM_ warn ws >> pure (Single item)
         Left loadFailure -> throwError loadFailure
- where
-  marked a = do
-    liftIO $ traceEventIO $ "START loadCollectionItem " <> path
-    r <- a
-    liftIO $ traceEventIO $ "STOP loadCollectionItem " <> path
-    pure r

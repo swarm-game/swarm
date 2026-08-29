@@ -116,7 +116,7 @@ loadScenarios scenarioInputs filterScenarioDir = marked $ do
   res <- runErrorNoCallStack @SystemFailure $ getDataDirThrow Scenarios "scenarios"
   case res of
     Left err -> warn err >> pure emptyCollection
-    Right dataDir -> loadCollection (scenarioCollectionConfig scenarioInputs filterScenarioDir) dataDir
+    Right dataDir -> loadCollectionConcurrent (scenarioCollectionConfig scenarioInputs filterScenarioDir) dataDir
  where
   marked a = do
     liftIO $ traceMarkerIO "Begin loadScenarios"

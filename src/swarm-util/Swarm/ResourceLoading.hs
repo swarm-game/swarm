@@ -38,6 +38,7 @@ module Swarm.ResourceLoading (
   atPath,
   CollectionConfig (..),
   loadCollection,
+  loadCollectionConcurrent,
 ) where
 
 import Control.Exception (catch)
