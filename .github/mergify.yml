@@ -14,6 +14,8 @@ queue_rules:
           - -files~=cabal.project.*
           - -files~=^[^/]*\.yaml$
           - -files~=^data/.*\.yaml$
+          - -files~=^\.github/workflows/haskell-ci.yaml$
+          - -files~=^\.github/workflows/haskell-ci-simple.yaml$
         - and:
           - or:
             - check-success=Enforce issue references
@@ -28,8 +30,8 @@ queue_rules:
           - check-success=Haskell-CI - Linux - ghc-9.10.1
           - check-success=Haskell-CI - Linux - ghc-9.8.2
           - check-success=Haskell-CI - Linux - ghc-9.6.6
-          - check-success=Simple CI - windows-latest - ghc-9.12.1
-          - check-success=Simple CI - macos-latest - ghc-9.12.1
+          - check-success=Simple CI - windows-latest - ghc-9.12.4
+          - check-success=Simple CI - macos-latest - ghc-9.12.4
 
 pull_request_rules:
 - actions:
