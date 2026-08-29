@@ -28,6 +28,7 @@ module Swarm.TUI.View.Attribute.Attr (
 
   -- ** Swarm TUI Attributes
   highlightAttr,
+  focusHighlightAttr,
   notifAttr,
   infoAttr,
   boldAttr,
@@ -102,6 +103,7 @@ swarmAttrMap =
            (robotAttr, fg V.white `V.withStyle` V.bold)
          , -- UI rendering attributes
            (highlightAttr, fg V.cyan)
+         , (focusHighlightAttr, fg V.cyan `V.withStyle` V.bold)
          , (invalidFormInputAttr, fg V.red)
          , (focusedFormInputAttr, V.defAttr)
          , (customEditFocusedAttr, V.black `on` V.yellow)
@@ -168,6 +170,7 @@ entityAttr = attrName "entity"
 
 -- | Some defined attribute names used in the Swarm TUI.
 highlightAttr
+  , focusHighlightAttr
   , notifAttr
   , infoAttr
   , boldAttr
@@ -176,6 +179,7 @@ highlightAttr
   , defAttr ::
     AttrName
 highlightAttr = attrName "highlight"
+focusHighlightAttr = attrName "focusHighlight"
 notifAttr = attrName "notif"
 infoAttr = attrName "info"
 boldAttr = attrName "bold"
