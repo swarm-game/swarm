@@ -3,6 +3,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -22,6 +23,7 @@ module Swarm.Language.Types (
 
   -- ** Type structure functor
   TypeF (..),
+  pattern TyConF,
 
   -- ** Recursive types
   Nat (..),
@@ -143,9 +145,9 @@ import Data.Data.Lens (uniplate)
 import Data.Eq.Deriving (deriveEq1)
 import Data.Fix
 import Data.Foldable (fold)
-import Data.Functor.Classes (Eq1)
+import Data.Functor.Classes (Eq1 (..))
 import Data.Hashable (Hashable (..))
-import Data.Hashable.Lifted (Hashable1)
+import Data.Hashable.Lifted (Hashable1 (..))
 import Data.Kind qualified
 import Data.List.NonEmpty ((<|))
 import Data.List.NonEmpty qualified as NE
@@ -162,6 +164,8 @@ import Effectful.Error.Static
 import Effectful.Reader.Static
 import GHC.Generics (Generic, Generic1)
 import Prettyprinter (align, braces, brackets, concatWith, flatAlt, hsep, pretty, punctuate, softline, (<+>))
+import Swarm.Data.SmallVector (SmallVector)
+import Swarm.Data.SmallVector qualified as SVec
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Syntax.Import (ImportLoc, ImportPhase (Resolved))
@@ -281,12 +285,9 @@ natToInt (NS n) = 1 + natToInt n
 --   so that we can easily use generic recursion schemes to implement
 --   things like substitution.
 data TypeF t
-  = -- | A type constructor applied to some type arguments. For now,
-    --   all type constructor applications are required to be fully
-    --   saturated (higher kinds are not supported), so we just
-    --   directly store a list of all arguments (as opposed to
-    --   iterating binary application).
-    TyConF TyCon [t]
+  = -- | A type constructor applied to some type arguments.
+    --   See the pattern synonym 'TyConF'.
+    TyConVF TyCon (SmallVector t)
   | -- | A type variable.  The first Var represents the original name,
     --   and should be ignored except for use in e.g. error messages.
     --   The second Var is the real name of the variable; it may be the
@@ -303,6 +304,21 @@ data TypeF t
     --   via de Bruijn indices.
     TyRecF Var t
   deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Generic, Generic1, Data, Hashable)
+
+-- | A type constructor applied to some type arguments. For now,
+--   all type constructor applications are required to be fully
+--   saturated (higher kinds are not supported), so we just
+--   directly store a list of all arguments (as opposed to
+--   iterating binary application).
+--
+--   Note that this is a pattern for easier matching on lists.
+--   See 'TyConVF' which uses 'SmallVector' for storage.
+pattern TyConF :: TyCon -> [t] -> TypeF t
+pattern TyConF t ts <- TyConVF t (SVec.toList -> ts)
+  where
+    TyConF t ts = TyConVF t (SVec.fromList ts)
+
+{-# COMPLETE TyConF, TyVarF, TyRcdF, TyRecVarF, TyRecF #-}
 
 deriveEq1 ''TypeF
 deriveOrd1 ''TypeF
