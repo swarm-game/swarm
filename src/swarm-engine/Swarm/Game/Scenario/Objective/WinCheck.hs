@@ -9,7 +9,6 @@ module Swarm.Game.Scenario.Objective.WinCheck where
 import Control.Lens (andOf, view, (^.), (^..))
 import Data.Aeson (ToJSON)
 import Data.BoolExpr qualified as BE
-import Data.BoolExpr.Simplify qualified as Simplify
 import Data.List (partition)
 import Data.Map qualified as M
 import Data.Set (Set)
@@ -17,6 +16,7 @@ import Data.Set qualified as Set
 import GHC.Generics (Generic)
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
+import Swarm.Data.BoolExpr.Simplify qualified as Simplify
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph (getDistinctConstants)
 import Swarm.Game.Scenario.Objective.Logic as L

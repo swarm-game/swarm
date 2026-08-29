@@ -3,7 +3,7 @@
 --
 -- Simplification logic for boolean expressions that is not
 -- provided in the 'boolexpr' package.
-module Data.BoolExpr.Simplify (
+module Swarm.Data.BoolExpr.Simplify (
   cannotBeTrue,
   replace,
 ) where

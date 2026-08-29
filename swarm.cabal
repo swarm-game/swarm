@@ -402,6 +402,9 @@ common utf8-string
 common vector
   build-depends: vector >=0.12 && <0.14
 
+common vector-instances
+  build-depends: vector-instances >=3.4 && <3.5
+
 common vty
   build-depends: vty >=6.1 && <6.6
 
@@ -971,6 +974,7 @@ library swarm-util
     transformers,
     unordered-containers,
     vector,
+    vector-instances,
     witch,
     witherable,
     yaml,
@@ -978,7 +982,8 @@ library swarm-util
   visibility: public
   -- cabal-gild: discover src/swarm-util
   exposed-modules:
-    Data.BoolExpr.Simplify
+    Swarm.Data.BoolExpr.Simplify
+    Swarm.Data.SmallVector
     Swarm.Effect
     Swarm.Effect.Accum.Local
     Swarm.Effect.Cache
