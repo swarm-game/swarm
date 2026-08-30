@@ -128,7 +128,7 @@ defaultMainBindings :: [(MainEvent, [Binding])]
 defaultMainBindings = allBindings $ \case
   QuitEvent -> [ctrl 'q']
   ViewHelpEvent -> [fn 1]
-  HelpBackEvent -> [meta V.KLeft]
+  HelpBackEvent -> [meta V.KLeft, bind V.KBS]
   HelpFwdEvent -> [meta V.KRight]
   ViewRobotsEvent -> [fn 2]
   ViewRecipesEvent -> [fn 3]

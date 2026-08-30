@@ -159,7 +159,7 @@ drawUI :: AppState -> [Widget Name]
 drawUI s = drawPopups s : mainLayers
  where
   mainLayers
-    | Just curHelp <- s ^. uiState . uiHelp . curHelpPage = drawHelpUI (s ^. runtimeState . helpData) curHelp
+    | Just curHelp <- s ^. uiState . uiHelp . curHelpPage = drawHelpUI s curHelp
     | s ^. uiState . uiPlaying = drawGameUI s
     | otherwise = drawMenuUI s
 

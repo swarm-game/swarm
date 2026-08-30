@@ -7,23 +7,30 @@
 module Swarm.TUI.View.Help (drawHelpUI) where
 
 import Brick
+import Brick.Keybindings (KeyConfig)
 import Brick.Widgets.Center (hCenter)
 import Control.Lens
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
+import Swarm.Game.State.Runtime (helpData)
 import Swarm.Language.Help (HelpPage, helpDoc, helpMetadata)
 import Swarm.Language.Syntax (Phase (Raw), Syntax)
-import Swarm.ResourceLoading (Collection, atPath)
-import Swarm.TUI.Border (BorderLabels, borderWithLabels, centerLabel, plainBorder, plainHBorder, topLabels)
-import Swarm.TUI.Model (Name (..))
-import Swarm.TUI.View.Util (drawMarkdown)
+import Swarm.ResourceLoading (atPath)
+import Swarm.TUI.Border (BorderLabels, borderWithLabels, bottomLabels, centerLabel, leftLabel, plainBorder, plainHBorder, topLabels)
+import Swarm.TUI.Model (AppState, Name (..), keyConfig, keyEventHandling, runtimeState)
+import Swarm.TUI.Model.Event (MainEvent (HelpBackEvent, HelpFwdEvent), SwarmEvent (Main))
+import Swarm.TUI.View.KeyCmd
+import Swarm.TUI.View.Util (bindingText, drawMarkdown)
 import Swarm.Text.Markdown (Document, toText)
 
-drawHelpUI :: Collection HelpPage -> FilePath -> [Widget Name]
-drawHelpUI help hp = [helpPageWidget hp (help ^? atPath hp)]
+drawHelpUI :: AppState -> FilePath -> [Widget Name]
+drawHelpUI s hp = [helpPageWidget hp (help ^? atPath hp) keyConf]
+ where
+  help = s ^. runtimeState . helpData
+  keyConf = s ^. keyEventHandling . keyConfig
 
-helpPageWidget :: FilePath -> Maybe HelpPage -> Widget Name
-helpPageWidget path mhp =
+helpPageWidget :: FilePath -> Maybe HelpPage -> KeyConfig SwarmEvent -> Widget Name
+helpPageWidget path mhp keyConf =
   borderWithLabels labels
     . withVScrollBars OnRight
     . viewport HelpViewport Vertical
@@ -36,12 +43,28 @@ helpPageWidget path mhp =
     $ content
  where
   labels :: BorderLabels Name
-  labels = plainBorder & topLabels .~ (plainHBorder & centerLabel ?~ txt (toText title))
+  labels =
+    plainBorder
+      & topLabels
+        .~ ( plainHBorder
+               & centerLabel ?~ txt (toText title)
+           )
+      & bottomLabels
+        .~ ( plainHBorder
+               & leftLabel ?~ drawKeyCmds helpCmds
+           )
 
   title :: Document (Syntax Raw)
   title = case mhp of
     Nothing -> "Page not found"
     Just hp -> fromMaybe "Untitled" (hp ^. helpMetadata . at "title")
+
+  helpCmds :: [KeyCmd]
+  helpCmds =
+    [ SingleButton NoHighlight (bindingText keyConf $ Main HelpBackEvent) "back"
+    , SingleButton NoHighlight (bindingText keyConf $ Main HelpFwdEvent) "forward"
+    , SingleButton NoHighlight "Esc" "exit"
+    ]
 
   content :: Widget Name
   content = case mhp of

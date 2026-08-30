@@ -95,7 +95,7 @@ import Swarm.Pretty (prettyString)
 import Swarm.ResourceLoading (CollectionItem (..), collectionToList, getSwarmHistoryPath)
 import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Controller.EventHandlers.Robot (showEntityDescription)
-import Swarm.TUI.Controller.Help (closeHelp, toggleHelp, visitHelpPage)
+import Swarm.TUI.Controller.Help (closeHelp, toggleHelp, visitHelpPage, visitNextHelpPage, visitPreviousHelpPage)
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
 import Swarm.TUI.Controller.UpdateUI
 import Swarm.TUI.Controller.Util
@@ -182,7 +182,12 @@ handleHelpEvent ev = do
     VtyEvent (V.EvKey k m)
       | isJust (B.lookupVtyEvent k m keyHandler) -> void $ B.handleKey keyHandler k m
     FKey 1 -> closeHelp
-    MouseDown (UILink dest) _ _ _ -> handleLinkClick dest
+    MouseDown item _ _ _ -> case item of
+      UILink dest -> handleLinkClick dest
+      UIShortcut "back" -> visitPreviousHelpPage
+      UIShortcut "forward" -> visitNextHelpPage
+      UIShortcut "exit" -> closeHelp
+      _ -> handleScrollEvent helpScroll ev $> ()
     _ -> handleScrollEvent helpScroll ev $> ()
 
 handleMenuEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()

@@ -5,12 +5,13 @@
 module Swarm.TUI.View.Util where
 
 import Brick hiding (Direction, Location)
-import Brick.Keybindings (Binding (..), KeyConfig, firstActiveBinding, ppBinding)
+import Brick.Keybindings (Binding (..), KeyConfig, firstActiveBinding, ppKey, ppModifier)
 import Brick.Widgets.Dialog
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
 import Control.Monad.Reader (withReaderT)
 import Control.Monad.State (State, evalState)
+import Data.Foldable (toList)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.List.Split (splitOn)
@@ -315,12 +316,14 @@ drawLabelledEntityName aMap e =
 
 -- | Render the keybinding bound to a specific event.
 bindingText :: KeyConfig SwarmEvent -> SwarmEvent -> Text
-bindingText keyConf e = maybe "" ppBindingShort b
+bindingText keyConf e = case b of
+  Nothing -> ""
+  Just (Binding k mods) -> T.intercalate "-" $ (ppModifier <$> toList mods) <> [ppKeyShort k]
  where
   b = firstActiveBinding keyConf e
-  ppBindingShort = \case
-    Binding V.KUp m | null m -> "↑"
-    Binding V.KDown m | null m -> "↓"
-    Binding V.KLeft m | null m -> "←"
-    Binding V.KRight m | null m -> "→"
-    bi -> ppBinding bi
+  ppKeyShort = \case
+    V.KUp -> "↑"
+    V.KDown -> "↓"
+    V.KLeft -> "←"
+    V.KRight -> "→"
+    key -> ppKey key
