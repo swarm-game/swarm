@@ -180,24 +180,6 @@ jobs:
         uses: actions/checkout@v7
         with:
           path: source
-      - name: Debug paths
-        shell: bash
-        run: |
-          echo "GITHUB_WORKSPACE env: $GITHUB_WORKSPACE"
-          echo "github.workspace expression: ${{ github.workspace }}"
-          echo "env.GITHUB_WORKSPACE expression: '${{ env.GITHUB_WORKSPACE }}'"
-          echo
-          echo "PWD:"
-          pwd
-          echo
-          echo "Workspace:"
-          ls -la "$GITHUB_WORKSPACE"
-          echo
-          echo "source:"
-          ls -la "$GITHUB_WORKSPACE/source"
-          echo
-          echo "weeder.toml:"
-          ls -la "$GITHUB_WORKSPACE/source/weeder.toml"
       - name: initial cabal.project for sdist
         run: |
           touch cabal.project
@@ -235,12 +217,6 @@ jobs:
         run: |
           $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH --dry-run all
           cabal-plan
-      - name: Debug working directory
-        run: |
-          echo "PKGDIR_swarm='${{ env.PKGDIR_swarm }}'"
-          pwd
-          ls -la "${{ env.PKGDIR_swarm }}"
-          ls -la "${{ env.PKGDIR_swarm }}/weeder.toml"
       - name: restore cache
         uses: actions/cache/restore@v6
         with:
@@ -259,7 +235,7 @@ jobs:
         uses: freckle/weeder-action@v3
         with:
           ghc-version: ${{ matrix.compilerVersion }}
-          weeder-arguments: --config=${{ env.GITHUB_WORKSPACE }}/source/weeder.toml
+          weeder-arguments: --config=../../source/weeder.toml
           working-directory: ${{ env.PKGDIR_swarm }}
       - name: tests
         run: |
