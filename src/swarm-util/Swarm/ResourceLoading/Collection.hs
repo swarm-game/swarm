@@ -33,7 +33,6 @@ import Data.Map qualified as M
 import Data.Map.Ordered (OMap)
 import Data.Map.Ordered qualified as OM
 import Data.Text (Text)
-import Debug.Trace (traceEventIO)
 import Effectful
 import Effectful.Concurrent.Async (pooledMapConcurrently, runConcurrent)
 import Effectful.Error.Static
