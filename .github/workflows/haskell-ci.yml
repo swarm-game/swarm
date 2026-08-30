@@ -180,6 +180,24 @@ jobs:
         uses: actions/checkout@v7
         with:
           path: source
+      - name: Debug paths
+        shell: bash
+        run: |
+          echo "GITHUB_WORKSPACE env: $GITHUB_WORKSPACE"
+          echo "github.workspace expression: ${{ github.workspace }}"
+          echo "env.GITHUB_WORKSPACE expression: '${{ env.GITHUB_WORKSPACE }}'"
+          echo
+          echo "PWD:"
+          pwd
+          echo
+          echo "Workspace:"
+          ls -la "$GITHUB_WORKSPACE"
+          echo
+          echo "source:"
+          ls -la "$GITHUB_WORKSPACE/source"
+          echo
+          echo "weeder.toml:"
+          ls -la "$GITHUB_WORKSPACE/source/weeder.toml"
       - name: initial cabal.project for sdist
         run: |
           touch cabal.project
