@@ -182,9 +182,9 @@ common directory
 common dotgen
   build-depends: dotgen >=0.4 && <0.5
 
-common effectful-core
+common effectful
   build-depends:
-    effectful-core >=2.6.0.0 && <2.7
+    effectful >=2.6.0.0 && <2.7
 
 common either
   build-depends: either >=5.0 && <5.1
@@ -446,7 +446,7 @@ library swarm-lang
     data-fix,
     deriving-compat,
     directory,
-    effectful-core,
+    effectful,
     extra,
     free,
     generic-data,
@@ -628,7 +628,7 @@ library swarm-scenario
     colour,
     containers,
     directory,
-    effectful-core,
+    effectful,
     either,
     ekg-core,
     extra,
@@ -743,7 +743,7 @@ library swarm-engine
     clock,
     containers,
     directory,
-    effectful-core,
+    effectful,
     extra,
     ekg-core,
     filepath,
@@ -841,7 +841,7 @@ library swarm-web
     colour,
     commonmark,
     containers,
-    effectful-core,
+    effectful,
     http-types,
     lens,
     nonempty-containers,
@@ -893,7 +893,7 @@ library swarm-tournament
     commonmark,
     containers,
     cookie,
-    effectful-core,
+    effectful,
     exceptions,
     extra,
     http-client,
@@ -953,7 +953,7 @@ library swarm-util
     containers,
     data-fix,
     directory,
-    effectful-core,
+    effectful,
     either,
     ekg-core,
     extra,
@@ -1037,7 +1037,7 @@ library swarm-doc
     containers,
     directory,
     dotgen,
-    effectful-core,
+    effectful,
     extra,
     filepath,
     lens,
@@ -1098,7 +1098,7 @@ library swarm-tui
     prettyprinter,
     colour,
     containers,
-    effectful-core,
+    effectful,
     extra,
     filepath,
     fuzzy,
@@ -1214,7 +1214,7 @@ executable swarm
     brick,
     bytestring,
     containers,
-    effectful-core,
+    effectful,
     extra,
     ekg-core,
     ekg-wai,
@@ -1324,7 +1324,7 @@ test-suite swarm-unit
     boolexpr,
     containers,
     data-fix,
-    effectful-core,
+    effectful,
     filepath,
     hashable,
     lens,
@@ -1384,7 +1384,7 @@ test-suite swarm-integration
     stan-config, common, ghc2024-extensions,
     base,
     containers,
-    effectful-core,
+    effectful,
     ekg-core,
     filepath,
     lens,
@@ -1484,7 +1484,7 @@ benchmark benchmark
     stan-config, common, ghc2024-extensions,
     base,
     containers,
-    effectful-core,
+    effectful,
     extra,
     lens,
     tasty-bench,

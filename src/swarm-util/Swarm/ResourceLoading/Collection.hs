@@ -34,6 +34,7 @@ import Data.Map.Ordered (OMap)
 import Data.Map.Ordered qualified as OM
 import Data.Text (Text)
 import Effectful
+import Effectful.Concurrent.Async (pooledMapConcurrently, runConcurrent)
 import Effectful.Error.Static
 import Swarm.Effect.Warn.Local (Warn, warn)
 import Swarm.Failure (
@@ -156,7 +157,8 @@ loadCollection cfg dir = do
   loadItems :: [FilePath] -> Eff es (Map FilePath (CollectionItem a))
   loadItems items = do
     let loadItem fp = runErrorNoCallStack @SystemFailure $ (fp,) <$> loadCollectionItem cfg (dir </> fp)
-    okItems <- traverseW loadItem items
+    eItems <- runConcurrent $ pooledMapConcurrently loadItem items
+    okItems <- traverseW pure eItems
     return $ M.fromList okItems
 
   -- Load a collection with items sorted alphabetically by file path, and
