@@ -1176,6 +1176,7 @@ library swarm-tui
     Swarm.TUI.View.Attribute.CustomStyling
     Swarm.TUI.View.Attribute.Util
     Swarm.TUI.View.CellDisplay
+    Swarm.TUI.View.KeyCmd
     Swarm.TUI.View.Logo
     Swarm.TUI.View.Objective
     Swarm.TUI.View.Popup
