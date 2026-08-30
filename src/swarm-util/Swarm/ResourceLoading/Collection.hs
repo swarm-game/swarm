@@ -191,7 +191,7 @@ loadCollectionItem ::
   CollectionConfig a ->
   FilePath ->
   Eff es (CollectionItem a)
-loadCollectionItem cfg path = marked $ do
+loadCollectionItem cfg path = do
   isDir <- liftIO $ doesDirectoryExist path
   let collectionName = into @Text . takeBaseName $ path
   case isDir of
@@ -201,9 +201,3 @@ loadCollectionItem cfg path = marked $ do
       case eitherItem of
         Right (ws, item) -> mapM_ warn ws >> pure (Single item)
         Left loadFailure -> throwError loadFailure
- where
-  marked a = do
-    liftIO $ traceEventIO $ "START loadCollectionItem " <> path
-    r <- a
-    liftIO $ traceEventIO $ "STOP loadCollectionItem " <> path
-    pure r
