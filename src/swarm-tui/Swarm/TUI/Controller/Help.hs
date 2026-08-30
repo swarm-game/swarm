@@ -19,7 +19,7 @@ import Swarm.Game.Achievement.Definitions (CategorizedAchievement (GlobalAchieve
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model (AppState, Name, playState, progression, scenarioState, uiState)
 import Swarm.TUI.Model.Achievements (attainAchievement)
-import Swarm.TUI.Model.Help (HelpState, curHelpPage, helpCoHistory, helpHistory)
+import Swarm.TUI.Model.Help (HelpState, curHelpPage, helpHistoryBack, helpHistoryForward)
 import Swarm.TUI.Model.UI (uiHelp)
 
 -- | Toggle the help system. If it is currently open, close it, saving
@@ -34,7 +34,7 @@ toggleHelp = do
 saveCurHelpPage :: EventM Name AppState ()
 saveCurHelpPage = do
   curPage <- use $ uiState . uiHelp . curHelpPage
-  uiState . uiHelp . helpHistory %= maybe id (:) curPage
+  uiState . uiHelp . helpHistoryBack %= maybe id (:) curPage
 
 -- | Visit a page in the help system, automatically pausing the game
 --   and saving browsing history as appropriate.
@@ -48,7 +48,7 @@ visitHelpPage page = do
 
   -- Clear the cohistory, if any --- we are visiting a new page, so we
   -- can no longer return to those pages using "forward"
-  uiState . uiHelp . helpCoHistory .= []
+  uiState . uiHelp . helpHistoryForward .= []
 
   -- Visit the requested page
   uiState . uiHelp . curHelpPage .= Just page
@@ -65,7 +65,7 @@ visitHelpPage page = do
 --   to the history.
 openHelp :: EventM Name AppState ()
 openHelp = do
-  hist <- use $ uiState . uiHelp . helpHistory
+  hist <- use $ uiState . uiHelp . helpHistoryBack
 
   case hist of
     [] -> visitHelpPage "index.md"
@@ -85,12 +85,12 @@ closeHelp = do
 --   any) and visit it, pushing the current page onto the cohistory.
 --   If there is no previous page, do nothing.
 visitPreviousHelpPage :: EventM Name AppState ()
-visitPreviousHelpPage = shiftHelpZipper helpCoHistory helpHistory
+visitPreviousHelpPage = shiftHelpZipper helpHistoryForward helpHistoryBack
 
 -- | Move to the next page in the help cohistory (i.e. go foward after
 --   previously going back).  If there is no next page, do nothing.
 visitNextHelpPage :: EventM Name AppState ()
-visitNextHelpPage = shiftHelpZipper helpHistory helpCoHistory
+visitNextHelpPage = shiftHelpZipper helpHistoryBack helpHistoryForward
 
 -- | Shift back or forward in the help zipper, by moving the current
 --   page (if any) /to/ the first lens, and pulling the new current page

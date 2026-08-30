@@ -8,8 +8,8 @@ module Swarm.TUI.Model.Help (
   HelpState,
   initHelpState,
   curHelpPage,
-  helpHistory,
-  helpCoHistory,
+  helpHistoryBack,
+  helpHistoryForward,
 ) where
 
 import Control.Lens (Lens')
@@ -23,9 +23,9 @@ data HelpState = HelpState
   { _curHelpPage :: Maybe FilePath
   -- ^ The currently viewed help page, if any.  The help system is
   --   actively being displayed iff this is Just.
-  , _helpHistory :: [FilePath]
+  , _helpHistoryBack :: [FilePath]
   -- ^ Previously viewed help pages.
-  , _helpCoHistory :: [FilePath]
+  , _helpHistoryForward :: [FilePath]
   -- ^ When the "back" action is used to return to previous pages
   --   from the history, pages get pushed into the cohistory, and
   --   can be returned to via the "forward" action.  The cohistory
@@ -34,7 +34,7 @@ data HelpState = HelpState
   }
 
 initHelpState :: HelpState
-initHelpState = HelpState {_curHelpPage = Nothing, _helpHistory = [], _helpCoHistory = []}
+initHelpState = HelpState {_curHelpPage = Nothing, _helpHistoryBack = [], _helpHistoryForward = []}
 
 makeLensesNoSigs ''HelpState
 
@@ -42,7 +42,7 @@ makeLensesNoSigs ''HelpState
 curHelpPage :: Lens' HelpState (Maybe FilePath)
 
 -- | Lens to access the stack of help browsing history.
-helpHistory :: Lens' HelpState [FilePath]
+helpHistoryBack :: Lens' HelpState [FilePath]
 
 -- | Lens to access the stack of help browsing cohistory.
-helpCoHistory :: Lens' HelpState [FilePath]
+helpHistoryForward :: Lens' HelpState [FilePath]

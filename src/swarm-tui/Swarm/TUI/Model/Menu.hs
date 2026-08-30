@@ -79,9 +79,9 @@ makeLenses ''Modal
 data MainMenuEntry
   = NewGame
   | Tutorial
-  | Help
   | Achievements
   | Messages
+  | Help
   | About
   | Quit
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
