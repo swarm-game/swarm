@@ -235,6 +235,12 @@ jobs:
         run: |
           $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH --dry-run all
           cabal-plan
+      - name: Debug working directory
+        run: |
+          echo "PKGDIR_swarm='${{ env.PKGDIR_swarm }}'"
+          pwd
+          ls -la "${{ env.PKGDIR_swarm }}"
+          ls -la "${{ env.PKGDIR_swarm }}/weeder.toml"
       - name: restore cache
         uses: actions/cache/restore@v6
         with:
