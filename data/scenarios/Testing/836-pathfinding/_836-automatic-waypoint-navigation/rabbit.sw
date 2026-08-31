@@ -1,3 +1,4 @@
+import "~swarm/lib/scan"
 
 def visitNextWaypoint : (rec l. Unit + (Int * Int) * l) -> (rec l. Unit + (Int * Int) * l) -> Cmd Unit = \originalList. \remainingList.
 

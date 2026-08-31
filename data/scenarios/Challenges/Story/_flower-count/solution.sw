@@ -1,6 +1,7 @@
 import "~swarm/lib/control"
 import "~swarm/lib/arith"
 import "~swarm/lib/list"
+import "~swarm/lib/scan"
 
 // Go to the given absolute coordinates.  End facing east.
 def goto : Int * Int -> Cmd Unit = λmatch \destx. \desty.
@@ -22,10 +23,8 @@ def for : Int -> (Int -> Cmd a) -> Cmd (List a) = \n. \k.
 end
 
 def countCell : Cmd Int =
-  s <- scan down;
-  pure $ case s
-    (\_. 0)
-    (\t. if (t == "flower") {1} {0})
+  t <- scan down;
+  pure $ if (t == "flower") {1} {0}
 end
 
 def countRow : Int -> Cmd Int = \w.
@@ -51,7 +50,7 @@ def countFlowers : Int * Int -> Int * Int -> Cmd Int = \size. \ll.
 end
 
 def acquire : Cmd Text =
-  thing <- atomic {b <- isempty; if b {pure ""} {grab}};
+  thing <- atomic {h <- scan down; if (h == "") {pure ""} {grab}};
   if (thing == "") {acquire} {pure thing}
 end
 

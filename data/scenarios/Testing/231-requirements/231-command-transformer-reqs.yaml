@@ -11,6 +11,7 @@ objectives:
   - goal:
       - Place four rocks
     condition: |
+      import "~swarm/lib/scan";
       judge <- robotNamed "judge";
       as judge {ishere "rock"}
 robots:

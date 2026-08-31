@@ -1,6 +1,7 @@
 // 562-lodestone solution
 
 import "~swarm/lib/control"
+import "~swarm/lib/scan"
 
 def waitFor = \e.\t.
   watch down;

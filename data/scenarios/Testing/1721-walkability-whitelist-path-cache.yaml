@@ -6,6 +6,7 @@ objectives:
   - goal:
       - Get somewhere
     condition: |
+      import "~swarm/lib/scan"
       as base {ishere "platform"}
 solution: |
   def goDir = \f. \result.

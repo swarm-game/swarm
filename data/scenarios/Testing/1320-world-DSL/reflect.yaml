@@ -26,6 +26,7 @@ robots:
 solution: |
   def x = \n. \c. if (n==0) {} {c; x (n-1) c} end
   def ifC = \p. \t. \e. b <- p; if b t e end
+  def ishere = \item. h <- scan down; pure (h == item) end
   def findTree = ifC (ishere "tree") {whereami} {move; findTree} end
   def ell = \d. turn right; x (2*d) move; grab; pure () end
   def grabTrees = \loc. match loc \x. \y. grab; ell y; ell x; ell y end

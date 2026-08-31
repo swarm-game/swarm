@@ -34,7 +34,7 @@ objectives:
         ```
       - |
         This function should take a condition (a `Cmd Bool`{=type}, for
-        example, `ishere "rock"`) and a command, and execute the
+        example, `blocked` or `has "rock"`) and a command, and execute the
         command repeatedly as long as the condition returns `True`.
     condition: |
       try {as base {has "gold"}} {pure false}
@@ -43,6 +43,8 @@ solution: |
     b <- test;
     if b {body; while test body} {}
   end
+
+  def ishere = \thing. here <- scan down; pure (here == thing) end
 
   def follow = while (ishere "rock") move end
 
@@ -73,6 +75,7 @@ robots:
       - [8, treads]
       - [8, grabber]
       - [8, scanner]
+      - [8, comparator]
       - [8, lambda]
       - [8, strange loop]
       - [8, branch predictor]

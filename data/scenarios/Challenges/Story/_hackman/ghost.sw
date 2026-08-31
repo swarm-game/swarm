@@ -6,7 +6,7 @@ an intersection. Then randomly choose any available direction
 
 def isItemInDirection = \direction. \item.
     x <- scan direction;
-    pure $ case x (\_. false) (\y. y == item);
+    pure $ x == item;
     end;
 
 // A ghost is not blocked by a "gate" when it is leaving the "nursery".

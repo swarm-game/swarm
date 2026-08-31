@@ -7,17 +7,17 @@ import "common"
   Otherwise returns the next expected value.
 */
 def isMonotonic : Int -> Cmd (Unit + Int) = \expectedVal.
-    maybeItem <- scan down;
-    case maybeItem
-        (\_. pure $ inR expectedVal) // Cell was blank
-        (\entity.
+    entity <- scan down;
+    if (entity == "")
+        {pure $ inR expectedVal} // Cell was blank
+        {
             intVal <- getOrdinal entity;
             pure $ if (intVal == expectedVal) {
                 inR $ expectedVal + 1;
             } {
                 inL ();
             };
-        );
+        };
     end;
 
 /**
