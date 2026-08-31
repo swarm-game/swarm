@@ -16,7 +16,6 @@ module Swarm.TUI.View (
   -- * Key hint menu
   drawKeyMenu,
   drawModalMenu,
-  drawKeyCmd,
 
   -- * Robot panel
   drawRobotPanel,
@@ -139,6 +138,7 @@ import Swarm.TUI.Panel
 import Swarm.TUI.View.Achievement
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
+import Swarm.TUI.View.KeyCmd
 import Swarm.TUI.View.Logo
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Popup
@@ -151,10 +151,6 @@ import Swarm.Util
 import Text.Printf
 import Text.Wrap
 import Witch (into)
-
-data KeyCmd
-  = SingleButton KeyHighlight Text Text
-  | MultiButton KeyHighlight [(Text, Text)] Text
 
 -- | The main entry point for drawing the entire UI.
 drawUI :: AppState -> [Widget Name]
@@ -885,7 +881,7 @@ colorSeverity = \case
 
 -- | Draw the F-key modal menu. This is displayed in the top left world corner.
 drawModalMenu :: GameState -> KeyConfig SE.SwarmEvent -> Widget Name
-drawModalMenu gs keyConf = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyCmds
+drawModalMenu gs keyConf = vLimit 1 $ drawKeyCmds globalKeyCmds
  where
   notificationKey :: Getter GameState (Notifications a) -> SE.MainEvent -> Text -> Maybe KeyCmd
   notificationKey notifLens key name
@@ -928,17 +924,15 @@ drawKeyMenu ps keyConf debugOpts =
     hBox
       [ padBottom Max $
           vBox
-            [ mkCmdRow globalKeyCmds
+            [ drawKeyCmds globalKeyCmds
             , padLeft (Pad 2) contextCmds
             ]
       , gameModeWidget
       ]
  where
-  mkCmdRow = hBox . map drawPaddedCmd
-  drawPaddedCmd = padLeftRight 1 . drawKeyCmd
   contextCmds
     | ctrlMode == Handling = txt $ fromMaybe "" (gs ^? gameControls . inputHandler . _Just . _1)
-    | otherwise = mkCmdRow focusedPanelCmds
+    | otherwise = drawKeyCmds focusedPanelCmds
   focusedPanelCmds =
     map highlightKeyCmds
       . keyCmdsFor
@@ -1046,27 +1040,6 @@ drawKeyMenu ps keyConf debugOpts =
   keyR = VU.bindingText keyConf . SE.REPL
   keyE = VU.bindingText keyConf . SE.Robot
   keyW = VU.bindingText keyConf . SE.World
-
-data KeyHighlight = NoHighlight | Alert | PanelSpecific
-
--- | Draw a single key command in the menu.
-drawKeyCmd :: KeyCmd -> Widget Name
-drawKeyCmd keycmd =
-  case keycmd of
-    (SingleButton h key cmd) ->
-      clickable (UIShortcut cmd) $
-        hBox
-          [ withAttr (attr h) (txt $ brackets key)
-          , txt cmd
-          ]
-    (MultiButton h keyArr cmd) ->
-      hBox $ intersperse (txt "/") (map (createCmd h) keyArr) ++ [txt cmd]
- where
-  createCmd h (key, cmd) = clickable (UIShortcut cmd) $ withAttr (attr h) (txt $ brackets key)
-  attr h = case h of
-    NoHighlight -> defAttr
-    Alert -> notifAttr
-    PanelSpecific -> highlightAttr
 
 ------------------------------------------------------------
 -- World panel
