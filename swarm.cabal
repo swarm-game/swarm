@@ -54,6 +54,7 @@ data-dir: data/
 data-files:
   *.txt
   *.yaml
+  help/**/*.md
   lib/**/*.sw
   scenarios/**/*.sw
   scenarios/**/*.txt
@@ -448,6 +449,7 @@ library swarm-lang
     directory,
     effectful,
     extra,
+    filepath,
     free,
     generic-data,
     hashable,
@@ -485,6 +487,7 @@ library swarm-lang
     Swarm.Language.Context
     Swarm.Language.Elaborate
     Swarm.Language.Format
+    Swarm.Language.Help
     Swarm.Language.JSON
     Swarm.Language.Key
     Swarm.Language.Kindcheck
@@ -1137,6 +1140,7 @@ library swarm-tui
     Swarm.TUI.Controller.EventHandlers.REPL
     Swarm.TUI.Controller.EventHandlers.Robot
     Swarm.TUI.Controller.EventHandlers.World
+    Swarm.TUI.Controller.Help
     Swarm.TUI.Controller.SaveScenario
     Swarm.TUI.Controller.UpdateUI
     Swarm.TUI.Controller.Util
@@ -1160,6 +1164,7 @@ library swarm-tui
     Swarm.TUI.Model.Dialog.Goal
     Swarm.TUI.Model.Dialog.Structure
     Swarm.TUI.Model.Event
+    Swarm.TUI.Model.Help
     Swarm.TUI.Model.KeyBindings
     Swarm.TUI.Model.Menu
     Swarm.TUI.Model.Name
@@ -1176,6 +1181,7 @@ library swarm-tui
     Swarm.TUI.View.Attribute.CustomStyling
     Swarm.TUI.View.Attribute.Util
     Swarm.TUI.View.CellDisplay
+    Swarm.TUI.View.Help
     Swarm.TUI.View.KeyCmd
     Swarm.TUI.View.Logo
     Swarm.TUI.View.Objective

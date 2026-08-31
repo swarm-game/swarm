@@ -126,6 +126,8 @@ data Name
     ModalViewport
   | -- | The scrollable viewport for the REPL.
     REPLViewport
+  | -- | The scrollable viewport for help pages.
+    HelpViewport
   | -- | A clickable button in a modal dialog.
     Button Button
   | -- | A clickable shortcut in the TUI.

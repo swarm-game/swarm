@@ -39,7 +39,7 @@ data ScenarioOutcome = WinModal | LoseModal
   deriving (Show, Eq)
 
 data MidScenarioModalType
-  = HelpModal
+  = ConfigModal
   | RecipesModal
   | CommandsModal
   | MessagesModal
@@ -81,6 +81,7 @@ data MainMenuEntry
   | Tutorial
   | Achievements
   | Messages
+  | Help
   | About
   | Quit
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
@@ -96,7 +97,6 @@ data Menu
     NewGameMenu (NonEmpty (BL.List Name (ScenarioItem ScenarioPath)))
   | AchievementsMenu (BL.List Name CategorizedAchievement)
   | MessagesMenu
-  | AboutMenu
 
 mainMenu :: MainMenuEntry -> BL.List Name MainMenuEntry
 mainMenu e = BL.list MenuList (V.fromList enumerate) 1 & BL.listMoveToElement e

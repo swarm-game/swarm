@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -42,6 +43,7 @@ import Control.Lens as Lens
 import Control.Monad (forM_, unless, void, when)
 import Control.Monad.Extra (whenJust)
 import Control.Monad.State (MonadState)
+import Data.Functor (($>))
 import Data.List (find)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -93,6 +95,7 @@ import Swarm.Pretty (prettyString)
 import Swarm.ResourceLoading (CollectionItem (..), collectionToList, getSwarmHistoryPath)
 import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Controller.EventHandlers.Robot (showEntityDescription)
+import Swarm.TUI.Controller.Help (closeHelp, toggleHelp, visitHelpPage, visitNextHelpPage, visitPreviousHelpPage)
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
 import Swarm.TUI.Controller.UpdateUI
 import Swarm.TUI.Controller.Util
@@ -104,6 +107,7 @@ import Swarm.TUI.Launch.Prep (prepareLaunchDialog)
 import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Dialog hiding (Completed)
+import Swarm.TUI.Model.Help
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
@@ -119,6 +123,7 @@ import Web.Browser (openBrowser)
 -- | The top-level event handler for the TUI.
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleEvent e = do
+  help <- use $ uiState . uiHelp . curHelpPage . to isJust
   playing <- use $ uiState . uiPlaying
   case e of
     -- the query for upstream version could finish at any time, so we have to handle it here
@@ -140,9 +145,10 @@ handleEvent e = do
         AnimScheduled -> pure False
         AnimActive _ -> pure True
 
-      if playing
-        then handleMainEvent forceRedraw e
-        else handleMenuEvent e
+      if
+        | help -> handleHelpEvent e
+        | playing -> handleMainEvent forceRedraw e
+        | otherwise -> handleMenuEvent e
 
 startPopupIfNeeded :: EventM Name AppState ()
 startPopupIfNeeded = do
@@ -167,6 +173,23 @@ handleUpstreamVersionResponse ev = do
     Right _ -> pure ()
   runtimeState . upstreamRelease .= ev
 
+handleHelpEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleHelpEvent ev = do
+  s <- get
+  let keyHandler = s ^. keyEventHandling . keyDispatchers . to mainGameDispatcher
+  case ev of
+    Key V.KEsc -> closeHelp
+    VtyEvent (V.EvKey k m)
+      | isJust (B.lookupVtyEvent k m keyHandler) -> void $ B.handleKey keyHandler k m
+    FKey 1 -> closeHelp
+    MouseDown item _ _ _ -> case item of
+      UILink dest -> handleLinkClick dest
+      UIShortcut "back" -> visitPreviousHelpPage
+      UIShortcut "forward" -> visitNextHelpPage
+      UIShortcut "exit" -> closeHelp
+      _ -> handleScrollEvent helpScroll ev $> ()
+    _ -> handleScrollEvent helpScroll ev $> ()
+
 handleMenuEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMenuEvent e =
   use (uiState . uiMenu) >>= \case
@@ -184,7 +207,6 @@ handleMenuEvent e =
           Just siPair -> handleLaunchOptionsEvent siPair e
     MessagesMenu -> handleMainMessagesEvent e
     AchievementsMenu l -> handleMainAchievementsEvent l e
-    AboutMenu -> pressAnyKey (MainMenu (mainMenu About)) e
 
 -- | The event handler for the main menu.
 --
@@ -240,15 +262,12 @@ handleMainMenuEvent menu = \case
           -- correct data files aren't installed.  In that case, log
           -- an error.
           _ -> runtimeState . eventLog %= logEvent SystemLog Error "Tutorials" "No tutorials found!"
+      Help -> visitHelpPage "index.md"
       Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
       Messages -> do
         runtimeState . eventLog . notificationsCount .= 0
         uiState . uiMenu .= MessagesMenu
-      About -> do
-        uiState . uiMenu .= AboutMenu
-        Brick.zoom (playState . progression) $
-          attainAchievement $
-            GlobalAchievement LookedAtAboutScreen
+      About -> visitHelpPage "about.md"
       Quit -> haltApp
   CharKey 'q' -> haltApp
   ControlChar 'q' -> haltApp
@@ -329,10 +348,6 @@ exitNewGameMenu stk =
       Nothing -> MainMenu (mainMenu NewGame)
       Just stk' -> NewGameMenu stk'
 
-pressAnyKey :: Menu -> BrickEvent Name AppEvent -> EventM Name AppState ()
-pressAnyKey m (VtyEvent (V.EvKey _ _)) = uiState . uiMenu .= m
-pressAnyKey _ _ = pure ()
-
 -- | The top-level event handler while we are running the game itself.
 handleMainEvent :: Bool -> BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMainEvent forceRedraw ev = do
@@ -387,12 +402,13 @@ handleMainEvent forceRedraw ev = do
           when shouldUpdateCursor $
             uiGameplay . uiWorldCursor .= mouseCoordsM
         REPLInput -> handleREPLEvent ev
-        UILink dest -> void . liftIO $ openBrowser (T.unpack dest)
-        (UIShortcut "Help") -> Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal HelpModal
+        UILink dest -> handleLinkClick dest
+        (UIShortcut "Help") -> toggleHelp
         (UIShortcut "Robots") -> Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal RobotsModal
         (UIShortcut "Commands") -> Brick.zoom (playState . scenarioState) $ toggleDiscoveryNotificationModal CommandsModal availableCommands
         (UIShortcut "Recipes") -> Brick.zoom (playState . scenarioState) $ toggleDiscoveryNotificationModal RecipesModal availableRecipes
         (UIShortcut "Messages") -> Brick.zoom (playState . scenarioState) toggleMessagesModal
+        (UIShortcut "Config") -> Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal ConfigModal
         (UIShortcut "pause") -> Brick.zoom (playState . scenarioState) $ whenRunningPlayState safeTogglePause
         (UIShortcut "unpause") -> Brick.zoom (playState . scenarioState) $ whenRunningPlayState safeTogglePause
         (UIShortcut "step") -> whenRunningAppState runSingleTick
@@ -443,8 +459,18 @@ handleMainEvent forceRedraw ev = do
           WorldPanel | otherwise -> continueWithoutRedraw
           WorldEditorPanel -> Brick.zoom (playState . scenarioState) $ EC.handleWorldEditorPanelEvent ev
           RobotPanel -> handleRobotPanelEvent ev
-          InfoPanel -> Brick.zoom (playState . scenarioState) $ handleInfoPanelEvent infoScroll ev
+          InfoPanel -> Brick.zoom (playState . scenarioState) $ handleInfoPanelEvent ev
         _ -> continueWithoutRedraw
+
+-- | Handle a click event on a link.  If the link destination starts
+--   with @http@, treat it as an external URL and try to open it in
+--   the user's browser.  Otherwise, treat it as a link to an internal
+--   help page.
+handleLinkClick :: Text -> EventM Name AppState ()
+handleLinkClick dest =
+  if "http" `T.isPrefixOf` dest
+    then void . liftIO $ openBrowser (T.unpack dest)
+    else visitHelpPage (T.unpack dest)
 
 closeModal :: Modal -> EventM Name ScenarioState ()
 closeModal m = do
@@ -507,8 +533,8 @@ handleModalEvent = \case
                 lw <- use $ uiGameplay . uiDialogs . uiGoal . listWidget
                 newList <- refreshGoalList lw
                 uiGameplay . uiDialogs . uiGoal . listWidget .= newList
-              GoalSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
-            _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
+              GoalSummary -> handleScrollEvent modalScroll (VtyEvent ev) $> ()
+            _ -> handleScrollEvent modalScroll (VtyEvent ev) $> ()
       Just (MidScenarioModal StructuresModal) -> case ev of
         V.EvKey (V.KChar '\t') [] -> uiGameplay . uiDialogs . uiStructure . structurePanelFocus %= focusNext
         _ -> do
@@ -517,8 +543,8 @@ handleModalEvent = \case
             Just (StructureWidgets w) -> case w of
               StructuresList ->
                 refreshList ev $ uiGameplay . uiDialogs . uiStructure . structurePanelListWidget
-              StructureSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
-            _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
+              StructureSummary -> handleScrollEvent modalScroll (VtyEvent ev) $> ()
+            _ -> handleScrollEvent modalScroll (VtyEvent ev) $> ()
       Just (MidScenarioModal RobotsModal) -> do
         uiGame <- use uiGameplay
         g <- use gameState
@@ -533,7 +559,7 @@ handleModalEvent = \case
                 -- Ensure list widget content is updated immediately
                 mRob <- use $ robotsGridList . to (getSelectedRobot g)
                 forM_ mRob $ Brick.zoom robotDetailsPaneState . updateRobotDetailsPane
-      _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
+      _ -> handleScrollEvent modalScroll (VtyEvent ev) $> ()
    where
     refreshGoalList lw = nestEventM' lw $ handleListEventWithSeparators ev shouldSkipSelection
     refreshList ev' z = Brick.zoom z $ BL.handleListEvent ev'
@@ -943,21 +969,13 @@ adjReplHistIndex d s = validateREPLForm (s & uiGameplay . uiREPL %~ moveREPL)
 -- Info panel events
 ------------------------------------------------------------
 
--- | Handle user events in the info panel (just scrolling).
+-- | Handle user events in the info panel.
 --
 -- TODO: #2010 Finish porting Controller to KeyEventHandlers
-handleInfoPanelEvent :: ViewportScroll Name -> BrickEvent Name AppEvent -> EventM Name ScenarioState ()
-handleInfoPanelEvent vs = \case
-  Key V.KDown -> vScrollBy vs 1
-  Key V.KUp -> vScrollBy vs (-1)
-  CharKey 'k' -> vScrollBy vs 1
-  CharKey 'j' -> vScrollBy vs (-1)
-  Key V.KPageDown -> vScrollPage vs Brick.Down
-  Key V.KPageUp -> vScrollPage vs Brick.Up
-  Key V.KHome -> vScrollToBeginning vs
-  Key V.KEnd -> vScrollToEnd vs
+handleInfoPanelEvent :: BrickEvent Name AppEvent -> EventM Name ScenarioState ()
+handleInfoPanelEvent = \case
   Key V.KEnter -> showEntityDescription
-  _ -> return ()
+  e -> handleScrollEvent infoScroll e $> ()
 
 -- * Util
 

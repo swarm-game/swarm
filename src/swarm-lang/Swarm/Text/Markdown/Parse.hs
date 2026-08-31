@@ -105,6 +105,7 @@ fromTextPure t = do
         mconcat
           [ Mark.fancyListSpec
           , Mark.rawAttributeSpec
+          , Mark.autolinkSpec
           , Mark.defaultSyntaxSpec
           ]
   let runSimple = left showT . runIdentity
