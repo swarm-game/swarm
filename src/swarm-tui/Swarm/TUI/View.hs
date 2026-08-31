@@ -139,8 +139,8 @@ import Swarm.TUI.Panel
 import Swarm.TUI.View.Achievement
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
-import Swarm.TUI.View.KeyCmd
 import Swarm.TUI.View.Help
+import Swarm.TUI.View.KeyCmd
 import Swarm.TUI.View.Logo
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Popup
