@@ -17,7 +17,7 @@ import Data.Zip (alignWith)
 import Swarm.Language.Syntax (Raw, Syntax)
 import Swarm.Language.Syntax.Util (eraseSrcLoc)
 import Swarm.Text.Markdown (fromTextM, toTextWidth)
-import Swarm.Text.Markdown.Document (Document (..), Node (..), Paragraph (..), mapD, mapP)
+import Swarm.Text.Markdown.Document (Document (..), Node (..), Paragraph (..), mapDocument, mapParagraph)
 import Swarm.Text.Markdown.Pretty (docToMark)
 import Swarm.Util (acquireAllWithExt, showT)
 import System.FilePath (dropExtension, takeExtension)
@@ -81,7 +81,7 @@ testMarkdown = do
             assertFailure $ msg <> "\n" <> "expected:  " <> T.unpack d1 <> "\nbut got:  " <> T.unpack d2
 
       normalizeMarkdown :: Document (Syntax Raw) -> Document (Syntax Raw)
-      normalizeMarkdown = (mapD . mapP) normalizeNode
+      normalizeMarkdown = (mapDocument . mapParagraph) normalizeNode
 
       normalizeNode :: Node (Syntax Raw) -> Node (Syntax Raw)
       normalizeNode = \case

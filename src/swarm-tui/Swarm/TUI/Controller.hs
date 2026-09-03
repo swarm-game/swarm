@@ -117,6 +117,7 @@ import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Popup (startPopupAnimation)
 import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Robot.Type
+import Swarm.Text.Markdown.Document (Target (..))
 import Swarm.Util hiding (both)
 import Web.Browser (openBrowser)
 
@@ -466,11 +467,10 @@ handleMainEvent forceRedraw ev = do
 --   with @http@, treat it as an external URL and try to open it in
 --   the user's browser.  Otherwise, treat it as a link to an internal
 --   help page.
-handleLinkClick :: Text -> EventM Name AppState ()
-handleLinkClick dest =
-  if "http" `T.isPrefixOf` dest
-    then void . liftIO $ openBrowser (T.unpack dest)
-    else visitHelpPage (T.unpack dest)
+handleLinkClick :: Target -> EventM Name AppState ()
+handleLinkClick = \case
+  URL url -> void . liftIO $ openBrowser (T.unpack url)
+  Internal dest -> visitHelpPage (T.unpack dest)
 
 closeModal :: Modal -> EventM Name ScenarioState ()
 closeModal m = do

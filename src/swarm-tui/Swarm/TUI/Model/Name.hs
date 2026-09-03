@@ -9,6 +9,7 @@
 module Swarm.TUI.Model.Name where
 
 import Data.Text (Text)
+import Swarm.Text.Markdown.Document (Target)
 import Swarm.TUI.Model.ViewChunk
 
 data WorldEditorFocusable
@@ -133,7 +134,7 @@ data Name
   | -- | A clickable shortcut in the TUI.
     UIShortcut Text
   | -- | A clickable link, either to an external URL or a local page.
-    UILink Text
+    UILink Target
   | -- | A custom widget name, for use in applications built on top of the Swarm library.
     CustomName Text
   deriving (Eq, Ord, Show, Read)

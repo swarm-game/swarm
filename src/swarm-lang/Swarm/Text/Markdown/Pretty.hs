@@ -14,7 +14,7 @@ import Data.Yaml
 import Swarm.Language.Phase (ImportPhaseFor)
 import Swarm.Language.Syntax (Anchor, Syntax, Unresolvable)
 import Swarm.Pretty (PrettyPrec (..))
-import Swarm.Text.Markdown.Document (Document, TxtAttr (..))
+import Swarm.Text.Markdown.Document (Document, TxtAttr (..), getTarget)
 import Swarm.Text.Markdown.Layout (documentToStream)
 import Swarm.Text.Markdown.Token (OutputToken, Token' (..))
 
@@ -36,7 +36,7 @@ closeAttrToMark = \case
   Link dest mtitle -> "](" <> mkTarget dest mtitle <> ")"
  where
   wrap c t = c <> t <> c
-  mkTarget dest title = dest <> maybe "" ((" " <>) . wrap "\"") title
+  mkTarget tgt title = getTarget tgt <> maybe "" ((" " <>) . wrap "\"") title
 
 streamToMark :: [OutputToken] -> Text
 streamToMark = mconcat . go []

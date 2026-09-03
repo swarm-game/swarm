@@ -81,7 +81,7 @@ instance Mark.IsInline [Node Text] where
   escapedChar c = Mark.str $ T.pack ['\\', c]
   emph = map $ addTextAttribute Emphasis
   strong = map $ addTextAttribute Strong
-  link dest title desc = pure $ LeafLink dest (title <$ guard (title /= "")) desc
+  link dest title desc = pure $ LeafLink (parseTarget dest) (title <$ guard (title /= "")) desc
   image dest title desc = pure (txt "!") <> Mark.link dest title desc
   code = pure . LeafCode
   rawInline (Mark.Format f) = pure . LeafRaw (T.unpack f)
@@ -91,7 +91,7 @@ instance Mark.IsBlock [Node Text] [Paragraph Text] where
   paragraph = pure . SimpleParagraph
   plain = Mark.paragraph
   thematicBreak = mempty
-  blockQuote = (map . mapP) (addTextAttribute Emphasis)
+  blockQuote = (map . mapParagraph) (addTextAttribute Emphasis)
   codeBlock f = Mark.plain . pure . LeafCodeBlock (T.unpack f)
   heading _lvl = Mark.plain . Mark.strong
   rawBlock _ _ = mempty
@@ -161,7 +161,7 @@ fromTextM = either (fail . T.unpack) pure . fromTextE
 --   any embedded Swarm code fails to validate, only that embedded
 --   code is replaced with an error message.
 fromText :: Text -> Document (Syntax Raw)
-fromText = either (Document . (: []) . pureP . LeafRaw "") ((mapD . mapP) processNode) . fromTextPure
+fromText = either (Document . (: []) . pureP . LeafRaw "") ((mapDocument . mapParagraph) processNode) . fromTextPure
  where
   processNode = \case
     LeafCode c -> either (LeafRaw "") LeafCode (parseSyntax c)

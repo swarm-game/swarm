@@ -1409,6 +1409,7 @@ test-suite swarm-integration
   other-modules:
     TestEditorFiles
     TestFormat
+    TestHelp
     TestLoadingErrors
     TestMarkdown
     TestRecipeCoverage
