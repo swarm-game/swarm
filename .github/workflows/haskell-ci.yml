@@ -239,7 +239,7 @@ jobs:
         uses: freckle/weeder-action@v3
         with:
           ghc-version: ${{ matrix.compilerVersion }}
-          weeder-arguments: --config=../../source/weeder.toml
+          weeder-arguments: --config=../../source/weeder.toml --hie-directory=./.hie
           working-directory: ${{ env.PKGDIR_swarm }}
       - name: tests
         run: |
