@@ -9,8 +9,8 @@
 module Swarm.TUI.Model.Name where
 
 import Data.Text (Text)
-import Swarm.Text.Markdown.Document (Target)
 import Swarm.TUI.Model.ViewChunk
+import Swarm.Text.Markdown.Document (Target)
 
 data WorldEditorFocusable
   = BrushSelector
