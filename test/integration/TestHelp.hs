@@ -6,15 +6,15 @@
 -- Test help system.
 module TestHelp (helpTests) where
 
-import Swarm.Pretty (PrettyPrec)
 import Control.Lens (imapM, (^.), (^?))
 import Control.Monad (void)
 import Data.Map qualified as M
 import Data.Maybe (isJust)
 import Data.Text qualified as T
 import Swarm.Language.Help (HelpPage, helpDoc, helpMetadata)
+import Swarm.Pretty (PrettyPrec)
 import Swarm.ResourceLoading (Collection, atPath)
-import Swarm.Text.Markdown.Document (Document (..), Node (..), traverseDocument, traverseParagraph, Target (..), pureP)
+import Swarm.Text.Markdown.Document (Document (..), Node (..), Target (..), pureP, traverseDocument, traverseParagraph)
 import Swarm.Text.Markdown.Pretty (docToMark)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool, testCase)
