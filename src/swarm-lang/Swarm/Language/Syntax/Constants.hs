@@ -184,10 +184,6 @@ data Const
     Scan
   | -- | Upload knowledge to another robot
     Upload
-  | -- | See if a specific entity is here.
-    Ishere
-  | -- | Check whether the current cell is empty
-    Isempty
   | -- | Get a reference to oneself
     Self
   | -- | Get the robot's parent
@@ -764,12 +760,6 @@ constInfo c = case c of
       , "If you can use sum types, you can also inspect the result directly."
       ]
   Upload -> command 1 short $ shortDoc (Set.singleton $ Mutation $ RobotChange BehaviorChange) "Upload a robot's known entities and log to another robot."
-  Ishere -> command 1 Intangible $ shortDoc (Set.singleton $ Query $ Sensing EntitySensing) "See if a specific entity is in the current location."
-  Isempty ->
-    command 0 Intangible . doc (Set.singleton $ Query $ Sensing EntitySensing) "Check if the current location is empty." $
-      [ "Detects whether or not the current location contains an entity."
-      , "Does not detect robots or other actors."
-      ]
   Self -> function 0 $ shortDoc (Set.singleton $ Query APriori) "Get a reference to the current robot."
   Parent -> function 0 $ shortDoc (Set.singleton $ Query APriori) "Get a reference to the robot's parent."
   Base -> function 0 $ shortDoc (Set.singleton $ Query APriori) "Get a reference to the base."

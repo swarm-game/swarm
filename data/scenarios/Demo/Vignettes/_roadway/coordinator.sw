@@ -1,4 +1,5 @@
 import "~swarm/lib/control"
+import "~swarm/lib/scan"
 
 /** Teleports to a new location to execute a function
   then returns to the original location before

@@ -28,8 +28,9 @@ objectives:
       - |
         No entities should be here
     condition: |
+      import "~swarm/lib/scan"
       as base {
-        isEmpty
+        isempty
       }
 solution: |
   noop

@@ -14,15 +14,13 @@ end
 def judgeCount : Int -> Cmd Unit = \actual.
   watch down;
   wait 1024;
-  s <- scan down;
-  case s
-    (\_. pure ())
-    (\p.
-      try {
+  p <- scan down;
+  if (p == "") {}
+    { try {
         let c = read @Int p in
         if (c == actual) { win } {}
       } {}
-    )
+    }
 end
 
 def forever = \c. c; forever c end

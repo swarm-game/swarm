@@ -3,6 +3,7 @@ Uses a string to maintain a queue of coordinates.
 */
 
 import "~swarm/lib/control"
+import "~swarm/lib/scan"
 
 def coordsToString : (Int * Int) -> Text = λmatch \x. \y.
   format x ++ "," ++ format y

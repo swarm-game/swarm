@@ -80,7 +80,7 @@ robots:
       def replace: Cmd Unit =
           i <- scan down;
           watch down; wait 2024; wait 32;
-          case i (\_. noop) (\i. create i; try { place i } {} );
+          if (i == "") {} {create i; try { place i } {}};
           replace;
       end;
       replace

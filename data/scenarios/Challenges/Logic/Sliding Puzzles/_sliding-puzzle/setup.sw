@@ -4,6 +4,7 @@ This robot is responsible for both the initial board setup.
 
 import "~swarm/lib/control"
 import "~swarm/lib/arith"
+import "~swarm/lib/scan"
 import "common"
 
 /**
@@ -87,21 +88,21 @@ Left is a Boolean indicating whether the tile has been drilled.
 Right is a valid tile entity name.
 */
 def scanValid : Dir -> Cmd (Bool + Text) = \d.
-    maybeTileForward <- scan d;
-    case maybeTileForward
-        (\_. pure $ inL false)
-        (\x.
-            if (x == "sliding-tile") {
+    tileForward <- scan d;
+    if (tileForward == "")
+        {pure $ inL false}
+        {
+            if (tileForward == "sliding-tile") {
                 pure $ inL true;
             } {
-                y <- getOrdinal x;
+                y <- getOrdinal tileForward;
                 pure $ if (y > 0) {
-                    inR x;
+                    inR tileForward;
                 } {
                     inL false;
                 };
             };
-        );
+        };
     end
 
 /**

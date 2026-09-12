@@ -1,6 +1,7 @@
 import "~swarm/lib/control"
 import "~swarm/lib/arith"
 import "~swarm/lib/tuple"
+import "~swarm/lib/scan"
 
 def getRelativeLocation = \absCurrentLoc. \absDestLoc.
     let negatedLoc = negateTuple absCurrentLoc in
@@ -46,8 +47,8 @@ def recordFirstEncounter = \stashLoc. \item.
     end;
 
 def tryHarvest = \stashLoc.
-    maybeItem <- scan down;
-    case maybeItem pure (\item.
+    item <- scan down;
+    if (item == "") {} {
         hasSome <- has item;
         harvest;
         if hasSome {} {
@@ -57,7 +58,7 @@ def tryHarvest = \stashLoc.
             harvest;
             recordFirstEncounter stashLoc item;
         };
-    );
+    };
     end;
 
 def doRow = \stashLoc. \sandLength.
@@ -97,13 +98,14 @@ def placeFinalCopy = \item.
     end;
 
 def copyIfNeeded = \targetCount.
-    maybeItem <- scan down;
-    case maybeItem pure (\item.
-        quantity <- count item;
+    item <- scan down;
+    if (item == "")
+      {}
+      { quantity <- count item;
         if (quantity < targetCount) {
             placeFinalCopy item;
         } {};
-    );
+      };
     move;
     end;
 

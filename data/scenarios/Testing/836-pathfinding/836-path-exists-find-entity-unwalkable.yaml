@@ -9,7 +9,7 @@ objectives:
     condition: |
       as base {
         itemAhead <- scan forward;
-        pure $ case itemAhead (\_. false) (\item. item == "water");
+        pure $ itemAhead == "water";
       };
 solution: |
   import "_836-path-exists/find-entity-unwalkable-solution"; followRoute
