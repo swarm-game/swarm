@@ -10,6 +10,7 @@ module Swarm.TUI.Model.Name where
 
 import Data.Text (Text)
 import Swarm.TUI.Model.ViewChunk
+import Swarm.Text.Markdown.Document (Target)
 
 data WorldEditorFocusable
   = BrushSelector
@@ -126,12 +127,14 @@ data Name
     ModalViewport
   | -- | The scrollable viewport for the REPL.
     REPLViewport
+  | -- | The scrollable viewport for help pages.
+    HelpViewport
   | -- | A clickable button in a modal dialog.
     Button Button
   | -- | A clickable shortcut in the TUI.
     UIShortcut Text
   | -- | A clickable link, either to an external URL or a local page.
-    UILink Text
+    UILink Target
   | -- | A custom widget name, for use in applications built on top of the Swarm library.
     CustomName Text
   deriving (Eq, Ord, Show, Read)

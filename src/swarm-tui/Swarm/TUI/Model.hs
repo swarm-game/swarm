@@ -45,6 +45,7 @@ module Swarm.TUI.Model (
   infoScroll,
   modalScroll,
   replScroll,
+  helpScroll,
 
   -- ** Utility
   logEvent,
@@ -165,6 +166,9 @@ modalScroll = viewportScroll ModalViewport
 
 replScroll :: ViewportScroll Name
 replScroll = viewportScroll REPLViewport
+
+helpScroll :: ViewportScroll Name
+helpScroll = viewportScroll HelpViewport
 
 --------------------------------------------------
 -- Utility

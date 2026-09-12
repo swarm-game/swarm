@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -9,23 +11,30 @@ module Swarm.Text.Markdown.Document (
   -- * Simple Document model
   Document (..),
   Paragraph (..),
-  mapD,
-  mapP,
+  mapDocument,
+  traverseDocument,
+  mapParagraph,
+  traverseParagraph,
   pureP,
   TxtAttr (..),
   Node (..),
+  Target (..),
 
   -- * Utilities
   txt,
   addTextAttribute,
   findCode,
+  parseTarget,
+  getTarget,
 ) where
 
 import Commonmark.Types (ListSpacing, ListType)
+import Data.Functor.Identity (Identity (..))
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
+import Data.Text qualified as T
 
 ------------------------------------------------------------
 -- Simple Document model
@@ -61,14 +70,22 @@ data Paragraph c where
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 -- | Map a function over every 'Paragraph' in a 'Document'.
-mapD :: (Paragraph c -> Paragraph c') -> Document c -> Document c'
-mapD f (Document ps) = Document (map f ps)
+mapDocument :: (Paragraph c -> Paragraph c') -> Document c -> Document c'
+mapDocument f = runIdentity . traverseDocument (Identity . f)
+
+-- | Effectfully traverse over all the paragraphs in a document.
+traverseDocument :: Applicative f => (Paragraph c -> f (Paragraph c')) -> Document c -> f (Document c')
+traverseDocument g (Document ps) = Document <$> traverse g ps
 
 -- | Map a function over every 'Node' in a 'Paragraph'.
-mapP :: (Node c -> Node c') -> Paragraph c -> Paragraph c'
-mapP f = \case
-  SimpleParagraph ns -> SimpleParagraph (map f ns)
-  ListParagraph ty sp ds -> ListParagraph ty sp ((map . map . mapP) f ds)
+mapParagraph :: (Node c -> Node c') -> Paragraph c -> Paragraph c'
+mapParagraph f = runIdentity . traverseParagraph (Identity . f)
+
+-- | Effectfully traverse over all the nodes in a paragraph.
+traverseParagraph :: Applicative f => (Node c -> f (Node c')) -> Paragraph c -> f (Paragraph c')
+traverseParagraph g = \case
+  SimpleParagraph ns -> SimpleParagraph <$> traverse g ns
+  ListParagraph ty sp ds -> ListParagraph ty sp <$> (traverse . traverse . traverseParagraph) g ds
 
 -- | Create a singleton 'Paragraph' with one 'Node'.
 pureP :: Node c -> Paragraph c
@@ -85,7 +102,7 @@ data TxtAttr where
   -- | Code.
   Code :: TxtAttr
   -- | A link, consisting of a destination and optional title.
-  Link :: Text -> Maybe Text -> TxtAttr
+  Link :: Target -> Maybe Text -> TxtAttr
   deriving (Eq, Show, Ord)
 
 -- | Inline leaf nodes.
@@ -102,8 +119,25 @@ data Node c
   | -- | A code block.
     LeafCodeBlock String c
   | -- | A link: target, optional title, contents.
-    LeafLink Text (Maybe Text) [Node c]
+    LeafLink Target (Maybe Text) [Node c]
   deriving (Eq, Show, Functor, Foldable, Traversable)
+
+parseTarget :: Text -> Target
+parseTarget t
+  | "http" `T.isPrefixOf` t = URL t
+  | otherwise = Internal t
+
+getTarget :: Target -> Text
+getTarget = \case
+  URL dest -> dest
+  Internal dest -> dest
+
+data Target
+  = -- | Link to a URL.
+    URL Text
+  | -- | Internal link to another page.
+    Internal Text
+  deriving (Eq, Ord, Read, Show)
 
 --------------------------------------------------
 -- Utilities

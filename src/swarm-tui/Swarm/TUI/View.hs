@@ -40,7 +40,7 @@ import Brick.Widgets.Border (
   vBorder,
  )
 import Brick.Widgets.Center (centerLayer, hCenter)
-import Brick.Widgets.Dialog
+import Brick.Widgets.Dialog (dialog, renderDialog)
 import Brick.Widgets.Edit (getEditContents, renderEditor)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
@@ -128,6 +128,7 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Dialog.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.Event qualified as SE
+import Swarm.TUI.Model.Help
 import Swarm.TUI.Model.KeyBindings (KeybindingMetadata (..), keybindingMeta)
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Repl
@@ -138,6 +139,7 @@ import Swarm.TUI.Panel
 import Swarm.TUI.View.Achievement
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
+import Swarm.TUI.View.Help
 import Swarm.TUI.View.KeyCmd
 import Swarm.TUI.View.Logo
 import Swarm.TUI.View.Objective qualified as GR
@@ -157,6 +159,7 @@ drawUI :: AppState -> [Widget Name]
 drawUI s = drawPopups s : mainLayers
  where
   mainLayers
+    | Just curHelp <- s ^. uiState . uiHelp . curHelpPage = drawHelpUI s curHelp
     | s ^. uiState . uiPlaying = drawGameUI s
     | otherwise = drawMenuUI s
 
@@ -169,7 +172,6 @@ drawMenuUI s = case s ^. uiState . uiMenu of
   NewGameMenu stk -> drawNewGameMenuUI s stk $ s ^. uiState . uiLaunchConfig
   AchievementsMenu l -> [drawAchievementsMenuUI s l]
   MessagesMenu -> [drawMainMessages s]
-  AboutMenu -> [drawAboutMenuUI (s ^. runtimeState . appData . at "about")]
 
 drawMainMessages :: AppState -> Widget Name
 drawMainMessages s = renderDialog dial . padBottom Max . scrollList $ drawLogs ls
@@ -184,7 +186,7 @@ drawMainMenuUI s l =
   vBox . catMaybes $
     [ drawLogo <$> logo
     , hCenter . padTopBottom 2 <$> newVersionWidget version
-    , Just . centerLayer . vLimit 6 . hLimit 20 $
+    , Just . centerLayer . vLimit 7 . hLimit 20 $
         BL.renderList (const (hCenter . drawMainMenuEntry s)) True l
     ]
  where
@@ -417,6 +419,7 @@ drawMainMenuEntry :: AppState -> MainMenuEntry -> Widget Name
 drawMainMenuEntry s = \case
   NewGame -> txt "New game"
   Tutorial -> txt "Tutorial"
+  Help -> txt "Help"
   Achievements -> txt "Achievements"
   About -> txt "About"
   Messages -> highlightMessages $ txt "Messages"
@@ -425,14 +428,6 @@ drawMainMenuEntry s = \case
   highlightMessages =
     applyWhen (s ^. runtimeState . eventLog . notificationsCount > 0) $
       withAttr notifAttr
-
-drawAboutMenuUI :: Maybe Text -> Widget Name
-drawAboutMenuUI Nothing = centerLayer $ txt "About swarm!"
-drawAboutMenuUI (Just t) = centerLayer . vBox . map (hCenter . txt . nonblank) $ T.lines t
- where
-  -- Turn blank lines into a space so they will take up vertical space as widgets
-  nonblank "" = " "
-  nonblank s = s
 
 -- | Draw the main game UI.  Generates a list of widgets, where each
 --   represents a layer.  Right now we just generate two layers: the
@@ -478,7 +473,7 @@ drawGameUI s =
   uig = ps ^. uiGameplay
 
   h =
-    ToplevelConfigurationHelp
+    TopLevelConfigInfo
       (s ^. runtimeState . webPort)
       keyConf
 
@@ -624,7 +619,7 @@ chooseCursor s locs = do
 
 -- | Draw a dialog window, if one should be displayed right now.
 drawDialog ::
-  ToplevelConfigurationHelp ->
+  TopLevelConfigInfo ->
   Bool ->
   ScenarioState ->
   Widget Name
@@ -641,14 +636,14 @@ drawDialog h isNoMenu ps =
 
 -- | Draw one of the various types of modal dialog.
 drawModal ::
-  ToplevelConfigurationHelp ->
+  TopLevelConfigInfo ->
   ScenarioState ->
   Bool ->
   ModalType ->
   Widget Name
 drawModal h ps isNoMenu = \case
   MidScenarioModal x -> case x of
-    HelpModal -> helpWidget h $ gs ^. randomness . seed
+    ConfigModal -> configWidget h $ gs ^. randomness . seed
     RobotsModal -> drawRobotsDisplayModal uig gs $ uig ^. uiDialogs . uiRobot
     RecipesModal -> availableListWidget gs RecipeList
     CommandsModal -> commandsListWidget aMap gs
@@ -685,47 +680,42 @@ drawModal h ps isNoMenu = \case
   uig = ps ^. uiGameplay
   aMap = uig ^. uiAttributeMap
 
-data ToplevelConfigurationHelp = ToplevelConfigurationHelp
-  { _helpPort :: Maybe Port
-  , _helpKeyConf :: KeyConfig SE.SwarmEvent
+-- | Information provided from the top-level state to be displayed in
+--   the configuration dialog.
+data TopLevelConfigInfo = TopLevelConfigInfo
+  { _configPort :: Maybe Port
+  , _configKeyConf :: KeyConfig SE.SwarmEvent
   }
 
-helpWidget :: ToplevelConfigurationHelp -> Seed -> Widget Name
-helpWidget (ToplevelConfigurationHelp mport keyConf) theSeed =
+configWidget :: TopLevelConfigInfo -> Seed -> Widget Name
+configWidget (TopLevelConfigInfo mport keyConf) theSeed =
   padLeftRight 2 . vBox $
     padTop (Pad 1)
       <$> [ info
           , colorizationLegend
-          , helpKeysWidget keyConf
-          , tips
+          , configKeysWidget keyConf
           ]
  where
-  tips =
-    vBox
-      [ helpHeading boldAttr "Have questions? Want some tips? Check out:"
-      , txt "  - The Swarm wiki, " <+> hyperlink wikiUrl (txt wikiUrl)
-      , txt "  - The Swarm Discord server at " <+> hyperlink swarmDiscord (txt swarmDiscord)
-      ]
   info =
     vBox
-      [ helpHeading boldAttr "Configuration"
+      [ configSectionHeading boldAttr "Configuration"
       , txt ("Seed: " <> into @Text (show theSeed))
       , txt ("Web server port: " <> maybe "none" (into @Text . show) mport)
       ]
   colorizationLegend =
     vBox
-      [ helpHeading boldAttr "Colorization legend"
+      [ configSectionHeading boldAttr "Colorization legend"
       , drawMarkdown
           ("In text, snippets of code like `3 + 4` or `scan down` will be colorized. Types like `Cmd Text`{=type} have a dedicated color. The names of an `entity`{=entity}, a `structure`{=structure}, and a `tag`{=tag} also each have their own color." :: Document (Syntax Raw))
       ]
 
-helpHeading :: AttrName -> Text -> Widget Name
-helpHeading attr = padBottom (Pad 1) . withAttr attr . txt
+configSectionHeading :: AttrName -> Text -> Widget Name
+configSectionHeading attr = padBottom (Pad 1) . withAttr attr . txt
 
-helpKeysWidget :: KeyConfig SE.SwarmEvent -> Widget Name
-helpKeysWidget keyConf =
+configKeysWidget :: KeyConfig SE.SwarmEvent -> Widget Name
+configKeysWidget keyConf =
   vBox
-    [ helpHeading boldAttr "Keybindings"
+    [ configSectionHeading boldAttr "Keybindings"
     , keyLegend
     , keySection "Main (always active)" mainEventHandlers
     , keySection "REPL panel" replEventHandlers
@@ -744,7 +734,7 @@ helpKeysWidget keyConf =
   keySection name handlers =
     padBottom (Pad 1) $
       vBox
-        [ helpHeading italicAttr name
+        [ configSectionHeading italicAttr name
         , mkKeyTable handlers
         ]
   mkKeyTable =
@@ -906,6 +896,7 @@ drawModalMenu gs keyConf = vLimit 1 $ drawKeyCmds globalKeyCmds
       , notificationKey (discovery . availableCommands) SE.ViewCommandsEvent "Commands"
       , notificationKey messageNotifications SE.ViewMessagesEvent "Messages"
       , structuresKey
+      , Just (SingleButton NoHighlight (keyM SE.ViewConfigEvent) "Config")
       ]
   keyM = VU.bindingText keyConf . SE.Main
 

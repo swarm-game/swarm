@@ -16,7 +16,7 @@ import Swarm.Failure (SystemFailure)
 import Swarm.Game.Scenario (gsiScenarioInputs)
 import Swarm.Game.Scenario.Scoring.GenericMetrics (Metric (..), Progress (..))
 import Swarm.Game.ScenarioInfo (ScenarioInfo, ScenarioStatus (..), scenarioStatus)
-import Swarm.Game.State.Runtime (eventLog, stdGameConfigInputs)
+import Swarm.Game.State.Runtime (eventLog, helpData, stdGameConfigInputs)
 import Swarm.Game.State.Substate (initState)
 import Swarm.Language.Pipeline (processSource, requireNonEmptyTerm)
 import Swarm.Pretty (prettyString)
@@ -29,6 +29,7 @@ import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.HUnit (assertFailure, testCase)
 import TestEditorFiles
 import TestFormat
+import TestHelp
 import TestLoadingErrors
 import TestMarkdown
 import TestRecipeCoverage
@@ -58,6 +59,7 @@ main = do
       , scenarioParseTests scenarioInputs scenarioPaths
       , formatTests
       , markdownTests
+      , helpTests (rs ^. helpData)
       , noScenarioOverlap
       , testScenarioSolutions scenarioPaths $ PersistentState rs' ui key progState
       , testEditorFiles
