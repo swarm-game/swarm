@@ -14,6 +14,7 @@ module Swarm.Language.Help (
 
   -- * Loading help collection
   loadHelp,
+  parseMetadata,
 ) where
 
 import Control.Lens (makeLenses)

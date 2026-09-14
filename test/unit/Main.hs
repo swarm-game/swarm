@@ -32,6 +32,7 @@ import TestEval (testEval)
 import TestInventory (testInventory)
 import TestLSP (testLSP)
 import TestLanguagePipeline (testLanguagePipeline)
+import TestMarkdownMetadata (testMarkdownMetadata)
 import TestNotification (testNotification)
 import TestOrdering (testOrdering)
 import TestOverlay (testOverlay)
@@ -95,6 +96,7 @@ statelessTests =
     , testLSP
     , testQQ
     , testViewChunk
+    , testMarkdownMetadata
     ]
 
 testMisc :: TestTree

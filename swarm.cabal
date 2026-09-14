@@ -1357,6 +1357,7 @@ test-suite swarm-unit
     TestInventory
     TestLSP
     TestLanguagePipeline
+    TestMarkdownMetadata
     TestNotification
     TestOrdering
     TestOverlay
