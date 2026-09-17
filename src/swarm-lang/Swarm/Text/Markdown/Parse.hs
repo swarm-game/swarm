@@ -92,7 +92,9 @@ instance Mark.IsBlock [Node Text] [Paragraph Text] where
   plain = Mark.paragraph
   thematicBreak = mempty
   blockQuote = (map . mapParagraph) (addTextAttribute Emphasis)
-  codeBlock f = Mark.plain . pure . LeafCodeBlock (T.unpack f)
+  codeBlock f
+    | f == "toc" || f == "toctree" = pure . TOCTree . map (T.unpack . T.strip) . T.lines
+    | otherwise = Mark.plain . pure . LeafCodeBlock (T.unpack f)
   heading _lvl = Mark.plain . Mark.strong
   rawBlock _ _ = mempty
   referenceLinkDefinition = mempty

@@ -17,7 +17,8 @@ module Swarm.Language.Help (
   parseMetadata,
 ) where
 
-import Control.Lens (makeLenses)
+import Commonmark.Types (ListSpacing (..), ListType (..))
+import Control.Lens (ix, makeLenses, over, (^?))
 import Data.Bifunctor (first, second)
 import Data.Char (isSpace)
 import Data.Either (partitionEithers)
@@ -29,14 +30,14 @@ import Effectful
 import Effectful.Error.Static
 import Swarm.Effect.Warn.Local
 import Swarm.Failure (Asset (..), AssetData (Help), Entry (..), LoadingFailure (..), SystemFailure (..))
-import Swarm.Language.Syntax (Phase (Raw), Syntax)
-import Swarm.ResourceLoading (getDataDirThrow)
+import Swarm.Language.Syntax (Phase (Raw), Raw, Syntax)
+import Swarm.ResourceLoading (Collection, atPath, getDataDirThrow)
 import Swarm.ResourceLoading.Collection (
-  Collection,
   CollectionConfig (..),
   loadCollection,
  )
 import Swarm.Text.Markdown (Document, fromTextE)
+import Swarm.Text.Markdown.Document (Document (..), Node (..), Paragraph (..), Target (..), mapDocument, pureP, txt)
 import Swarm.Util (Encoding (UTF8), readFileMayT)
 import System.FilePath (takeExtension)
 
@@ -82,6 +83,26 @@ parseMetadata = second M.fromList . partitionEithers . map (parseField . stripPu
     | T.length content == 0 = Left (CustomFailure $ "Metadata line with no colon: " <> field)
     | otherwise = (field,) <$> first CustomFailure (fromTextE (stripPunct content))
 
+-- | Render all the tables of contents in a document to lists of links.
+renderTOCs :: Collection HelpPage -> Document (Syntax Raw) -> Document (Syntax Raw)
+renderTOCs help = mapDocument renderTOC
+ where
+  renderTOC = \case
+    TOCTree hps -> ListParagraph (BulletList '*') TightList (map mkTOCEntry hps)
+    p -> p
+
+  mkTOCEntry hp = case help ^? atPath (hp <> ".md") . helpMetadata . ix "title" of
+    Nothing -> [pureP $ txt (T.pack hp)]
+    Just title -> [pureP $ LeafLink (Internal (T.pack (hp <> ".md"))) Nothing (getFirstPara title)]
+
+  getFirstPara = \case
+    Document (SimpleParagraph ns : _) -> ns
+    _ -> []
+
+-- | Render every table of contents in an entire collection.
+renderAllTOCs :: Collection HelpPage -> Collection HelpPage
+renderAllTOCs help = fmap (over helpDoc (renderTOCs help)) help
+
 -- | Load the collection of help pages from the standard location (data/help).
 loadHelp ::
   ( Warn SystemFailure :> es
@@ -91,4 +112,5 @@ loadHelp ::
   Eff es (Collection HelpPage)
 loadHelp = do
   helpFolder <- getDataDirThrow Help "help"
-  loadCollection helpCollectionConfig helpFolder
+  rawCollection <- loadCollection helpCollectionConfig helpFolder
+  pure $ renderAllTOCs rawCollection

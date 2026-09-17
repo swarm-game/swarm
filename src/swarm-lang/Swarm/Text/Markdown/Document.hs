@@ -55,9 +55,9 @@ newtype Document c = Document {paragraphs :: [Paragraph c]}
   deriving (Semigroup, Monoid) via [Paragraph c]
 
 -- | Markdown paragraphs are either a simple paragraph consisting of a
---   list of inline leaf nodes, or a list.  A list has a style for
---   displaying items, as well as a list of items, each of which can
---   contain a list of paragraphs.
+--   list of inline leaf nodes, a list, or a table of contents.  A
+--   list has a style for displaying items, as well as a list of
+--   items, each of which can contain a list of paragraphs.
 --
 --   For simple paragraphs, the idea is that paragraphs do not have
 --   line breaks, and so the inline elements follow each other, with
@@ -67,6 +67,7 @@ newtype Document c = Document {paragraphs :: [Paragraph c]}
 data Paragraph c where
   SimpleParagraph :: [Node c] -> Paragraph c
   ListParagraph :: ListType -> ListSpacing -> [[Paragraph c]] -> Paragraph c
+  TOCTree :: [FilePath] -> Paragraph c
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 -- | Map a function over every 'Paragraph' in a 'Document'.
@@ -84,6 +85,7 @@ mapParagraph f = runIdentity . traverseParagraph (Identity . f)
 -- | Effectfully traverse over all the nodes in a paragraph.
 traverseParagraph :: Applicative f => (Node c -> f (Node c')) -> Paragraph c -> f (Paragraph c')
 traverseParagraph g = \case
+  TOCTree ts -> pure $ TOCTree ts
   SimpleParagraph ns -> SimpleParagraph <$> traverse g ns
   ListParagraph ty sp ds -> ListParagraph ty sp <$> (traverse . traverse . traverseParagraph) g ds
 
@@ -157,6 +159,7 @@ findCode = concatMap findCodeP . paragraphs
  where
   findCodeP :: Paragraph c -> [c]
   findCodeP = \case
+    TOCTree _ -> []
     SimpleParagraph ns -> mapMaybe codeOnly ns
     ListParagraph _ _ ds -> (concatMap . concatMap) findCodeP ds
   codeOnly = \case
