@@ -155,6 +155,9 @@ normalise = mergeTokens . concatMap normaliseToken
 --   width of 1.
 paragraphToStream :: PrettyPrec a => Bool -> Int -> Maybe Int -> Paragraph a -> [Token]
 paragraphToStream indentFirstLine cols mw = \case
+  -- We "compile away" tables of contents into lists of links, so we
+  -- shouldn't encounter one here; if we do just emit a placeholder.
+  TOCTree _ -> ["[TOC]"]
   SimpleParagraph ns ->
     maybe id (splitter . max 1) mw
       . glueTokens
