@@ -37,6 +37,9 @@ data HelpState = HelpState
   --   is cleared when a new page is visited via any action other than
   --   "forward".
   , _helpLinks :: FocusRing Name
+  -- TODO(#2801): this should be generalized to allow cycling through
+  -- links in other displayed Markdown documents (e.g. scenario or
+  -- entity descriptions), not just in help pages.
   }
 
 initHelpState :: HelpState
