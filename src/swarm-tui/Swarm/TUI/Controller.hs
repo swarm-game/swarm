@@ -181,6 +181,7 @@ handleHelpEvent ev = do
   case ev of
     Key V.KEsc -> closeHelp
     CharKey '\t' -> uiState . uiHelp . helpLinks %= focusNext
+    Key V.KBackTab -> uiState . uiHelp . helpLinks %= focusPrev
     Key V.KEnter -> case focusGetCurrent (s ^. uiState . uiHelp . helpLinks) of
       Just (UILink dest) -> handleLinkClick dest
       _ -> pure ()
