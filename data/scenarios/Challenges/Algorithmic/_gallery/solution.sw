@@ -1,4 +1,5 @@
 import "~swarm/lib/control"
+import "~swarm/lib/scan"
 
 def countRow = \currentCount.
     emptyHere <- isempty;
@@ -11,11 +12,11 @@ def countRow = \currentCount.
     end;
 
 def getOrdinal = \d.
-    maybeEntity <- scan d;
-    case maybeEntity (\nothing. pure $ inL nothing) (\item.
+    item <- scan d;
+    if (item == "") { pure (inL ()) } {
         myCount <- count item;
         pure $ inR myCount;
-    );
+    };
     end;
 
 /*
@@ -24,13 +25,13 @@ Facing west, just north of the row.
 */
 def moveToBeginning =
     thingLeft <- scan left;
-    case thingLeft (\_.
+    if (thingLeft == "") {
         turn back;
         move;
-    ) (\_.
+    } {
         move;
         moveToBeginning;
-    );
+    };
     end;
 
 def doSwap =

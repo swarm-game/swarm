@@ -32,17 +32,15 @@ Loops forever
 def scanDirections = \n.
     let d = getDirection n in
     out <- scan d;
-    shouldContinue <- case out
-        (\_. pure true)
-        (\x. if (x == "mound") {
-            drill d;
-            pure true;
-        } {
-            // A "flower" shall serve as
-            // a semaphore to terminate the loop,
-            // so that the base can `salvage` us.
-            pure $ x != "flower";
-        });
+    shouldContinue <-
+      if (out == "") {pure true} {
+      if (out == "mound") {drill d; pure true;}
+      {
+        // A "flower" shall serve as
+        // a semaphore to terminate the loop,
+        // so that the base can `salvage` us.
+        pure $ out != "flower";
+      }};
 
     if shouldContinue {
         if (n > 0) {
@@ -89,16 +87,14 @@ def deployGrid = \f. \width. \height.
     end;
 
 def pickupToolkit =
-    x <- scan down;
-    case x
-        (\_. pure false)
-        (\y. if (y == "toolkit") {
-            tk <- grab;
-            equip tk;
-            pure true
-        } {
-            pure false
-        });
+    y <- scan down;
+    if (y == "toolkit") {
+      tk <- grab;
+      equip tk;
+      pure true
+    } {
+      pure false
+    };
     end;
 
 def searchToolkitSingleRow = \colCount.

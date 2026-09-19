@@ -1,13 +1,13 @@
 def modifyCart = \cartType. \device.
-    result <- scan forward;
-    case result pure (\item.
+    item <- scan forward;
+    if (item == "") {} {
         if (item == cartType) {
             use device forward;
             pure ();
         } {
             pure ();
         };
-    );
+    };
     end;
 
 def watchSpot =

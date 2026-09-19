@@ -6,7 +6,6 @@ import "~swarm/lib/control"
 //  - place "OK"
 // else
 //  - try to grab "OK"
-def null = inl () end;
 
 def toI = \e.
   if (e == "one"   || e == "blocked one")   {1} {
@@ -16,13 +15,12 @@ def toI = \e.
   }}}
 end;
 def f = \x.\y.
-  case x (\_. false) (\i.
-    case y (\_. false) (\j.
-      let xi = toI i in
-      let yj = toI j in
+  if (x == "" || y == "")
+    { false }
+    { let xi = toI x in
+      let yj = toI y in
       xi > yj
-    )
-  )
+    }
 end;
 
 def go =
@@ -36,8 +34,8 @@ forever (
         x <- scan south;
         y <- scan down;
         z <- scan north;
-        if (z == null) {
-          if (y == null) {
+        if (z == "") {
+          if (y == "") {
             pure true
           } {
             pure $ f x y

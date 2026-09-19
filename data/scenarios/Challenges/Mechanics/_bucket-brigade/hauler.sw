@@ -1,4 +1,5 @@
 import "~swarm/lib/control"
+import "~swarm/lib/scan"
 
 /** The function argument returns a boolean.
 Keep running the function until either the

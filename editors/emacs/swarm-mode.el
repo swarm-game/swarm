@@ -105,8 +105,6 @@
       "blocked"
       "scan"
       "upload"
-      "ishere"
-      "isempty"
       "meet"
       "meetall"
       "whoami"

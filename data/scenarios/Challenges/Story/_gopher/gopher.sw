@@ -1,5 +1,6 @@
 import "~swarm/lib/control"
 import "~swarm/lib/arith"
+import "~swarm/lib/scan"
 
 def randSign = \x.
     opposite <- random 2;
@@ -69,7 +70,7 @@ def getTauntStage = \startingAmount. \newCount.
     end;
 
 def waitWhileHere = \e. \remainingTime.
-    here <- isHere e;
+    here <- ishere e;
     if here {
         wait 1;
         if (remainingTime > 0) {

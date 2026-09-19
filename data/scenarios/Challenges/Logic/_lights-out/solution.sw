@@ -1,4 +1,5 @@
 import "~swarm/lib/control"
+import "~swarm/lib/scan"
 
 /** Precondition: facing "d" direction */
 def toggleToDark = \d.
@@ -39,7 +40,7 @@ def goToCorner =
 
 def onInDirection = \d.
     entHere <- scan d;
-    pure $ case entHere (\_. false) (\e. e == "on");
+    pure $ entHere == "on";
     end;
 
 /**

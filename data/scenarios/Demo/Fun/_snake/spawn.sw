@@ -1,8 +1,10 @@
+import "~swarm/lib/scan"
+
 def waitForConsumption =
   watch down;
   wait 2000;
-  appleHere <- ishere "apple";
-  if appleHere {
+  here <- scan down;
+  if (here == "apple") {
     waitForConsumption;
   } {}
   end;

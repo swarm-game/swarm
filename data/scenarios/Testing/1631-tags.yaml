@@ -27,12 +27,12 @@ objectives:
         Do not pick up any fruit.
 solution: |
   def findTarget =
-    result <- scan down;
-    isTarget <- case result (\_. pure false) (\item.
+    item <- scan down;
+    isTarget <- if (item == "") {pure false} {
       let isEdible = hastag item "edible" in
       let isFruit = hastag item "fruit" in
       pure $ isEdible && not isFruit;
-    );
+    };
 
     if isTarget {
       grab;
@@ -57,6 +57,7 @@ robots:
       - lodestone
       - logger
       - scanner
+      - comparator
       - solar panel
       - strange loop
       - treads

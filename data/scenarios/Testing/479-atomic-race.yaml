@@ -32,8 +32,8 @@ objectives:
 solution: |
   def forever = \c. force c ; forever c end
   def tryharvest =
-    b <- ishere "weed";
-    if b {harvest; n <- random 4; wait n} {}
+    h <- scan down;
+    if (h == "weed") {harvest; n <- random 4; wait n} {}
   end;
   forever {tryharvest}
 robots:
@@ -56,8 +56,8 @@ robots:
     program: |
       def forever = \c. force c ; forever c end
       def tryplant =
-        b <- ishere "weed";
-        if b {} {place "weed"}
+        h <- scan down;
+        if (h == "weed") {} {place "weed"}
       end;
       forever {try {tryplant} {create "Win"}}
 entities:

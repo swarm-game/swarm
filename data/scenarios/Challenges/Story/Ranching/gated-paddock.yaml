@@ -21,6 +21,9 @@ objectives:
         Note that you can use the `drill` command (by way of the `post puller`{=entity} tool)
         to demolish a `fence`{=entity} that has been `place`d.
     condition: |-
+      import "~swarm/lib/control"
+      import "~swarm/lib/scan"
+
       def isBlockedOrFenced =
           b <- blocked;
           pure b;

@@ -90,10 +90,12 @@ Checks in the four directions.
 def hasAdjacentBlank = \tileIdx. \n.
     if (n > 0) {
         result <- scan forward;
-        case result (\_. handleLegalMove tileIdx; pure true;) (\_.
+        if (result == "")
+          { handleLegalMove tileIdx; pure true; }
+          {
             turn left;
             hasAdjacentBlank tileIdx $ n - 1;
-        );
+          }
     } {
         pure false;
     }
