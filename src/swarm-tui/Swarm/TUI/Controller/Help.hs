@@ -12,14 +12,17 @@ module Swarm.TUI.Controller.Help (
 ) where
 
 import Brick (EventM, zoom)
-import Control.Lens (Lens', use, uses, (%=), (.=))
+import Control.Lens (Lens', use, uses, (%=), (.=), (^.), (^?))
 import Control.Monad (when)
 import Data.List (uncons)
 import Swarm.Game.Achievement.Definitions (CategorizedAchievement (GlobalAchievement), GlobalAchievement (LookedAtAboutScreen))
-import Swarm.TUI.Controller.Util
-import Swarm.TUI.Model (AppState, Name, playState, progression, scenarioState, uiState)
+import Swarm.Game.State.Runtime (helpData)
+import Swarm.Language.Help (helpDoc)
+import Swarm.ResourceLoading (atPath)
+import Swarm.TUI.Controller.Util (ensurePause, safeAutoUnpause)
+import Swarm.TUI.Model (AppState, Name, playState, progression, runtimeState, scenarioState, uiState)
 import Swarm.TUI.Model.Achievements (attainAchievement)
-import Swarm.TUI.Model.Help (HelpState, curHelpPage, helpHistoryBack, helpHistoryForward)
+import Swarm.TUI.Model.Help
 import Swarm.TUI.Model.UI (uiHelp)
 
 -- | Toggle the help system. If it is currently open, close it, saving
@@ -46,12 +49,12 @@ visitHelpPage page = do
   -- Add the currently visited help page (if any) to the history
   saveCurHelpPage
 
-  -- Clear the cohistory, if any --- we are visiting a new page, so we
+  -- Clear the forward history, if any --- we are visiting a new page, so we
   -- can no longer return to those pages using "forward"
   uiState . uiHelp . helpHistoryForward .= []
 
   -- Visit the requested page
-  uiState . uiHelp . curHelpPage .= Just page
+  setHelpPage page
 
   -- Grant achievement for looking at About page
   when (page == "about.md")
@@ -82,12 +85,12 @@ closeHelp = do
   uiState . uiHelp . curHelpPage .= Nothing
 
 -- | Pop the previous page in the help system browsing history (if
---   any) and visit it, pushing the current page onto the cohistory.
---   If there is no previous page, do nothing.
+--   any) and visit it, pushing the current page onto the forward
+--   history stack.  If there is no previous page, do nothing.
 visitPreviousHelpPage :: EventM Name AppState ()
 visitPreviousHelpPage = shiftHelpZipper helpHistoryForward helpHistoryBack
 
--- | Move to the next page in the help cohistory (i.e. go foward after
+-- | Move to the next page in the forward help history (i.e. go foward after
 --   previously going back).  If there is no next page, do nothing.
 visitNextHelpPage :: EventM Name AppState ()
 visitNextHelpPage = shiftHelpZipper helpHistoryBack helpHistoryForward
@@ -103,7 +106,20 @@ shiftHelpZipper toL fromL = do
     Nothing -> pure ()
     Just (p, from') -> do
       Brick.zoom (playState . scenarioState) ensurePause
+      setHelpPage p
       Brick.zoom (uiState . uiHelp) $ do
-        curHelpPage .= Just p
         toL %= maybe id (:) mcur
         fromL .= from'
+
+-- | Set the current help page to the given page, automatically
+--   setting up the focus ring for all the links it contains.  Note
+--   that this function does not do anything to update the history, so
+--   it is not safe to call on its own and should not be exported from
+--   this module.
+setHelpPage :: FilePath -> EventM Name AppState ()
+setHelpPage p = do
+  uiState . uiHelp . curHelpPage .= Just p
+  help <- use $ runtimeState . helpData
+  case help ^? atPath p of
+    Nothing -> pure ()
+    Just pg -> uiState . uiHelp . helpLinks .= linkFocusRing (pg ^. helpDoc)

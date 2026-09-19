@@ -5,6 +5,7 @@
 module Swarm.TUI.View.Util where
 
 import Brick hiding (Direction, Location)
+import Brick.Focus (FocusRing, focusGetCurrent, focusRing)
 import Brick.Keybindings (Binding (..), KeyConfig, firstActiveBinding, ppKey, ppModifier)
 import Brick.Widgets.Dialog
 import Brick.Widgets.List qualified as BL
@@ -166,12 +167,20 @@ drawType ty = Widget Fixed Fixed $ do
   render . withAttr infoAttr . padLeftRight 1 . txt $ displayedTy
 
 -- | Draw a markdown document with simple code, bold, or italic attributes.
---
--- TODO: #574 Code blocks should probably be handled separately.
 drawMarkdown ::
   (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase)) =>
   Markdown.Document (Syntax phase) -> Widget Name
-drawMarkdown d = do
+drawMarkdown = drawMarkdownWithLinks (focusRing [])
+
+-- | Draw a markdown document with simple code, bold, or italic
+--   attributes.  Also highlight the currently focused link using the
+--   provided focus ring.
+--
+-- TODO: #574 Code blocks should probably be handled separately.
+drawMarkdownWithLinks ::
+  (PrettyPrec (Anchor (ImportPhaseFor phase)), Unresolvable (ImportPhaseFor phase)) =>
+  FocusRing Name -> Markdown.Document (Syntax phase) -> Widget Name
+drawMarkdownWithLinks linkFocusRing d = do
   Widget Greedy Fixed $ do
     ctx <- getContext
     let w = ctx ^. availWidthL
@@ -183,6 +192,9 @@ drawMarkdown d = do
     -- and lay them out with spacing
     render . layoutParagraphs . map renderPara . splitOn [Markdown.Para] $ docStream
  where
+  focusedLink :: Maybe Name
+  focusedLink = focusGetCurrent linkFocusRing
+
   -- To render a paragraph, split on newlines and then render each
   -- line while keeping track of an attribute stack.
   renderPara :: [Markdown.OutputToken] -> Widget Name
@@ -212,7 +224,11 @@ drawMarkdown d = do
     Markdown.Emphasis -> withAttr italicAttr
     Markdown.Raw f -> withAttr (rawAttr f)
     Markdown.Code -> withAttr highlightAttr
-    Markdown.Link dest _title -> clickable (UILink dest) . withAttr highlightAttr
+    Markdown.Link dest _title -> clickable (UILink dest) . highlightLink (UILink dest)
+
+  highlightLink dest
+    | focusedLink == Just dest = withAttr focusHighlightAttr
+    | otherwise = withAttr highlightAttr
 
   rawAttr = \case
     "entity" -> greenAttr
