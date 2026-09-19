@@ -26,10 +26,10 @@ queue_rules:
           - or:
             - check-success=HLint
             - -files~=\.hs$
-          - check-success=Haskell-CI - Linux - ghc-9.12.1
-          - check-success=Haskell-CI - Linux - ghc-9.10.1
-          - check-success=Haskell-CI - Linux - ghc-9.8.2
-          - check-success=Haskell-CI - Linux - ghc-9.6.6
+          - check-success=Haskell-CI - Linux - ghc-9.12.4
+          - check-success=Haskell-CI - Linux - ghc-9.10.3
+          - check-success=Haskell-CI - Linux - ghc-9.8.4
+          - check-success=Haskell-CI - Linux - ghc-9.6.7
           - check-success=Simple CI - windows-latest - ghc-9.12.4
           - check-success=Simple CI - macos-latest - ghc-9.12.4
 
