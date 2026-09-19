@@ -10,27 +10,32 @@ import Brick
 import Brick.Keybindings (KeyConfig)
 import Brick.Widgets.Center (hCenter)
 import Control.Lens
+import Data.Bool (bool)
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Swarm.Game.State.Runtime (helpData)
 import Swarm.Language.Help (HelpPage, helpDoc, helpMetadata)
 import Swarm.Language.Syntax (Phase (Raw), Syntax)
 import Swarm.ResourceLoading (atPath)
+import Swarm.ResourceLoading.Collection (Collection)
 import Swarm.TUI.Border (BorderLabels, borderWithLabels, bottomLabels, centerLabel, leftLabel, plainBorder, plainHBorder, topLabels)
-import Swarm.TUI.Model (AppState, Name (..), keyConfig, keyEventHandling, runtimeState)
+import Swarm.TUI.Model (AppState, Name (..), keyConfig, keyEventHandling, runtimeState, uiState)
 import Swarm.TUI.Model.Event (MainEvent (HelpBackEvent, HelpFwdEvent), SwarmEvent (Main))
+import Swarm.TUI.Model.Help (HelpState, helpHistoryBack, helpHistoryForward, helpLinks)
+import Swarm.TUI.Model.UI (uiHelp)
 import Swarm.TUI.View.KeyCmd
-import Swarm.TUI.View.Util (bindingText, drawMarkdown)
+import Swarm.TUI.View.Util (bindingText, drawMarkdownWithLinks)
 import Swarm.Text.Markdown (Document, toText)
 
 drawHelpUI :: AppState -> FilePath -> [Widget Name]
-drawHelpUI s hp = [helpPageWidget hp (help ^? atPath hp) keyConf]
+drawHelpUI s hp = [helpPageWidget hp help helpSt keyConf]
  where
   help = s ^. runtimeState . helpData
+  helpSt = s ^. uiState . uiHelp
   keyConf = s ^. keyEventHandling . keyConfig
 
-helpPageWidget :: FilePath -> Maybe HelpPage -> KeyConfig SwarmEvent -> Widget Name
-helpPageWidget path mhp keyConf =
+helpPageWidget :: FilePath -> Collection HelpPage -> HelpState -> KeyConfig SwarmEvent -> Widget Name
+helpPageWidget path help helpSt keyConf =
   borderWithLabels labels
     . withVScrollBars OnRight
     . viewport HelpViewport Vertical
@@ -42,6 +47,9 @@ helpPageWidget path mhp keyConf =
     . padTop (Pad 1)
     $ content
  where
+  mhp :: Maybe HelpPage
+  mhp = help ^? atPath path
+
   labels :: BorderLabels Name
   labels =
     plainBorder
@@ -59,14 +67,20 @@ helpPageWidget path mhp keyConf =
     Nothing -> "Page not found"
     Just hp -> fromMaybe "Untitled" (hp ^. helpMetadata . at "title")
 
+  anyBackHistory, anyForwardHistory :: Bool
+  anyBackHistory = helpSt ^. helpHistoryBack . to (not . null)
+  anyForwardHistory = helpSt ^. helpHistoryForward . to (not . null)
+
   helpCmds :: [KeyCmd]
   helpCmds =
-    [ SingleButton NoHighlight (bindingText keyConf $ Main HelpBackEvent) "back"
-    , SingleButton NoHighlight (bindingText keyConf $ Main HelpFwdEvent) "forward"
+    [ SingleButton (bool NoHighlight Alert anyBackHistory) (bindingText keyConf $ Main HelpBackEvent) "back"
+    , SingleButton (bool NoHighlight Alert anyForwardHistory) (bindingText keyConf $ Main HelpFwdEvent) "forward"
+    , SingleButton NoHighlight "Tab" "cycle"
+    , SingleButton NoHighlight "Enter" "visit"
     , SingleButton NoHighlight "Esc" "exit"
     ]
 
   content :: Widget Name
   content = case mhp of
     Nothing -> padTop (Pad 2) . hCenter . txt $ "No help page exists at path " <> T.pack path
-    Just hp -> drawMarkdown (hp ^. helpDoc)
+    Just hp -> drawMarkdownWithLinks (helpSt ^. helpLinks) (hp ^. helpDoc)
