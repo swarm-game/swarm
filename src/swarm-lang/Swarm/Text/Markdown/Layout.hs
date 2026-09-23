@@ -83,7 +83,7 @@ nodeToStream mw = \case
   -- appropriate line width, then split into code tokens with hard
   -- spaces.
   LeafCodeBlock _i c -> applyAttr Code . map (mkToken True) . tokenize $ maybe (prettyText c) (prettyTextWidth c) mw
-  LeafLink dest title desc -> applyAttr (Link dest title) . concatMap (nodeToStream mw) $ desc
+  LeafLink dest c title desc -> applyAttr (Link dest c title) . concatMap (nodeToStream mw) $ desc
  where
   applyAttr attr ts = PushAttr attr : ts ++ [PopAttr]
   mkToken hard = \case

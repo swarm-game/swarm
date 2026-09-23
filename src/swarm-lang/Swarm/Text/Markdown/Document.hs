@@ -103,8 +103,8 @@ data TxtAttr where
   Raw :: String -> TxtAttr
   -- | Code.
   Code :: TxtAttr
-  -- | A link, consisting of a destination and optional title.
-  Link :: Target -> Maybe Text -> TxtAttr
+  -- | A link, consisting of a destination, disambiguation counter, and optional title.
+  Link :: Target -> Int -> Maybe Text -> TxtAttr
   deriving (Eq, Show, Ord)
 
 -- | Inline leaf nodes.
@@ -120,8 +120,8 @@ data Node c
     LeafCode c
   | -- | A code block.
     LeafCodeBlock String c
-  | -- | A link: target, optional title, contents.
-    LeafLink Target (Maybe Text) [Node c]
+  | -- | A link: target, counter for disambiguating multiple links with the same target, optional title, contents.
+    LeafLink Target Int (Maybe Text) [Node c]
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 parseTarget :: Text -> Target
