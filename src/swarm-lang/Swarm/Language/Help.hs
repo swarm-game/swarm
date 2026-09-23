@@ -18,7 +18,7 @@ module Swarm.Language.Help (
 ) where
 
 import Commonmark.Types (ListSpacing (..), ListType (..))
-import Control.Lens (ix, makeLenses, over, (^?))
+import Control.Lens (at, ix, makeLenses, non, over, (^?))
 import Data.Bifunctor (first, second)
 import Data.Char (isSpace)
 import Data.Either (partitionEithers)
@@ -28,6 +28,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Effectful
 import Effectful.Error.Static
+import Effectful.State.Static.Local
 import Swarm.Effect.Warn.Local
 import Swarm.Failure (Asset (..), AssetData (Help), Entry (..), LoadingFailure (..), SystemFailure (..))
 import Swarm.Language.Syntax (Phase (Raw), Raw, Syntax)
@@ -37,8 +38,9 @@ import Swarm.ResourceLoading.Collection (
   loadCollection,
  )
 import Swarm.Text.Markdown (Document, fromTextE)
-import Swarm.Text.Markdown.Document (Document (..), Node (..), Paragraph (..), Target (..), mapDocument, pureP, txt)
+import Swarm.Text.Markdown.Document (Document (..), Node (..), Paragraph (..), Target (..), mapDocument, pureP, traverseDocument, traverseParagraph, txt)
 import Swarm.Util (Encoding (UTF8), readFileMayT)
+import Swarm.Util.Lens ((<+=))
 import System.FilePath (takeExtension)
 
 -- | A single page in the help collection. Contains a parsed document
@@ -93,15 +95,31 @@ renderTOCs help = mapDocument renderTOC
 
   mkTOCEntry hp = case help ^? atPath (hp <> ".md") . helpMetadata . ix "title" of
     Nothing -> [pureP $ txt (T.pack hp)]
-    Just title -> [pureP $ LeafLink (Internal (T.pack (hp <> ".md"))) Nothing (getFirstPara title)]
+    Just title -> [pureP $ LeafLink (Internal (T.pack (hp <> ".md"))) 0 Nothing (getFirstPara title)]
 
   getFirstPara = \case
     Document (SimpleParagraph ns : _) -> ns
     _ -> []
 
--- | Render every table of contents in an entire collection.
-renderAllTOCs :: Collection HelpPage -> Collection HelpPage
-renderAllTOCs help = fmap (over helpDoc (renderTOCs help)) help
+-- | Disambiguate links in a document by giving unique ID numbers to
+--   links with duplicate targets.  It would probably be simpler
+--   to just assign consecutive ID numbers to all the links but this
+--   seems conceptually cleaner.
+disambiguateLinks :: Document c -> Document c
+disambiguateLinks = runPureEff . evalState M.empty . (traverseDocument . traverseParagraph) disambiguate
+ where
+  disambiguate :: Node c -> Eff '[State (Map Target Int)] (Node c)
+  disambiguate = \case
+    LeafLink tgt _ t c -> do
+      -- Increment the value associated to tgt in the map (default 0) and return the new value
+      i <- (at @(Map Target Int) tgt . non 0) <+= 1
+      pure $ LeafLink tgt i t c
+    n -> pure n
+
+-- | Elaborate the help collection by (1) rendering every table of
+--   contents, and (2) inserting counters to disambiguate duplicate links
+elaborateHelp :: Collection HelpPage -> Collection HelpPage
+elaborateHelp help = fmap (over helpDoc (disambiguateLinks . renderTOCs help)) help
 
 -- | Load the collection of help pages from the standard location (data/help).
 loadHelp ::
@@ -112,5 +130,4 @@ loadHelp ::
   Eff es (Collection HelpPage)
 loadHelp = do
   helpFolder <- getDataDirThrow Help "help"
-  rawCollection <- loadCollection helpCollectionConfig helpFolder
-  pure $ renderAllTOCs rawCollection
+  elaborateHelp <$> loadCollection helpCollectionConfig helpFolder

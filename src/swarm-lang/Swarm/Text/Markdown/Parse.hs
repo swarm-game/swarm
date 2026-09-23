@@ -81,7 +81,7 @@ instance Mark.IsInline [Node Text] where
   escapedChar c = Mark.str $ T.pack ['\\', c]
   emph = map $ addTextAttribute Emphasis
   strong = map $ addTextAttribute Strong
-  link dest title desc = pure $ LeafLink (parseTarget dest) (title <$ guard (title /= "")) desc
+  link dest title desc = pure $ LeafLink (parseTarget dest) 0 (title <$ guard (title /= "")) desc
   image dest title desc = pure (txt "!") <> Mark.link dest title desc
   code = pure . LeafCode
   rawInline (Mark.Format f) = pure . LeafRaw (T.unpack f)
@@ -170,4 +170,4 @@ fromText = either (Document . (: []) . pureP . LeafRaw "") ((mapDocument . mapPa
     LeafCodeBlock b c -> either (LeafRaw "") (LeafCodeBlock b) (parseSyntax c)
     LeafText a b -> LeafText a b
     LeafRaw a b -> LeafRaw a b
-    LeafLink a b c -> LeafLink a b (map processNode c)
+    LeafLink a x b c -> LeafLink a x b (map processNode c)

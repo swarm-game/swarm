@@ -80,5 +80,5 @@ linkFocusRing = focusRing . docLinks
 
   nodeLinks :: Node c -> [Name]
   nodeLinks = \case
-    LeafLink tgt _ _ -> [UILink tgt]
+    LeafLink tgt i _ _ -> [UILink tgt i]
     _ -> []
