@@ -224,7 +224,7 @@ drawMarkdownWithLinks linkFocusRing d = do
     Markdown.Emphasis -> withAttr italicAttr
     Markdown.Raw f -> withAttr (rawAttr f)
     Markdown.Code -> withAttr highlightAttr
-    Markdown.Link dest _title -> clickable (UILink dest) . highlightLink (UILink dest)
+    Markdown.Link dest i _title -> clickable (UILink dest i) . highlightLink (UILink dest i)
 
   highlightLink dest
     | focusedLink == Just dest = withAttr focusHighlightAttr

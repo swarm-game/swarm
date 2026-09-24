@@ -74,10 +74,11 @@ linkFocusRing = focusRing . docLinks
 
   paraLinks :: Paragraph c -> [Name]
   paraLinks = \case
+    TOCTree {} -> []
     SimpleParagraph ns -> concatMap nodeLinks ns
     ListParagraph _ _ is -> concatMap (concatMap paraLinks) is
 
   nodeLinks :: Node c -> [Name]
   nodeLinks = \case
-    LeafLink tgt _ _ -> [UILink tgt]
+    LeafLink tgt i _ _ -> [UILink tgt i]
     _ -> []

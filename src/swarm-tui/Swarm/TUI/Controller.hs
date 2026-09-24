@@ -181,14 +181,15 @@ handleHelpEvent ev = do
   case ev of
     Key V.KEsc -> closeHelp
     CharKey '\t' -> uiState . uiHelp . helpLinks %= focusNext
+    Key V.KBackTab -> uiState . uiHelp . helpLinks %= focusPrev
     Key V.KEnter -> case focusGetCurrent (s ^. uiState . uiHelp . helpLinks) of
-      Just (UILink dest) -> handleLinkClick dest
+      Just (UILink dest _) -> handleLinkClick dest
       _ -> pure ()
     VtyEvent (V.EvKey k m)
       | isJust (B.lookupVtyEvent k m keyHandler) -> void $ B.handleKey keyHandler k m
     FKey 1 -> closeHelp
     MouseDown item _ _ _ -> case item of
-      UILink dest -> handleLinkClick dest
+      UILink dest _ -> handleLinkClick dest
       UIShortcut "back" -> visitPreviousHelpPage
       UIShortcut "forward" -> visitNextHelpPage
       UIShortcut "exit" -> closeHelp
@@ -407,7 +408,7 @@ handleMainEvent forceRedraw ev = do
           when shouldUpdateCursor $
             uiGameplay . uiWorldCursor .= mouseCoordsM
         REPLInput -> handleREPLEvent ev
-        UILink dest -> handleLinkClick dest
+        UILink dest _ -> handleLinkClick dest
         (UIShortcut "Help") -> toggleHelp
         (UIShortcut "Robots") -> Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal RobotsModal
         (UIShortcut "Commands") -> Brick.zoom (playState . scenarioState) $ toggleDiscoveryNotificationModal CommandsModal availableCommands

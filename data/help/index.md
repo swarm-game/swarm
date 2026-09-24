@@ -8,3 +8,9 @@ Have questions? Want some tips? Check out:
 - [About Swarm](about.md)
 
 This page is a placeholder for now.  More documentation coming soon!
+
+```toc
+about
+foo
+blerg
+```

@@ -24,7 +24,7 @@ openAttrToMark = \case
   Emphasis -> "*"
   Raw _ -> "`"
   Code -> "```\n"
-  Link _ _ -> "["
+  Link {} -> "["
 
 closeAttrToMark :: TxtAttr -> Text
 closeAttrToMark = \case
@@ -33,7 +33,7 @@ closeAttrToMark = \case
   Raw "" -> "`"
   Raw ann -> "`{=" <> T.pack ann <> "}"
   Code -> "\n```\n"
-  Link dest mtitle -> "](" <> mkTarget dest mtitle <> ")"
+  Link dest _ mtitle -> "](" <> mkTarget dest mtitle <> ")"
  where
   wrap c t = c <> t <> c
   mkTarget tgt title = getTarget tgt <> maybe "" ((" " <>) . wrap "\"") title
