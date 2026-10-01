@@ -39,7 +39,7 @@ import Swarm.Game.Recipe (loadRecipes)
 import Swarm.Game.Scenario (GameStateInputs (..), ScenarioInputs (..))
 import Swarm.Game.State.Substate
 import Swarm.Game.World.DSL (loadWorlds)
-import Swarm.Language.Help (HelpPage, loadHelp)
+import Swarm.Language.Help (HelpPage, HelpWarning, loadHelp)
 import Swarm.Log
 import Swarm.ResourceLoading (Collection, initNameGenerator, readAppData)
 import Swarm.Util.Lens (makeLensesNoSigs)
@@ -109,7 +109,8 @@ initRuntimeState opts = do
   store <- liftIO Metrics.newStore
   liftIO $ Metrics.registerGcMetrics store
   gsc <- initGameStateConfig opts
-  helpCollection <- loadHelp
+  (helpCollection, helpWarnings) <- runWarn @HelpWarning loadHelp
+  -- forM_ helpWarnings $ _   XXX do something with warnings
   return $
     RuntimeState
       { _webPort = Nothing

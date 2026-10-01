@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -15,6 +16,9 @@ module Swarm.Text.Markdown.Document (
   traverseDocument,
   mapParagraph,
   traverseParagraph,
+  _SimpleParagraph,
+  _ListParagraph,
+  _TOCTree,
   pureP,
   TxtAttr (..),
   Node (..),
@@ -29,6 +33,7 @@ module Swarm.Text.Markdown.Document (
 ) where
 
 import Commonmark.Types (ListSpacing, ListType)
+import Control.Lens (makePrisms)
 import Data.Functor.Identity (Identity (..))
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
@@ -166,3 +171,5 @@ findCode = concatMap findCodeP . paragraphs
     LeafCode s -> Just s
     LeafCodeBlock _i s -> Just s
     _l -> Nothing
+
+makePrisms ''Paragraph
