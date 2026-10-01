@@ -77,10 +77,12 @@ openHelp = do
   -- Ensure the game is paused, and open the appropriate page.
   Brick.zoom (playState . scenarioState) ensurePause
 
--- | Close the help system, saving the currently visited page to the history.
+-- | Close the help system, saving the currently visited page to the
+--   history (unless the current page is not the main index).
 closeHelp :: EventM Name AppState ()
 closeHelp = do
-  saveCurHelpPage
+  curPage <- use $ uiState . uiHelp . curHelpPage
+  when (curPage /= Just "index.md") saveCurHelpPage
   Brick.zoom (playState . scenarioState) safeAutoUnpause
   uiState . uiHelp . curHelpPage .= Nothing
 
