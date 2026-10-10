@@ -53,6 +53,7 @@ reservedWords =
   , "mask"
   , "empty"
   , "abs"
+  , "fromIntegral"
   , "imap"
   ]
 
@@ -137,6 +138,7 @@ parseWExpAtom =
     <|> parseIf
     <|> parsePerlin
     <|> parseAbs
+    <|> parseFromI
     <|> parseLet
     <|> parseOverlay
     <|> parseMask
@@ -217,6 +219,10 @@ parsePerlin =
 parseAbs :: Parser WExp
 parseAbs =
   WOp Abs . (: []) <$> (reserved "abs" *> parseWExpAtom)
+
+parseFromI :: Parser WExp
+parseFromI =
+  WOp FromIntegral . (: []) <$> (reserved "fromIntegral" *> parseWExpAtom)
 
 parseLet :: Parser WExp
 parseLet =
