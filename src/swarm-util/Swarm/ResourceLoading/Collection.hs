@@ -63,7 +63,7 @@ import Witch (into)
 --   subcollections.
 newtype Collection a = Collection
   {collectionMap :: OMap FilePath (CollectionItem a)}
-  deriving (Functor, Foldable, Traversable)
+  deriving (Eq, Functor, Foldable, Traversable)
 
 -- TODO(#2798): it would be nice to upstream some
 -- {Functor,Foldable,Traversable}WithIndex instances for OMap, then
@@ -82,7 +82,7 @@ instance TraversableWithIndex FilePath Collection where
 
 -- | Either a singleton item, or a nested subcollection with a label.
 data CollectionItem a = Single a | SubCollection Text (Collection a)
-  deriving (Functor, Foldable, Traversable)
+  deriving (Eq, Functor, Foldable, Traversable)
 
 makePrisms ''CollectionItem
 

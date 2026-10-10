@@ -1337,6 +1337,7 @@ test-suite swarm-unit
     lens,
     megaparsec,
     mtl,
+    ordered-containers,
     quickcheck-instances,
     tasty,
     tasty-hunit,
@@ -1351,6 +1352,7 @@ test-suite swarm-unit
   type: exitcode-stdio-1.0
   other-modules:
     TestBoolExpr
+    TestCollection
     TestCommand
     TestContext
     TestEval
