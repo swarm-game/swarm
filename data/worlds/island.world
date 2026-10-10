@@ -1,7 +1,6 @@
 /* See README.md for a thorough description of the world DSL.  Some
    comments are provided below to help explain the language by
    example. */
-
 let
     /* pn0, pn1, pn2 are Perlin noise functions, which
        associate a floating-point value to every coordinate
@@ -17,20 +16,11 @@ let
        for world generation (whether chosen by the user, chosen randomly, etc.)
     */
     pnI = (perlin seed 6 0.05 0.6) - 0.6,
-    pnS = (perlin seed 5 0.05 0.6) - 0.6,
+    pnCU = (perlin (seed + 1) 6 0.05 0.6),
 
-    pn0 = perlin seed 6 0.05 0.6,
-    pn1 = perlin (seed + 1) 6 0.05 0.6,
-    pn2 = perlin (seed + 2) 6 0.05 0.6,
-
-    // cl is another Perlin noise function that we use to generate
-    // "clumps" of things inside biomes
-    cl  = perlin seed 4 0.08 0.5,
-
-    // TODO:
-    //dist = 1.0 - (1.0 / (fromIntegral (x * x + y * y))),
-    //pnC = pnCU - dist,
     dist = x*x + y*y,
+    distIF = (25.0 / (fromIntegral dist)),
+    pnC = pnCU - 0.5 + distIF,
 
     /* We now define some Boolean variables for determining which
        biome we are in.  Note that implicitly, as with everything
@@ -42,14 +32,7 @@ let
     ocean = pnI <= 0.0,
     beach = pnI > 0.0 && pnI <= 0.1,
     island = pnI > 0.1,
-    mountain = pnI > 0.35,
-
-    big = pn0 > 0.0,  // 'big' is true for coordinates where pn0 > 0.0, and false otherwise
-    soft = pn1 > 0.0, // etc.
-    natural = pn2 > 0.0,
-    small = not big,
-    hard = not soft,
-    artificial = not natural
+    mountain = pnI > 0.35
 in
 /* The world is built up by a series of layers, with each layer thought of as a function
    from coordinates to cell values.  The first layer is bottommost.
@@ -72,12 +55,19 @@ in
 */
 imap x (y * 2)
 overlay
-[ mask (ocean) {stone, water}
-, mask (beach) {stone, sand}
-, mask (island) {stone, tree}
-, mask (mountain) {stone, mountain}
-, mask (dist <= 400) {stone, water}
-, mask (dist <= 120 && pnI > -0.7) {stone, sand}
-, mask (dist <= 100 && pnI > -0.7) {grass, tree}
-, mask (dist <= 20) {burnt, wavy water}
+[ mask (dist > 30 * 30) ( overlay
+   [ mask (ocean) {stone, water}
+   , mask (beach) {stone, sand}
+   , mask (island) {stone, tree}
+   , mask (mountain) {stone, mountain}
+   , mask (dist <= 33 * 33) {wavy water}
+   ])
+, mask (dist <= 30 * 30) ( overlay
+   [ mask (pnC < 0.0) {stone, water}
+   , /* OVERLAY */ mask (dist <= 7*7) {stone, sand} // burnt area beach is overlaid by latter
+   , mask (pnC > 0.0 && pnC <= 0.1) {stone, sand}
+   , mask (pnC > 0.1) {dirt}
+   , mask (pnC > 0.4) {dirt, tree}
+   , mask (dist <= 5*5) {burnt, erase}
+   ])
 ]
