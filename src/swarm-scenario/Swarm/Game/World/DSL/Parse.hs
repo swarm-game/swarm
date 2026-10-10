@@ -155,6 +155,7 @@ parseWExp =
     [
       [ Prefix (unary Not <$ reserved "not")
       , Prefix (unary Neg <$ operator "-")
+      , Prefix (unary FromIntegral <$ operator "fromIntegral")
       ]
     ,
       [ InfixL (binary Mul <$ operator "*")
