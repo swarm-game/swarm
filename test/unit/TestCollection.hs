@@ -9,6 +9,7 @@ module TestCollection where
 import Control.Lens.Indexed
 import Data.Map.Ordered qualified as OM
 import Swarm.ResourceLoading
+import System.FilePath ((</>))
 import Test.Tasty
 import Test.Tasty.HUnit
 
@@ -25,7 +26,7 @@ testCollection =
   testGroup
     "Collections"
     [ testCase "imap Collection" (assertEqual "imap failed" (Blind (imap (\k _ -> length k) coll)) (Blind coll))
-    , testCase "itoList Collection" (assertEqual "itoList failed" (map fst (itoList coll)) ["foo.txt", "baz.txt", "dir1/a", "dir1/b", "dir1/c", "dir2/x", "dir2/z/zz"])
+    , testCase "itoList Collection" (assertEqual "itoList failed" (map fst (itoList coll)) ["foo.txt", "baz.txt", "dir1" </> "a", "dir1" </> "b", "dir1" </> "c", "dir2" </> "x", "dir2" </> "z" </> "zz"])
     ]
  where
   coll :: Collection Int
