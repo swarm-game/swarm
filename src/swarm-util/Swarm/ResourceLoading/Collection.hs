@@ -63,30 +63,14 @@ import Witch (into)
 --   subcollections.
 newtype Collection a = Collection
   {collectionMap :: OMap FilePath (CollectionItem a)}
-  deriving (Functor, Foldable, Traversable)
+  deriving (Eq, Functor, Foldable, Traversable)
 
 -- TODO(#2798): it would be nice to upstream some
 -- {Functor,Foldable,Traversable}WithIndex instances for OMap, then
 -- simplify the code below.
 
-instance FunctorWithIndex FilePath Collection where
-  imap :: forall a b. (FilePath -> a -> b) -> Collection a -> Collection b
-  imap f (Collection m) = Collection (OM.fromList . (map . imap) g . OM.assocs $ m)
-   where
-    g :: FilePath -> CollectionItem a -> CollectionItem b
-    g k = \case
-      Single a -> Single (f k a)
-      SubCollection name c -> SubCollection name (imap f c)
-
-instance FoldableWithIndex FilePath Collection where
-  ifoldMap :: forall m a. Monoid m => (FilePath -> a -> m) -> Collection a -> m
-  ifoldMap f (Collection m) = foldMap (uncurry foldItem) . OM.assocs $ m
-   where
-    foldItem :: FilePath -> CollectionItem a -> m
-    foldItem k = \case
-      Single a -> f k a
-      SubCollection _ c -> ifoldMap f c
-
+instance FunctorWithIndex FilePath Collection
+instance FoldableWithIndex FilePath Collection
 instance TraversableWithIndex FilePath Collection where
   itraverse :: forall f a b. Applicative f => (FilePath -> a -> f b) -> Collection a -> f (Collection b)
   itraverse f (Collection m) = (Collection . OM.fromList <$>) . (traverse . itraverse) traverseItem . OM.assocs $ m
@@ -94,11 +78,11 @@ instance TraversableWithIndex FilePath Collection where
     traverseItem :: FilePath -> CollectionItem a -> f (CollectionItem b)
     traverseItem k = \case
       Single a -> Single <$> f k a
-      SubCollection name c -> SubCollection name <$> itraverse f c
+      SubCollection name c -> SubCollection name <$> itraverse (f . (k </>)) c
 
 -- | Either a singleton item, or a nested subcollection with a label.
 data CollectionItem a = Single a | SubCollection Text (Collection a)
-  deriving (Functor, Foldable, Traversable)
+  deriving (Eq, Functor, Foldable, Traversable)
 
 makePrisms ''CollectionItem
 

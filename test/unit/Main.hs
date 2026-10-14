@@ -26,6 +26,7 @@ import Test.Tasty.QuickCheck (
   (==>),
  )
 import TestBoolExpr (testBoolExpr)
+import TestCollection (testCollection)
 import TestCommand (testCommands)
 import TestContext (testContext)
 import TestEval (testEval)
@@ -97,6 +98,7 @@ statelessTests =
     , testQQ
     , testViewChunk
     , testMarkdownMetadata
+    , testCollection
     ]
 
 testMisc :: TestTree
