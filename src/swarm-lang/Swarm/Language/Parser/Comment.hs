@@ -10,20 +10,15 @@ module Swarm.Language.Parser.Comment (
   populateComments,
   populateStandaloneComments,
   populateSuffixComments,
-
-  -- * Generic tree traversals
-  preorder,
-  revpostorder,
 ) where
 
-import Control.Lens (backwards, mapMOf, (%~))
-import Control.Lens.Plated (Plated, plate)
-import Control.Monad ((>=>))
+import Control.Lens ((%~))
 import Control.Monad.State (MonadState (..), State, evalState)
 import Data.Foldable qualified as F
 import Data.List (partition)
 import Data.Sequence (Seq, (<|), (|>))
 import Swarm.Language.Syntax
+import Swarm.Util.Traversal (preorder, revpostorder)
 
 ------------------------------------------------------------
 -- Comment insertion
@@ -85,37 +80,3 @@ populateSuffixComments :: [Comment] -> Syntax Raw -> Syntax Raw
 populateSuffixComments cmts =
   flip evalState (reverse cmts)
     . revpostorder (insertComments (flip srcLocEndsBefore) (\c -> afterComments %~ (c <|)))
-
-------------------------------------------------------------
--- Traversals
-------------------------------------------------------------
-
--- $setup
--- >>> import Control.Monad.State
--- >>> import Data.Tree
--- >>> import Data.List (intercalate)
--- >>> next :: Tree Int -> State Int (Tree Int); next (Node _ cs) = do { i <- get; put (i+1); return (Node i cs) }
--- >>> showTree :: Show a => Tree a -> String; showTree = foldTree (\n cs -> show n ++ case cs of { [] -> ""; _ -> "(" ++ intercalate " " cs ++ ")" })
--- >>> exampleTree = Node 0 [Node 0 [], Node 0 [Node 0 [], Node 0 [], Node 0 []], Node 0 [Node 0 []]]
-
--- | Preorder traversal of a 'Plated' structure with a monadic
---   transformation.  Apply the transformation at the root, then
---   recursively transform each of the children.
---
--- >>> showTree (evalState (preorder next exampleTree) 0)
--- "0(1 2(3 4 5) 6(7))"
-preorder :: (Plated a, Monad m) => (a -> m a) -> (a -> m a)
-preorder g = go
- where
-  go = g >=> mapMOf plate go
-
--- | Reverse postorder traversal of a 'Plated' structure with a
---   monadic transformation.  Transform the root, then apply the
---   transformation recursively to all the children in reverse order.
---
--- >>> showTree (evalState (revpostorder next exampleTree) 0)
--- "0(7 3(6 5 4) 1(2))"
-revpostorder :: (Plated a, Monad m) => (a -> m a) -> (a -> m a)
-revpostorder g = go
- where
-  go = g >=> mapMOf (backwards plate) go
