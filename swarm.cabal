@@ -1014,6 +1014,7 @@ library swarm-util
     Swarm.Util.OccurrenceEncoder
     Swarm.Util.OrderedMap
     Swarm.Util.RingBuffer
+    Swarm.Util.Traversal
     Swarm.Util.UnitInterval
     Swarm.Util.WindowedCounter
     Swarm.Util.Yaml
