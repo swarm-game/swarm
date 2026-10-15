@@ -15,10 +15,11 @@ objectives:
         entire 4x4 square and pick up a `very small rock`{=entity} any
         time you detect one.
       - |
-        The `ishere` command, with type `Text -> Cmd Bool`{=type}, can be used
-        for detecting the presence of a specific item such as a `very small rock`{=entity}.
-        What we need is a way to take the `Bool`{=type} output from `ishere`
-        and use it to decide whether to `grab` a rock or not.
+        Recall that the `scan` command, with type `Dir -> Cmd Text`{=type}, can be used
+        to detect a nearby entity (TIP: use `scan down` to find out
+        the name of an entity on the same cell as the robot).
+        What we need is a way to decide whether to `grab` a rock or
+        not, based on the output of `scan`.
         (Trying to execute `grab` in a cell without anything to grab will
         throw an exception, causing the robot to crash.)
       - |
@@ -44,6 +45,7 @@ objectives:
         must also be in curly braces: the type of `build`
         is `{Cmd a} -> Cmd Actor`{=type}.
       - |
+        XXX
         **TIP:** Note that `if` requires a `Bool`{=type}, not a `Cmd Bool`{=type}!  So you cannot directly say
         `if (ishere "very small rock") {...} {...}`{=snippet}.
         Instead you can write `b <- ishere "very small rock"; if b {...} {...}`{=snippet}.
@@ -65,6 +67,7 @@ solution: |
   def x4 = \c. c;c;c;c end;
   def VSR = "very small rock" end;
   def ifC = \c.\t.\e. b <- c; if b t e end;
+  def ishere = \thing. h <- scan down; pure (h == thing) end;
   def pick = move; ifC (ishere VSR) {grab; pure ()} {} end;
   def pickrow = x4 pick; turn back; x4 move end;
   build {
@@ -88,6 +91,7 @@ robots:
       - [8, treads]
       - [8, grabber]
       - [8, scanner]
+      - [8, comparator]
       - [8, lambda]
       - [8, branch predictor]
       - [8, 3D printer]

@@ -9,7 +9,7 @@ end;
 
 def cscan = \d.
   s <- scan d;
-  if (s == inl ()) {pure 0} {pure 1}
+  if (s == "") {pure 0} {pure 1}
 end;
 
 def count_column =
@@ -54,10 +54,8 @@ forever (
     counted <- scan down;
     //wait 8;
     //log (format counted);
-    case counted (\e.
-        fail $ "Fatal error: there should always be a count entity at (0,-6)! " ++ format e ++ " " ++ format counted
-    ) (\e.
-        if (e == sum) {} {swap sum; pure ()}
-    )
+    if (counted == "")
+      { fail $ "Fatal error: there should always be a count entity at (0,-6)!" }
+      { if (counted == sum) {} {swap sum; pure ()} }
 )
 end

@@ -1,4 +1,5 @@
 import "~swarm/lib/control"
+import "~swarm/lib/scan"
 
 def harvestMay =
   e <- isempty;
@@ -25,7 +26,7 @@ def getPaper =
   getWater; doN 4 (make "paper")
 end
 
-def scanAt : Int -> Int -> Cmd (Unit + Text) = \h. \v.
+def scanAt : Int -> Int -> Cmd Text = \h. \v.
   doN h move; turn right; doN v move;
   s <- scan down;
   turn back; doN v move; turn left; doN h move; turn back;
@@ -40,7 +41,7 @@ def atTerminal : Cmd a -> Cmd a = \c.
 end
 
 def waitToPlace : Text -> Cmd Unit = \t.
-  success <- atomic {b <- isempty; if b {place t} {}; pure b};
+  success <- atomic {h <- scan down; if (h == "") {place t; pure true} {pure false}};
   if success {} { watch down; wait 1024; waitToPlace t }
 end
 
@@ -50,9 +51,9 @@ def go =
   for_ 8 (\h.
     for_ 4 (\v.
       res <- scanAt (h-1) (v-1);
-      case res
-        (\_. pure ())
-        (\t. atTerminal (p <- print "paper" (format ((h-1,v-1),t)); waitToPlace p))
+      if (res == "")
+        {pure ()}
+        {atTerminal (p <- print "paper" (format ((h-1,v-1),res)); waitToPlace p)}
     )
   )
 end

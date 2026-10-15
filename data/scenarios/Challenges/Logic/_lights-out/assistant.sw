@@ -1,6 +1,7 @@
 import "~swarm/lib/control"
 import "~swarm/lib/arith"
 import "~swarm/lib/tuple"
+import "~swarm/lib/scan"
 
 def replaceWith = \withThis.
     create withThis;
@@ -19,7 +20,7 @@ def invertLight = \e.
 
 def toggleLightHere =
     entHere <- scan down;
-    case entHere pure invertLight;
+    if (entHere == "") {} {invertLight entHere};
     end;
 
 /** Precondition: in the middle of a "cross" */

@@ -1,3 +1,5 @@
+import "~swarm/lib/scan"
+
 def isBlockedOrFenced =
     b <- blocked;
     pure b;

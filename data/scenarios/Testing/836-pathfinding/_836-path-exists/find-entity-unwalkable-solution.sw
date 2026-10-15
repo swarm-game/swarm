@@ -5,8 +5,7 @@ def goDir = \goalItem. \f. \r.
   } {
     turn d;
     itemAhead <- scan forward;
-    let isGoalAhead = case itemAhead (\_. false) (\item. item == goalItem) in
-    if isGoalAhead {
+    if (itemAhead == goalItem) {
       pure ();
     } {
       move; f;

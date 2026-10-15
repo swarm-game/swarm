@@ -1,3 +1,5 @@
+import "~swarm/lib/scan"
+
 def harvestPlant =
   emptyHere <- isempty;
   if emptyHere {

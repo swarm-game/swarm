@@ -1,3 +1,5 @@
+import "~swarm/lib/scan"
+
 def tL = turn left end;
 def tR = turn right end;
 def tB = turn back end;

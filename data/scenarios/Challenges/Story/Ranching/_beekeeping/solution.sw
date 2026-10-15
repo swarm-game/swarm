@@ -1,6 +1,7 @@
 import "~swarm/lib/control"
 import "~swarm/lib/arith"
 import "~swarm/lib/tuple"
+import "~swarm/lib/scan"
 
 def moveTuple = λmatch \x. \y.
     turn $ if (x > 0) {east} {west};
@@ -127,8 +128,7 @@ def collectAllHoneycombs = \targetCount.
 
 def moveUntilBlocked =
     thing <- scan forward;
-    let isBlocked = case thing (\_. false) (\x. x == "lakewater") in
-    if isBlocked {} {
+    if (thing == "lakewater") {} {
         move;
         moveUntilBlocked;
     }

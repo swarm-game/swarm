@@ -12,6 +12,7 @@ objectives:
       j <- robotNamed "judge";
       as j {has "goal"}
 solution: |
+  import "~swarm/lib/scan"
   def until = \p. \c. b <- p; if b {} {c; until p c} end;
   def fwd = until blocked move end;
   build {
@@ -46,7 +47,7 @@ robots:
     system: true
     program: |
       def until = \c. b <- c; if b {} {until c} end;
-      until (d <- scan down; pure (d == inl ()));
+      until (d <- scan down; pure (d == ""));
       create "goal"
 entities:
   - name: wall

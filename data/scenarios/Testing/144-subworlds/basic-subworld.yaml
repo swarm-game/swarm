@@ -7,6 +7,7 @@ objectives:
       - |
         `place` the "flower" on the white cell.
     condition: |
+      import "~swarm/lib/scan"
       j <- robotnamed "judge";
       as j {ishere "flower"}
 solution: |

@@ -1,6 +1,11 @@
 def ifC : forall a. Cmd Bool -> {Cmd a} -> {Cmd a} -> Cmd a =
   \test. \thn. \els. b <- test; if b thn els end
 
+def ishere : Text -> Cmd Bool = \thing.
+  here <- scan down;
+  pure (here == thing)
+end
+
 // Recursive DFS to harvest a contiguous forest
 def dfs : Cmd Unit =
   ifC (ishere "tree") {

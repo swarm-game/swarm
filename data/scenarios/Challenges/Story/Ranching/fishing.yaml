@@ -91,29 +91,27 @@ objectives:
         end;
 
       def junkOutsideEnclosure =
-        result <- scan down;
-        case result (\_. pure false) (\item.
-          let isJunk = hastag item "junk" in
-          if isJunk {
-            enclosures <- structures "rubbish enclosure";
+        item <- scan down;
+        let isJunk = hastag item "junk" in
+        if isJunk {
+          enclosures <- structures "rubbish enclosure";
 
-            case enclosures (\_. pure false) (
-              λmatch \enclosure0.
-              λcase (\_. pure false) (
-                λmatch \enclosure1. \_.
+          case enclosures (\_. pure false) (
+            λmatch \enclosure0.
+            λcase (\_. pure false) (
+              λmatch \enclosure1. \_.
 
-                dims <- floorplan "rubbish enclosure";
-                loc <- whereami;
+              dims <- floorplan "rubbish enclosure";
+              loc <- whereami;
 
-                insideFirst <- locIsInsideEnclosure loc dims enclosure0;
-                insideSecond <- locIsInsideEnclosure loc dims enclosure1;
-                pure $ not $ insideFirst || insideSecond;
-              )
+              insideFirst <- locIsInsideEnclosure loc dims enclosure0;
+              insideSecond <- locIsInsideEnclosure loc dims enclosure1;
+              pure $ not $ insideFirst || insideSecond;
             )
-          } {
-            pure false;
-          };
-        );
+          )
+        } {
+          pure false;
+        };
         end;
 
       // If a junk entity was placed on the ground,

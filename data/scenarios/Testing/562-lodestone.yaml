@@ -21,6 +21,7 @@ robots:
       - logger
       - grabber
       - scanner
+      - comparator
       - toolkit
       - workbench
       - 3D printer
@@ -35,6 +36,7 @@ robots:
       - [10, harvester]
       - [10, solar panel]
       - [10, scanner]
+      - [10, comparator]
       - [10, strange loop]
       - [10, branch predictor]
       - [10, toolkit]

@@ -28,6 +28,7 @@ objectives:
       - |
         Go to the `oak`{=entity}
     condition: |
+      import "~swarm/lib/scan"
       as base {
         ishere "oak";
       }

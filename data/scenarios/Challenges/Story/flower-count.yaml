@@ -52,6 +52,7 @@ objectives:
       - |
         Perhaps you would like to go back in time and try again.
     condition: |
+      import "~swarm/lib/scan";
       truelove <- robotNamed "truelove";
       as truelove { b <- ishere "fuse"; pure (not b) }
   - id: joinpoint

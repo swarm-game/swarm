@@ -2,7 +2,7 @@ import "~swarm/lib/control"
 import "~swarm/lib/arith"
 
 def cnt = \x.
-  if (x == inl ()) {0} {1}
+  if (x == "") {0} {1}
 end;
 
 def count3 =
@@ -17,10 +17,10 @@ def waitUntil = \p.
   if b {wait 1} {waitUntil p}
 end;
 
-def main = 
+def main =
   forever (
     h <- scan down;
-    alive <- pure (h != inl ());
+    alive <- pure (h != "");
     n1 <- count3;
     turn left; move; turn right; n2 <- count3;
     turn right; move; move; turn left; n3 <- count3;
