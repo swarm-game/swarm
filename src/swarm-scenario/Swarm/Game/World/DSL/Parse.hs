@@ -53,6 +53,7 @@ reservedWords =
   , "mask"
   , "empty"
   , "abs"
+  , "fromIntegral"
   , "imap"
   ]
 
@@ -137,6 +138,7 @@ parseWExpAtom =
     <|> parseIf
     <|> parsePerlin
     <|> parseAbs
+    <|> parseFromI
     <|> parseLet
     <|> parseOverlay
     <|> parseMask
@@ -153,6 +155,7 @@ parseWExp =
     [
       [ Prefix (unary Not <$ reserved "not")
       , Prefix (unary Neg <$ operator "-")
+      , Prefix (unary FromIntegral <$ operator "fromIntegral")
       ]
     ,
       [ InfixL (binary Mul <$ operator "*")
@@ -217,6 +220,10 @@ parsePerlin =
 parseAbs :: Parser WExp
 parseAbs =
   WOp Abs . (: []) <$> (reserved "abs" *> parseWExpAtom)
+
+parseFromI :: Parser WExp
+parseFromI =
+  WOp FromIntegral . (: []) <$> (reserved "fromIntegral" *> parseWExpAtom)
 
 parseLet :: Parser WExp
 parseLet =
