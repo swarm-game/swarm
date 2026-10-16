@@ -55,7 +55,7 @@ helpPageWidget path help helpSt keyConf =
     plainBorder
       & topLabels
         .~ ( plainHBorder
-               & centerLabel ?~ txt (toText title)
+               & centerLabel ?~ padLeftRight 1 (txt (toText title))
            )
       & bottomLabels
         .~ ( plainHBorder
