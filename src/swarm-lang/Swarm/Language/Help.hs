@@ -21,6 +21,9 @@ module Swarm.Language.Help (
   loadHelp,
   parseMetadata,
   HelpWarning (..),
+
+  -- * Rendering utilities
+  mkHelpLink,
 ) where
 
 import Commonmark.Types (ListSpacing (..), ListType (..))
@@ -117,21 +120,26 @@ parseMetadata = second M.fromList . partitionEithers . map (parseField . stripPu
     | T.length content == 0 = Left (CustomFailure $ "Metadata line with no colon: " <> field)
     | otherwise = (field,) <$> first CustomFailure (fromTextE (stripPunct content))
 
+-- | Make a standalone document containing a link to a help page.
+mkHelpLink :: Collection HelpPage -> FilePath -> Document (Syntax Raw)
+mkHelpLink help hp = Document [pureP (mkHelpLinkNode help hp)]
+
+mkHelpLinkNode :: Collection HelpPage -> FilePath -> Node (Syntax Raw)
+mkHelpLinkNode help hp = case help ^? atPath hp . helpMetadata . ix "title" of
+  Nothing -> txt (T.pack hp)
+  Just title -> LeafLink (Internal (T.pack hp)) 0 Nothing (getFirstPara title)
+ where
+  getFirstPara = \case
+    Document (SimpleParagraph ns : _) -> ns
+    _ -> []
+
 -- | Render all the tables of contents in a document to lists of links.
 renderTOCs :: Collection HelpPage -> Document (Syntax Raw) -> Document (Syntax Raw)
 renderTOCs help = mapDocument renderTOC
  where
   renderTOC = \case
-    TOCTree hps -> ListParagraph (BulletList '*') TightList (map mkTOCEntry hps)
+    TOCTree hps -> ListParagraph (BulletList '*') TightList (map ((: []) . pureP . mkHelpLinkNode help) hps)
     p -> p
-
-  mkTOCEntry hp = case help ^? atPath (hp <> ".md") . helpMetadata . ix "title" of
-    Nothing -> [pureP $ txt (T.pack hp)]
-    Just title -> [pureP $ LeafLink (Internal (T.pack (hp <> ".md"))) 0 Nothing (getFirstPara title)]
-
-  getFirstPara = \case
-    Document (SimpleParagraph ns : _) -> ns
-    _ -> []
 
 -- | Disambiguate links in a document by giving unique ID numbers to
 --   links with duplicate targets.  It would probably be simpler
@@ -216,7 +224,7 @@ docTree help = evalState (M.empty :: Map FilePath FilePath) $ do
           -- Warn if the path is not found in the collection.
           Nothing -> warn (Missing path parent) $> Nothing
           -- Otherwise, recursively process everything in its TOCs and assemble into a tree.
-          Just page -> Just . Tree.Node (path, page) . catMaybes <$> mapM (dfs path . (<> ".md")) (allTOCEntries page)
+          Just page -> Just . Tree.Node (path, page) . catMaybes <$> mapM (dfs path) (allTOCEntries page)
 
 -- | Elaborate a help collection by computing and caching each page's
 --   "family" links (i.e. sibling and parent links based on tables of

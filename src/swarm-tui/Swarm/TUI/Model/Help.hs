@@ -15,9 +15,13 @@ module Swarm.TUI.Model.Help (
 ) where
 
 import Brick.Focus (FocusRing, focusRing)
-import Control.Lens (Lens')
+import Control.Lens (Lens', (^.))
+import Data.Maybe (mapMaybe)
+import Data.Text qualified as T
+import Swarm.Language.Help (FamilyLinks, HelpPage, familyLinks, helpDoc, nextPage, parentPage, prevPage)
 import Swarm.TUI.Model.Name (Name (UILink))
 import Swarm.Text.Markdown
+import Swarm.Text.Markdown.Document (Target (..))
 import Swarm.Util.Lens (makeLensesNoSigs)
 
 -- | The help state is essentially a slightly fancy list zipper,
@@ -66,19 +70,22 @@ helpHistoryForward :: Lens' HelpState [FilePath]
 helpLinks :: Lens' HelpState (FocusRing Name)
 
 -- | Construct a focus ring for all the links found in a document.
-linkFocusRing :: Document c -> FocusRing Name
-linkFocusRing = focusRing . docLinks
+linkFocusRing :: HelpPage -> FocusRing Name
+linkFocusRing pg = focusRing $ docLinkNames (pg ^. helpDoc) ++ familyLinkNames (pg ^. familyLinks)
  where
-  docLinks :: Document c -> [Name]
-  docLinks (Document ps) = concatMap paraLinks ps
+  docLinkNames :: Document c -> [Name]
+  docLinkNames (Document ps) = concatMap paraLinkNames ps
 
-  paraLinks :: Paragraph c -> [Name]
-  paraLinks = \case
+  paraLinkNames :: Paragraph c -> [Name]
+  paraLinkNames = \case
     TOCTree {} -> []
-    SimpleParagraph ns -> concatMap nodeLinks ns
-    ListParagraph _ _ is -> concatMap (concatMap paraLinks) is
+    SimpleParagraph ns -> concatMap nodeLinkNames ns
+    ListParagraph _ _ is -> concatMap (concatMap paraLinkNames) is
 
-  nodeLinks :: Node c -> [Name]
-  nodeLinks = \case
+  nodeLinkNames :: Node c -> [Name]
+  nodeLinkNames = \case
     LeafLink tgt i _ _ -> [UILink tgt i]
     _ -> []
+
+  familyLinkNames :: FamilyLinks -> [Name]
+  familyLinkNames fl = map (\t -> UILink (Internal (T.pack t)) 0) $ mapMaybe (fl ^.) [prevPage, parentPage, nextPage]

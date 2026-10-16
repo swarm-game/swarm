@@ -39,6 +39,7 @@ import Swarm.Language.Syntax (Phase (Raw), Syntax)
 import Swarm.Pretty (prettyText)
 import Swarm.Text.Markdown.Document
 import Swarm.Util (showT)
+import System.FilePath ((<.>))
 
 -- Some Commonmark instances for tracking source spans and attributes.
 -- We do not use either, so the implementations are trivial.
@@ -93,7 +94,7 @@ instance Mark.IsBlock [Node Text] [Paragraph Text] where
   thematicBreak = mempty
   blockQuote = (map . mapParagraph) (addTextAttribute Emphasis)
   codeBlock f
-    | f == "toc" || f == "toctree" = pure . TOCTree . map (T.unpack . T.strip) . T.lines
+    | f == "toc" || f == "toctree" = pure . TOCTree . map ((<.> "md") . T.unpack . T.strip) . T.lines
     | otherwise = Mark.plain . pure . LeafCodeBlock (T.unpack f)
   heading _lvl = Mark.plain . Mark.strong
   rawBlock _ _ = mempty

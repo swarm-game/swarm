@@ -12,12 +12,11 @@ module Swarm.TUI.Controller.Help (
 ) where
 
 import Brick (EventM, zoom)
-import Control.Lens (Lens', use, uses, (%=), (.=), (^.), (^?))
+import Control.Lens (Lens', use, uses, (%=), (.=), (^?))
 import Control.Monad (when)
 import Data.List (uncons)
 import Swarm.Game.Achievement.Definitions (CategorizedAchievement (GlobalAchievement), GlobalAchievement (LookedAtAboutScreen))
 import Swarm.Game.State.Runtime (helpData)
-import Swarm.Language.Help (helpDoc)
 import Swarm.ResourceLoading (atPath)
 import Swarm.TUI.Controller.Util (ensurePause, safeAutoUnpause)
 import Swarm.TUI.Model (AppState, Name, playState, progression, runtimeState, scenarioState, uiState)
@@ -124,4 +123,4 @@ setHelpPage p = do
   help <- use $ runtimeState . helpData
   case help ^? atPath p of
     Nothing -> pure ()
-    Just pg -> uiState . uiHelp . helpLinks .= linkFocusRing (pg ^. helpDoc)
+    Just pg -> uiState . uiHelp . helpLinks .= linkFocusRing pg
