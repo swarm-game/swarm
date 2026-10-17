@@ -260,7 +260,7 @@ common monad-logger
   build-depends: monad-logger >=0.3.0 && <0.4.0
 
 common monoidmap
-  build-depends: monoidmap >=0.0.3.0 && <0.1
+  build-depends: monoidmap >=0.1.0.0 && <0.2
 
 common monoidmap-aeson
   build-depends: monoidmap-aeson >=0.0.0.1 && <0.1
