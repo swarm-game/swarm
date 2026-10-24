@@ -22,11 +22,11 @@ import Swarm.ResourceLoading (atPath)
 import Swarm.ResourceLoading.Collection (Collection)
 import Swarm.TUI.Border
 import Swarm.TUI.Model (AppState, Name (..), keyConfig, keyEventHandling, runtimeState, uiState)
-import Swarm.TUI.Model.Event (MainEvent (HelpBackEvent, HelpFwdEvent), SwarmEvent (Main))
+import Swarm.TUI.Model.Event (MainEvent (..), SwarmEvent (Main))
 import Swarm.TUI.Model.Help (HelpState, helpHistoryBack, helpHistoryForward, helpLinks)
 import Swarm.TUI.Model.UI (uiHelp)
 import Swarm.TUI.View.KeyCmd
-import Swarm.TUI.View.Util (bindingText, drawMarkdown, drawMarkdownWithLinks)
+import Swarm.TUI.View.Util (bindingText, drawMarkdownWithLinks)
 import Swarm.Text.Markdown (Document (..), toText)
 
 drawHelpUI :: AppState -> FilePath -> [Widget Name]
@@ -78,6 +78,8 @@ helpPageWidget path help helpSt keyConf =
   helpCmds =
     [ SingleButton (bool NoHighlight Alert anyBackHistory) (bindingText keyConf $ Main HelpBackEvent) "back"
     , SingleButton (bool NoHighlight Alert anyForwardHistory) (bindingText keyConf $ Main HelpFwdEvent) "forward"
+    , SingleButton NoHighlight (bindingText keyConf $ Main HelpPrevEvent) "prev"
+    , SingleButton NoHighlight (bindingText keyConf $ Main HelpNextEvent) "next"
     , SingleButton NoHighlight "Tab" "cycle"
     , SingleButton NoHighlight "Enter" "visit"
     , SingleButton NoHighlight "Esc" "exit"

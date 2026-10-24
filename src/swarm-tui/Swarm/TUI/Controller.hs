@@ -81,6 +81,7 @@ import Swarm.Language.Capability (
   constCaps,
  )
 import Swarm.Language.Context
+import Swarm.Language.Help (nextPage, prevPage)
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
 import Swarm.Language.Module (moduleTerm)
 import Swarm.Language.Parser (readTerm')
@@ -95,7 +96,7 @@ import Swarm.Pretty (prettyString)
 import Swarm.ResourceLoading (CollectionItem (..), collectionToList, getSwarmHistoryPath)
 import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Controller.EventHandlers.Robot (showEntityDescription)
-import Swarm.TUI.Controller.Help (closeHelp, toggleHelp, visitHelpPage, visitNextHelpPage, visitPreviousHelpPage)
+import Swarm.TUI.Controller.Help (closeHelp, toggleHelp, visitFamily, visitHelpPage, visitNextHelpPage, visitPreviousHelpPage)
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
 import Swarm.TUI.Controller.UpdateUI
 import Swarm.TUI.Controller.Util

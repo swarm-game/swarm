@@ -6,17 +6,20 @@ module Swarm.TUI.Controller.Help (
   visitHelpPage,
   visitPreviousHelpPage,
   visitNextHelpPage,
+  visitFamily,
   openHelp,
   closeHelp,
   toggleHelp,
 ) where
 
 import Brick (EventM, zoom)
-import Control.Lens (Lens', use, uses, (%=), (.=), (^?))
+import Control.Lens (Lens', use, uses, (%=), (.=), (^.), (^?))
 import Control.Monad (when)
+import Data.Foldable (for_)
 import Data.List (uncons)
 import Swarm.Game.Achievement.Definitions (CategorizedAchievement (GlobalAchievement), GlobalAchievement (LookedAtAboutScreen))
 import Swarm.Game.State.Runtime (helpData)
+import Swarm.Language.Help (FamilyLinks, familyLinks)
 import Swarm.ResourceLoading (atPath)
 import Swarm.TUI.Controller.Util (ensurePause, safeAutoUnpause)
 import Swarm.TUI.Model (AppState, Name, playState, progression, runtimeState, scenarioState, uiState)
@@ -124,3 +127,12 @@ setHelpPage p = do
   case help ^? atPath p of
     Nothing -> pure ()
     Just pg -> uiState . uiHelp . helpLinks .= linkFocusRing pg
+
+-- | Visit a relative help page (previous or next sibling, parent).
+visitFamily :: Lens' FamilyLinks (Maybe FilePath) -> EventM Name AppState ()
+visitFamily relative = do
+  help <- use $ runtimeState . helpData
+  mcur <- use $ uiState . uiHelp . curHelpPage
+  for_ mcur $ \cur ->
+    for_ (help ^? atPath cur) $ \pg ->
+      for_ (pg ^. familyLinks . relative) visitHelpPage

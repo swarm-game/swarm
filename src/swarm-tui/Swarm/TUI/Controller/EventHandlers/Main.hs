@@ -29,9 +29,10 @@ import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
 import Swarm.Game.Step (finishGameTick)
+import Swarm.Language.Help (nextPage, prevPage, parentPage)
 import Swarm.Language.Syntax (Phase (..))
 import Swarm.TUI.Controller.EventHandlers.Frame (runGameTickUI)
-import Swarm.TUI.Controller.Help (toggleHelp, visitNextHelpPage, visitPreviousHelpPage)
+import Swarm.TUI.Controller.Help (toggleHelp, visitFamily, visitNextHelpPage, visitPreviousHelpPage)
 import Swarm.TUI.Controller.UpdateUI (updateUI)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Model (isWorldEditorEnabled, worldOverdraw)
@@ -51,8 +52,11 @@ mainEventHandlers :: [KeyEventHandler SwarmEvent (EventM Name AppState)]
 mainEventHandlers = allHandlers Main $ \case
   QuitEvent -> ("Open quit game dialog", toggleQuitGameDialog)
   ViewHelpEvent -> ("Open help", toggleHelp)
-  HelpBackEvent -> ("Go back to previous help page", visitPreviousHelpPage)
-  HelpFwdEvent -> ("Go forward to next help page", visitNextHelpPage)
+  HelpBackEvent -> ("Go back to previous help page in history", visitPreviousHelpPage)
+  HelpFwdEvent -> ("Go forward to next help page in history", visitNextHelpPage)
+  HelpNextEvent -> ("Go to next help page in sequence", visitFamily nextPage)
+  HelpPrevEvent -> ("Go to previous help page in sequence", visitFamily prevPage)
+  HelpParentEvent -> ("Go to parent help page", visitFamily parentPage)
   ViewRobotsEvent ->
     ( "View Robots screen"
     , Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal RobotsModal
