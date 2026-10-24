@@ -39,6 +39,7 @@ import Swarm.Language.Syntax (Phase (Raw), Syntax)
 import Swarm.Pretty (prettyText)
 import Swarm.Text.Markdown.Document
 import Swarm.Util (showT)
+import System.FilePath ((<.>))
 
 -- Some Commonmark instances for tracking source spans and attributes.
 -- We do not use either, so the implementations are trivial.
@@ -81,7 +82,7 @@ instance Mark.IsInline [Node Text] where
   escapedChar c = Mark.str $ T.pack ['\\', c]
   emph = map $ addTextAttribute Emphasis
   strong = map $ addTextAttribute Strong
-  link dest title desc = pure $ LeafLink (parseTarget dest) (title <$ guard (title /= "")) desc
+  link dest title desc = pure $ LeafLink (parseTarget dest) 0 (title <$ guard (title /= "")) desc
   image dest title desc = pure (txt "!") <> Mark.link dest title desc
   code = pure . LeafCode
   rawInline (Mark.Format f) = pure . LeafRaw (T.unpack f)
@@ -92,7 +93,9 @@ instance Mark.IsBlock [Node Text] [Paragraph Text] where
   plain = Mark.paragraph
   thematicBreak = mempty
   blockQuote = (map . mapParagraph) (addTextAttribute Emphasis)
-  codeBlock f = Mark.plain . pure . LeafCodeBlock (T.unpack f)
+  codeBlock f
+    | f == "toc" || f == "toctree" = pure . TOCTree . map ((<.> "md") . T.unpack . T.strip) . T.lines
+    | otherwise = Mark.plain . pure . LeafCodeBlock (T.unpack f)
   heading _lvl = Mark.plain . Mark.strong
   rawBlock _ _ = mempty
   referenceLinkDefinition = mempty
@@ -168,4 +171,4 @@ fromText = either (Document . (: []) . pureP . LeafRaw "") ((mapDocument . mapPa
     LeafCodeBlock b c -> either (LeafRaw "") (LeafCodeBlock b) (parseSyntax c)
     LeafText a b -> LeafText a b
     LeafRaw a b -> LeafRaw a b
-    LeafLink a b c -> LeafLink a b (map processNode c)
+    LeafLink a x b c -> LeafLink a x b (map processNode c)

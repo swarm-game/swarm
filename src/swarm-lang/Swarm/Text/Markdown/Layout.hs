@@ -83,7 +83,7 @@ nodeToStream mw = \case
   -- appropriate line width, then split into code tokens with hard
   -- spaces.
   LeafCodeBlock _i c -> applyAttr Code . map (mkToken True) . tokenize $ maybe (prettyText c) (prettyTextWidth c) mw
-  LeafLink dest title desc -> applyAttr (Link dest title) . concatMap (nodeToStream mw) $ desc
+  LeafLink dest c title desc -> applyAttr (Link dest c title) . concatMap (nodeToStream mw) $ desc
  where
   applyAttr attr ts = PushAttr attr : ts ++ [PopAttr]
   mkToken hard = \case
@@ -155,6 +155,9 @@ normalise = mergeTokens . concatMap normaliseToken
 --   width of 1.
 paragraphToStream :: PrettyPrec a => Bool -> Int -> Maybe Int -> Paragraph a -> [Token]
 paragraphToStream indentFirstLine cols mw = \case
+  -- We "compile away" tables of contents into lists of links, so we
+  -- shouldn't encounter one here; if we do just emit a placeholder.
+  TOCTree _ -> ["[TOC]"]
   SimpleParagraph ns ->
     maybe id (splitter . max 1) mw
       . glueTokens

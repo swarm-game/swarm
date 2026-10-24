@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -15,6 +16,9 @@ module Swarm.Text.Markdown.Document (
   traverseDocument,
   mapParagraph,
   traverseParagraph,
+  _SimpleParagraph,
+  _ListParagraph,
+  _TOCTree,
   pureP,
   TxtAttr (..),
   Node (..),
@@ -29,6 +33,7 @@ module Swarm.Text.Markdown.Document (
 ) where
 
 import Commonmark.Types (ListSpacing, ListType)
+import Control.Lens (makePrisms)
 import Data.Functor.Identity (Identity (..))
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
@@ -55,9 +60,9 @@ newtype Document c = Document {paragraphs :: [Paragraph c]}
   deriving (Semigroup, Monoid) via [Paragraph c]
 
 -- | Markdown paragraphs are either a simple paragraph consisting of a
---   list of inline leaf nodes, or a list.  A list has a style for
---   displaying items, as well as a list of items, each of which can
---   contain a list of paragraphs.
+--   list of inline leaf nodes, a list, or a table of contents.  A
+--   list has a style for displaying items, as well as a list of
+--   items, each of which can contain a list of paragraphs.
 --
 --   For simple paragraphs, the idea is that paragraphs do not have
 --   line breaks, and so the inline elements follow each other, with
@@ -67,6 +72,7 @@ newtype Document c = Document {paragraphs :: [Paragraph c]}
 data Paragraph c where
   SimpleParagraph :: [Node c] -> Paragraph c
   ListParagraph :: ListType -> ListSpacing -> [[Paragraph c]] -> Paragraph c
+  TOCTree :: [FilePath] -> Paragraph c
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 -- | Map a function over every 'Paragraph' in a 'Document'.
@@ -84,6 +90,7 @@ mapParagraph f = runIdentity . traverseParagraph (Identity . f)
 -- | Effectfully traverse over all the nodes in a paragraph.
 traverseParagraph :: Applicative f => (Node c -> f (Node c')) -> Paragraph c -> f (Paragraph c')
 traverseParagraph g = \case
+  TOCTree ts -> pure $ TOCTree ts
   SimpleParagraph ns -> SimpleParagraph <$> traverse g ns
   ListParagraph ty sp ds -> ListParagraph ty sp <$> (traverse . traverse . traverseParagraph) g ds
 
@@ -101,8 +108,8 @@ data TxtAttr where
   Raw :: String -> TxtAttr
   -- | Code.
   Code :: TxtAttr
-  -- | A link, consisting of a destination and optional title.
-  Link :: Target -> Maybe Text -> TxtAttr
+  -- | A link, consisting of a destination, disambiguation counter, and optional title.
+  Link :: Target -> Int -> Maybe Text -> TxtAttr
   deriving (Eq, Show, Ord)
 
 -- | Inline leaf nodes.
@@ -118,8 +125,8 @@ data Node c
     LeafCode c
   | -- | A code block.
     LeafCodeBlock String c
-  | -- | A link: target, optional title, contents.
-    LeafLink Target (Maybe Text) [Node c]
+  | -- | A link: target, counter for disambiguating multiple links with the same target, optional title, contents.
+    LeafLink Target Int (Maybe Text) [Node c]
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 parseTarget :: Text -> Target
@@ -157,9 +164,12 @@ findCode = concatMap findCodeP . paragraphs
  where
   findCodeP :: Paragraph c -> [c]
   findCodeP = \case
+    TOCTree _ -> []
     SimpleParagraph ns -> mapMaybe codeOnly ns
     ListParagraph _ _ ds -> (concatMap . concatMap) findCodeP ds
   codeOnly = \case
     LeafCode s -> Just s
     LeafCodeBlock _i s -> Just s
     _l -> Nothing
+
+makePrisms ''Paragraph

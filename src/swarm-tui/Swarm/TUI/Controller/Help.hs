@@ -12,12 +12,11 @@ module Swarm.TUI.Controller.Help (
 ) where
 
 import Brick (EventM, zoom)
-import Control.Lens (Lens', use, uses, (%=), (.=), (^.), (^?))
+import Control.Lens (Lens', use, uses, (%=), (.=), (^?))
 import Control.Monad (when)
 import Data.List (uncons)
 import Swarm.Game.Achievement.Definitions (CategorizedAchievement (GlobalAchievement), GlobalAchievement (LookedAtAboutScreen))
 import Swarm.Game.State.Runtime (helpData)
-import Swarm.Language.Help (helpDoc)
 import Swarm.ResourceLoading (atPath)
 import Swarm.TUI.Controller.Util (ensurePause, safeAutoUnpause)
 import Swarm.TUI.Model (AppState, Name, playState, progression, runtimeState, scenarioState, uiState)
@@ -77,10 +76,12 @@ openHelp = do
   -- Ensure the game is paused, and open the appropriate page.
   Brick.zoom (playState . scenarioState) ensurePause
 
--- | Close the help system, saving the currently visited page to the history.
+-- | Close the help system, saving the currently visited page to the
+--   history (unless the current page is not the main index).
 closeHelp :: EventM Name AppState ()
 closeHelp = do
-  saveCurHelpPage
+  curPage <- use $ uiState . uiHelp . curHelpPage
+  when (curPage /= Just "index.md") saveCurHelpPage
   Brick.zoom (playState . scenarioState) safeAutoUnpause
   uiState . uiHelp . curHelpPage .= Nothing
 
@@ -122,4 +123,4 @@ setHelpPage p = do
   help <- use $ runtimeState . helpData
   case help ^? atPath p of
     Nothing -> pure ()
-    Just pg -> uiState . uiHelp . helpLinks .= linkFocusRing (pg ^. helpDoc)
+    Just pg -> uiState . uiHelp . helpLinks .= linkFocusRing pg

@@ -4,6 +4,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.View.Util where
 
+import Brick (emptyWidget)
 import Brick hiding (Direction, Location)
 import Brick.Focus (FocusRing, focusGetCurrent, focusRing)
 import Brick.Keybindings (Binding (..), KeyConfig, firstActiveBinding, ppKey, ppModifier)
@@ -224,7 +225,7 @@ drawMarkdownWithLinks linkFocusRing d = do
     Markdown.Emphasis -> withAttr italicAttr
     Markdown.Raw f -> withAttr (rawAttr f)
     Markdown.Code -> withAttr highlightAttr
-    Markdown.Link dest _title -> clickable (UILink dest) . highlightLink (UILink dest)
+    Markdown.Link dest i _title -> clickable (UILink dest i) . highlightLink (UILink dest i)
 
   highlightLink dest
     | focusedLink == Just dest = withAttr focusHighlightAttr
@@ -282,11 +283,13 @@ quitMsg isNoMenu =
 displayParagraphs :: [Text] -> Widget Name
 displayParagraphs = layoutParagraphs . map txtWrap
 
--- | Display a list of paragraphs with one blank line after each.
+-- | Display a list of paragraphs with one blank line after each but the last.
 --
 -- For the common case of `[Text]` use 'displayParagraphs'.
 layoutParagraphs :: [Widget Name] -> Widget Name
-layoutParagraphs ps = vBox $ padBottom (Pad 1) <$> ps
+layoutParagraphs ps = case unsnoc ps of
+  Nothing -> emptyWidget
+  Just (ps', p) -> vBox $ snoc (padBottom (Pad 1) <$> ps') p
 
 data EllipsisSide = Beginning | End
 
