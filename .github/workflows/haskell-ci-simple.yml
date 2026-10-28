@@ -28,7 +28,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [windows-latest, macos-15]
         cabal: ["3.16.1.0"]
         ghc: ["9.12.4"]
     timeout-minutes:
@@ -41,7 +41,7 @@ jobs:
       - name: "Cache GHC for macOS" # See haskell-actions/setup#139
         id: cache-haskell
         uses: actions/cache@v5
-        if: matrix.os == 'macos-latest'
+        if: matrix.os == 'macos-15'
         with:
           path: ~/.ghcup
           key: ${{ runner.os }}-ghc-${{ matrix.ghc }}

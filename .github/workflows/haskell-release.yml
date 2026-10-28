@@ -15,10 +15,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # macos-13 points to x64 based OS and macos-latest points to arm based OS
+        # macos-13 points to x64 based OS and macos-15 points to arm based OS
         os:
             - ubuntu-latest
-            - macos-latest
+            - macos-15
             - macos-13
             - windows-latest
         cabal:
@@ -70,7 +70,7 @@ jobs:
         name: Set binary OS name on Ubuntu
         run: echo BINARY_OS=${{ runner.os }} >> "$GITHUB_ENV"
 
-      - if: (matrix.os == 'macos-13') || (matrix.os == 'macos-latest')
+      - if: (matrix.os == 'macos-13') || (matrix.os == 'macos-15')
         name: Set binary OS name on Macos
         run: echo BINARY_OS="Darwin" >> "$GITHUB_ENV"
 
@@ -81,7 +81,7 @@ jobs:
       - name: Set binary Arch name
         run: echo ARCH="x86_64" >> "$GITHUB_ENV"
 
-      - if: matrix.os == 'macos-latest'
+      - if: matrix.os == 'macos-15'
         name: Set binary ARCH name for apple silicon
         run: echo ARCH="arm64" >> "$GITHUB_ENV"
 
