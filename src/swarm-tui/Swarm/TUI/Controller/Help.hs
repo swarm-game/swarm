@@ -14,10 +14,11 @@ module Swarm.TUI.Controller.Help (
 
 import Brick (EventM, lookupViewport, setTop, vpTop, zoom)
 import Brick.Focus (focusRing)
-import Control.Lens (Lens', use, uses, (%=), (.=), (^.), (^?))
+import Control.Lens (Lens', to, traversed, use, uses, view, (%=), (.=), (^.), (^?))
 import Control.Monad (when)
 import Data.Foldable (for_)
 import Data.List (uncons)
+import Data.Text qualified as T
 import Swarm.Game.Achievement.Definitions (CategorizedAchievement (GlobalAchievement), GlobalAchievement (LookedAtAboutScreen))
 import Swarm.Game.State.Runtime (helpData)
 import Swarm.Language.Help (FamilyLinks, familyLinks)
@@ -27,6 +28,7 @@ import Swarm.TUI.Model (AppState, Name (HelpViewport), helpScroll, playState, pr
 import Swarm.TUI.Model.Achievements (attainAchievement)
 import Swarm.TUI.Model.Help
 import Swarm.TUI.Model.UI (uiHelp)
+import Swarm.Text.Markdown.Document (Target, targetText)
 
 -- | Toggle the help system. If it is currently open, close it, saving
 --   the current page to history.  If it is currently closed, open it
@@ -155,10 +157,12 @@ setHelpEntry entry = do
   uiState . uiHelp . helpLinks .= (entry ^. helpFocusRing)
 
 -- | Visit a relative help page (previous or next sibling, parent).
-visitFamily :: Lens' FamilyLinks (Maybe FilePath) -> EventM Name AppState ()
+visitFamily :: Lens' FamilyLinks (Maybe Target) -> EventM Name AppState ()
 visitFamily relative = do
   help <- use $ runtimeState . helpData
   mcur <- use $ uiState . uiHelp . curHelpPage
   for_ mcur $ \cur ->
     for_ (help ^? atPath cur) $ \pg ->
-      for_ (pg ^. familyLinks . relative) visitHelpPage
+      for_ (pg ^. familyLinks . relative . to (fmap (T.unpack . view targetText))) visitHelpPage
+
+-- XXX what's the right lens-y way to do the above?

@@ -28,6 +28,7 @@ import Swarm.TUI.Model.UI (uiHelp)
 import Swarm.TUI.View.KeyCmd
 import Swarm.TUI.View.Util (bindingText, drawMarkdownWithLinks)
 import Swarm.Text.Markdown (Document (..), toText)
+import Swarm.Text.Markdown.Document (Target (..), TargetType (..))
 
 drawHelpUI :: AppState -> FilePath -> [Widget Name]
 drawHelpUI s hp = [helpPageWidget hp help helpSt keyConf]
@@ -93,10 +94,12 @@ helpPageWidget path help helpSt keyConf =
        in hBox . map (padLeftRight 1) . mapMaybe (drawRel <=< sequenceA) $
             [("Prev", fam ^. prevPage), ("Up", fam ^. parentPage), ("Next", fam ^. nextPage)]
    where
-    drawRel :: (Text, FilePath) -> Maybe (Widget Name)
-    drawRel (label, relpath) = case help ^? atPath relpath of
-      Nothing -> Nothing
-      Just _ -> Just $ txt (label <> ": ") <+> drawMarkdownWithLinks (helpSt ^. helpLinks) (mkHelpLink help relpath)
+    drawRel :: (Text, Target) -> Maybe (Widget Name)
+    drawRel (label, tgt) = case tgt of
+      Target _ Internal relpath -> case help ^? atPath (T.unpack relpath) of
+        Nothing -> Nothing
+        Just _ -> Just $ txt (label <> ": ") <+> drawMarkdownWithLinks (helpSt ^. helpLinks) (mkHelpLink help tgt)
+      Target _ URL url -> undefined
   content :: Widget Name
   content = case mhp of
     Nothing -> padTop (Pad 2) . hCenter . txt $ "No help page exists at path " <> T.pack path

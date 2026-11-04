@@ -21,11 +21,9 @@ module Swarm.TUI.Model.Help (
 import Brick.Focus (FocusRing, focusRing)
 import Control.Lens (Lens', (^.))
 import Data.Maybe (mapMaybe)
-import Data.Text qualified as T
 import Swarm.Language.Help (FamilyLinks, HelpPage, familyLinks, helpDoc, nextPage, parentPage, prevPage)
 import Swarm.TUI.Model.Name (Name (UILink))
 import Swarm.Text.Markdown
-import Swarm.Text.Markdown.Document (Target (..), TargetType (..))
 import Swarm.Util.Lens (makeLensesNoSigs)
 
 -- | An entry in the help browsing history.  Each page in the history
@@ -128,4 +126,4 @@ linkFocusRing pg = focusRing $ docLinkNames (pg ^. helpDoc) ++ familyLinkNames (
     _ -> []
 
   familyLinkNames :: FamilyLinks -> [Name]
-  familyLinkNames fl = map (UILink . Target 0 Internal . T.pack) $ mapMaybe (fl ^.) [prevPage, parentPage, nextPage]
+  familyLinkNames fl = map UILink $ mapMaybe (fl ^.) [prevPage, parentPage, nextPage]

@@ -22,6 +22,11 @@ module Swarm.Text.Markdown.Document (
   -- ** Node
   TxtAttr (..),
   Node (..),
+  _LeafText,
+  _LeafRaw,
+  _LeafCode,
+  _LeafCodeBlock,
+  _LeafLink,
 
   -- ** Paragraph
   Paragraph (..),
@@ -56,6 +61,35 @@ import Data.Text qualified as T
 -- Simple Document model
 ------------------------------------------------------------
 
+------------------------------------------------------------
+-- Link targets
+
+data TargetType where
+  -- | Link to a URL.
+  URL :: TargetType
+  -- | Internal link to another page.
+  Internal :: TargetType
+  deriving (Eq, Ord, Read, Show)
+
+-- | A target represents the target of a link, consisting of
+--   - a counter/ID for the purpose of disambiguating multiple links with the same target,
+--   - the target type, and
+--   - the actual text of the target.
+data Target = Target {_targetID :: Int, _targetType :: TargetType, _targetText :: Text}
+  deriving (Read, Show, Eq, Ord)
+
+makeLenses ''Target
+
+parseTarget :: Text -> Target
+parseTarget t = Target 0 ty t
+ where
+  ty
+    | "http" `T.isPrefixOf` t = URL
+    | otherwise = Internal
+
+------------------------------------------------------------
+-- Document
+
 -- | A top-level markdown document, represented as a list of
 --   paragraphs, with each paragraph consisting of a list of nodes.
 --   The representation is as simple as possible while containing the
@@ -83,7 +117,7 @@ newtype Document c = Document {paragraphs :: [Paragraph c]}
 data Paragraph c where
   SimpleParagraph :: [Node c] -> Paragraph c
   ListParagraph :: ListType -> ListSpacing -> [[Paragraph c]] -> Paragraph c
-  TOCTree :: [FilePath] -> Paragraph c
+  TOCTree :: [Target] -> Paragraph c
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 -- | Map a function over every 'Paragraph' in a 'Document'.
@@ -140,31 +174,7 @@ data Node c
     LeafLink Target (Maybe Text) [Node c]
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
-------------------------------------------------------------
--- Link targets
-
-data TargetType where
-  -- | Link to a URL.
-  URL :: TargetType
-  -- | Internal link to another page.
-  Internal :: TargetType
-  deriving (Eq, Ord, Read, Show)
-
--- | A target represents the target of a link, consisting of
---   - a counter/ID for the purpose of disambiguating multiple links with the same target,
---   - the target type, and
---   - the actual text of the target.
-data Target = Target {_targetID :: Int, _targetType :: TargetType, _targetText :: Text}
-  deriving (Eq, Ord, Read, Show)
-
-makeLenses ''Target
-
-parseTarget :: Text -> Target
-parseTarget t = Target 0 ty t
- where
-  ty
-    | "http" `T.isPrefixOf` t = URL
-    | otherwise = Internal
+makePrisms ''Node
 
 --------------------------------------------------
 -- Utilities

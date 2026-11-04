@@ -4,7 +4,6 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.View.Util where
 
-import Brick (emptyWidget)
 import Brick hiding (Direction, Location)
 import Brick.Focus (FocusRing, focusGetCurrent, focusRing)
 import Brick.Keybindings (Binding (..), KeyConfig, firstActiveBinding, ppKey, ppModifier)

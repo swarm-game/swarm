@@ -27,7 +27,10 @@ module Swarm.Language.Help (
 ) where
 
 import Commonmark.Types (ListSpacing (..), ListType (..))
-import Control.Lens (at, both, imap, itraverse_, ix, makeLenses, non, over, toListOf, (&), (.~), (^?))
+-- TODO(#2808): Replace this import with Data.Tree once we can require containers >= 0.8
+
+import Control.Lens (Traversal', at, both, imap, itraverse_, ix, makeLenses, non, over, to, toListOf, view, (&), (.~), (^.), (^?), _1)
+import Control.Lens.Unsound (adjoin)
 import Control.Monad (unless)
 import Data.Bifunctor (first, second)
 import Data.Char (isSpace)
@@ -52,10 +55,10 @@ import Swarm.ResourceLoading.Collection (
   loadCollection,
  )
 import Swarm.Text.Markdown (Document, fromTextE)
-import Swarm.Text.Markdown.Document (Document (..), Node (..), Paragraph (..), Target (..), TargetType (..), mapDocument, pureP, targetID, traverseDocument, traverseParagraph, txt, _TOCTree)
+import Swarm.Text.Markdown.Document (Document (..), Node (..), Paragraph (..), Target (..), TargetType (..), mapDocument, pureP, targetID, targetText, targetType, traverseDocument, traverseParagraph, txt, _LeafLink, _TOCTree)
 import Swarm.Util (Encoding (UTF8), readFileMayT)
 import Swarm.Util.Lens ((<+=))
-import Swarm.Util.Traversal qualified as Tree -- TODO(#2808): Replace this import with Data.Tree once we can require containers >= 0.8
+import Swarm.Util.Traversal qualified as Tree
 import System.Directory (doesDirectoryExist)
 import System.FilePath (takeExtension, (</>))
 
@@ -64,13 +67,16 @@ import System.FilePath (takeExtension, (</>))
 --   contents.  Repeatedly following "next" performs a preorder
 --   traversal of the document tree.
 data FamilyLinks = FamilyLinks
-  { _prevPage :: Maybe FilePath
-  , _nextPage :: Maybe FilePath
-  , _parentPage :: Maybe FilePath
+  { _prevPage :: Maybe Target
+  , _nextPage :: Maybe Target
+  , _parentPage :: Maybe Target
   }
 
 emptyFamilyLinks :: FamilyLinks
 emptyFamilyLinks = FamilyLinks Nothing Nothing Nothing
+
+traverseFamilyLinks :: Traversal' FamilyLinks Target
+traverseFamilyLinks f (FamilyLinks a b c) = FamilyLinks <$> traverse f a <*> traverse f b <*> traverse f c
 
 makeLenses ''FamilyLinks
 
@@ -121,13 +127,13 @@ parseMetadata = second M.fromList . partitionEithers . map (parseField . stripPu
     | otherwise = (field,) <$> first CustomFailure (fromTextE (stripPunct content))
 
 -- | Make a standalone document containing a link to a help page.
-mkHelpLink :: Collection HelpPage -> FilePath -> Document (Syntax Raw)
-mkHelpLink help hp = Document [pureP (mkHelpLinkNode help hp)]
+mkHelpLink :: Collection HelpPage -> Target -> Document (Syntax Raw)
+mkHelpLink help tgt = Document [pureP (mkHelpLinkNode help tgt)]
 
-mkHelpLinkNode :: Collection HelpPage -> FilePath -> Node (Syntax Raw)
-mkHelpLinkNode help hp = case help ^? atPath hp . helpMetadata . ix "title" of
-  Nothing -> txt (T.pack hp)
-  Just title -> LeafLink (Target 0 Internal (T.pack hp)) Nothing (getFirstPara title)
+mkHelpLinkNode :: Collection HelpPage -> Target -> Node (Syntax Raw)
+mkHelpLinkNode help tgt = case help ^? atPath (tgt ^. targetText . to T.unpack) . helpMetadata . ix "title" of
+  Nothing -> txt (tgt ^. targetText)
+  Just title -> LeafLink tgt Nothing (getFirstPara title)
  where
   getFirstPara = \case
     Document (SimpleParagraph ns : _) -> ns
@@ -145,16 +151,18 @@ renderTOCs help = mapDocument renderTOC
 --   links with duplicate targets.  It would probably be simpler
 --   to just assign consecutive ID numbers to all the links but this
 --   seems conceptually cleaner.
-disambiguateLinks :: Document c -> Document c
-disambiguateLinks = runPureEff . evalState M.empty . (traverseDocument . traverseParagraph) disambiguate
+--
+--   XXX page content + family links
+--
+--   XXX why adjoin is safe here
+disambiguateLinks :: HelpPage -> HelpPage
+disambiguateLinks = runPureEff . evalState M.empty . adjoin (helpDoc . traverseDocument . traverseParagraph . _LeafLink . _1) (familyLinks . traverseFamilyLinks) disambiguate
  where
-  disambiguate :: Node c -> Eff '[State (Map Target Int)] (Node c)
-  disambiguate = \case
-    LeafLink tgt t c -> do
-      -- Increment the value associated to tgt in the map (default 0) and return the new value
-      i <- (at @(Map Target Int) tgt . non 0) <+= 1
-      pure $ LeafLink (tgt & targetID .~ i) t c
-    n -> pure n
+  disambiguate :: Target -> Eff '[State (Map Target Int)] Target
+  disambiguate tgt = do
+    -- Increment the value associated to tgt in the map (default 0) and return the new value
+    i <- (at @(Map Target Int) tgt . non 0) <+= 1
+    pure (tgt & targetID .~ i)
 
 -- | Warnings that are specific to loading the help system.
 data HelpWarning
@@ -171,7 +179,7 @@ data HelpWarning
 
 -- | Return a list of all the table of contents entries on a page, in
 --   order of occurrence.
-allTOCEntries :: HelpPage -> [FilePath]
+allTOCEntries :: HelpPage -> [Target]
 allTOCEntries = toListOf $ helpDoc . traverseDocument . _TOCTree . traverse
 
 -- | Build a tree of pages, with the index page at the root and each
@@ -208,6 +216,9 @@ docTree help = evalState (M.empty :: Map FilePath FilePath) $ do
     parentOf <- get @(Map FilePath FilePath)
     itraverse_ (\path _ -> unless (M.member path parentOf) (warn $ Orphan path)) help
 
+  filePaths :: [Target] -> [FilePath]
+  filePaths = map (T.unpack . view targetText) . filter ((== Internal) . view targetType)
+
   dfs :: (State (Map FilePath FilePath) :> es, Warn HelpWarning :> es) => FilePath -> FilePath -> Eff es (Maybe (Tree (FilePath, HelpPage)))
   dfs parent path = do
     -- First, check whether we've already seen this path.  If so,
@@ -224,7 +235,7 @@ docTree help = evalState (M.empty :: Map FilePath FilePath) $ do
           -- Warn if the path is not found in the collection.
           Nothing -> warn (Missing path parent) $> Nothing
           -- Otherwise, recursively process everything in its TOCs and assemble into a tree.
-          Just page -> Just . Tree.Node (path, page) . catMaybes <$> mapM (dfs path) (allTOCEntries page)
+          Just page -> Just . Tree.Node (path, page) . catMaybes <$> mapM (dfs path) (filePaths $ allTOCEntries page)
 
 -- | Elaborate a help collection by computing and caching each page's
 --   "family" links (i.e. sibling and parent links based on tables of
@@ -244,9 +255,12 @@ computeFamilyLinks help = do
       -- process every node just by taking all size-3 windows.
       let es = (Nothing, Nothing) : (Nothing, Just root) : map (over both Just) (Tree.edges helpTree) ++ [(Nothing, Nothing)]
 
+          mkInternal :: FilePath -> Target
+          mkInternal = Target 0 Internal . T.pack
+
           buildFamilies :: [(Maybe FilePath, Maybe FilePath)] -> [(FilePath, FamilyLinks)]
           buildFamilies = \case
-            ((_, leftSib) : rest@((parent, Just node) : (_, rightSib) : _)) -> (node, FamilyLinks leftSib rightSib parent) : buildFamilies rest
+            ((_, leftSib) : rest@((parent, Just node) : (_, rightSib) : _)) -> (node, FamilyLinks (mkInternal <$> leftSib) (mkInternal <$> rightSib) (mkInternal <$> parent)) : buildFamilies rest
             _ -> []
 
           familyMap = M.fromList $ buildFamilies es
@@ -260,7 +274,7 @@ computeFamilyLinks help = do
 --   2. rendering each table of contents as a list, and
 --   3. inserting counters to disambiguate duplicate links.
 elaborateHelp :: (Warn HelpWarning :> es) => Collection HelpPage -> Eff es (Collection HelpPage)
-elaborateHelp help = (fmap . fmap . over helpDoc) (disambiguateLinks . renderTOCs help) . computeFamilyLinks $ help
+elaborateHelp help = (fmap . fmap) (disambiguateLinks . over helpDoc (renderTOCs help)) . computeFamilyLinks $ help
 
 -- | Load the collection of help pages from the standard location (data/help).
 loadHelp ::
