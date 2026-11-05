@@ -8,13 +8,14 @@
 -- Prety-printing Documents back to Markdown source.
 module Swarm.Text.Markdown.Pretty where
 
+import Control.Lens ((^.))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
 import Swarm.Language.Phase (ImportPhaseFor)
 import Swarm.Language.Syntax (Anchor, Syntax, Unresolvable)
 import Swarm.Pretty (PrettyPrec (..))
-import Swarm.Text.Markdown.Document (Document, TxtAttr (..), getTarget)
+import Swarm.Text.Markdown.Document (Document, TxtAttr (..), targetText)
 import Swarm.Text.Markdown.Layout (documentToStream)
 import Swarm.Text.Markdown.Token (OutputToken, Token' (..))
 
@@ -33,10 +34,10 @@ closeAttrToMark = \case
   Raw "" -> "`"
   Raw ann -> "`{=" <> T.pack ann <> "}"
   Code -> "\n```\n"
-  Link dest _ mtitle -> "](" <> mkTarget dest mtitle <> ")"
+  Link dest mtitle -> "](" <> mkTarget dest mtitle <> ")"
  where
   wrap c t = c <> t <> c
-  mkTarget tgt title = getTarget tgt <> maybe "" ((" " <>) . wrap "\"") title
+  mkTarget tgt title = (tgt ^. targetText) <> maybe "" ((" " <>) . wrap "\"") title
 
 streamToMark :: [OutputToken] -> Text
 streamToMark = mconcat . go []

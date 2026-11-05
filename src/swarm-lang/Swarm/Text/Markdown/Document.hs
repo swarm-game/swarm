@@ -10,30 +10,41 @@
 -- descriptions.
 module Swarm.Text.Markdown.Document (
   -- * Simple Document model
-  Document (..),
+
+  -- ** Targets
+  TargetType (..),
+  Target (..),
+  targetID,
+  targetType,
+  targetText,
+  parseTarget,
+
+  -- ** Node
+  TxtAttr (..),
+  Node (..),
+
+  -- ** Paragraph
   Paragraph (..),
-  mapDocument,
-  traverseDocument,
-  mapParagraph,
-  traverseParagraph,
   _SimpleParagraph,
   _ListParagraph,
   _TOCTree,
   pureP,
-  TxtAttr (..),
-  Node (..),
-  Target (..),
+  mapParagraph,
+  traverseParagraph,
+
+  -- ** Document
+  Document (..),
+  mapDocument,
+  traverseDocument,
 
   -- * Utilities
   txt,
   addTextAttribute,
   findCode,
-  parseTarget,
-  getTarget,
 ) where
 
 import Commonmark.Types (ListSpacing, ListType)
-import Control.Lens (makePrisms)
+import Control.Lens (makeLenses, makePrisms)
 import Data.Functor.Identity (Identity (..))
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
@@ -108,8 +119,8 @@ data TxtAttr where
   Raw :: String -> TxtAttr
   -- | Code.
   Code :: TxtAttr
-  -- | A link, consisting of a destination, disambiguation counter, and optional title.
-  Link :: Target -> Int -> Maybe Text -> TxtAttr
+  -- | A link, consisting of a destination and optional title.
+  Link :: Target -> Maybe Text -> TxtAttr
   deriving (Eq, Show, Ord)
 
 -- | Inline leaf nodes.
@@ -125,26 +136,35 @@ data Node c
     LeafCode c
   | -- | A code block.
     LeafCodeBlock String c
-  | -- | A link: target, counter for disambiguating multiple links with the same target, optional title, contents.
-    LeafLink Target Int (Maybe Text) [Node c]
+  | -- | A link: target, optional title, contents.
+    LeafLink Target (Maybe Text) [Node c]
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
-parseTarget :: Text -> Target
-parseTarget t
-  | "http" `T.isPrefixOf` t = URL t
-  | otherwise = Internal t
+------------------------------------------------------------
+-- Link targets
 
-getTarget :: Target -> Text
-getTarget = \case
-  URL dest -> dest
-  Internal dest -> dest
-
-data Target
-  = -- | Link to a URL.
-    URL Text
-  | -- | Internal link to another page.
-    Internal Text
+data TargetType where
+  -- | Link to a URL.
+  URL :: TargetType
+  -- | Internal link to another page.
+  Internal :: TargetType
   deriving (Eq, Ord, Read, Show)
+
+-- | A target represents the target of a link, consisting of
+--   - a counter/ID for the purpose of disambiguating multiple links with the same target,
+--   - the target type, and
+--   - the actual text of the target.
+data Target = Target {_targetID :: Int, _targetType :: TargetType, _targetText :: Text}
+  deriving (Eq, Ord, Read, Show)
+
+makeLenses ''Target
+
+parseTarget :: Text -> Target
+parseTarget t = Target 0 ty t
+ where
+  ty
+    | "http" `T.isPrefixOf` t = URL
+    | otherwise = Internal
 
 --------------------------------------------------
 -- Utilities

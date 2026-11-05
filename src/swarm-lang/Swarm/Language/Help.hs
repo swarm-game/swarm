@@ -52,7 +52,7 @@ import Swarm.ResourceLoading.Collection (
   loadCollection,
  )
 import Swarm.Text.Markdown (Document, fromTextE)
-import Swarm.Text.Markdown.Document (Document (..), Node (..), Paragraph (..), Target (..), mapDocument, pureP, traverseDocument, traverseParagraph, txt, _TOCTree)
+import Swarm.Text.Markdown.Document (Document (..), Node (..), Paragraph (..), Target (..), TargetType (..), mapDocument, pureP, targetID, traverseDocument, traverseParagraph, txt, _TOCTree)
 import Swarm.Util (Encoding (UTF8), readFileMayT)
 import Swarm.Util.Lens ((<+=))
 import Swarm.Util.Traversal qualified as Tree -- TODO(#2808): Replace this import with Data.Tree once we can require containers >= 0.8
@@ -127,7 +127,7 @@ mkHelpLink help hp = Document [pureP (mkHelpLinkNode help hp)]
 mkHelpLinkNode :: Collection HelpPage -> FilePath -> Node (Syntax Raw)
 mkHelpLinkNode help hp = case help ^? atPath hp . helpMetadata . ix "title" of
   Nothing -> txt (T.pack hp)
-  Just title -> LeafLink (Internal (T.pack hp)) 0 Nothing (getFirstPara title)
+  Just title -> LeafLink (Target 0 Internal (T.pack hp)) Nothing (getFirstPara title)
  where
   getFirstPara = \case
     Document (SimpleParagraph ns : _) -> ns
@@ -150,10 +150,10 @@ disambiguateLinks = runPureEff . evalState M.empty . (traverseDocument . travers
  where
   disambiguate :: Node c -> Eff '[State (Map Target Int)] (Node c)
   disambiguate = \case
-    LeafLink tgt _ t c -> do
+    LeafLink tgt t c -> do
       -- Increment the value associated to tgt in the map (default 0) and return the new value
       i <- (at @(Map Target Int) tgt . non 0) <+= 1
-      pure $ LeafLink tgt i t c
+      pure $ LeafLink (tgt & targetID .~ i) t c
     n -> pure n
 
 -- | Warnings that are specific to loading the help system.

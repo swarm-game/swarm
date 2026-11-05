@@ -134,9 +134,7 @@ data Name
   | -- | A clickable shortcut in the TUI.
     UIShortcut Text
   | -- | A clickable link, either to an external URL or a local page.
-    --   The Int is a counter used to disambiguate between duplicate
-    --   links on the same page.
-    UILink Target Int
+    UILink Target
   | -- | A custom widget name, for use in applications built on top of the Swarm library.
     CustomName Text
   deriving (Eq, Ord, Show, Read)

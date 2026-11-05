@@ -25,7 +25,7 @@ import Data.Text qualified as T
 import Swarm.Language.Help (FamilyLinks, HelpPage, familyLinks, helpDoc, nextPage, parentPage, prevPage)
 import Swarm.TUI.Model.Name (Name (UILink))
 import Swarm.Text.Markdown
-import Swarm.Text.Markdown.Document (Target (..))
+import Swarm.Text.Markdown.Document (Target (..), TargetType (..))
 import Swarm.Util.Lens (makeLensesNoSigs)
 
 -- | An entry in the help browsing history.  Each page in the history
@@ -124,8 +124,8 @@ linkFocusRing pg = focusRing $ docLinkNames (pg ^. helpDoc) ++ familyLinkNames (
 
   nodeLinkNames :: Node c -> [Name]
   nodeLinkNames = \case
-    LeafLink tgt i _ _ -> [UILink tgt i]
+    LeafLink tgt _ _ -> [UILink tgt]
     _ -> []
 
   familyLinkNames :: FamilyLinks -> [Name]
-  familyLinkNames fl = map (\t -> UILink (Internal (T.pack t)) 0) $ mapMaybe (fl ^.) [prevPage, parentPage, nextPage]
+  familyLinkNames fl = map (UILink . Target 0 Internal . T.pack) $ mapMaybe (fl ^.) [prevPage, parentPage, nextPage]

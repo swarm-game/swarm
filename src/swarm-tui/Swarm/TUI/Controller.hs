@@ -117,7 +117,7 @@ import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Popup (startPopupAnimation)
 import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Robot.Type
-import Swarm.Text.Markdown.Document (Target (..))
+import Swarm.Text.Markdown.Document (Target (..), TargetType (..))
 import Swarm.Util hiding (both)
 import Web.Browser (openBrowser)
 
@@ -183,13 +183,13 @@ handleHelpEvent ev = do
     CharKey '\t' -> uiState . uiHelp . helpLinks %= focusNext
     Key V.KBackTab -> uiState . uiHelp . helpLinks %= focusPrev
     Key V.KEnter -> case focusGetCurrent (s ^. uiState . uiHelp . helpLinks) of
-      Just (UILink dest _) -> handleLinkClick dest
+      Just (UILink dest) -> handleLinkClick dest
       _ -> pure ()
     VtyEvent (V.EvKey k m)
       | isJust (B.lookupVtyEvent k m keyHandler) -> void $ B.handleKey keyHandler k m
     FKey 1 -> closeHelp
     MouseDown item _ _ _ -> case item of
-      UILink dest _ -> handleLinkClick dest
+      UILink dest -> handleLinkClick dest
       UIShortcut "back" -> visitPreviousHelpPage
       UIShortcut "forward" -> visitNextHelpPage
       UIShortcut "exit" -> closeHelp
@@ -408,7 +408,7 @@ handleMainEvent forceRedraw ev = do
           when shouldUpdateCursor $
             uiGameplay . uiWorldCursor .= mouseCoordsM
         REPLInput -> handleREPLEvent ev
-        UILink dest _ -> handleLinkClick dest
+        UILink dest -> handleLinkClick dest
         (UIShortcut "Help") -> toggleHelp
         (UIShortcut "Robots") -> Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal RobotsModal
         (UIShortcut "Commands") -> Brick.zoom (playState . scenarioState) $ toggleDiscoveryNotificationModal CommandsModal availableCommands
@@ -473,9 +473,9 @@ handleMainEvent forceRedraw ev = do
 --   the user's browser.  Otherwise, treat it as a link to an internal
 --   help page.
 handleLinkClick :: Target -> EventM Name AppState ()
-handleLinkClick = \case
-  URL url -> void . liftIO $ openBrowser (T.unpack url)
-  Internal dest -> visitHelpPage (T.unpack dest)
+handleLinkClick (Target _ ty (T.unpack -> dest)) = case ty of
+  URL -> void . liftIO $ openBrowser dest
+  Internal -> visitHelpPage dest
 
 closeModal :: Modal -> EventM Name ScenarioState ()
 closeModal m = do
