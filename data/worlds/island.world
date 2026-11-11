@@ -1,0 +1,73 @@
+/* See README.md for a thorough description of the world DSL.  Some
+   comments are provided below to help explain the language by
+   example. */
+let
+    /* pn0, pn1, pn2 are Perlin noise functions, which
+       associate a floating-point value to every coordinate
+       in a way that is random yet continuous (i.e. nearby
+       coordinates have close floating-point values).  We use
+       these to determine "biomes".  The four parameters
+       represent seed, octaves, scale, and persistence. For
+       an explanation of how these parameters affect
+       the resulting noise function, see
+       https://libnoise.sourceforge.net/glossary/index.html#perlinnoise
+
+       'seed' is a special constant which holds the value of the seed used
+       for world generation (whether chosen by the user, chosen randomly, etc.)
+    */
+    pnI = (perlin seed 6 0.05 0.6) - 0.6,
+    pnCU = (perlin (seed + 1) 6 0.05 0.6),
+
+    dist = x*x + y*y,
+    distIF = (25.0 / (fromIntegral dist)),
+    pnC = pnCU - 0.5 + distIF,
+
+    /* We now define some Boolean variables for determining which
+       biome we are in.  Note that implicitly, as with everything
+       in this world description DSL, these are actually
+       parameterized over coordinates --- that is, we can get a different
+       Boolean value associated to each coordinate.
+    */
+    
+    ocean = pnI <= 0.0,
+    beach = pnI > 0.0 && pnI <= 0.1,
+    island = pnI > 0.1,
+    mountain = pnI > 0.35
+in
+/* The world is built up by a series of layers, with each layer thought of as a function
+   from coordinates to cell values.  The first layer is bottommost.
+   The layers are combined coordinatewise according to the semigroup operation for
+   cells.
+
+   'mask b e' takes the value of 'e' where 'b' is true, and is empty elsewhere.
+
+   '{x1, x2, ...}' specifies the value of a cell with a list of contents.  A cell
+   can have at most one terrain value, and at most one entity, which are disambiguated
+   by name (though one can also write e.g. '{entity: tree}' or '{terrain: dirt}' to
+   disambiguate).
+
+   'hash' is a special variable which takes on the value of a murmur3 hash applied
+   to the coordinates; it can be used to obtain non-coherent randomness (i.e.
+   random values such that nearby values are not correlated).
+
+   'x' and 'y' are special variables which always take on the x- or y-value of the
+   coordinates.
+*/
+imap x (y * 2)
+overlay
+[ mask (dist > 30 * 30) ( overlay
+   [ mask (ocean) {stone, water}
+   , mask (beach) {stone, sand}
+   , mask (island) {stone, tree}
+   , mask (mountain) {stone, mountain}
+   , mask (dist <= 33 * 33) {wavy water}
+   ])
+, mask (dist <= 30 * 30) ( overlay
+   [ mask (pnC < 0.0) {stone, water}
+   , /* OVERLAY */ mask (dist <= 7*7) {stone, sand} // burnt area beach is overlaid by latter
+   , mask (pnC > 0.0 && pnC <= 0.1) {stone, sand}
+   , mask (pnC > 0.1) {dirt}
+   , mask (pnC > 0.4) {dirt, tree}
+   , mask (dist <= 5*5) {burnt, erase}
+   ])
+]

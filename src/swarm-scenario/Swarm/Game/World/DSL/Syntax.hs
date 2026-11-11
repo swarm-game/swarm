@@ -74,7 +74,7 @@ data Axis = X | Y
 instance PrettyPrec Axis where
   prettyPrec _ = \case X -> "x"; Y -> "y"
 
-data Op = Not | Neg | And | Or | Add | Sub | Mul | Div | Mod | Eq | Neq | Lt | Leq | Gt | Geq | If | Perlin | Mask | Overlay | Abs | IMap
+data Op = Not | Neg | And | Or | Add | Sub | Mul | Div | Mod | Eq | Neq | Lt | Leq | Gt | Geq | If | Perlin | Mask | Overlay | Abs | FromIntegral | IMap
   deriving (Eq, Ord, Show)
 
 ------------------------------------------------------------
