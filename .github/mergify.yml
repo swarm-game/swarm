@@ -60,7 +60,7 @@ pull_request_rules:
         - check-success=HLint
         - -files~=\.hs$
       - check-success=Haskell-CI - Linux - ghc-9.12.1
-      - check-success=Haskell-CI - Linux - ghc-9.10.1
+      - check-success=Haskell-CI - Linux - ghc-9.10.3
       - check-success=Haskell-CI - Linux - ghc-9.8.4
       - check-success=Haskell-CI - Linux - ghc-9.6.7
       - check-success=Simple CI - windows-latest - ghc-9.12.1
