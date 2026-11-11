@@ -509,13 +509,13 @@ handleModalEvent = \case
               NoMenu -> True
               _ -> False
 
-        case dialogSelection =<< mdialog of
-          Just (Button QuitButton, _) -> quitGame isNoMenu
-          Just (Button KeepPlayingButton, _) -> Brick.zoom playState $ toggleEndScenarioModal KeepPlayingModal menu
-          Just (Button StartOverButton, StartOver currentSeed siPair) -> do
+        case snd <$> (dialogSelection =<< mdialog) of
+          Just QuitAction -> quitGame isNoMenu
+          Just KeepPlaying -> Brick.zoom playState $ toggleEndScenarioModal KeepPlayingModal menu
+          Just (StartOver currentSeed siPair) -> do
             invalidateCache
             restartGame currentSeed siPair
-          Just (Button NextButton, Next remainingScenarios) -> do
+          Just (Next remainingScenarios) -> do
             quitGame isNoMenu
             invalidateCache
             startGame remainingScenarios Nothing
