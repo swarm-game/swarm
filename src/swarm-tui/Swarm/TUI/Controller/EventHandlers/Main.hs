@@ -29,7 +29,7 @@ import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
 import Swarm.Game.Step (finishGameTick)
-import Swarm.Language.Help (nextPage, prevPage, parentPage)
+import Swarm.Language.Help (nextPage, parentPage, prevPage)
 import Swarm.Language.Syntax (Phase (..))
 import Swarm.TUI.Controller.EventHandlers.Frame (runGameTickUI)
 import Swarm.TUI.Controller.Help (toggleHelp, visitFamily, visitNextHelpPage, visitPreviousHelpPage)
