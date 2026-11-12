@@ -26,9 +26,9 @@ module Swarm.Language.Help (
   mkHelpLink,
 ) where
 
-import Commonmark.Types (ListSpacing (..), ListType (..))
--- TODO(#2808): Replace this import with Data.Tree once we can require containers >= 0.8
+-- TODO(#2808): Replace Swarm.Util.Traversal import with Data.Tree once we can require containers >= 0.8
 
+import Commonmark.Types (ListSpacing (..), ListType (..))
 import Control.Lens (Traversal', at, both, imap, itraverse_, ix, makeLenses, non, over, to, toListOf, view, (&), (.~), (^.), (^?), _1)
 import Control.Lens.Unsound (adjoin)
 import Control.Monad (unless)
@@ -46,9 +46,11 @@ import Data.Tree qualified as Tree
 import Effectful
 import Effectful.Error.Static
 import Effectful.State.Static.Local (State, evalState, get, modify)
+import Prettyprinter (pretty, (<+>))
 import Swarm.Effect.Warn.Local
 import Swarm.Failure (Asset (..), AssetData (Help), Entry (..), LoadingFailure (..), SystemFailure (..))
 import Swarm.Language.Syntax (Phase (Raw), Raw, Syntax)
+import Swarm.Pretty (PrettyPrec (..))
 import Swarm.ResourceLoading (Collection, atPath, getDataDirThrow)
 import Swarm.ResourceLoading.Collection (
   CollectionConfig (..),
@@ -147,16 +149,24 @@ renderTOCs help = mapDocument renderTOC
     TOCTree hps -> ListParagraph (BulletList '*') TightList (map ((: []) . pureP . mkHelpLinkNode help) hps)
     p -> p
 
--- | Disambiguate links in a document by giving unique ID numbers to
---   links with duplicate targets.  It would probably be simpler
---   to just assign consecutive ID numbers to all the links but this
---   seems conceptually cleaner.
---
---   XXX page content + family links
---
---   XXX why adjoin is safe here
+-- | Disambiguate links in a help page (both within the page content,
+--   and "family links" to previous/next pages) by giving unique ID
+--   numbers to links with duplicate targets.  It would probably be
+--   simpler to just assign consecutive ID numbers to all the links,
+--   but this seems conceptually cleaner.
 disambiguateLinks :: HelpPage -> HelpPage
-disambiguateLinks = runPureEff . evalState M.empty . adjoin (helpDoc . traverseDocument . traverseParagraph . _LeafLink . _1) (familyLinks . traverseFamilyLinks) disambiguate
+disambiguateLinks =
+  runPureEff
+    . evalState M.empty
+    -- 'adjoin' concatenates two traversals into a single traversal.
+    -- It does not in general result in a lawful traversal; this use
+    -- is safe because the help document contents and family links
+    -- come from disjoint parts of the overall data structure, so they
+    -- cannot overlap.
+    . adjoin
+      (helpDoc . traverseDocument . traverseParagraph . _LeafLink . _1)
+      (familyLinks . traverseFamilyLinks)
+      disambiguate
  where
   disambiguate :: Target -> Eff '[State (Map Target Int)] Target
   disambiguate tgt = do
@@ -176,6 +186,12 @@ data HelpWarning
     --   not linked transitively from any TOC.
     Orphan FilePath
   deriving (Show)
+
+instance PrettyPrec HelpWarning where
+  prettyPrec _ = \case
+    Dup d (p1, p2) -> "Help page" <+> pretty d <+> "linked from both" <+> pretty p1 <+> "and" <+> pretty p2
+    Missing notFound parent -> "Help page" <+> pretty notFound <+> "not found, linked from" <+> pretty parent
+    Orphan o -> "Orphan help page" <+> pretty o <+> "not transitively linked from any TOC"
 
 -- | Return a list of all the table of contents entries on a page, in
 --   order of occurrence.

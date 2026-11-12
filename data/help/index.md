@@ -12,5 +12,6 @@ entityref
 worldref
 speedrun
 contributing
+markdown
 about
 ```

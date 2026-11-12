@@ -14,7 +14,7 @@ module Swarm.TUI.Controller.Help (
 
 import Brick (EventM, lookupViewport, setTop, vpTop, zoom)
 import Brick.Focus (focusRing)
-import Control.Lens (Lens', to, traversed, use, uses, view, (%=), (.=), (^.), (^?))
+import Control.Lens (Lens', to, use, uses, view, (%=), (.=), (^.), (^?))
 import Control.Monad (when)
 import Data.Foldable (for_)
 import Data.List (uncons)
