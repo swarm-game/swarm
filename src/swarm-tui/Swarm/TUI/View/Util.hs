@@ -282,11 +282,13 @@ quitMsg isNoMenu =
 displayParagraphs :: [Text] -> Widget Name
 displayParagraphs = layoutParagraphs . map txtWrap
 
--- | Display a list of paragraphs with one blank line after each.
+-- | Display a list of paragraphs with one blank line after each but the last.
 --
 -- For the common case of `[Text]` use 'displayParagraphs'.
 layoutParagraphs :: [Widget Name] -> Widget Name
-layoutParagraphs ps = vBox $ padBottom (Pad 1) <$> ps
+layoutParagraphs ps = case unsnoc ps of
+  Nothing -> emptyWidget
+  Just (ps', p) -> vBox $ snoc (padBottom (Pad 1) <$> ps') p
 
 data EllipsisSide = Beginning | End
 

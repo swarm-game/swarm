@@ -10,22 +10,25 @@ import Brick
 import Brick.Keybindings (KeyConfig)
 import Brick.Widgets.Center (hCenter)
 import Control.Lens
+import Control.Monad ((<=<))
 import Data.Bool (bool)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.State.Runtime (helpData)
-import Swarm.Language.Help (HelpPage, helpDoc, helpMetadata)
+import Swarm.Language.Help
 import Swarm.Language.Syntax (Phase (Raw), Syntax)
 import Swarm.ResourceLoading (atPath)
 import Swarm.ResourceLoading.Collection (Collection)
-import Swarm.TUI.Border (BorderLabels, borderWithLabels, bottomLabels, centerLabel, leftLabel, plainBorder, plainHBorder, topLabels)
+import Swarm.TUI.Border
 import Swarm.TUI.Model (AppState, Name (..), keyConfig, keyEventHandling, runtimeState, uiState)
-import Swarm.TUI.Model.Event (MainEvent (HelpBackEvent, HelpFwdEvent), SwarmEvent (Main))
+import Swarm.TUI.Model.Event (MainEvent (..), SwarmEvent (Main))
 import Swarm.TUI.Model.Help (HelpState, helpHistoryBack, helpHistoryForward, helpLinks)
 import Swarm.TUI.Model.UI (uiHelp)
 import Swarm.TUI.View.KeyCmd
 import Swarm.TUI.View.Util (bindingText, drawMarkdownWithLinks)
-import Swarm.Text.Markdown (Document, toText)
+import Swarm.Text.Markdown (Document (..), toText)
+import Swarm.Text.Markdown.Document (Target (..), TargetType (..))
 
 drawHelpUI :: AppState -> FilePath -> [Widget Name]
 drawHelpUI s hp = [helpPageWidget hp help helpSt keyConf]
@@ -55,11 +58,12 @@ helpPageWidget path help helpSt keyConf =
     plainBorder
       & topLabels
         .~ ( plainHBorder
-               & centerLabel ?~ txt (toText title)
+               & centerLabel ?~ padLeftRight 1 (txt (toText title))
            )
       & bottomLabels
         .~ ( plainHBorder
                & leftLabel ?~ drawKeyCmds helpCmds
+               & rightLabel ?~ drawFamilyLinks
            )
 
   title :: Document (Syntax Raw)
@@ -75,11 +79,27 @@ helpPageWidget path help helpSt keyConf =
   helpCmds =
     [ SingleButton (bool NoHighlight Alert anyBackHistory) (bindingText keyConf $ Main HelpBackEvent) "back"
     , SingleButton (bool NoHighlight Alert anyForwardHistory) (bindingText keyConf $ Main HelpFwdEvent) "forward"
+    , SingleButton NoHighlight (bindingText keyConf $ Main HelpPrevEvent) "prev"
+    , SingleButton NoHighlight (bindingText keyConf $ Main HelpNextEvent) "next"
     , SingleButton NoHighlight "Tab" "cycle"
     , SingleButton NoHighlight "Enter" "visit"
     , SingleButton NoHighlight "Esc" "exit"
     ]
 
+  drawFamilyLinks :: Widget Name
+  drawFamilyLinks = case mhp of
+    Nothing -> emptyWidget
+    Just hp ->
+      let fam = hp ^. familyLinks
+       in hBox . map (padLeftRight 1) . mapMaybe (drawRel <=< sequenceA) $
+            [("Prev", fam ^. prevPage), ("Up", fam ^. parentPage), ("Next", fam ^. nextPage)]
+   where
+    drawRel :: (Text, Target) -> Maybe (Widget Name)
+    drawRel (label, tgt) = case tgt of
+      Target _ Internal relpath -> case help ^? atPath (T.unpack relpath) of
+        Nothing -> Nothing
+        Just _ -> Just $ txt (label <> ": ") <+> drawMarkdownWithLinks (helpSt ^. helpLinks) (mkHelpLink help tgt)
+      Target _ URL url -> undefined
   content :: Widget Name
   content = case mhp of
     Nothing -> padTop (Pad 2) . hCenter . txt $ "No help page exists at path " <> T.pack path

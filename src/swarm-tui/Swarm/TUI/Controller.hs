@@ -117,7 +117,7 @@ import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Popup (startPopupAnimation)
 import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Robot.Type
-import Swarm.Text.Markdown.Document (Target (..))
+import Swarm.Text.Markdown.Document (Target (..), TargetType (..))
 import Swarm.Util hiding (both)
 import Web.Browser (openBrowser)
 
@@ -181,6 +181,7 @@ handleHelpEvent ev = do
   case ev of
     Key V.KEsc -> closeHelp
     CharKey '\t' -> uiState . uiHelp . helpLinks %= focusNext
+    Key V.KBackTab -> uiState . uiHelp . helpLinks %= focusPrev
     Key V.KEnter -> case focusGetCurrent (s ^. uiState . uiHelp . helpLinks) of
       Just (UILink dest) -> handleLinkClick dest
       _ -> pure ()
@@ -472,9 +473,9 @@ handleMainEvent forceRedraw ev = do
 --   the user's browser.  Otherwise, treat it as a link to an internal
 --   help page.
 handleLinkClick :: Target -> EventM Name AppState ()
-handleLinkClick = \case
-  URL url -> void . liftIO $ openBrowser (T.unpack url)
-  Internal dest -> visitHelpPage (T.unpack dest)
+handleLinkClick (Target _ ty (T.unpack -> dest)) = case ty of
+  URL -> void . liftIO $ openBrowser dest
+  Internal -> visitHelpPage dest
 
 closeModal :: Modal -> EventM Name ScenarioState ()
 closeModal m = do

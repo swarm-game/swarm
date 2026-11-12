@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -9,26 +10,46 @@
 -- descriptions.
 module Swarm.Text.Markdown.Document (
   -- * Simple Document model
-  Document (..),
-  Paragraph (..),
-  mapDocument,
-  traverseDocument,
-  mapParagraph,
-  traverseParagraph,
-  pureP,
+
+  -- ** Targets
+  TargetType (..),
+  Target (..),
+  targetID,
+  targetType,
+  targetText,
+  parseTarget,
+
+  -- ** Node
   TxtAttr (..),
   Node (..),
-  Target (..),
+  _LeafText,
+  _LeafRaw,
+  _LeafCode,
+  _LeafCodeBlock,
+  _LeafLink,
+
+  -- ** Paragraph
+  Paragraph (..),
+  _SimpleParagraph,
+  _ListParagraph,
+  _TOCTree,
+  pureP,
+  mapParagraph,
+  traverseParagraph,
+
+  -- ** Document
+  Document (..),
+  mapDocument,
+  traverseDocument,
 
   -- * Utilities
   txt,
   addTextAttribute,
   findCode,
-  parseTarget,
-  getTarget,
 ) where
 
 import Commonmark.Types (ListSpacing, ListType)
+import Control.Lens (makeLenses, makePrisms)
 import Data.Functor.Identity (Identity (..))
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
@@ -39,6 +60,35 @@ import Data.Text qualified as T
 ------------------------------------------------------------
 -- Simple Document model
 ------------------------------------------------------------
+
+------------------------------------------------------------
+-- Link targets
+
+data TargetType where
+  -- | Link to a URL.
+  URL :: TargetType
+  -- | Internal link to another page.
+  Internal :: TargetType
+  deriving (Eq, Ord, Read, Show)
+
+-- | A target represents the target of a link, consisting of
+--   - a counter/ID for the purpose of disambiguating multiple links with the same target,
+--   - the target type, and
+--   - the actual text of the target.
+data Target = Target {_targetID :: Int, _targetType :: TargetType, _targetText :: Text}
+  deriving (Read, Show, Eq, Ord)
+
+makeLenses ''Target
+
+parseTarget :: Text -> Target
+parseTarget t = Target 0 ty t
+ where
+  ty
+    | "http" `T.isPrefixOf` t = URL
+    | otherwise = Internal
+
+------------------------------------------------------------
+-- Document
 
 -- | A top-level markdown document, represented as a list of
 --   paragraphs, with each paragraph consisting of a list of nodes.
@@ -55,9 +105,9 @@ newtype Document c = Document {paragraphs :: [Paragraph c]}
   deriving (Semigroup, Monoid) via [Paragraph c]
 
 -- | Markdown paragraphs are either a simple paragraph consisting of a
---   list of inline leaf nodes, or a list.  A list has a style for
---   displaying items, as well as a list of items, each of which can
---   contain a list of paragraphs.
+--   list of inline leaf nodes, a list, or a table of contents.  A
+--   list has a style for displaying items, as well as a list of
+--   items, each of which can contain a list of paragraphs.
 --
 --   For simple paragraphs, the idea is that paragraphs do not have
 --   line breaks, and so the inline elements follow each other, with
@@ -67,6 +117,7 @@ newtype Document c = Document {paragraphs :: [Paragraph c]}
 data Paragraph c where
   SimpleParagraph :: [Node c] -> Paragraph c
   ListParagraph :: ListType -> ListSpacing -> [[Paragraph c]] -> Paragraph c
+  TOCTree :: [Target] -> Paragraph c
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 -- | Map a function over every 'Paragraph' in a 'Document'.
@@ -84,6 +135,7 @@ mapParagraph f = runIdentity . traverseParagraph (Identity . f)
 -- | Effectfully traverse over all the nodes in a paragraph.
 traverseParagraph :: Applicative f => (Node c -> f (Node c')) -> Paragraph c -> f (Paragraph c')
 traverseParagraph g = \case
+  TOCTree ts -> pure $ TOCTree ts
   SimpleParagraph ns -> SimpleParagraph <$> traverse g ns
   ListParagraph ty sp ds -> ListParagraph ty sp <$> (traverse . traverse . traverseParagraph) g ds
 
@@ -122,22 +174,7 @@ data Node c
     LeafLink Target (Maybe Text) [Node c]
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
-parseTarget :: Text -> Target
-parseTarget t
-  | "http" `T.isPrefixOf` t = URL t
-  | otherwise = Internal t
-
-getTarget :: Target -> Text
-getTarget = \case
-  URL dest -> dest
-  Internal dest -> dest
-
-data Target
-  = -- | Link to a URL.
-    URL Text
-  | -- | Internal link to another page.
-    Internal Text
-  deriving (Eq, Ord, Read, Show)
+makePrisms ''Node
 
 --------------------------------------------------
 -- Utilities
@@ -157,9 +194,12 @@ findCode = concatMap findCodeP . paragraphs
  where
   findCodeP :: Paragraph c -> [c]
   findCodeP = \case
+    TOCTree _ -> []
     SimpleParagraph ns -> mapMaybe codeOnly ns
     ListParagraph _ _ ds -> (concatMap . concatMap) findCodeP ds
   codeOnly = \case
     LeafCode s -> Just s
     LeafCodeBlock _i s -> Just s
     _l -> Nothing
+
+makePrisms ''Paragraph

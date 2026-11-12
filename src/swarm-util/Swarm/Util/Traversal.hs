@@ -2,11 +2,13 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Generic effectful tree traversals.
-module Swarm.Util.Traversal (preorder, revpostorder) where
+module Swarm.Util.Traversal (preorder, revpostorder, edges) where
 
 import Control.Lens (backwards, mapMOf)
 import Control.Lens.Plated (Plated, plate)
 import Control.Monad ((>=>))
+import Data.Tree (Tree (..))
+import GHC.Exts qualified
 
 -- $setup
 -- >>> import Control.Monad.State
@@ -37,3 +39,15 @@ revpostorder :: (Plated a, Monad m) => (a -> m a) -> (a -> m a)
 revpostorder g = go
  where
   go = g >=> mapMOf (backwards plate) go
+
+-- | \(O(n)\). The edges of the tree as parent-child pairs in pre-order.
+--
+--   TODO(#2808): This was [added to the containers
+--   package](https://hackage-content.haskell.org/package/containers-0.8.1/docs/Data-Tree.html#v:edges)
+--   in version 0.8; copied here until such time as we can require containers >= 0.8.
+edges :: Tree a -> [(a, a)]
+edges (Node x0 ts0) = GHC.Exts.build $ \cons nil ->
+  let go _ [] z = z
+      go p (Node x ts : ts') z = cons (p, x) (go x ts (go p ts' z))
+   in go x0 ts0 nil
+{-# INLINE edges #-} -- Inline for list fusion

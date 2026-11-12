@@ -6,24 +6,29 @@ module Swarm.TUI.Controller.Help (
   visitHelpPage,
   visitPreviousHelpPage,
   visitNextHelpPage,
+  visitFamily,
   openHelp,
   closeHelp,
   toggleHelp,
 ) where
 
-import Brick (EventM, zoom)
-import Control.Lens (Lens', use, uses, (%=), (.=), (^.), (^?))
+import Brick (EventM, lookupViewport, setTop, vpTop, zoom)
+import Brick.Focus (focusRing)
+import Control.Lens (Lens', to, use, uses, view, (%=), (.=), (^.), (^?))
 import Control.Monad (when)
+import Data.Foldable (for_)
 import Data.List (uncons)
+import Data.Text qualified as T
 import Swarm.Game.Achievement.Definitions (CategorizedAchievement (GlobalAchievement), GlobalAchievement (LookedAtAboutScreen))
 import Swarm.Game.State.Runtime (helpData)
-import Swarm.Language.Help (helpDoc)
+import Swarm.Language.Help (FamilyLinks, familyLinks)
 import Swarm.ResourceLoading (atPath)
 import Swarm.TUI.Controller.Util (ensurePause, safeAutoUnpause)
-import Swarm.TUI.Model (AppState, Name, playState, progression, runtimeState, scenarioState, uiState)
+import Swarm.TUI.Model (AppState, Name (HelpViewport), helpScroll, playState, progression, runtimeState, scenarioState, uiState)
 import Swarm.TUI.Model.Achievements (attainAchievement)
 import Swarm.TUI.Model.Help
 import Swarm.TUI.Model.UI (uiHelp)
+import Swarm.Text.Markdown.Document (Target, targetText)
 
 -- | Toggle the help system. If it is currently open, close it, saving
 --   the current page to history.  If it is currently closed, open it
@@ -33,11 +38,25 @@ toggleHelp = do
   curPage <- use $ uiState . uiHelp . curHelpPage
   maybe openHelp (const closeHelp) curPage
 
+-- | Build a 'HelpHistEntry' corresponding to the currently viewed
+--   help page (including current scroll amount and focus ring
+--   state), if any.
+getCurHelpEntry :: EventM Name AppState (Maybe HelpHistEntry)
+getCurHelpEntry = do
+  mcurPage <- use $ uiState . uiHelp . curHelpPage
+  mview <- lookupViewport HelpViewport
+  linkRing <- use $ uiState . uiHelp . helpLinks
+
+  pure $ do
+    curPage <- mcurPage
+    v <- mview
+    pure $ HelpHistEntry curPage (v ^. vpTop) linkRing
+
 -- | Save the current help page (if any) to the help browsing history.
 saveCurHelpPage :: EventM Name AppState ()
 saveCurHelpPage = do
-  curPage <- use $ uiState . uiHelp . curHelpPage
-  uiState . uiHelp . helpHistoryBack %= maybe id (:) curPage
+  mentry <- getCurHelpEntry
+  for_ mentry $ \entry -> uiState . uiHelp . helpHistoryBack %= (entry :)
 
 -- | Visit a page in the help system, automatically pausing the game
 --   and saving browsing history as appropriate.
@@ -77,10 +96,12 @@ openHelp = do
   -- Ensure the game is paused, and open the appropriate page.
   Brick.zoom (playState . scenarioState) ensurePause
 
--- | Close the help system, saving the currently visited page to the history.
+-- | Close the help system, saving the currently visited page to the
+--   history (unless the current page is not the main index).
 closeHelp :: EventM Name AppState ()
 closeHelp = do
-  saveCurHelpPage
+  curPage <- use $ uiState . uiHelp . curHelpPage
+  when (curPage /= Just "index.md") saveCurHelpPage
   Brick.zoom (playState . scenarioState) safeAutoUnpause
   uiState . uiHelp . curHelpPage .= Nothing
 
@@ -98,15 +119,15 @@ visitNextHelpPage = shiftHelpZipper helpHistoryBack helpHistoryForward
 -- | Shift back or forward in the help zipper, by moving the current
 --   page (if any) /to/ the first lens, and pulling the new current page
 --   /from/ the second (if it is nonempty).
-shiftHelpZipper :: Lens' HelpState [FilePath] -> Lens' HelpState [FilePath] -> EventM Name AppState ()
+shiftHelpZipper :: Lens' HelpState [HelpHistEntry] -> Lens' HelpState [HelpHistEntry] -> EventM Name AppState ()
 shiftHelpZipper toL fromL = do
   mnext <- uses (uiState . uiHelp . fromL) uncons
-  mcur <- use $ uiState . uiHelp . curHelpPage
+  mcur <- getCurHelpEntry
   case mnext of
     Nothing -> pure ()
-    Just (p, from') -> do
+    Just (entry, from') -> do
       Brick.zoom (playState . scenarioState) ensurePause
-      setHelpPage p
+      setHelpEntry entry
       Brick.zoom (uiState . uiHelp) $ do
         toL %= maybe id (:) mcur
         fromL .= from'
@@ -118,8 +139,30 @@ shiftHelpZipper toL fromL = do
 --   this module.
 setHelpPage :: FilePath -> EventM Name AppState ()
 setHelpPage p = do
-  uiState . uiHelp . curHelpPage .= Just p
   help <- use $ runtimeState . helpData
-  case help ^? atPath p of
-    Nothing -> pure ()
-    Just pg -> uiState . uiHelp . helpLinks .= linkFocusRing (pg ^. helpDoc)
+  let links = maybe (focusRing []) linkFocusRing (help ^? atPath p)
+  setHelpEntry $ HelpHistEntry p 0 links
+
+-- | Set the current help page from a history entry, also restoring
+--   the focus ring + scroll state.
+setHelpEntry :: HelpHistEntry -> EventM Name AppState ()
+setHelpEntry entry = do
+  -- Set help page itself
+  uiState . uiHelp . curHelpPage .= Just (entry ^. helpPage)
+
+  -- Restore scroll
+  setTop helpScroll (entry ^. helpPageScroll)
+
+  -- Restore focus ring
+  uiState . uiHelp . helpLinks .= (entry ^. helpFocusRing)
+
+-- | Visit a relative help page (previous or next sibling, parent).
+visitFamily :: Lens' FamilyLinks (Maybe Target) -> EventM Name AppState ()
+visitFamily relative = do
+  help <- use $ runtimeState . helpData
+  mcur <- use $ uiState . uiHelp . curHelpPage
+  for_ mcur $ \cur ->
+    for_ (help ^? atPath cur) $ \pg ->
+      for_ (pg ^. familyLinks . relative . to (fmap (T.unpack . view targetText))) visitHelpPage
+
+-- XXX what's the right lens-y way to do the above?
