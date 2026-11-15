@@ -250,7 +250,7 @@ common lsp
     lsp-types >=2.1.1,
 
 common megaparsec
-  build-depends: megaparsec >=9.6.1 && <9.8
+  build-depends: megaparsec >=9.6.1 && <9.9
 
 common minimorph
   build-depends: minimorph >=0.3 && <0.4
@@ -280,7 +280,7 @@ common network
   build-depends: network >=3.2 && <3.3
 
 common nonempty-containers
-  build-depends: nonempty-containers >=0.3.4 && <0.3.6
+  build-depends: nonempty-containers >=0.3.4 && <0.5
 
 common open-browser
   build-depends: open-browser >=0.5 && <0.6
@@ -289,7 +289,7 @@ common optparse-applicative
   build-depends: optparse-applicative >=0.16 && <0.20
 
 common ordered-containers
-  build-depends: ordered-containers >=0.2.4 && <0.2.5
+  build-depends: ordered-containers >=0.2.4 && <0.3
 
 common palette
   build-depends: palette >=0.3 && <0.4
@@ -316,7 +316,7 @@ common random
   build-depends: random >=1.2.0 && <1.4
 
 common scientific
-  build-depends: scientific >=0.3.6 && <0.3.9
+  build-depends: scientific >=0.3.6 && <0.4
 
 common semialign
   build-depends: semialign >=1.4 && <1.5
@@ -352,13 +352,13 @@ common syb
   build-depends: syb >=0.7 && <0.8
 
 common tagged
-  build-depends: tagged >=0.8 && <0.9
+  build-depends: tagged >=0.8 && <0.10
 
 common tasty
   build-depends: tasty >=0.10 && <1.6
 
 common tasty-bench
-  build-depends: tasty-bench >=0.3.1 && <0.5
+  build-depends: tasty-bench >=0.3.1 && <0.6
 
 common tasty-expected-failure
   build-depends: tasty-expected-failure >=0.12 && <0.13
@@ -388,7 +388,7 @@ common these
   build-depends: these >=1.2 && <1.3
 
 common time
-  build-depends: time >=1.9 && <1.16
+  build-depends: time >=1.9 && <1.17
 
 common transformers
   build-depends: transformers >=0.6 && <0.7
@@ -418,7 +418,7 @@ common wai
   build-depends: wai >=3.2 && <3.3
 
 common wai-app-static
-  build-depends: wai-app-static >=3.1.8 && <3.2
+  build-depends: wai-app-static >=3.1.8 && <3.3
 
 common wai-extra
   build-depends: wai-extra >=3.1 && <3.2
@@ -427,7 +427,7 @@ common warp
   build-depends: warp >=3.2 && <3.5
 
 common witch
-  build-depends: witch >=1.1.1.0 && <1.4
+  build-depends: witch >=1.1.1.0 && <1.5
 
 common witherable
   build-depends: witherable >=0.4 && <0.6
