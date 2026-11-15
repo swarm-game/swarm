@@ -81,8 +81,11 @@ flag ci
 common common
   if flag(ci)
     ghc-options: -Werror
-  ghc-options:
+
+  if impl(ghc >=9.14)
     -- data instead of pattern is only available on GHC >9.14
+    ghc-options: -Wno-pattern-namespace-specifier
+  ghc-options:
     -Wall
     -Wcompat
     -Widentities
@@ -90,7 +93,6 @@ common common
     -Wincomplete-record-updates
     -Wno-star-is-type
     -Wpartial-fields
-    -Wno-pattern-namespace-specifier
 
 common stan-config
   ghc-options:
