@@ -89,6 +89,8 @@ common common
     -Wincomplete-record-updates
     -Wno-star-is-type
     -Wpartial-fields
+    -- data instead of pattern is only available on GHC >9.14
+    -Wno-pattern-namespace-specifier
 
 common stan-config
   ghc-options:
