@@ -1,8 +1,7 @@
 -- See cabal.haskell-ci in the tool repository for all field explanations
 -- https://github.com/haskell-CI/haskell-ci/blob/master/cabal.haskell-ci
 
--- Do not force dependencies to "installed" version
-installed: -all
+-- Skip final rebuild without constraints
 unconstrained: False
 
 -- Run cabal-docspec
