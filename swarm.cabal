@@ -128,7 +128,7 @@ common JuicyPixels
   build-depends: JuicyPixels >=3.3 && <3.4
 
 common QuickCheck
-  build-depends: QuickCheck >=2.14 && <2.19
+  build-depends: QuickCheck >=2.18 && <2.19
 
 common SHA
   build-depends: SHA >=1.6.4 && <1.6.5
@@ -495,12 +495,12 @@ library swarm-lang
     Swarm.Language.JSON
     Swarm.Language.Key
     Swarm.Language.Kindcheck
+    Swarm.Language.Load
     Swarm.Language.LSP
     Swarm.Language.LSP.Definition
     Swarm.Language.LSP.Hover
     Swarm.Language.LSP.Position
     Swarm.Language.LSP.VarUsage
-    Swarm.Language.Load
     Swarm.Language.Module
     Swarm.Language.Parser
     Swarm.Language.Parser.Comment
@@ -1362,8 +1362,8 @@ test-suite swarm-unit
     TestContext
     TestEval
     TestInventory
-    TestLSP
     TestLanguagePipeline
+    TestLSP
     TestMarkdownMetadata
     TestNotification
     TestOrdering
