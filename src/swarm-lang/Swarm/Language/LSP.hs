@@ -24,7 +24,7 @@ import Language.LSP.Protocol.Message qualified as LSP
 import Language.LSP.Protocol.Types (ErrorCodes (..))
 import Language.LSP.Protocol.Types qualified as LSP
 import Language.LSP.Server
-import Language.LSP.VFS (VirtualFile (..), virtualFileText)
+import Language.LSP.VFS (lsp_version, virtualFileText)
 import Swarm.Failure (SystemFailure (..))
 import Swarm.Language.LSP.Definition qualified as D
 import Swarm.Language.LSP.Hover qualified as H
@@ -168,8 +168,9 @@ handlers =
         let doc = msg ^. LSP.params . LSP.textDocument . LSP.uri . to LSP.toNormalizedUri
         mdoc <- getVirtualFile doc
         case mdoc of
-          Just vf@(VirtualFile _ version _rope) -> do
-            validateSwarmCode doc (Just (fromIntegral version)) (virtualFileText vf)
+          Just vf -> do
+            let version = vf ^. lsp_version
+             in validateSwarmCode doc (Just version) (virtualFileText vf)
           _ -> debug $ "No virtual file found for: " <> from (show msg)
     , requestHandler LSP.SMethod_TextDocumentHover $ \req responder -> do
         let doc = req ^. LSP.params . LSP.textDocument . LSP.uri . to LSP.toNormalizedUri
