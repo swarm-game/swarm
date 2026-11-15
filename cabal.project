@@ -1,0 +1,7 @@
+packages: swarm.cabal
+
+-- TODO: #2775
+allow-newer:
+  brick-tabular-list:containers,
+  brick-list-skip:containers,
+  palette:base
