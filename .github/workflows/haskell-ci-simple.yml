@@ -23,14 +23,14 @@ on:
     branches:
       - "main"
 jobs:
-  windows:
+  simple-haskell-ci:
     name: Simple CI - ${{ matrix.os }} - ghc-${{ matrix.ghc }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [windows-latest, macos-latest]
         cabal: ["3.16.1.0"]
-        ghc: ["9.12.4"]
+        ghc: ["9.14.1"]
     timeout-minutes:
       60
 
