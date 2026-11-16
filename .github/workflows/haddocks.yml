@@ -5,9 +5,6 @@ on:
   # Runs on pushes targeting the default branch
   push:
     branches: ["main"]
-  # TODO: delete this before merging, so it only runs on master!!!
-  pull_request:
-    branches: ["main"]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -38,7 +35,7 @@ jobs:
         id: setup-haskell-cabal
         name: Setup Haskell
         with:
-          ghc-version: "9.12.1"
+          ghc-version: "9.14.1"
           cabal-version: "3.16.0.0"
       - name: Build haddocks
         run: cabal haddock-project --output haddocks --hackage --all
