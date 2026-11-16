@@ -217,6 +217,15 @@ allTOCEntries = toListOf $ helpDoc . traverseDocument . _TOCTree . traverse
 --   the fact that all the files are in the same folder, whereas the
 --   tree output by docTree will have A at the root, B and C as its
 --   children, and D and E as children of C.
+--
+--   Note that this needs to be called /before/ elaborating all the
+--   TOCs into Markdown lists (via 'renderTOCs').  This function is
+--   not exported so that it cannot be accidentally called on an
+--   already-elaborated help collection, for example, PURELY
+--   HYPOTHETICALLY, if someone were to call docTree on an elaborated
+--   help collection in a test and then spend several hours wondering
+--   why it was generating spurious errors due to a complete lack of
+--   TOCs.  Hypothetically.
 docTree :: (Warn HelpWarning :> es) => Collection HelpPage -> Eff es (Maybe (Tree (FilePath, HelpPage)))
 docTree help = evalState (M.empty :: Map FilePath FilePath) $ do
   t <- dfs "ROOT" "index.md"

@@ -56,6 +56,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import System.FilePath ((-<.>))
 
 ------------------------------------------------------------
 -- Simple Document model
@@ -81,11 +82,14 @@ data Target = Target {_targetID :: Int, _targetType :: TargetType, _targetText :
 makeLenses ''Target
 
 parseTarget :: Text -> Target
-parseTarget t = Target 0 ty t
+parseTarget t = Target 0 ty t'
  where
   ty
     | "http" `T.isPrefixOf` t = URL
     | otherwise = Internal
+  t'
+    | ty == Internal = T.pack (T.unpack t -<.> "md")
+    | otherwise = t
 
 ------------------------------------------------------------
 -- Document
