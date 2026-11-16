@@ -6,12 +6,13 @@ module Swarm.Language.LSP.Definition (
 )
 where
 
+import Control.Lens ((^.))
 import Data.Foldable (find)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
 import Data.Text.Utf16.Rope.Mixed qualified as R
 import Language.LSP.Protocol.Types qualified as J
-import Language.LSP.VFS (VirtualFile (VirtualFile), virtualFileText)
+import Language.LSP.VFS (VirtualFile, file_text, virtualFileText)
 import Swarm.Language.LSP.Position qualified as P
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (ParserError, defaultParserConfig)
@@ -25,12 +26,13 @@ findDefinition ::
   J.Position ->
   VirtualFile ->
   DefinitionResult
-findDefinition _ p vf@(VirtualFile _ _ myRope) =
+findDefinition _ p vf =
   either
     PError
     (maybe Unsupported findDef)
     (readTerm' defaultParserConfig content)
  where
+  myRope = vf ^. file_text
   content = virtualFileText vf
   absolutePos =
     R.charLength . fst $ R.charSplitAtPosition (P.lspToRopePosition p) myRope

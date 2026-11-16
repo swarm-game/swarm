@@ -1,0 +1,9 @@
+-- You must regenerate haskell-ci when you edit this file!
+packages: swarm.cabal
+
+-- TODO: #2775 some dependencies have too restrictive package bounds,
+--               remove once updated versions are released
+allow-newer:
+  brick-tabular-list:containers,
+  brick-list-skip:containers,
+  ekg-wai:time

@@ -18,7 +18,7 @@ import Swarm.Util (showT)
 import Test.QuickCheck.Instances.Text ()
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, testCase)
-import Test.Tasty.QuickCheck (Arbitrary (..), Gen, generate, testProperty, withMaxSuccess)
+import Test.Tasty.QuickCheck (Arbitrary (..), Gen, generate, testProperty, withNumTests)
 
 testContext :: TestTree
 testContext =
@@ -42,7 +42,7 @@ testContext =
         (map (\(name, ctx) -> testCase name $ serializeRoundTrip ctx) testCtxs)
     , testProperty
         "no paired hash collisions"
-        (withMaxSuccess 10000 (hashConsistent @Var @Int))
+        (withNumTests 10000 (hashConsistent @Var @Int))
     , testCase
         "no hash collisions in a large pool"
         $ do

@@ -42,9 +42,10 @@ showHoverInfo ::
   J.Position ->
   VirtualFile ->
   Maybe (Text, Maybe J.Range)
-showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
+showHoverInfo _ p vf =
   either (const Nothing) (fmap genHoverInfo) (readTerm' defaultParserConfig content)
  where
+  myRope = vf ^. file_text
   content = virtualFileText vf
   absolutePos =
     R.charLength . fst $ R.charSplitAtPosition (lspToRopePosition p) myRope
