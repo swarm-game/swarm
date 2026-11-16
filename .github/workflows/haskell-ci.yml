@@ -213,7 +213,10 @@ jobs:
           echo "package swarm" >> cabal.project
           echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project
           cat >> cabal.project <<EOF
-          flags: +ci
+          allow-newer: brick-tabular-list:containers
+          allow-newer: brick-list-skip:containers
+          allow-newer: ekg-wai:time
+          flags:       +ci
           EOF
           $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: any.$_ installed\n" unless /^(swarm)$/; }' >> cabal.project.local
           cat cabal.project
