@@ -1,4 +1,6 @@
 % title: World DSL reference
 % author: Brent Yorgey
 
-This is a placeholder for the Swarm world DSL reference.
+This reference documentation is under construction.  It will fully
+document the format for describing Swarm scenarios as well as the
+world generation DSL.
