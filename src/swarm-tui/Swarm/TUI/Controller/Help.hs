@@ -163,6 +163,4 @@ visitFamily relative = do
   mcur <- use $ uiState . uiHelp . curHelpPage
   for_ mcur $ \cur ->
     for_ (help ^? atPath cur) $ \pg ->
-      for_ (pg ^. familyLinks . relative . to (fmap (T.unpack . view targetText))) visitHelpPage
-
--- XXX what's the right lens-y way to do the above?
+      for_ (pg ^? familyLinks . relative . traverse . targetText . to T.unpack) visitHelpPage
