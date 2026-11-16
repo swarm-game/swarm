@@ -5,5 +5,4 @@ packages: swarm.cabal
 allow-newer:
   brick-tabular-list:containers,
   brick-list-skip:containers,
-  palette:base,
   ekg-wai:time
