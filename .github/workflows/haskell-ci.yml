@@ -215,6 +215,7 @@ jobs:
           cat >> cabal.project <<EOF
           flags: +ci
           EOF
+          $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: any.$_ installed\n" unless /^(swarm)$/; }' >> cabal.project.local
           cat cabal.project
           cat cabal.project.local
       - name: dump install plan
