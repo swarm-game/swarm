@@ -1,0 +1,15 @@
+version: 1
+name: Island world
+description: World of water.
+creative: true
+robots:
+  - name: base
+    loc: [0, 0]
+    dir: north
+    heavy: true
+    display:
+      char: Ω
+      attr: robot
+world:
+  dsl: |
+    "island"
