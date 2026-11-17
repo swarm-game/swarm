@@ -61,7 +61,8 @@ descriptions, or issues.
 - The (still incomplete) [module
   guide](https://github.com/swarm-game/swarm/wiki/Module-guide) may be
   a helpful place to learn about how the codebase is organized.
-- See also the [Haddock documentation on Hackage](https://hackage.haskell.org/package/swarm).
+- See also the [Haddock documentation on Hackage](https://hackage.haskell.org/package/swarm)
+  or the latest from `main` on [GitHub pages](https://swarm-game.github.io/swarm)
 
 ## How can I contribute?
 
