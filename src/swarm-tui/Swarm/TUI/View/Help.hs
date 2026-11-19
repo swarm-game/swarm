@@ -99,7 +99,7 @@ helpPageWidget path help helpSt keyConf =
       Target _ Internal relpath -> case help ^? atPath (T.unpack relpath) of
         Nothing -> Nothing
         Just _ -> Just $ txt (label <> ": ") <+> drawMarkdownWithLinks (helpSt ^. helpLinks) (mkHelpLink help tgt)
-      Target _ URL _url -> Nothing  -- Don't handle arbitrary URLs for now; not sure if we would ever want that
+      Target _ URL _url -> Nothing -- Don't handle arbitrary URLs for now; not sure if we would ever want that
   content :: Widget Name
   content = case mhp of
     Nothing -> padTop (Pad 2) . hCenter . txt $ "No help page exists at path " <> T.pack path
