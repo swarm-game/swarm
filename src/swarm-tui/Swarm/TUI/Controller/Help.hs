@@ -14,8 +14,10 @@ module Swarm.TUI.Controller.Help (
 
 import Brick (EventM, lookupViewport, setTop, vpTop, zoom)
 import Brick.Focus (focusRing)
-import Control.Lens (Lens', to, use, uses, (%=), (.=), (^.), (^?))
-import Control.Monad (when)
+import Control.Lens (Lens', preuse, to, use, uses, (%=), (.=), (^.), (^?))
+import Control.Monad (void, when)
+import Control.Monad.Trans (lift)
+import Control.Monad.Trans.Maybe (MaybeT (..))
 import Data.Foldable (for_)
 import Data.List (uncons)
 import Data.Text qualified as T
@@ -158,9 +160,15 @@ setHelpEntry entry = do
 
 -- | Visit a relative help page (previous or next sibling, parent).
 visitFamily :: Lens' FamilyLinks (Maybe Target) -> EventM Name AppState ()
-visitFamily relative = do
-  help <- use $ runtimeState . helpData
-  mcur <- use $ uiState . uiHelp . curHelpPage
-  for_ mcur $ \cur ->
-    for_ (help ^? atPath cur) $ \pg ->
-      for_ (pg ^? familyLinks . relative . traverse . targetText . to T.unpack) visitHelpPage
+visitFamily relative = void . runMaybeT $ do
+  -- Get current help page path, if it exists
+  cur <- MaybeT . use $ uiState . uiHelp . curHelpPage
+
+  -- Get help page corresponding to current path, if it exists
+  pg <- MaybeT . preuse $ runtimeState . helpData . atPath cur
+
+  -- Look up the relevant family link on the current page, if it exists
+  relPg <- MaybeT . pure $ pg ^? familyLinks . relative . traverse . targetText . to T.unpack
+
+  -- Visit the relative page
+  lift $ visitHelpPage relPg
