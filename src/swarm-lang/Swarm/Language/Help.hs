@@ -60,7 +60,7 @@ import Swarm.Text.Markdown (Document, fromTextE)
 import Swarm.Text.Markdown.Document (Document (..), Node (..), Paragraph (..), Target (..), TargetType (..), mapDocument, pureP, targetID, targetText, targetType, traverseDocument, traverseParagraph, txt, _LeafLink, _TOCTree)
 import Swarm.Util (Encoding (UTF8), readFileMayT)
 import Swarm.Util.Lens ((<+=))
-import Swarm.Util.Traversal qualified as Tree
+import Swarm.Util.Traversal qualified as TreeT
 import System.Directory (doesDirectoryExist)
 import System.FilePath (takeExtension, (</>))
 
@@ -272,13 +272,13 @@ computeFamilyLinks help = do
     Nothing -> pure help
     -- Get tree of only paths, discard actual HelpPages since we don't need them
     Just (fmap fst -> helpTree@(Node root _)) -> do
-      -- 'Tree.edges' gives us all edges (parent-child pairs) in
+      -- 'TreeT.edges' gives us all edges (parent-child pairs) in
       -- preorder.  We also add (Nothing, root) to the beginning so
       -- the list now contains every node in the tree, in preorder,
       -- with each node paired with its parent (if any); then we add
       -- (Nothing, Nothing) sentinels at both ends so that we can
       -- process every node just by taking all size-3 windows.
-      let es = (Nothing, Nothing) : (Nothing, Just root) : map (over both Just) (Tree.edges helpTree) ++ [(Nothing, Nothing)]
+      let es = (Nothing, Nothing) : (Nothing, Just root) : map (over both Just) (TreeT.edges helpTree) ++ [(Nothing, Nothing)]
 
           mkInternal :: FilePath -> Target
           mkInternal = Target 0 Internal . T.pack
