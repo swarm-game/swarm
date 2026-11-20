@@ -164,11 +164,10 @@ visitFamily relative = void . runMaybeT $ do
   -- Get current help page path, if it exists
   cur <- MaybeT . use $ uiState . uiHelp . curHelpPage
 
-  -- Get help page corresponding to current path, if it exists
-  pg <- MaybeT . preuse $ runtimeState . helpData . atPath cur
-
   -- Look up the relevant family link on the current page, if it exists
-  relPg <- MaybeT . pure $ pg ^? familyLinks . relative . traverse . targetText . to T.unpack
+  relPg <-
+    MaybeT . preuse $
+      runtimeState . helpData . atPath cur . familyLinks . relative . traverse . targetText . to T.unpack
 
   -- Visit the relative page
   lift $ visitHelpPage relPg
