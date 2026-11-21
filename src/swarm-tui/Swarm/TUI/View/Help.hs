@@ -25,6 +25,7 @@ import Swarm.TUI.Model (AppState, Name (..), keyConfig, keyEventHandling, runtim
 import Swarm.TUI.Model.Event (MainEvent (..), SwarmEvent (Main))
 import Swarm.TUI.Model.Help (HelpState, helpHistoryBack, helpHistoryForward, helpLinks)
 import Swarm.TUI.Model.UI (uiHelp)
+import Swarm.TUI.View.Attribute.Attr (boldAttr)
 import Swarm.TUI.View.KeyCmd
 import Swarm.TUI.View.Util (bindingText, drawMarkdownWithLinks)
 import Swarm.Text.Markdown (Document (..), toText)
@@ -58,11 +59,11 @@ helpPageWidget path help helpSt keyConf =
     plainBorder
       & topLabels
         .~ ( plainHBorder
-               & centerLabel ?~ padLeftRight 1 (txt (toText title))
+               & leftLabel ?~ (padLeftRight 1 . withAttr boldAttr . txt $ toText title)
+               & rightLabel ?~ drawKeyCmds helpCmds
            )
       & bottomLabels
         .~ ( plainHBorder
-               & leftLabel ?~ drawKeyCmds helpCmds
                & rightLabel ?~ drawFamilyLinks
            )
 
