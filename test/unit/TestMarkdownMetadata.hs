@@ -36,8 +36,8 @@ testMarkdownMetadata =
           ]
     , testCase "title with nontrivial Markdown" $
         testHeaderParse
-          ["% title: *This*   is a [title](url) with markup"]
-          [("title", "*This* is a [title](url) with markup")]
+          ["% title: *This*   is a [title](http://url.com) with markup"]
+          [("title", "*This* is a [title](http://url.com) with markup")]
     , testCase "missing colon" $
         testHeaderParse ["% title Foo bar"] []
     ]

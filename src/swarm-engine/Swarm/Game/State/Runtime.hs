@@ -28,19 +28,21 @@ module Swarm.Game.State.Runtime (
 where
 
 import Control.Lens
+import Data.Foldable (forM_)
 import Data.Map (Map)
 import Data.Text (Text)
 import Effectful
 import Effectful.Error.Static
 import Swarm.Effect.Warn.Local
-import Swarm.Failure (SystemFailure)
+import Swarm.Failure (SystemFailure (CustomFailure))
 import Swarm.Game.Land
 import Swarm.Game.Recipe (loadRecipes)
 import Swarm.Game.Scenario (GameStateInputs (..), ScenarioInputs (..))
 import Swarm.Game.State.Substate
 import Swarm.Game.World.DSL (loadWorlds)
-import Swarm.Language.Help (HelpPage, loadHelp)
+import Swarm.Language.Help (HelpPage, HelpWarning, loadHelp)
 import Swarm.Log
+import Swarm.Pretty (prettyText)
 import Swarm.ResourceLoading (Collection, initNameGenerator, readAppData)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import System.Metrics qualified as Metrics
@@ -109,7 +111,8 @@ initRuntimeState opts = do
   store <- liftIO Metrics.newStore
   liftIO $ Metrics.registerGcMetrics store
   gsc <- initGameStateConfig opts
-  helpCollection <- loadHelp
+  (helpCollection, helpWarnings) <- runWarn @HelpWarning loadHelp
+  forM_ helpWarnings $ warn . CustomFailure . prettyText
   return $
     RuntimeState
       { _webPort = Nothing

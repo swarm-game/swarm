@@ -14,7 +14,7 @@ import Data.Text qualified as T
 import Swarm.Language.Help (HelpPage, helpDoc, helpMetadata)
 import Swarm.Pretty (PrettyPrec)
 import Swarm.ResourceLoading (Collection, atPath)
-import Swarm.Text.Markdown.Document (Document (..), Node (..), Target (..), pureP, traverseDocument, traverseParagraph)
+import Swarm.Text.Markdown.Document (Document (..), Node (..), Target (..), TargetType (..), pureP, traverseDocument, traverseParagraph)
 import Swarm.Text.Markdown.Pretty (docToMark)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool, testCase)
@@ -42,12 +42,12 @@ helpLinks help =
       n -> pure n
 
     checkLink :: PrettyPrec c => Node c -> Target -> IO ()
-    checkLink link = \case
-      URL {} -> pure ()
-      Internal dest ->
+    checkLink link (Target _ ty dest) = case ty of
+      URL -> pure ()
+      Internal ->
         assertBool
           ("Broken internal link in " <> path <> ": " <> T.unpack (docToMark (Document [pureP link])))
-          (isJust (help ^? atPath (T.unpack dest)))
+          (any (isJust . (\p -> help ^? atPath p) . T.unpack) [dest, dest <> ".md"])
 
 -- | Check that every help page has a title.
 helpTitles :: Collection HelpPage -> TestTree

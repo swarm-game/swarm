@@ -1,10 +1,20 @@
 % title: Swarm Help
 % author: Brent Yorgey
 
-Have questions? Want some tips? Check out:
+Welcome to the Swarm integrated help system!  This is the top-level
+menu; all help content can be accessed starting from here.
 
-- The [Swarm wiki](https://github.com/swarm-game/swarm/wiki/)
-- The [Swarm Discord server](https://discord.gg/kp8MuSgkPw)
-- [About Swarm](about.md)
+* To navigate between pages, you can click highlighted links, or use Tab to cycle between links
+and Enter to visit the currently selected link.
+* See the bottom-left corner for keybindings to visit the next or previous help page, or navigate
+forwards and backwards in your browsing history.
+* Hit Esc to leave the help system and return to your game.
 
-This page is a placeholder for now.  More documentation coming soon!
+```toc
+community
+langref
+worldref
+speedrun
+markdown
+about
+```
