@@ -81,6 +81,7 @@ import Swarm.Language.Capability (
   constCaps,
  )
 import Swarm.Language.Context
+import Swarm.Language.Help (nextPage, prevPage)
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
 import Swarm.Language.Module (moduleTerm)
 import Swarm.Language.Parser (readTerm')
@@ -95,7 +96,7 @@ import Swarm.Pretty (prettyString)
 import Swarm.ResourceLoading (CollectionItem (..), collectionToList, getSwarmHistoryPath)
 import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Controller.EventHandlers.Robot (showEntityDescription)
-import Swarm.TUI.Controller.Help (closeHelp, toggleHelp, visitHelpPage, visitNextHelpPage, visitPreviousHelpPage)
+import Swarm.TUI.Controller.Help (closeHelp, toggleHelp, visitFamily, visitHelpPage, visitNextHelpPage, visitPreviousHelpPage)
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
 import Swarm.TUI.Controller.UpdateUI
 import Swarm.TUI.Controller.Util
@@ -117,7 +118,7 @@ import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Popup (startPopupAnimation)
 import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Robot.Type
-import Swarm.Text.Markdown.Document (Target (..))
+import Swarm.Text.Markdown.Document (Target (..), TargetType (..))
 import Swarm.Util hiding (both)
 import Web.Browser (openBrowser)
 
@@ -180,10 +181,12 @@ handleHelpEvent ev = do
   let keyHandler = s ^. keyEventHandling . keyDispatchers . to mainGameDispatcher
   case ev of
     Key V.KEsc -> closeHelp
-    CharKey '\t' -> uiState . uiHelp . helpLinks %= focusNext
-    Key V.KEnter -> case focusGetCurrent (s ^. uiState . uiHelp . helpLinks) of
-      Just (UILink dest) -> handleLinkClick dest
-      _ -> pure ()
+    CharKey '\t' -> nextLink
+    Key V.KBackTab -> prevLink
+    Key V.KRight -> nextLink
+    Key V.KLeft -> prevLink
+    Key V.KEnter -> visit s
+    Key V.KBS -> visitPreviousHelpPage
     VtyEvent (V.EvKey k m)
       | isJust (B.lookupVtyEvent k m keyHandler) -> void $ B.handleKey keyHandler k m
     FKey 1 -> closeHelp
@@ -191,9 +194,19 @@ handleHelpEvent ev = do
       UILink dest -> handleLinkClick dest
       UIShortcut "back" -> visitPreviousHelpPage
       UIShortcut "forward" -> visitNextHelpPage
+      UIShortcut "prev" -> visitFamily prevPage
+      UIShortcut "next" -> visitFamily nextPage
+      UIShortcut "cycle" -> uiState . uiHelp . helpLinks %= focusNext
+      UIShortcut "visit" -> visit s
       UIShortcut "exit" -> closeHelp
       _ -> handleScrollEvent helpScroll ev $> ()
     _ -> handleScrollEvent helpScroll ev $> ()
+ where
+  nextLink = uiState . uiHelp . helpLinks %= focusNext
+  prevLink = uiState . uiHelp . helpLinks %= focusPrev
+  visit s = case focusGetCurrent (s ^. uiState . uiHelp . helpLinks) of
+    Just (UILink dest) -> handleLinkClick dest
+    _ -> pure ()
 
 handleMenuEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMenuEvent e =
@@ -472,9 +485,9 @@ handleMainEvent forceRedraw ev = do
 --   the user's browser.  Otherwise, treat it as a link to an internal
 --   help page.
 handleLinkClick :: Target -> EventM Name AppState ()
-handleLinkClick = \case
-  URL url -> void . liftIO $ openBrowser (T.unpack url)
-  Internal dest -> visitHelpPage (T.unpack dest)
+handleLinkClick (Target _ ty (T.unpack -> dest)) = case ty of
+  URL -> void . liftIO $ openBrowser dest
+  Internal -> visitHelpPage dest
 
 closeModal :: Modal -> EventM Name ScenarioState ()
 closeModal m = do
