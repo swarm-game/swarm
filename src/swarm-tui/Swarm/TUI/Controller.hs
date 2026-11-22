@@ -181,8 +181,10 @@ handleHelpEvent ev = do
   let keyHandler = s ^. keyEventHandling . keyDispatchers . to mainGameDispatcher
   case ev of
     Key V.KEsc -> closeHelp
-    CharKey '\t' -> uiState . uiHelp . helpLinks %= focusNext
-    Key V.KBackTab -> uiState . uiHelp . helpLinks %= focusPrev
+    CharKey '\t' -> nextLink
+    Key V.KBackTab -> prevLink
+    Key V.KRight -> nextLink
+    Key V.KLeft -> prevLink
     Key V.KEnter -> visit s
     Key V.KBS -> visitPreviousHelpPage
     VtyEvent (V.EvKey k m)
@@ -200,6 +202,8 @@ handleHelpEvent ev = do
       _ -> handleScrollEvent helpScroll ev $> ()
     _ -> handleScrollEvent helpScroll ev $> ()
  where
+  nextLink = uiState . uiHelp . helpLinks %= focusNext
+  prevLink = uiState . uiHelp . helpLinks %= focusPrev
   visit s = case focusGetCurrent (s ^. uiState . uiHelp . helpLinks) of
     Just (UILink dest) -> handleLinkClick dest
     _ -> pure ()
