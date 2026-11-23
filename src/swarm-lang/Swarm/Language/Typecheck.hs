@@ -1208,7 +1208,6 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
 inferConst :: Const -> Polytype
 inferConst c = runPureEff . runReader @TVCtx Ctx.empty . quantify $ case c of
   Wait -> [tyQ| Int -> Cmd Unit |]
-  Noop -> [tyQ| Cmd Unit |]
   Selfdestruct -> [tyQ| Cmd Unit |]
   Move -> [tyQ| Cmd Unit |]
   Backup -> [tyQ| Cmd Unit |]

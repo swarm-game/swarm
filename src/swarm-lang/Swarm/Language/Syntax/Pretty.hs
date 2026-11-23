@@ -83,7 +83,7 @@ instance (Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFo
     TStock n e -> pparens (p > 10) $ "stock" <+> pretty n <+> ppr (TText @phase e)
     SRequirements _ e -> pparens (p > 10) $ "requirements" <+> ppr e
     TVar s -> ppr s
-    SDelay (Syntax _ (TConst Noop) _ _) -> "{}"
+    SDelay (Syntax _ (SApp (Syntax _ (TConst Pure) _ _) (Syntax _ TUnit _ _)) _ _) -> "{}"
     SDelay t -> group . encloseWithIndent 2 lbrace rbrace $ ppr t
     t@SPair {} -> prettyTuple t
     t@SLam {} ->
@@ -123,13 +123,13 @@ instance (Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFo
       mconcat $
         sep [prettyDefinition "def" x mty t1, "end"]
           : case t2 of
-            Syntax _ (TConst Noop) _ _ -> []
+            Syntax _ (SApp (Syntax _ (TConst Pure) _ _) (Syntax _ TUnit _ _)) _ _ -> []
             _ -> [hardline, hardline, ppr t2]
     STydef (Loc _ x) pty _ t1 ->
       mconcat $
         prettyTydef x pty
           : case t1 of
-            Syntax _ (TConst Noop) _ _ -> []
+            Syntax _ (SApp (Syntax _ (TConst Pure) _ _) (Syntax _ TUnit _ _)) _ _ -> []
             _ -> [hardline, hardline, ppr t1]
     SBind Nothing _ _ _ t1 t2 ->
       pparens (p > 0) $

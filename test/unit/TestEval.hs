@@ -180,12 +180,12 @@ testEval g =
             )
         , testCase
             "memoization baseline"
-            ( "def fac = \\n. if (n==0) {1} {n * fac (n-1)} end; def f10 = fac 10 end; let x = f10 in noop"
+            ( "def fac = \\n. if (n==0) {1} {n * fac (n-1)} end; def f10 = fac 10 end; let x = f10 in pure ()"
                 `evaluatesToInAtMost` (VUnit, 535)
             )
         , testCase
             "memoization"
-            ( "def fac = \\n. if (n==0) {1} {n * fac (n-1)} end; def f10 = fac 10 end; let x = f10 in let y = f10 in noop"
+            ( "def fac = \\n. if (n==0) {1} {n * fac (n-1)} end; def f10 = fac 10 end; let x = f10 in let y = f10 in pure ()"
                 `evaluatesToInAtMost` (VUnit, 540)
             )
         ]
@@ -613,7 +613,7 @@ testEval g =
       Left err ->
         p err
           @? "Expected predicate did not hold on error message "
-            ++ from @Text @String err
+          ++ from @Text @String err
 
   evaluatesTo :: Text -> Value -> Assertion
   evaluatesTo tm val = do

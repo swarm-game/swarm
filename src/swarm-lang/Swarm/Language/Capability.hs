@@ -117,7 +117,6 @@ constCaps = \case
   Force -> Nothing
   Has -> Nothing
   Knows -> Nothing
-  Noop -> Nothing
   Parent -> Nothing
   Pure -> Nothing
   Say -> Nothing -- speaking is natural to robots (unlike listening)

@@ -109,7 +109,7 @@ parseTermAtom2 =
           <*> (optional (void (symbol ";") <|> reserved "in") *> (parseTerm <|> (eof $> sNoop)))
     )
     <|> parseLoc (mkTuple <$> parens (parseTerm `sepBy` symbol ","))
-    <|> parseLoc (TDelay (TConst Noop) <$ try (symbol "{" *> symbol "}"))
+    <|> parseLoc (SDelay sNoop <$ try (symbol "{" *> symbol "}"))
     <|> parseLoc (SDelay <$> braces parseTerm)
     <|> parseLoc (view antiquoting >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
 
@@ -129,7 +129,7 @@ sLet :: LetSyntax -> LocVar -> Maybe RawPolytype -> Syntax Raw -> Syntax Raw -> 
 sLet ls x ty t1 = SLet ls (locVal x `S.member` setOf freeVarsV t1) x ty Nothing mempty t1
 
 sNoop :: Syntax Raw
-sNoop = RTerm (TConst Noop)
+sNoop = RTerm (TApp (TConst Pure) TUnit)
 
 -- | Create a polytype from a list of variable binders and a type.
 --   Ensure that no binder is repeated, and all type variables in the

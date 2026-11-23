@@ -63,10 +63,7 @@ import Swarm.Util (showFirstLowT)
 data Const
   = -- Trivial actions
 
-    -- | Do nothing.  This is different than 'Wait'
-    --   in that it does not take up a time step.
-    Noop
-  | -- | Wait for a number of time steps without doing anything.
+    -- | Wait for a number of time steps without doing anything.
     Wait
   | -- | Self-destruct.
     Selfdestruct
@@ -474,12 +471,6 @@ constInfo c = case c of
       shortDoc
         (Set.singleton $ Mutation $ RobotChange BehaviorChange)
         "Wait for a number of time steps."
-  Noop ->
-    command 0 Intangible . doc Set.empty "Do nothing." $
-      [ "This is different than `Wait` in that it does not take up a time step."
-      , "It is useful for commands like if, which requires you to provide both branches."
-      , "Usually it is automatically inserted where needed, so you do not have to worry about it."
-      ]
   Selfdestruct ->
     command 0 short
       . doc

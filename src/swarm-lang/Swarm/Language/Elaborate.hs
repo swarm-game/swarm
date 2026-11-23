@@ -92,7 +92,6 @@ insertSuspend t = case t of
   TExportIn x t1 -> TExportIn x (insertSuspend t1)
   -- Replace pure or noop with suspend
   TApp (TConst Pure) t1 -> TSuspend t1
-  TConst Noop -> TSuspend TUnit
   -- Anything else: p => (__res__ <- p; suspend __res__)
   --
   -- Note that since we don't put type + reqs annotations on
