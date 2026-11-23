@@ -995,6 +995,12 @@ drawKeyMenu ps keyConf debugOpts =
               (keyM SE.HideRobotsEvent)
               "hide robots"
           )
+      , Just
+          ( SingleButton
+              NoHighlight
+              (keyM SE.QuitEvent)
+              "quit"
+          )
       ]
   may b = if b then Just else const Nothing
 

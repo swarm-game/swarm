@@ -95,6 +95,7 @@ import Swarm.Log
 import Swarm.Pretty (prettyString)
 import Swarm.ResourceLoading (CollectionItem (..), collectionToList, getSwarmHistoryPath)
 import Swarm.TUI.Controller.EventHandlers
+import Swarm.TUI.Controller.EventHandlers.Main (toggleQuitGameDialog)
 import Swarm.TUI.Controller.EventHandlers.Robot (showEntityDescription)
 import Swarm.TUI.Controller.Help (closeHelp, toggleHelp, visitFamily, visitHelpPage, visitNextHelpPage, visitPreviousHelpPage)
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
@@ -428,6 +429,7 @@ handleMainEvent forceRedraw ev = do
         (UIShortcut "Messages") -> Brick.zoom (playState . scenarioState) toggleMessagesModal
         (UIShortcut "Config") -> Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal ConfigModal
         (UIShortcut "pause") -> Brick.zoom (playState . scenarioState) $ whenRunningPlayState safeTogglePause
+        -- XXX TODO: get these from event handler instead of duplicating actions here?
         (UIShortcut "unpause") -> Brick.zoom (playState . scenarioState) $ whenRunningPlayState safeTogglePause
         (UIShortcut "step") -> whenRunningAppState runSingleTick
         (UIShortcut "speed-up") -> Brick.zoom (playState . scenarioState) $ whenRunningPlayState . modify $ adjustTPS (+)
@@ -437,6 +439,7 @@ handleMainEvent forceRedraw ev = do
         (UIShortcut "debug") -> showCESKDebug
         (UIShortcut "hide robots") -> Brick.zoom (playState . scenarioState) hideRobots
         (UIShortcut "goal") -> Brick.zoom (playState . scenarioState) viewGoal
+        (UIShortcut "quit") -> toggleQuitGameDialog
         _ -> continueWithoutRedraw
     MouseUp n _ _mouseLoc ->
       Brick.zoom (playState . scenarioState) $ do
