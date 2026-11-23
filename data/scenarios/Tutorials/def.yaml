@@ -23,12 +23,14 @@ objectives:
         `def m4 = move; move; move; move end`, and Swarm would infer
         the type of `m4`{=snippet}.
       - |
-        **TIP:** writing function definitions at the prompt is annoying.
-        You can also put definitions in a `.sw`{=path} file and load it
-        with the `import`{=snippet} command. Check out
+        **TIP:** writing function definitions at the prompt can be annoying.
+        You can also put definitions in a `.sw`{=path} file and load them
+        by typing `import "path/to/your/file.sw"`{=snippet} at the
+        REPL prompt (and make sure to reload with `import`{=snippet} every
+        time you change the file). You may also want to check out
         https://github.com/swarm-game/swarm/tree/main/editors
         for help setting up an external editor with things like
-        syntax and error highlighting.
+        syntax and error highlighting, jump-to-definition, and more.
     condition: |
       try {
         as base {has "flower"}
