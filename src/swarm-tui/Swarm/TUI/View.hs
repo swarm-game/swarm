@@ -167,9 +167,9 @@ drawMenuUI :: AppState -> [Widget Name]
 drawMenuUI s = case s ^. uiState . uiMenu of
   -- We should never reach the NoMenu case if uiPlaying is false; we would have
   -- quit the app instead.  But just in case, we display the main menu anyway.
-  NoMenu -> [drawMainMenuUI s (mainMenu NewGame)]
+  NoMenu -> [drawMainMenuUI s (mainMenu Play)]
   MainMenu l -> [drawMainMenuUI s l]
-  NewGameMenu stk -> drawNewGameMenuUI s stk $ s ^. uiState . uiLaunchConfig
+  PlayMenu stk -> drawPlayMenuUI s stk $ s ^. uiState . uiLaunchConfig
   AchievementsMenu l -> [drawAchievementsMenuUI s l]
   MessagesMenu -> [drawMainMessages s]
 
@@ -200,12 +200,12 @@ newVersionWidget = \case
 
 -- | When launching a game, a modal prompt may appear on another layer
 -- to input seed and/or a script to run.
-drawNewGameMenuUI ::
+drawPlayMenuUI ::
   AppState ->
   NonEmpty (BL.List Name (ScenarioItem ScenarioPath)) ->
   LaunchOptions ->
   [Widget Name]
-drawNewGameMenuUI appState (l :| ls) launchOptions = case displayedFor of
+drawPlayMenuUI appState (l :| ls) launchOptions = case displayedFor of
   Nothing -> pure mainWidget
   Just _ -> drawLaunchConfigPanel launchOptions <> pure mainWidget
  where
@@ -417,7 +417,7 @@ makeBestScoreRows scenarioStat =
 
 drawMainMenuEntry :: AppState -> MainMenuEntry -> Widget Name
 drawMainMenuEntry s = \case
-  NewGame -> txt "New game"
+  Play -> txt "Play"
   Tutorial -> txt "Tutorial"
   Help -> txt "Help"
   Achievements -> txt "Achievements"

@@ -29,7 +29,7 @@ module Swarm.TUI.Model (
   modalDialog,
   MainMenuEntry (..),
   mainMenu,
-  _NewGameMenu,
+  _PlayMenu,
   mkScenarioList,
 
   -- * UI state
