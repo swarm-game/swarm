@@ -428,8 +428,8 @@ handleMainEvent forceRedraw ev = do
         (UIShortcut "Recipes") -> Brick.zoom (playState . scenarioState) $ toggleDiscoveryNotificationModal RecipesModal availableRecipes
         (UIShortcut "Messages") -> Brick.zoom (playState . scenarioState) toggleMessagesModal
         (UIShortcut "Config") -> Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal ConfigModal
+        -- TODO(#2824): get these from event handler instead of duplicating actions here?
         (UIShortcut "pause") -> Brick.zoom (playState . scenarioState) $ whenRunningPlayState safeTogglePause
-        -- XXX TODO: get these from event handler instead of duplicating actions here?
         (UIShortcut "unpause") -> Brick.zoom (playState . scenarioState) $ whenRunningPlayState safeTogglePause
         (UIShortcut "step") -> whenRunningAppState runSingleTick
         (UIShortcut "speed-up") -> Brick.zoom (playState . scenarioState) $ whenRunningPlayState . modify $ adjustTPS (+)
