@@ -595,8 +595,8 @@ stepCESK cesk = case cesk of
   In (TAntiInt v) _ s k ->
     return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $int:" v)) s k
   -- Require and Stock just turn into no-ops.
-  In (TRequire {}) e s k -> return $ In (TApp (TConst Pure) TUnit) e s k -- XXX just Out VUnit?  Leads to exec in wrong place?
-  In (TStock {}) e s k -> return $ In (TApp (TConst Pure) TUnit) e s k
+  In (TRequire {}) e s k -> return $ In (TConst Noop) e s k
+  In (TStock {}) e s k -> return $ In (TConst Noop) e s k
   In (TRequirements x t) e s k -> return $ Out (VRequirements x t e) s k
   -- Type ascriptions are ignored
   In (TAnnotate v _) e s k -> return $ In v e s k

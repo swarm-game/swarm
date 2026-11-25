@@ -63,7 +63,12 @@ import Swarm.Util (showFirstLowT)
 data Const
   = -- Trivial actions
 
-    -- | Wait for a number of time steps without doing anything.
+    -- | Do nothing.  This is different than 'Wait' in that it does
+    --   not take up a time step.  Behaves identically to 'pure ()',
+    --   but cannot be written in surface syntax; only auto-inserted
+    --   during parsing in some places.
+    Noop
+  | -- | Wait for a number of time steps without doing anything.
     Wait
   | -- | Self-destruct.
     Selfdestruct
@@ -422,6 +427,8 @@ isCmd c = case constMeta $ constInfo c of
 
 -- | Function constants user can call with reserved words ('wait',...).
 isUserFunc :: Const -> Bool
+-- Noop can only be inserted automatically, not written in surface syntax
+isUserFunc Noop = False
 isUserFunc c = case constMeta $ constInfo c of
   ConstMFunc {} -> True
   _ -> False
@@ -471,6 +478,12 @@ constInfo c = case c of
       shortDoc
         (Set.singleton $ Mutation $ RobotChange BehaviorChange)
         "Wait for a number of time steps."
+  Noop ->
+    command 0 Intangible . doc Set.empty "Do nothing." $
+      [ "This is different than `Wait` in that it does not take up a time step."
+      , "It is useful for commands like if, which requires you to provide both branches."
+      , "Usually it is automatically inserted where needed, so you do not have to worry about it."
+      ]
   Selfdestruct ->
     command 0 short
       . doc

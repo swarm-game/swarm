@@ -536,7 +536,7 @@ testLanguagePipeline =
             "mismatched if branches"
             ( process
                 "if true {grab} {}"
-                "1:16: Type mismatch:\n  From context, expected `pure ()` to have type `Cmd Text`,\n  but it actually has type `Cmd Unit`"
+                "1:16: Type mismatch:\n  From context, expected `noop` to have type `Cmd Text`,\n  but it actually has type `Cmd Unit`"
             )
         , testCase
             "definition with wrong result"
@@ -859,6 +859,7 @@ testLanguagePipeline =
                 "1:49: 'default' must be explicitly applied to a type literal"
             )
         ]
+    , testCase "noop" (process "noop" "1:1: Undefined variable noop")
     ]
  where
   valid = flip process ""

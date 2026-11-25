@@ -136,6 +136,7 @@ execConst runChildProg c vs s k = do
 
   -- Now proceed to actually carry out the operation.
   case c of
+    Noop -> return $ mkReturn ()
     Pure -> case vs of
       [v] -> return $ Out v s k
       _ -> badConst

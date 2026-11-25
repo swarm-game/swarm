@@ -196,10 +196,13 @@ testPrettyConst =
         "tydef"
         [ testCase "tydef alias" $
             equalPrettyLine @(Term Raw) "tydef X = Int end" $
+              TTydef "X" (mkTrivPoly TyInt) Nothing (TConst Noop)
+        , testCase "tydef alias + pure" $
+            equalPrettyLine @(Term Raw) "tydef X = Int end\n\npure ()" $
               TTydef "X" (mkTrivPoly TyInt) Nothing (TApp (TConst Pure) TUnit)
         , testCase "tydef Maybe" $
             equalPrettyLine @(Term Raw) "tydef Maybe a = Unit + a end" $
-              TTydef "Maybe" (mkQPoly (TyUnit :+: TyVar "a")) Nothing (TApp (TConst Pure) TUnit)
+              TTydef "Maybe" (mkQPoly (TyUnit :+: TyVar "a")) Nothing (TConst Noop)
         , testCase "tydef multi-arg" $
             equalPrettyLine @(Term Raw) "tydef Foo a b c d = Unit + ((a * b) + ((c -> d) * a)) end" $
               TTydef
@@ -208,10 +211,10 @@ testPrettyConst =
                     (TyUnit :+: (TyVar "a" :*: TyVar "b") :+: ((TyVar "c" :->: TyVar "d") :*: TyVar "a"))
                 )
                 Nothing
-                (TApp (TConst Pure) TUnit)
+                (TConst Noop)
         , testCase "consecutive tydef" $
             equalPrettyLine @(Term Raw) "tydef X = Int end\n\ntydef Y = Bool end" $
-              TTydef "X" (mkTrivPoly TyInt) Nothing (TTydef "Y" (mkTrivPoly TyBool) Nothing (TApp (TConst Pure) TUnit))
+              TTydef "X" (mkTrivPoly TyInt) Nothing (TTydef "Y" (mkTrivPoly TyBool) Nothing (TConst Noop))
         ]
     , testGroup
         "recursive types"

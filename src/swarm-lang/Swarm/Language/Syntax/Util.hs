@@ -282,7 +282,13 @@ asTree = para Node
 -- | Each constructor is a assigned a value of 1, plus
 --   any recursive syntax it entails.
 measureASTSize :: (Data (Anchor (ImportPhaseFor phase)), Typeable phase, Typeable (ImportPhaseFor phase), Data (SwarmType phase)) => Syntax phase -> Sum Int
-measureASTSize = Sum . length . universe
+measureASTSize = Sum . length . filter (not . isNoop) . universe
+
+-- | Don't count auto-inserted "noop" nodes towards the code size.
+isNoop :: Syntax a -> Bool
+isNoop = \case
+  Syntax _ (TConst Noop) _ _ -> True
+  _ -> False
 
 -- | The number of characters in an AST can be computed from the top-level SrcLoc.
 measureASTChars :: Syntax phase -> Sum Int
