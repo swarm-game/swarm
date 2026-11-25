@@ -77,7 +77,7 @@ data Modal = Modal
 makeLenses ''Modal
 
 data MainMenuEntry
-  = NewGame
+  = Play
   | Tutorial
   | Achievements
   | Messages
@@ -94,7 +94,7 @@ data Menu
     -- menu item is ALWAYS the same as the scenario currently being played.
     -- See https://github.com/swarm-game/swarm/issues/1064 and
     -- https://github.com/swarm-game/swarm/pull/1065.
-    NewGameMenu (NonEmpty (BL.List Name (ScenarioItem ScenarioPath)))
+    PlayMenu (NonEmpty (BL.List Name (ScenarioItem ScenarioPath)))
   | AchievementsMenu (BL.List Name CategorizedAchievement)
   | MessagesMenu
 

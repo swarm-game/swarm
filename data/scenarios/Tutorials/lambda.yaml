@@ -18,7 +18,14 @@ objectives:
         ```
         def x4 : Cmd Unit -> Cmd Unit = \c. c; c; c; c end
         ```
-      - That is, `x4`{=snippet} is defined as the function which takes a command, called `c`{=snippet}, as input, and returns the command `c; c; c; c`{=snippet} which consists of executing `c`{=snippet} four times.
+      - |
+        That is, `x4`{=snippet} is defined as the function which takes
+        a command, called `c`{=snippet}, as input, and returns the
+        command `c; c; c; c`{=snippet} which consists of executing
+        `c`{=snippet} four times.
+      - |
+        Once you have `x4`{=snippet} you can use it to define other
+        commands; for example, `def m4 = x4 move end`{=snippet}.
     condition: |
       try {
         teleport self (32,-16);

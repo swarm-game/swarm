@@ -116,7 +116,7 @@ initUIState UIInitOptions {..} = do
   launchConfigPanel <- liftIO initConfigPanel
   return
     UIState
-      { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
+      { _uiMenu = if showMainMenu then MainMenu (mainMenu Play) else NoMenu
       , _uiPlaying = not showMainMenu
       , _uiHelp = initHelpState
       , _uiDebugOptions = debugOptions

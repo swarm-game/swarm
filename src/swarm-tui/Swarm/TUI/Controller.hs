@@ -95,6 +95,7 @@ import Swarm.Log
 import Swarm.Pretty (prettyString)
 import Swarm.ResourceLoading (CollectionItem (..), collectionToList, getSwarmHistoryPath)
 import Swarm.TUI.Controller.EventHandlers
+import Swarm.TUI.Controller.EventHandlers.Main (toggleQuitGameDialog)
 import Swarm.TUI.Controller.EventHandlers.Robot (showEntityDescription)
 import Swarm.TUI.Controller.Help (closeHelp, toggleHelp, visitFamily, visitHelpPage, visitNextHelpPage, visitPreviousHelpPage)
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
@@ -216,12 +217,12 @@ handleMenuEvent e =
     -- quitGame function would have already halted the app).
     NoMenu -> haltApp
     MainMenu l -> handleMainMenuEvent l e
-    NewGameMenu l -> do
+    PlayMenu l -> do
       launchControls <- use $ uiState . uiLaunchConfig . controls
       if launchControls ^. fileBrowser . fbIsDisplayed
         then handleFBEvent e
         else case launchControls ^. isDisplayedFor of
-          Nothing -> handleNewGameMenuEvent l e
+          Nothing -> handlePlayMenuEvent l e
           Just siPair -> handleLaunchOptionsEvent siPair e
     MessagesMenu -> handleMainMessagesEvent e
     AchievementsMenu l -> handleMainAchievementsEvent l e
@@ -234,9 +235,9 @@ handleMainMenuEvent ::
 handleMainMenuEvent menu = \case
   Key V.KEnter ->
     forM_ (snd <$> BL.listSelectedElement menu) $ \case
-      NewGame -> do
+      Play -> do
         ss <- use $ playState . progression . scenarios
-        uiState . uiMenu .= NewGameMenu (pure . mkScenarioList . (fmap . fmap) pathify $ ss)
+        uiState . uiMenu .= PlayMenu (pure . mkScenarioList . (fmap . fmap) pathify $ ss)
       Tutorial -> do
         ss <- use $ playState . progression . scenarios
 
@@ -271,7 +272,7 @@ handleMainMenuEvent menu = \case
                 menuStack = tutorialMenu :| pure topMenu
 
             -- Finally, set the menu stack, and start the scenario!
-            uiState . uiMenu .= NewGameMenu menuStack
+            uiState . uiMenu .= PlayMenu menuStack
 
             let remainingTutorials = maybe mempty (getScenariosAfterSelection tutorialMenu) $ BL.listSelected tutorialMenu
             startGame (fmap pathify firstUnsolvedInfo :| remainingTutorials) Nothing
@@ -300,7 +301,7 @@ handleMainMenuEvent menu = \case
 --   menu item is always the same as the currently played scenario!  `quitGame`
 --   is the only place this function should be called.
 advanceMenu :: Menu -> Menu
-advanceMenu = _NewGameMenu . ix 0 %~ BL.listMoveDown
+advanceMenu = _PlayMenu . ix 0 %~ BL.listMoveDown
 
 handleMainAchievementsEvent ::
   BL.List Name CategorizedAchievement ->
@@ -327,26 +328,26 @@ handleMainMessagesEvent = \case
   returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Messages)
 
 -- TODO: #2010 Finish porting Controller to KeyEventHandlers
-handleNewGameMenuEvent ::
+handlePlayMenuEvent ::
   NonEmpty (BL.List Name (ScenarioItem ScenarioPath)) ->
   BrickEvent Name AppEvent ->
   EventM Name AppState ()
-handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
+handlePlayMenuEvent scenarioStack@(curMenu :| rest) = \case
   Key V.KEnter ->
     forM_ (BL.listSelectedElement curMenu) $ \(pos, item) -> case item of
       Single siPair -> do
         invalidateCache
         let remaining = getScenariosAfterSelection curMenu pos
         startGame (siPair :| remaining) Nothing
-      SubCollection _ c -> uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList c) scenarioStack)
+      SubCollection _ c -> uiState . uiMenu .= PlayMenu (NE.cons (mkScenarioList c) scenarioStack)
   CharKey 'o' -> showLaunchDialog
   CharKey 'O' -> showLaunchDialog
-  Key V.KEsc -> exitNewGameMenu scenarioStack
-  CharKey 'q' -> exitNewGameMenu scenarioStack
+  Key V.KEsc -> exitPlayMenu scenarioStack
+  CharKey 'q' -> exitPlayMenu scenarioStack
   ControlChar 'q' -> haltApp
   VtyEvent ev -> do
     menu' <- nestEventM' curMenu (handleListEvent ev)
-    uiState . uiMenu .= NewGameMenu (menu' :| rest)
+    uiState . uiMenu .= PlayMenu (menu' :| rest)
   _ -> pure ()
  where
   showLaunchDialog = case snd <$> BL.listSelectedElement curMenu of
@@ -356,15 +357,15 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
       Brick.zoom (uiState . uiLaunchConfig) $ prepareLaunchDialog $ ScenarioWith s si
     _ -> pure ()
 
-exitNewGameMenu ::
+exitPlayMenu ::
   NonEmpty (BL.List Name (ScenarioItem ScenarioPath)) ->
   EventM Name AppState ()
-exitNewGameMenu stk =
+exitPlayMenu stk =
   uiState
     . uiMenu
     .= case snd (NE.uncons stk) of
-      Nothing -> MainMenu (mainMenu NewGame)
-      Just stk' -> NewGameMenu stk'
+      Nothing -> MainMenu (mainMenu Play)
+      Just stk' -> PlayMenu stk'
 
 -- | The top-level event handler while we are running the game itself.
 handleMainEvent :: Bool -> BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -427,6 +428,7 @@ handleMainEvent forceRedraw ev = do
         (UIShortcut "Recipes") -> Brick.zoom (playState . scenarioState) $ toggleDiscoveryNotificationModal RecipesModal availableRecipes
         (UIShortcut "Messages") -> Brick.zoom (playState . scenarioState) toggleMessagesModal
         (UIShortcut "Config") -> Brick.zoom (playState . scenarioState) $ toggleMidScenarioModal ConfigModal
+        -- TODO(#2824): get these from event handler instead of duplicating actions here?
         (UIShortcut "pause") -> Brick.zoom (playState . scenarioState) $ whenRunningPlayState safeTogglePause
         (UIShortcut "unpause") -> Brick.zoom (playState . scenarioState) $ whenRunningPlayState safeTogglePause
         (UIShortcut "step") -> whenRunningAppState runSingleTick
@@ -437,6 +439,7 @@ handleMainEvent forceRedraw ev = do
         (UIShortcut "debug") -> showCESKDebug
         (UIShortcut "hide robots") -> Brick.zoom (playState . scenarioState) hideRobots
         (UIShortcut "goal") -> Brick.zoom (playState . scenarioState) viewGoal
+        (UIShortcut "quit") -> toggleQuitGameDialog
         _ -> continueWithoutRedraw
     MouseUp n _ _mouseLoc ->
       Brick.zoom (playState . scenarioState) $ do
