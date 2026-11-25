@@ -1,5 +1,63 @@
 # Revision history for swarm
 
+## **0.9.0.0** - TBD
+
+### Breaking changes
+
+* The `run` command is replaced by proper `import` system
+  ([#2540](https://github.com/swarm-game/swarm/pull/2540), [#2679](https://github.com/swarm-game/swarm/pull/2679))
+
+### Features + Enhancements
+
+#### Commands
+
+* Add `import` command that is recursively typechecked and cached
+  ([#2540](https://github.com/swarm-game/swarm/pull/2540), [#2588](https://github.com/swarm-game/swarm/pull/2588)
+  [#2673](https://github.com/swarm-game/swarm/pull/2673), [#2679](https://github.com/swarm-game/swarm/pull/2679),
+  [#2727](https://github.com/swarm-game/swarm/pull/2727), [#2738](https://github.com/swarm-game/swarm/pull/2738)
+  [#2756](https://github.com/swarm-game/swarm/pull/2756), [#2763](https://github.com/swarm-game/swarm/pull/2763))
+* Add `export` directive ([#2697](https://github.com/swarm-game/swarm/pull/2697))
+* Add `default` keyword to generate a value of any type ([#2683](https://github.com/swarm-game/swarm/pull/2683))
+* Add `up` direction that works exactly like `down` but is more optimistic and will be useful later
+  ([#2689](https://github.com/swarm-game/swarm/pull/2689))
+
+#### Entities + Recipes
+
+* Add `unrecoverable` property ([#2665](https://github.com/swarm-game/swarm/pull/2665))
+
+#### Command line options
+
+* Removed `version` command in favour of `--version` flag ([#2647](https://github.com/swarm-game/swarm/pull/2647))
+
+#### Tutorials + Scenarios
+
+* Moved Fun, Vignettes, Mechanics + World Examples under Demo ([#2682](https://github.com/swarm-game/swarm/pull/2682))
+
+#### UI enhancements
+
+* List upcoming goals after active ones ([#2691](https://github.com/swarm-game/swarm/pull/2691))
+* Always show errors in robot log ([#2695](https://github.com/swarm-game/swarm/pull/2695))
+* Handle links and lists in Markdown documents ([#2755](https://github.com/swarm-game/swarm/pull/2755))
+* Add basic help system
+  ([#2789](https://github.com/swarm-game/swarm/pull/2789), [#2800](https://github.com/swarm-game/swarm/pull/2800))
+* Highlight changed keybindings ([#2770](https://github.com/swarm-game/swarm/pull/2770))
+
+#### LSP (Language Server for editors)
+
+* Show longer documentation on hover ([#2767](https://github.com/swarm-game/swarm/pull/2767))
+
+#### Performance
+
+* Load scenarios in parallel ([#2792](https://github.com/swarm-game/swarm/pull/2792))
+* Skip loading other scenarios when using `--scenario` flag ([#2773](https://github.com/swarm-game/swarm/pull/2773))
+* Fix space leaks
+  ([#2776](https://github.com/swarm-game/swarm/pull/2776), [#2781](https://github.com/swarm-game/swarm/pull/2781))
+
+#### Building/packaging
+
+* Add support for GHC 9.14 ([#2816](https://github.com/swarm-game/swarm/pull/2816))
+
+
 ## **0.8.0.0** - 2025-11-16
 
 ### Breaking changes
