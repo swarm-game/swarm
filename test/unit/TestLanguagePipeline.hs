@@ -859,7 +859,7 @@ testLanguagePipeline =
                 "1:49: 'default' must be explicitly applied to a type literal"
             )
         ]
-    , testCase "noop" (process "noop" "1:1: Undefined variable noop")
+    , testCase "noop" (process "noop" "1:1: Undefined variable 'noop'.  Note that the 'noop' command was removed in the 0.9 release; use 'pure ()' instead.")
     ]
  where
   valid = flip process ""
