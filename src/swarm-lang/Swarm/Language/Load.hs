@@ -381,7 +381,6 @@ validateImport loc = maybe (pure ()) validate . moduleTerm
     SExportIn _ t -> validate t
     STydef _ _ _ t -> validate t
     TConst Noop -> pure ()
-    TApp (TConst Pure) TUnit -> pure ()
     TBind _ _ _ t1 _ -> throwError $ ImpureImport loc (prettyText t1)
     t -> throwError $ ImpureImport loc (prettyText t)
 
