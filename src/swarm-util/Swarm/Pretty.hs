@@ -24,6 +24,7 @@ module Swarm.Pretty (
   pparens,
   pparens',
   encloseWithIndent,
+  prettyPrecApp,
   bquote,
   prettyShowLow,
   reportBug,
@@ -113,6 +114,12 @@ pparens' False = id
 
 encloseWithIndent :: Int -> Doc ann -> Doc ann -> Doc ann -> Doc ann
 encloseWithIndent i l r = nest i . enclose (l <> line') (nest (-2) $ line' <> r)
+
+-- | Pretty-print an application.
+prettyPrecApp :: PrettyPrec t => Int -> t -> t -> Doc ann
+prettyPrecApp p t1 t2 =
+  pparens (p > 10) $
+    prettyPrec 10 t1 <+> prettyPrec 11 t2
 
 -- | Surround a document with backticks.
 bquote :: Doc ann -> Doc ann
