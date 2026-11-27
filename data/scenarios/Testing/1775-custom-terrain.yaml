@@ -32,7 +32,7 @@ objectives:
         isEmpty
       }
 solution: |
-  noop
+  pure ()
 robots:
   - name: base
     dir: east

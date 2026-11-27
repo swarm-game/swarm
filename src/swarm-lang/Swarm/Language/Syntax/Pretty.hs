@@ -40,7 +40,7 @@ import Swarm.Language.Syntax.Pattern (sComments, pattern RTerm)
 import Swarm.Language.Syntax.Util (eraseRaw, unTuple)
 import Swarm.Language.TDVar (TDVar)
 import Swarm.Language.Types
-import Swarm.Pretty (PrettyPrec (..), encloseWithIndent, pparens, ppr, prettyEquality)
+import Swarm.Pretty (PrettyPrec (..), encloseWithIndent, pparens, ppr, prettyEquality, prettyPrecApp)
 import Text.Show.Unicode (ushow)
 
 -- | Pretty-print a syntax node with comments.
@@ -69,6 +69,11 @@ instance (Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFo
 instance (Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => PrettyPrec (Term phase) where
   prettyPrec p = \case
     TUnit -> "()"
+    -- If noop shows up somewhere that is not handled by one of the
+    -- other special cases below (e.g. '{noop}', 'def x = ... end in
+    -- noop'), it must be because a user wrote it explicitly using
+    -- pre-0.9 syntax.  So pretty-print it as 'pure ()'.
+    TConst Noop -> prettyPrecApp p (TConst @phase Pure) TUnit
     TConst c -> prettyPrec p c
     TDir d -> ppr d
     TInt n -> pretty n
@@ -171,11 +176,6 @@ prettyDefinition defName x mty t1 =
 prettyTydef :: TDVar -> Polytype -> Doc ann
 prettyTydef x (unPoly -> ([], ty)) = "tydef" <+> ppr x <+> "=" <+> ppr ty <+> "end"
 prettyTydef x (unPoly -> (xs, ty)) = "tydef" <+> ppr x <+> hsep (map ppr xs) <+> "=" <+> ppr ty <+> "end"
-
-prettyPrecApp :: (Unresolvable (ImportPhaseFor phase), PrettyPrec (Anchor (ImportPhaseFor phase))) => Int -> Syntax phase -> Syntax phase -> Doc a
-prettyPrecApp p t1 t2 =
-  pparens (p > 10) $
-    prettyPrec 10 t1 <+> prettyPrec 11 t2
 
 prettyTuple :: Unresolvable (ImportPhaseFor phase) => Term phase -> Doc a
 prettyTuple = tupled . map ppr . unTuple . RTerm . eraseRaw

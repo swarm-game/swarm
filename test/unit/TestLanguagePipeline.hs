@@ -283,7 +283,7 @@ testLanguagePipeline =
             )
         , testCase
             "atomic with comment #2412"
-            (valid "atomic {if true {c <- scan down; /* COMMENT */ noop } {}}")
+            (valid "atomic {if true {c <- scan down; /* COMMENT */ pure () } {}}")
         ]
     , testGroup
         "integer literals"
@@ -536,7 +536,7 @@ testLanguagePipeline =
             "mismatched if branches"
             ( process
                 "if true {grab} {}"
-                "1:16: Type mismatch:\n  From context, expected `noop` to have type `Cmd Text`,\n  but it actually has type `Cmd Unit`"
+                "1:16: Type mismatch:\n  From context, expected `pure ()` to have type `Cmd Text`,\n  but it actually has type `Cmd Unit`"
             )
         , testCase
             "definition with wrong result"
@@ -859,6 +859,7 @@ testLanguagePipeline =
                 "1:49: 'default' must be explicitly applied to a type literal"
             )
         ]
+    , testCase "noop" (process "noop" "1:1: Undefined variable 'noop'.  Note that the 'noop' command was removed in the 0.9 release; use 'pure ()' instead.")
     ]
  where
   valid = flip process ""

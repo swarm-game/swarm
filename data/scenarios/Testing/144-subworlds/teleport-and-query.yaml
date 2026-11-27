@@ -14,7 +14,7 @@ objectives:
         pure $ w == "underground";
       }
 solution: |
-  noop
+  pure ()
 robots:
   - name: base
     dir: east

@@ -37,7 +37,7 @@ robots:
     inventory:
       - [1, pixel (R)]
 solution: |
-  noop;
+  pure ()
 structures:
   - name: red_jewel
     recognize: [north]

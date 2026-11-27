@@ -37,7 +37,7 @@ def waitToGive =
     end;
 
 def waitToReceive =
-    noop;
+    pure ()
     end;
 
 def go =

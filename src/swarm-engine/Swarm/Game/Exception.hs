@@ -163,9 +163,9 @@ formatIncapableFix = \case
 --   but no device yet provides it. See
 --   https://github.com/swarm-game/swarm/issues/26
 --
--- >>> incapableError (R.singletonInv 3 "tree") (TConst Noop)
+-- >>> incapableError (R.singletonInv 3 "tree") (TConst Move)
 -- You are missing required inventory for:
---   'noop'
+--   'move'
 --   Please obtain:
 --   - tree (3)
 formatIncapable ::

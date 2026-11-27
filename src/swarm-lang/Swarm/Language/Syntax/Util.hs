@@ -284,8 +284,7 @@ asTree = para Node
 measureASTSize :: (Data (Anchor (ImportPhaseFor phase)), Typeable phase, Typeable (ImportPhaseFor phase), Data (SwarmType phase)) => Syntax phase -> Sum Int
 measureASTSize = Sum . length . filter (not . isNoop) . universe
 
--- | Don't count "noop" nodes towards the code size.  They are usually
---   inserted automatically, either in @{}@ or after a bare @def@.
+-- | Don't count auto-inserted "noop" nodes towards the code size.
 isNoop :: Syntax a -> Bool
 isNoop = \case
   Syntax _ (TConst Noop) _ _ -> True

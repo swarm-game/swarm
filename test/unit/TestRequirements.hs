@@ -27,7 +27,7 @@ testRequirements =
     "Requirements analysis"
     [ testGroup
         "Basic capabilities"
-        [ testCase "solar panel" $ "noop" `requiresCap` CPower
+        [ testCase "solar panel" $ "pure ()" `requiresCap` CPower
         , testCase "move" $ "move" `requiresCap` CExecute Move
         , testCase "lambda" $ "\\x. x" `requiresCap` CLambda
         , testCase "inl" $ "inl 3" `requiresCap` CSum

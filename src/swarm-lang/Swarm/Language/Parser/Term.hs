@@ -48,9 +48,13 @@ parseDirection = asum (map alternative allDirs) <?> "direction constant"
 -- | Parse Const as reserved words (e.g. @Fail <$ reserved "fail"@)
 parseConst :: Parser Const
 parseConst = do
-  asum (map alternative consts) <?> "built-in user function"
+  ver <- view languageVersion
+  asum (map alternative (consts ver)) <?> "built-in user function"
  where
-  consts = filter isUserFunc allConst
+  consts ver = filter (ok ver) allConst
+  -- 'noop' was removed from the surface language in version 0.9, so
+  -- only allow it if we are parsing some version < 0.9
+  ok ver c = isUserFunc c || (ver /= SwarmLangLatest && c == Noop)
   alternative c = c <$ reserved (syntax $ constInfo c)
 
 -- | Parse an atomic term, optionally trailed by record projections like @t.x.y.z@.
@@ -109,7 +113,7 @@ parseTermAtom2 =
           <*> (optional (void (symbol ";") <|> reserved "in") *> (parseTerm <|> (eof $> sNoop)))
     )
     <|> parseLoc (mkTuple <$> parens (parseTerm `sepBy` symbol ","))
-    <|> parseLoc (TDelay (TConst Noop) <$ try (symbol "{" *> symbol "}"))
+    <|> parseLoc (SDelay sNoop <$ try (symbol "{" *> symbol "}"))
     <|> parseLoc (SDelay <$> braces parseTerm)
     <|> parseLoc (view antiquoting >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
 

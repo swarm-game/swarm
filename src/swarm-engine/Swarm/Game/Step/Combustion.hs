@@ -233,9 +233,6 @@ ignitionProgram :: Integer -> Module Elaborated
 ignitionProgram waitTime =
   [tmQ|
     wait $int:waitTime;
-    try {
-      ignite down;
-      noop;
-    } {};
+    try { ignite down } {};
     selfdestruct
   |]

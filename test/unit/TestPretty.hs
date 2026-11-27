@@ -197,6 +197,9 @@ testPrettyConst =
         [ testCase "tydef alias" $
             equalPrettyLine @(Term Raw) "tydef X = Int end" $
               TTydef "X" (mkTrivPoly TyInt) Nothing (TConst Noop)
+        , testCase "tydef alias + pure" $
+            equalPrettyLine @(Term Raw) "tydef X = Int end\n\npure ()" $
+              TTydef "X" (mkTrivPoly TyInt) Nothing (TApp (TConst Pure) TUnit)
         , testCase "tydef Maybe" $
             equalPrettyLine @(Term Raw) "tydef Maybe a = Unit + a end" $
               TTydef "Maybe" (mkQPoly (TyUnit :+: TyVar "a")) Nothing (TConst Noop)

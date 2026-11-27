@@ -24,7 +24,7 @@ objectives:
         pure $ r == 3 && g == 3 && b == 3 && y == 3;
       }
 solution: |
-  noop
+  pure ()
 known: [boulder, log, pixel (R), pixel (G), pixel (B), gold]
 world:
   structures:

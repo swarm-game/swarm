@@ -555,6 +555,8 @@ instance PrettyPrec TypeErr where
       "Skolem variable" <+> ppr x <+> "would escape its scope"
     UnboundVar "run" ->
       "Undefined variable 'run'.  Note that the 'run' command was removed in the 0.9 release.  See https://github.com/swarm-game/swarm/wiki/Updating-from-run-to-import."
+    UnboundVar "noop" ->
+      "Undefined variable 'noop'.  Note that the 'noop' command was removed in the 0.9 release; use 'pure ()' instead."
     UnboundVar x ->
       "Undefined variable" <+> ppr x
     UnboundType x ->

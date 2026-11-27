@@ -17,7 +17,7 @@ objectives:
     condition: |
       pure true
 solution: |
-  noop
+  pure ()
 known: [boulder, log, pixel (R), pixel (G), pixel (B), gold]
 world:
   structures:
