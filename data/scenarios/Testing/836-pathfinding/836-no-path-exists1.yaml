@@ -13,7 +13,7 @@ objectives:
         pure $ case nextDir (\_. true) (\_. false);
       };
 solution: |
-  noop;
+  pure ()
 entities:
   - name: wayfinder
     display:

@@ -33,7 +33,7 @@ robots:
       - logger
       - treads
 solution: |
-  noop;
+  pure ()
 structures:
   - name: square
     recognize: [north]

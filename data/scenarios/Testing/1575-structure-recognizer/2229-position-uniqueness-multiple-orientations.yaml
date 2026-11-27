@@ -27,7 +27,7 @@ robots:
     devices:
       - logger
 solution: |
-  noop;
+  pure ()
 structures:
   - name: thingy
     recognize: [north, east]

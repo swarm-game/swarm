@@ -57,7 +57,7 @@ robots:
     program: |
       import "_snake/spawn.sw"; go
 solution: |
-  noop
+  pure ()
 entities:
   - name: wayfinder
     display:

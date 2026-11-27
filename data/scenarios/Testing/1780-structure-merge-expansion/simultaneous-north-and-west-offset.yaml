@@ -14,7 +14,7 @@ objectives:
     condition: |
       pure true
 solution: |
-  noop
+  pure ()
 known: [pixel (R), gold]
 world:
   structures:

@@ -28,7 +28,7 @@ objectives:
         forM 1 5 (\y.
           forM 1 5 (\x.
             teleport self (x,-y);
-            ifC (ishere "rock") {} {grab; noop};
+            ifC (ishere "rock") {} {grab};
           );
         );
         pure true

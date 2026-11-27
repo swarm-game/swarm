@@ -16,7 +16,7 @@ objectives:
         pure false;
       }
 solution: |
-  noop;
+  pure ()
 robots:
   - name: base
     dir: east

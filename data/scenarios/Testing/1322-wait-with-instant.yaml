@@ -23,7 +23,7 @@ objectives:
 
       pure $ harex == 0 && xDiff == 3;
 solution: |
-  noop;
+  pure ()
 robots:
   - name: base
     dir: [1, 0]
