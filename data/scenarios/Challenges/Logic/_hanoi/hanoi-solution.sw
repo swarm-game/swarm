@@ -2,7 +2,7 @@ import "~swarm/lib/control"
 
 def somethingHere =
   res <- scan down;
-  pure (res != inl ())
+  pure (res != "")
 end;
 
 def fwdToThing = until blocked move end;

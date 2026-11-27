@@ -18,6 +18,8 @@ objectives:
       - |
         The puzzle is won when all lights have been extinguished.
     condition: |
+      import "~swarm/lib/scan"
+
       def advanceRow =
           curLoc <- whereami;
           match curLoc \_. \y.

@@ -1,4 +1,5 @@
 import "~swarm/lib/control"
+import "~swarm/lib/scan"
 
 def goDir = \f. λmatch \d. \_.
   if (d == down) {

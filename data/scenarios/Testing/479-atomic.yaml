@@ -17,8 +17,8 @@ solution: |
   def forever = \c. force c ; forever c end
   def tryharvest =
     atomic {
-      b <- ishere "weed";
-      if b {harvest; pure ()} {}
+      h <- scan down;
+      if (h == "weed") {harvest; pure ()} {}
     };
     n <- random 4; wait n
   end;
@@ -44,8 +44,8 @@ robots:
       def forever = \c. force c ; forever c end
       def tryplant =
         atomic {
-          b <- ishere "weed";
-          if b {} {place "weed"}
+          h <- scan down;
+          if (h == "weed") {} {place "weed"}
         }
       end;
       forever {tryplant}

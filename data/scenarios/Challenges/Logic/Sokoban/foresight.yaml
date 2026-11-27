@@ -15,6 +15,7 @@ objectives:
   - goal:
       - Push a `monolith`{=entity} onto the base's initial location.
     condition: |
+      import "~swarm/lib/scan"
       as base {
         teleport self (0,0);
         ishere "monolith";

@@ -1,6 +1,6 @@
 def isItemInDirection = \direction. \item.
     x <- scan direction;
-    pure $ case x (\_. false) (\y. y == item);
+    pure $ x == item;
     end;
 
 def isFlankedByItem = \item.

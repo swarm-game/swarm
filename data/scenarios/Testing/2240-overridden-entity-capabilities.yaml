@@ -9,8 +9,9 @@ objectives:
   - goal:
       - Place a rock
     condition: |
+      import "~swarm/lib/scan"
       as base {
-        isHere "rock"
+        ishere "rock"
       };
 entities:
   - name: treads

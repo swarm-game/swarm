@@ -25,6 +25,10 @@ def plant_field : Text -> Cmd Unit = \thing.
     next_row
   )
 end;
+def ishere : Text -> Cmd Bool = \thing.
+  here <- scan down;
+  pure (here == thing)
+end;
 def harvest_field : Text -> Cmd Unit = \thing.
   x4 (
     x12 (move; ifC (ishere thing) {harvest; pure ()} {});

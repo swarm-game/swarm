@@ -17,8 +17,8 @@ solution: |
     end;
 
   def grabFlower =
-    here <- ishere "flower";
-    if here {
+    here <- scan down;
+    if (here == "flower") {
       grab;
     } {
       move;
@@ -44,6 +44,7 @@ robots:
       - grabber
       - logger
       - scanner
+      - comparator
       - string
       - treads
   - name: bot

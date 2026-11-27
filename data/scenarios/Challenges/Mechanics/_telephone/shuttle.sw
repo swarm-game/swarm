@@ -1,17 +1,18 @@
 import "~swarm/lib/control"
+import "~swarm/lib/scan"
 
 def followTrack : Cmd Unit =
   move;
-  while (orC (isHere "track") (isHere "mountain")) { move };
+  while (orC (ishere "track") (ishere "mountain")) { move };
   turn back;
 end
 
 def pickup : Cmd Text =
-  atomic {b <- isempty; if b {pure ""} {grab}};
+  atomic {h <- scan down; if (h == "") {pure ""} {grab}};
 end
 
 def dropoff : Text -> Cmd Bool = \thing.
-  atomic {b <- isempty; if b {place thing} {}; pure b}
+  atomic {h <- scan down; if (h == "") {place thing; pure true} {pure false}}
 end
 
 def deliver : Text -> Cmd Unit = \thing.

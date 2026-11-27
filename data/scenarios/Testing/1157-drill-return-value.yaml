@@ -5,6 +5,7 @@ objectives:
   - goal:
       - Drill the adjacent entity, place the result where you are.
     condition: |
+      import "~swarm/lib/scan"
       as base {ishere "gumball"};
 solution: |
   out <- drill forward;

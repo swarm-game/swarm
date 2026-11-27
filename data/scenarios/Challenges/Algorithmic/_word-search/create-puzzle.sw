@@ -20,8 +20,7 @@ def whichOrdinal = \str.
 Returns -1 if not a recognized letter.
 */
 def getAdjacentOrdinal = \d.
-    maybeEntity <- scan d;
-    str <- case maybeEntity (\_. pure "") (\s. pure s);
+    str <- scan d;
     whichOrdinal str;
     end;
 

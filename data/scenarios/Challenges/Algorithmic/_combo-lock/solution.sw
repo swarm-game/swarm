@@ -1,3 +1,5 @@
+import "~swarm/lib/scan"
+
 def moveToLock =
     emptyHere <- isempty;
     if emptyHere {move; moveToLock} {};
@@ -5,12 +7,11 @@ def moveToLock =
 
 def cycleCombos = \n.
     entityNorth <- scan north;
-    let hasGate = case entityNorth (\_. false) (\x. x == "gate") in
-    if hasGate {
+    if (entityNorth == "gate") {
         if (n > 0) {
             drill down;
-            maybeNextEnt <- scan east;
-            case maybeNextEnt pure (\_. turn east; move; cycleCombos 3);
+            nextEnt <- scan east;
+            if (nextEnt == "") {} {turn east; move; cycleCombos 3};
             cycleCombos $ n - 1;
         } {
             turn west;

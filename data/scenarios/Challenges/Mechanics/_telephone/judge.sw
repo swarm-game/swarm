@@ -1,13 +1,13 @@
 import "~swarm/lib/control"
 import "~swarm/lib/list"
 
-def readRow : Cmd (List (Unit + Text)) =
+def readRow : Cmd (List Text) =
   r <- for 8 (\_. s <- scan down; move; pure s);
   turn back; doN 8 move; turn right; move; turn right;
   pure r
 end
 
-tydef Rect = List (List (Unit + Text)) end
+tydef Rect = List (List Text) end
 
 def readRect : Cmd Rect =
   lst <- for 4 (\_. readRow);
@@ -15,13 +15,13 @@ def readRect : Cmd Rect =
   pure lst
 end
 
-def checkCell : Unit + Text -> Cmd Bool = \pat.
+def checkCell : Text -> Cmd Bool = \pat.
   actual <- scan down;
   move;
   pure (actual == pat)
 end
 
-def checkRow : List (Unit + Text) -> Cmd Bool = λcase
+def checkRow : List Text -> Cmd Bool = λcase
   (\_. turn back; doN 8 move; turn right; move; turn right; pure true)
   (λmatch \hd. \tl. andC (checkCell hd) (checkRow tl))
 end

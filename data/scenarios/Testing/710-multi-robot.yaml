@@ -103,7 +103,7 @@ robots:
     inventory: [[1, wall]]
     program: |
       def until = \c. b <- c; if b {} {until c} end;
-      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") pure);
+      n <- (s <- scan down; if (s == "") {fail "Fatal error: missing room number!"} {pure s});
       c1 <- robotNamed ("check" ++ n);
       until (as c1 {has "Win"});
       swap "wall"

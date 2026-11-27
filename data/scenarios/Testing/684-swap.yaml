@@ -38,11 +38,7 @@ robots:
       def repeat = \c. c; repeat c end;
       repeat (
         d <- scan down;
-        case d (\_.
-          say "Fatal error: swap does not work atomically!"
-        ) (\_.
-          pure ()
-        )
+        if (d == "") {say "Fatal error: swap does not work atomically!"} {pure ()}
       )
 world:
   palette:

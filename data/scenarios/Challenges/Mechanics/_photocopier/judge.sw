@@ -1,5 +1,6 @@
 import "~swarm/lib/control"
 import "~swarm/lib/list"
+import "~swarm/lib/scan"
 
 def andC : Cmd (e + Unit) -> Cmd (e + Unit) -> Cmd (e + Unit) = \c1. \c2.
   b1 <- c1;
@@ -21,12 +22,11 @@ def readRect : Int -> Int -> Cmd Rect = \r. \c.
 end
 
 def checkCell : Bool -> Cmd ((Text * Int * Int) + Unit) = \pat.
-  mactual <- scan down;
+  actual <- scan down;
   move;
   loc <- whereami;
-  pure $ case mactual (\_. inl ("empty", loc)) (\actual.
-    if (actual == (if pat {"pixel (B)"} {"pixel (W)"})) {inr ()} {inl (actual, loc)}
-  )
+  pure $ if (actual == "") {inl ("empty", loc)}
+    { if (actual == (if pat {"pixel (B)"} {"pixel (W)"})) {inr ()} {inl (actual, loc)} }
 end
 
 def checkRow : Int -> List Bool -> Cmd ((Text * Int * Int) + Unit) = \c. λcase

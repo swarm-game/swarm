@@ -2,6 +2,7 @@ import "~swarm/lib/control"
 import "~swarm/lib/arith"
 import "~swarm/lib/tuple"
 import "~swarm/lib/list"
+import "~swarm/lib/scan"
 
 // Spawns worker bees when structures are detected
 

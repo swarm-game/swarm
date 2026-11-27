@@ -1,18 +1,17 @@
 // A "sheep" that wanders around randomly.
 
 import "~swarm/lib/control"
+import "~swarm/lib/scan"
 
 def turnToClover = \direction.
 
-  x <- scan direction;
-  case x (\_. pure false;) (\y.
-    if (y == "clover") {
-      turn direction;
-      pure true;
-    } {
-      pure false;
-    };
-  );
+  y <- scan direction;
+  if (y == "clover") {
+    turn direction;
+    pure true;
+  } {
+    pure false;
+  };
   end;
 
 
@@ -85,16 +84,14 @@ forever (
     } {};
 
     // Eat clover.
-    x <- scan down;
-    case x pure (\y.
-        if (y == "clover") {
-            harvest;
-            cloverCount <- count "clover";
-            if (cloverCount < 2) {
-              say "yum!"
-            } {};
+    y <- scan down;
+    if (y == "clover") {
+        harvest;
+        cloverCount <- count "clover";
+        if (cloverCount < 2) {
+          say "yum!"
         } {};
-    );
+    } {};
   );
   r <- random 30;
   if (r == 0) { say "baaa" } {};
@@ -109,11 +106,7 @@ forever (
         // Make sure nothing's in the way before we place
         // our wool:
         x <- scan down;
-        case x pure (\_.
-          grab;
-          pure ();
-        );
-
+        if (x == "") {} {grab; pure ()};
         place item;
       } {};
     } {};

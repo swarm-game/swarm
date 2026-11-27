@@ -6,6 +6,7 @@ description: |
   https://github.com/swarm-game/swarm/issues/490
 objectives:
   - condition: |
+      import "~swarm/lib/scan"
       try {
         turn east; move;
         t1 <- ishere "tree";

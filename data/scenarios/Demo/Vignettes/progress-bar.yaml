@@ -8,7 +8,7 @@ objectives:
       - Wait for all progress bars to fill up.
     condition: |
       turn east;
-      let c = e <- scan down; if (e != inr "tree") {fail "not done"} {} in
+      let c = e <- scan down; if (e != "tree") {fail "not done"} {} in
       teleport self (1,-1); c; move; c; move; c; move; c; move; c; move; c; move; c; move; c; move; c; move; c;
       teleport self (1,-5); c; move; c; move; c; move; c; move; c; move; c; move; c; move; c; move; c; move; c;
       teleport self (1,-9); c; move; c; move; c; move; c; move; c; move; c; move; c; move; c; move; c; move; c;

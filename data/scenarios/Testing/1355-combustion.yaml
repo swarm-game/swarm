@@ -7,6 +7,7 @@ objectives:
   - goal:
       - Blow up the dynamite
     condition: |
+      import "~swarm/lib/scan"
       j <- robotnamed "judge";
       as j {
         ishere "crater";

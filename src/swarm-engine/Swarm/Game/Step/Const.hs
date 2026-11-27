@@ -736,7 +736,7 @@ execConst runChildProg c vs s k = do
           -- something may change the way it is drawn (if the
           -- currently viewed robot is doing the scanning)
           flagCompleteRedraw
-        return $ mkReturn me
+        return $ maybe (mkReturn ("" :: Text)) mkReturn me
       _ -> badConst
     Knows -> case vs of
       [VText name] -> do
@@ -949,17 +949,6 @@ execConst runChildProg c vs s k = do
                 return $ mkReturn ()
               False -> throwError $ cmdExn c ["You are not authorized to halt that robot."]
       _ -> badConst
-    Ishere -> case vs of
-      [VText name] -> do
-        loc <- use robotLocation
-        me <- entityAt loc
-        let here = maybe False (isEntityNamed name) me
-        return $ mkReturn here
-      _ -> badConst
-    Isempty -> do
-      loc <- use robotLocation
-      me <- entityAt loc
-      return $ mkReturn $ isNothing me
     Self -> do
       rid <- use robotID
       return $ Out (VRobot rid) s k

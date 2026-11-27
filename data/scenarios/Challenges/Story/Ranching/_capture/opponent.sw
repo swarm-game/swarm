@@ -1,5 +1,6 @@
 import "~swarm/lib/control"
 import "~swarm/lib/arith"
+import "~swarm/lib/scan"
 
 /**
 If any blocking entity is touching me, escape.

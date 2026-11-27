@@ -15,6 +15,7 @@ objectives:
       - Place the `flower`{=entity} on the target.
       - You may have to start over if you get stuck.
     condition: |
+      import "~swarm/lib/scan"
       as base {
         teleport self (0,0);
         ishere "flower";
