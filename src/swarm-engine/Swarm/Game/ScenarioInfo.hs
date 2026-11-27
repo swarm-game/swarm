@@ -36,7 +36,6 @@ module Swarm.Game.ScenarioInfo (
 
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (void, (<=<))
-import Data.Either.Extra (fromRight')
 import Data.List (intercalate, isPrefixOf, stripPrefix)
 import Data.Map.Ordered qualified as OM
 import Data.Maybe (isJust)
@@ -95,12 +94,15 @@ normalizeScenarioPath col p =
         then return path
         else liftIO $ do
           canonPath <- canonicalizePath path
-          eitherDataDir <- runEff . runErrorNoCallStack @SystemFailure $ getDataDirThrow Scenarios "." -- no way we got this far without data directory
-          d <- canonicalizePath $ fromRight' eitherDataDir
-          let n =
+          eitherDataDir <- runEff . runErrorNoCallStack @SystemFailure $ getDataDirThrow Scenarios "."
+          case eitherDataDir of
+            -- no way we got this far without data directory, but if so just do nothing instead of crashing
+            Left _ -> pure p
+            Right dataDir -> do
+              d <- canonicalizePath dataDir
+              pure $
                 stripPrefix (d </> "scenarios") canonPath
                   & maybe canonPath (dropWhile (== pathSeparator))
-          return n
 
 ------------------------------------------------------------
 -- Scenario collection loading
